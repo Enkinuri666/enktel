@@ -1,0 +1,68 @@
+import Image from "next/image";
+import { Channel, EPGProgram } from "@/types";
+import EPGProgramCell from "./EPGProgram";
+
+interface EPGRowProps {
+  channel: Channel;
+  programs: EPGProgram[];
+  startTime: Date;
+  endTime: Date;
+  pixelsPerMinute: number;
+}
+
+export default function EPGRow({ channel, programs, startTime, endTime, pixelsPerMinute }: EPGRowProps) {
+  const now = new Date();
+  const totalMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
+  const totalWidth = totalMinutes * pixelsPerMinute;
+
+  return (
+    <div className="flex h-14 border-b border-brand-border/50">
+      {/* Channel name - sticky */}
+      <div className="w-40 shrink-0 sticky left-0 z-20 bg-brand-bg border-r border-brand-border flex items-center gap-2 px-3">
+        <div className="w-8 h-8 rounded-lg overflow-hidden bg-brand-card border border-brand-border shrink-0 flex items-center justify-center">
+          <Image
+            src={channel.logoUrl}
+            alt={channel.name}
+            width={32}
+            height={32}
+            className="object-contain w-full h-full"
+            unoptimized
+          />
+        </div>
+        <span className="text-white text-xs font-medium line-clamp-2 leading-tight">{channel.name}</span>
+      </div>
+
+      {/* Programs timeline */}
+      <div
+        className="relative flex items-center"
+        style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
+      >
+        {programs.map((program) => {
+          const pStart = new Date(program.startTime);
+          const pEnd = new Date(program.endTime);
+          const clampedStart = pStart < startTime ? startTime : pStart;
+          const clampedEnd = pEnd > endTime ? endTime : pEnd;
+          const offsetMinutes = (clampedStart.getTime() - startTime.getTime()) / 60000;
+          const durationMinutes = (clampedEnd.getTime() - clampedStart.getTime()) / 60000;
+          const widthPx = durationMinutes * pixelsPerMinute;
+          const leftPx = offsetMinutes * pixelsPerMinute;
+          const isCurrentlyAiring = pStart <= now && pEnd > now;
+
+          return (
+            <div
+              key={program.id}
+              className="absolute inset-y-1"
+              style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
+            >
+              <EPGProgramCell
+                program={program}
+                widthPx={widthPx}
+                isCurrentlyAiring={isCurrentlyAiring}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
