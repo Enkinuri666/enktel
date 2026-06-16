@@ -13,8 +13,11 @@ const PLANS = {
 
 interface SubscriptionResult {
   id: string;
+  username: string;
+  password: string;
   m3uUrl: string;
   epgUrl: string;
+  panelSync: boolean;
 }
 
 function CheckoutContent() {
@@ -65,14 +68,29 @@ function CheckoutContent() {
             <p className="text-brand-muted text-xs mb-1">Subscription ID</p>
             <p className="text-white font-mono text-sm">{success.id}</p>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-brand-muted text-xs mb-1">Username</p>
+              <p className="text-white font-mono text-sm font-bold">{success.username}</p>
+            </div>
+            <div>
+              <p className="text-brand-muted text-xs mb-1">Password</p>
+              <p className="text-white font-mono text-sm font-bold">{success.password}</p>
+            </div>
+          </div>
           <div>
             <p className="text-brand-muted text-xs mb-1">M3U Playlist URL</p>
             <p className="text-brand-primary font-mono text-xs break-all">{success.m3uUrl}</p>
           </div>
           <div>
-            <p className="text-brand-muted text-xs mb-1">EPG URL</p>
+            <p className="text-brand-muted text-xs mb-1">EPG / XML TV URL</p>
             <p className="text-brand-primary font-mono text-xs break-all">{success.epgUrl}</p>
           </div>
+          {!success.panelSync && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-4 py-3 text-yellow-400 text-xs">
+              Your credentials will be activated on our streaming servers within a few minutes. You&apos;ll receive a confirmation email shortly.
+            </div>
+          )}
         </div>
         <p className="text-brand-muted text-sm">
           These details have been sent to your email. Visit your{" "}
