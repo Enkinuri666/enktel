@@ -23,10 +23,9 @@ const plans = [
       "7-Day Catch-Up TV",
       "VOD Library Access",
       "Electronic Program Guide",
-      "1 Simultaneous Connection",
       "Email Support",
     ],
-    notIncluded: ["4K Ultra HD", "Priority Support", "Multiple Connections"],
+    notIncluded: ["4K Ultra HD", "Priority Support", "Sports Package"],
     highlighted: false,
     color: "brand-primary",
   },
@@ -35,7 +34,7 @@ const plans = [
     name: "Pro",
     price: 14.99,
     annualPrice: 11.99,
-    connections: 2,
+    connections: 1,
     channels: "10,000+",
     quality: "4K Ultra HD",
     catchUp: "14 Days",
@@ -47,7 +46,6 @@ const plans = [
       "14-Day Catch-Up TV",
       "Full VOD Library",
       "Electronic Program Guide",
-      "2 Simultaneous Connections",
       "Priority Support",
       "Sports Package Included",
     ],
@@ -60,7 +58,7 @@ const plans = [
     name: "Ultimate",
     price: 24.99,
     annualPrice: 19.99,
-    connections: 3,
+    connections: 1,
     channels: "10,000+",
     quality: "4K Ultra HD",
     catchUp: "30 Days",
@@ -72,7 +70,6 @@ const plans = [
       "30-Day Catch-Up TV",
       "Full VOD Library",
       "Electronic Program Guide",
-      "3 Simultaneous Connections",
       "Priority VIP Support",
       "Sports Package Included",
       "Adult Content (optional)",
@@ -170,7 +167,7 @@ export default function PricingPage() {
 
             <h2 className="text-white font-bold text-2xl mb-1">{plan.name}</h2>
             <p className="text-brand-muted text-sm mb-4">
-              {plan.connections} connection{plan.connections > 1 ? "s" : ""} &bull; {plan.quality}
+              1 device &bull; {plan.quality}
             </p>
 
             <div className="mb-6">
@@ -233,13 +230,13 @@ export default function PricingPage() {
             {[
               { label: "Channels", values: ["5,000+", "10,000+", "10,000+"] },
               { label: "Stream Quality", values: ["Full HD", "4K UHD", "4K UHD"] },
-              { label: "Connections", values: ["1", "2", "3"] },
               { label: "Catch-Up TV", values: ["7 Days", "14 Days", "30 Days"] },
               { label: "VOD Library", values: ["✓", "✓", "✓"] },
               { label: "EPG Guide", values: ["✓", "✓", "✓"] },
-              { label: "Priority Support", values: ["✗", "✓", "✓"] },
               { label: "Sports Package", values: ["✗", "✓", "✓"] },
+              { label: "Priority Support", values: ["✗", "✓", "✓"] },
               { label: "VIP Support", values: ["✗", "✗", "✓"] },
+              { label: "Adult Content", values: ["✗", "✗", "✓"] },
             ].map((row) => (
               <tr key={row.label} className="border-b border-brand-border/50 hover:bg-white/2 transition-colors">
                 <td className="px-6 py-3.5 text-brand-muted text-sm">{row.label}</td>

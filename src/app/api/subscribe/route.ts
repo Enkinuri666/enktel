@@ -14,8 +14,8 @@ const PLAN_PACKAGE: Record<string, number> = {
 
 const PLAN_CONNECTIONS: Record<string, number> = {
   starter: 1,
-  pro:     2,
-  ultimate: 4,
+  pro:     1,
+  ultimate: 1,
 };
 
 interface PanelLineResult {

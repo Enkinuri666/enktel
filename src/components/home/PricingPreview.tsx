@@ -19,7 +19,7 @@ const plans = [
     id: "pro",
     name: "Pro",
     price: 14.99,
-    connections: 2,
+    connections: 1,
     quality: "4K Ultra HD",
     catchUp: "14 Days",
     features: ["10,000+ Channels", "4K Ultra HD", "14-Day Catch-Up", "VOD Library", "EPG Guide", "Priority Support"],
@@ -29,10 +29,10 @@ const plans = [
     id: "ultimate",
     name: "Ultimate",
     price: 24.99,
-    connections: 3,
+    connections: 1,
     quality: "4K Ultra HD",
     catchUp: "30 Days",
-    features: ["10,000+ Channels", "4K Ultra HD", "30-Day Catch-Up", "VOD Library", "EPG Guide", "Priority Support", "3 Connections"],
+    features: ["10,000+ Channels", "4K Ultra HD", "30-Day Catch-Up", "VOD Library", "EPG Guide", "VIP Support", "Adult Content"],
     highlighted: false,
   },
 ];
@@ -84,7 +84,7 @@ export default function PricingPreview() {
                 <span className="text-brand-muted text-sm">/month</span>
               </div>
               <div className="text-brand-muted text-sm mb-4 space-y-1">
-                <div>{plan.connections} Connection{plan.connections > 1 ? "s" : ""}</div>
+                <div>1 Device</div>
                 <div>{plan.quality}</div>
                 <div>{plan.catchUp} Catch-Up</div>
               </div>

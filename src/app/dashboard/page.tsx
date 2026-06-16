@@ -12,7 +12,7 @@ const MOCK_SUBSCRIPTION = {
   endDate: "2025-01-15",
   m3uUrl: "https://e4kpremuim.com/get.php?username=demo_user&password=Demo1234&type=m3u_plus&output=ts",
   epgUrl: "https://e4kpremuim.com/xmltv.php?username=demo_user&password=Demo1234",
-  connections: 2,
+  connections: 1,
   usedConnections: 1,
 };
 
