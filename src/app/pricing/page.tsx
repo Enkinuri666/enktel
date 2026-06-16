@@ -1,83 +1,78 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Check, X, Zap, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
 
 const plans = [
   {
-    id: "starter",
-    name: "Starter",
-    price: 8.99,
-    annualPrice: 7.19,
-    connections: 1,
-    channels: "5,000+",
-    quality: "Full HD 1080p",
-    catchUp: "7 Days",
-    vod: true,
-    prioritySupport: false,
-    features: [
-      "5,000+ Live Channels",
-      "Full HD 1080p Quality",
-      "7-Day Catch-Up TV",
-      "VOD Library Access",
-      "Electronic Program Guide",
-      "Email Support",
-    ],
-    notIncluded: ["4K Ultra HD", "Priority Support", "Sports Package"],
+    id: "monthly",
+    name: "Monthly",
+    price: 19.99,
+    totalPrice: 19.99,
+    duration: "1 month",
+    promo: false,
+    badge: null,
     highlighted: false,
-    color: "brand-primary",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 14.99,
-    annualPrice: 11.99,
-    connections: 1,
-    channels: "10,000+",
-    quality: "4K Ultra HD",
-    catchUp: "14 Days",
-    vod: true,
-    prioritySupport: true,
+    description: "Flexible month-to-month, cancel anytime.",
     features: [
       "10,000+ Live Channels",
-      "4K Ultra HD Quality",
-      "14-Day Catch-Up TV",
-      "Full VOD Library",
-      "Electronic Program Guide",
-      "Priority Support",
-      "Sports Package Included",
-    ],
-    notIncluded: ["30-Day Catch-Up"],
-    highlighted: true,
-    color: "brand-primary",
-  },
-  {
-    id: "ultimate",
-    name: "Ultimate",
-    price: 24.99,
-    annualPrice: 19.99,
-    connections: 1,
-    channels: "10,000+",
-    quality: "4K Ultra HD",
-    catchUp: "30 Days",
-    vod: true,
-    prioritySupport: true,
-    features: [
-      "10,000+ Live Channels",
+      "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
       "Full VOD Library",
       "Electronic Program Guide",
-      "Priority VIP Support",
-      "Sports Package Included",
+      "24/7 Support",
+    ],
+  },
+  {
+    id: "quarter",
+    name: "3 Months",
+    price: 59,
+    totalPrice: 59,
+    duration: "3 months",
+    promo: true,
+    badge: "WORLD CUP 2026",
+    regularPrice: null,
+    saving: null,
+    highlighted: false,
+    description: "Stream every World Cup 2026 match live — start to finish.",
+    features: [
+      "10,000+ Live Channels",
+      "Croatian & Balkan Channels",
+      "4K Ultra HD Quality",
+      "30-Day Catch-Up TV",
+      "Full VOD Library",
+      "Electronic Program Guide",
+      "All World Cup 2026 Matches",
+      "24/7 Priority Support",
+    ],
+  },
+  {
+    id: "annual",
+    name: "12 Months",
+    price: 99,
+    totalPrice: 99,
+    duration: "12 months",
+    promo: true,
+    badge: "BEST VALUE",
+    regularPrice: 189,
+    saving: 90,
+    highlighted: true,
+    description: "Full year access. Watch it all — World Cup and beyond.",
+    features: [
+      "10,000+ Live Channels",
+      "Croatian & Balkan Channels",
+      "4K Ultra HD Quality",
+      "30-Day Catch-Up TV",
+      "Full VOD Library",
+      "Electronic Program Guide",
+      "All World Cup 2026 Matches",
       "Adult Content (optional)",
       "Fastest Servers",
+      "24/7 VIP Support",
     ],
-    notIncluded: [],
-    highlighted: false,
-    color: "brand-secondary",
   },
 ];
 
@@ -88,19 +83,23 @@ const faqs = [
   },
   {
     q: "How do I receive my subscription details?",
-    a: "After subscribing, you'll receive your M3U playlist URL and EPG URL via email within minutes. You can also find them in your dashboard.",
+    a: "After subscribing, you'll receive your M3U playlist URL and EPG URL instantly. You can also find them in your dashboard at any time.",
   },
   {
     q: "Can I trial Enktel IPTV before purchasing?",
-    a: "Yes! Contact our support team for a 24-hour free trial. We're confident you'll love the quality.",
+    a: "Yes! Contact our support team for a free 24-hour trial. We're confident you'll love the quality.",
   },
   {
-    q: "What is catch-up TV?",
-    a: "Catch-up TV lets you rewind and watch programmes that aired in the past. With the Pro plan you get 14 days catch-up, and Ultimate gives you 30 days.",
+    q: "Will I get all FIFA World Cup 2026 matches?",
+    a: "Yes. All World Cup 2026 matches will be available live across multiple broadcast channels. Our 3-Month and 12-Month plans cover the entire tournament period.",
+  },
+  {
+    q: "Which Croatian channels are included?",
+    a: "We include HRT 1, HRT 2, HRT 3, HRT 4, Nova TV, RTL Hrvatska, RTL 2, Doma TV, CMC TV, N1 Info, 24sata TV, and many more Croatian and Balkan channels.",
   },
   {
     q: "Can I cancel my subscription?",
-    a: "Yes, you can cancel at any time. Your subscription remains active until the end of the billing period.",
+    a: "Monthly subscriptions can be cancelled at any time. 3-month and 12-month plans are one-time payments — no automatic renewal.",
   },
   {
     q: "What payment methods do you accept?",
@@ -109,151 +108,107 @@ const faqs = [
 ];
 
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+      {/* World Cup Promo Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-2xl mb-12 bg-gradient-to-r from-[#0a3a1e] via-[#0d5c2b] to-[#0a3a1e] border border-green-700/40"
+      >
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #22c55e 0%, transparent 50%), radial-gradient(circle at 80% 50%, #fbbf24 0%, transparent 50%)" }} />
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 px-6 py-5">
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-4xl">🏆</span>
+            <div>
+              <p className="text-yellow-400 font-black text-sm uppercase tracking-widest">FIFA World Cup 2026</p>
+              <p className="text-white font-bold text-lg">Limited Time Promotional Pricing</p>
+            </div>
+          </div>
+          <div className="h-px sm:h-10 w-full sm:w-px bg-green-700/50 shrink-0" />
+          <p className="text-green-200 text-sm text-center sm:text-left">
+            Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus 10,000+ channels all year round.
+          </p>
+          <div className="shrink-0">
+            <span className="bg-yellow-400 text-black text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
+              Save up to €90
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-          Simple,{" "}
+        <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
+          Choose Your{" "}
           <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-            Transparent
-          </span>{" "}
-          Pricing
-        </h1>
-        <p className="text-brand-muted text-xl mb-8">
-          No hidden fees. No contracts. Cancel anytime.
-        </p>
-        {/* Annual toggle */}
-        <div className="inline-flex items-center gap-3 bg-brand-card border border-brand-border rounded-full px-5 py-3">
-          <span className={`text-sm font-medium ${!annual ? "text-white" : "text-brand-muted"}`}>Monthly</span>
-          <button
-            onClick={() => setAnnual(!annual)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${annual ? "bg-brand-primary" : "bg-brand-border"}`}
-          >
-            <span
-              className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${annual ? "left-7" : "left-1"}`}
-            />
-          </button>
-          <span className={`text-sm font-medium ${annual ? "text-white" : "text-brand-muted"}`}>
-            Annual <span className="text-green-400 font-bold">(Save 20%)</span>
+            Plan
           </span>
-        </div>
+        </h1>
+        <p className="text-brand-muted text-xl">
+          All plans include every feature. Pay once, stream everything.
+        </p>
       </div>
 
       {/* Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 items-start">
         {plans.map((plan, i) => (
           <motion.div
             key={plan.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className={`relative rounded-2xl border p-7 ${
-              plan.highlighted
-                ? "border-brand-primary bg-gradient-to-b from-brand-primary/15 to-brand-card shadow-2xl shadow-brand-primary/20 scale-105"
-                : "border-brand-border bg-brand-card"
-            }`}
           >
-            {plan.highlighted && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-brand-primary text-white text-sm font-bold px-5 py-1.5 rounded-full flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 fill-current" /> Most Popular
-                </span>
+            {plan.highlighted ? (
+              <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                  <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg shadow-yellow-400/30">
+                    <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
+                  </span>
+                </div>
+                <div className="bg-brand-card rounded-[14px] p-7">
+                  <PlanCard plan={plan} />
+                </div>
+              </div>
+            ) : (
+              <div className={`relative rounded-2xl border p-7 ${plan.promo ? "border-green-700/50 bg-gradient-to-b from-green-950/30 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+                <PlanCard plan={plan} />
               </div>
             )}
-
-            <h2 className="text-white font-bold text-2xl mb-1">{plan.name}</h2>
-            <p className="text-brand-muted text-sm mb-4">
-              1 device &bull; {plan.quality}
-            </p>
-
-            <div className="mb-6">
-              <div className="flex items-end gap-1">
-                <span className="text-5xl font-bold text-white">
-                  &pound;{annual ? plan.annualPrice.toFixed(2) : plan.price.toFixed(2)}
-                </span>
-                <span className="text-brand-muted mb-1">/mo</span>
-              </div>
-              {annual && (
-                <p className="text-green-400 text-sm mt-1">
-                  Saving &pound;{((plan.price - plan.annualPrice) * 12).toFixed(2)}/year
-                </p>
-              )}
-            </div>
-
-            <ul className="space-y-3 mb-8">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm">
-                  <Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-                  <span className="text-brand-muted">{f}</span>
-                </li>
-              ))}
-              {plan.notIncluded.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm">
-                  <X className="w-4 h-4 text-brand-border shrink-0 mt-0.5" />
-                  <span className="text-brand-border">{f}</span>
-                </li>
-              ))}
-            </ul>
-
-            <Link href={`/checkout?plan=${plan.id}&billing=${annual ? "annual" : "monthly"}`}>
-              <Button
-                variant={plan.highlighted ? "primary" : "outline"}
-                size="lg"
-                fullWidth
-              >
-                Get {plan.name}
-              </Button>
-            </Link>
           </motion.div>
         ))}
       </div>
 
-      {/* Feature comparison table */}
-      <div className="mb-16 overflow-x-auto">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Full Feature Comparison</h2>
-        <table className="w-full bg-brand-card border border-brand-border rounded-xl overflow-hidden">
-          <thead>
-            <tr className="border-b border-brand-border">
-              <th className="text-left px-6 py-4 text-brand-muted text-sm font-medium">Feature</th>
-              {plans.map((p) => (
-                <th key={p.id} className={`px-6 py-4 text-sm font-bold ${p.highlighted ? "text-brand-primary" : "text-white"}`}>
-                  {p.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { label: "Channels", values: ["5,000+", "10,000+", "10,000+"] },
-              { label: "Stream Quality", values: ["Full HD", "4K UHD", "4K UHD"] },
-              { label: "Catch-Up TV", values: ["7 Days", "14 Days", "30 Days"] },
-              { label: "VOD Library", values: ["✓", "✓", "✓"] },
-              { label: "EPG Guide", values: ["✓", "✓", "✓"] },
-              { label: "Sports Package", values: ["✗", "✓", "✓"] },
-              { label: "Priority Support", values: ["✗", "✓", "✓"] },
-              { label: "VIP Support", values: ["✗", "✗", "✓"] },
-              { label: "Adult Content", values: ["✗", "✗", "✓"] },
-            ].map((row) => (
-              <tr key={row.label} className="border-b border-brand-border/50 hover:bg-white/2 transition-colors">
-                <td className="px-6 py-3.5 text-brand-muted text-sm">{row.label}</td>
-                {row.values.map((v, i) => (
-                  <td key={i} className={`px-6 py-3.5 text-center text-sm ${v === "✓" ? "text-green-400" : v === "✗" ? "text-brand-border" : "text-white"}`}>
-                    {v}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* What's included */}
+      <div className="bg-brand-card border border-brand-border rounded-2xl p-8 mb-16">
+        <h2 className="text-2xl font-black text-white mb-2 text-center">Everything Included in Every Plan</h2>
+        <p className="text-brand-muted text-center mb-8">No feature is locked behind a higher tier. Every plan gets the full Enktel experience.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { emoji: "🇭🇷", text: "Croatian & Balkan Channels" },
+            { emoji: "⚽", text: "All FIFA World Cup 2026 Matches" },
+            { emoji: "📺", text: "10,000+ Live Channels" },
+            { emoji: "🎬", text: "4K Ultra HD Streaming" },
+            { emoji: "⏪", text: "30-Day Catch-Up TV" },
+            { emoji: "🎥", text: "Full VOD Movie & Series Library" },
+            { emoji: "📅", text: "Electronic Program Guide (EPG)" },
+            { emoji: "🌍", text: "50+ Countries' Channels" },
+            { emoji: "📱", text: "Works on All Devices" },
+          ].map((item) => (
+            <div key={item.text} className="flex items-center gap-3 bg-brand-bg border border-brand-border rounded-xl px-4 py-3">
+              <span className="text-xl">{item.emoji}</span>
+              <span className="text-white text-sm font-medium">{item.text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* FAQ */}
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Frequently Asked Questions</h2>
+        <h2 className="text-2xl font-black text-white mb-6 text-center">Frequently Asked Questions</h2>
         <div className="space-y-3">
           {faqs.map((faq, i) => (
             <div key={i} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
@@ -262,9 +217,7 @@ export default function PricingPage() {
                 className="w-full flex items-center justify-between px-5 py-4 text-left"
               >
                 <span className="text-white font-medium text-sm pr-4">{faq.q}</span>
-                <ChevronDown
-                  className={`w-4 h-4 text-brand-muted shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`}
-                />
+                <ChevronDown className={`w-4 h-4 text-brand-muted shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
               </button>
               {openFaq === i && (
                 <div className="px-5 pb-4 text-brand-muted text-sm leading-relaxed border-t border-brand-border pt-3">
@@ -276,5 +229,69 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlanCard({ plan }: { plan: typeof plans[0] }) {
+  return (
+    <>
+      {/* Badge row */}
+      <div className="flex items-center gap-2 mb-3 min-h-[28px]">
+        {plan.badge === "WORLD CUP 2026" && (
+          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+            <Trophy className="w-3 h-3" /> WORLD CUP 2026
+          </span>
+        )}
+        {plan.badge === "BEST VALUE" && (
+          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+            <Flame className="w-3 h-3" /> MOST POPULAR
+          </span>
+        )}
+      </div>
+
+      <h2 className="text-white font-black text-2xl mb-1">{plan.name}</h2>
+      <p className="text-brand-muted text-sm mb-5">{plan.description}</p>
+
+      {/* Price */}
+      <div className="mb-6">
+        {plan.regularPrice && (
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-brand-muted line-through text-lg">€{plan.regularPrice}</span>
+            <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">SAVE €{plan.saving}</span>
+          </div>
+        )}
+        <div className="flex items-end gap-1.5">
+          <span className="text-6xl font-black text-white leading-none">€{plan.price}</span>
+        </div>
+        <p className="text-brand-muted text-sm mt-1">
+          {plan.id === "monthly" ? "per month" : `one-time · ${plan.duration}`}
+        </p>
+        {plan.id === "quarter" && (
+          <p className="text-green-400 text-xs mt-1">≈ €19.67/month</p>
+        )}
+        {plan.id === "annual" && (
+          <p className="text-green-400 text-xs mt-1">≈ €8.25/month</p>
+        )}
+      </div>
+
+      <ul className="space-y-2.5 mb-8">
+        {plan.features.map((f) => (
+          <li key={f} className="flex items-start gap-2.5 text-sm">
+            <Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+            <span className="text-brand-muted">{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      <Link href={`/checkout?plan=${plan.id}`}>
+        <Button
+          variant={plan.highlighted ? "primary" : plan.promo ? "secondary" : "outline"}
+          size="lg"
+          fullWidth
+        >
+          {plan.id === "monthly" ? "Subscribe Monthly" : `Get ${plan.name} — €${plan.price}`}
+        </Button>
+      </Link>
+    </>
   );
 }

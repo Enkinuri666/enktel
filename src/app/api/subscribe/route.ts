@@ -3,19 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 const API_BASE = "http://api.elg-26.com/api/dev_api.php";
 const API_KEY = process.env.RESELLER_API_KEY || "";
 
-// Package IDs from the reseller panel
-// Starter / Pro / Ultimate all use 1-month lines (package 149).
-// For multi-connection plans we create multiple lines.
+// Reseller panel package IDs
 const PLAN_PACKAGE: Record<string, number> = {
-  starter: 149,   // EAGLE_4k__1M — 1 connection
-  pro:     149,   // 2 × EAGLE_4k__1M lines
-  ultimate: 149,  // 4 × EAGLE_4k__1M lines
+  monthly: 149,  // EAGLE_4k__1M  (1 month)
+  quarter: 150,  // EAGLE_4k__3M  (3 months)
+  annual:  152,  // EAGLE_4k__1Y  (12 months)
 };
 
-const PLAN_CONNECTIONS: Record<string, number> = {
-  starter: 1,
-  pro:     1,
-  ultimate: 1,
+const PLAN_DURATION_DAYS: Record<string, number> = {
+  monthly: 30,
+  quarter: 90,
+  annual:  365,
 };
 
 interface PanelLineResult {
@@ -23,7 +21,7 @@ interface PanelLineResult {
   message?: string;
   username: string;
   password: string;
-  url: string;          // e.g. "http://server.elg-26.com:8080"
+  url: string;
 }
 
 async function createLine(
@@ -85,68 +83,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Service not configured — contact support" }, { status: 503 });
     }
 
-    const connections = PLAN_CONNECTIONS[plan] ?? 1;
     const packageId = PLAN_PACKAGE[plan] ?? 149;
-    const noteBase = `${email}|${plan}`;
+    const durationDays = PLAN_DURATION_DAYS[plan] ?? 30;
     const subscriptionId = `ENK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
-    // Create one line per connection (all packages are single-connection)
-    const linePromises = Array.from({ length: connections }, (_, i) =>
-      createLine(`${noteBase}|conn${i + 1}`, packageId)
-    );
-    const results = await Promise.all(linePromises);
+    const result = await createLine(`${email}|${plan}`, packageId);
 
-    const failed = results.filter((r) => !r.ok);
-    const succeeded = results.filter((r): r is { ok: true; data: PanelLineResult } => r.ok);
-
-    if (succeeded.length === 0) {
-      // All failed — return a useful error
-      const firstError = failed[0] && !failed[0].ok ? failed[0].error : "Panel unavailable";
+    if (!result.ok) {
       return NextResponse.json(
-        { error: `Could not activate subscription: ${firstError}. Please contact support.` },
+        { error: `Could not activate subscription: ${result.error}. Please contact support.` },
         { status: 502 }
       );
     }
 
-    // Primary line (first one) drives the URLs shown to the customer
-    const primary = succeeded[0].data;
+    const primary = result.data;
     const serverUrl = primary.url || "http://api.elg-26.com";
-
-    // Build credentials list for all lines created
-    const lines = succeeded.map((r, i) => ({
-      connection: i + 1,
-      username: r.data.username,
-      password: r.data.password,
-      m3uUrl:   buildM3U(serverUrl, r.data.username, r.data.password),
-      epgUrl:   buildEPG(serverUrl, r.data.username, r.data.password),
-    }));
-
     const startDate = new Date();
-    const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
     const subscription = {
-      id:          subscriptionId,
+      id:        subscriptionId,
       plan,
-      status:      "active",
-      connections: succeeded.length,
-      startDate:   startDate.toISOString(),
-      endDate:     endDate.toISOString(),
-      // Convenience fields for single-line display (primary connection)
-      username:    primary.username,
-      password:    primary.password,
-      m3uUrl:      buildM3U(serverUrl, primary.username, primary.password),
-      epgUrl:      buildEPG(serverUrl, primary.username, primary.password),
-      // All lines (for multi-connection plans)
-      lines,
-      panelSync:   true,
-      partialSync: failed.length > 0,
+      status:    "active",
+      startDate: startDate.toISOString(),
+      endDate:   endDate.toISOString(),
+      username:  primary.username,
+      password:  primary.password,
+      m3uUrl:    buildM3U(serverUrl, primary.username, primary.password),
+      epgUrl:    buildEPG(serverUrl, primary.username, primary.password),
+      panelSync: true,
     };
 
-    const message = failed.length > 0
-      ? `Subscription activated with ${succeeded.length}/${connections} connections. Contact support for the remaining line(s).`
-      : `Subscription created and activated. ${connections > 1 ? `${connections} connections ready.` : ""}`;
-
-    return NextResponse.json({ success: true, message, subscription });
+    return NextResponse.json({
+      success: true,
+      message: "Subscription created and activated.",
+      subscription,
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

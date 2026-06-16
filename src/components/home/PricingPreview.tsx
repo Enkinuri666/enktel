@@ -1,39 +1,39 @@
 "use client";
 import Link from "next/link";
-import { Check, Zap } from "lucide-react";
+import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
 
 const plans = [
   {
-    id: "starter",
-    name: "Starter",
-    price: 8.99,
-    connections: 1,
-    quality: "Full HD",
-    catchUp: "7 Days",
-    features: ["5,000+ Channels", "Full HD Quality", "7-Day Catch-Up", "VOD Library", "EPG Guide"],
+    id: "monthly",
+    name: "Monthly",
+    price: 19.99,
+    duration: "per month",
+    badge: null,
     highlighted: false,
+    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "EPG Guide"],
   },
   {
-    id: "pro",
-    name: "Pro",
-    price: 14.99,
-    connections: 1,
-    quality: "4K Ultra HD",
-    catchUp: "14 Days",
-    features: ["10,000+ Channels", "4K Ultra HD", "14-Day Catch-Up", "VOD Library", "EPG Guide", "Priority Support"],
+    id: "quarter",
+    name: "3 Months",
+    price: 59,
+    duration: "one-time · 3 months",
+    badge: "WORLD CUP 2026",
+    highlighted: false,
+    promoNote: "≈ €19.67/month",
+    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
+  },
+  {
+    id: "annual",
+    name: "12 Months",
+    price: 99,
+    regularPrice: 189,
+    duration: "one-time · 12 months",
+    badge: "BEST VALUE",
     highlighted: true,
-  },
-  {
-    id: "ultimate",
-    name: "Ultimate",
-    price: 24.99,
-    connections: 1,
-    quality: "4K Ultra HD",
-    catchUp: "30 Days",
-    features: ["10,000+ Channels", "4K Ultra HD", "30-Day Catch-Up", "VOD Library", "EPG Guide", "VIP Support", "Adult Content"],
-    highlighted: false,
+    promoNote: "≈ €8.25/month — Save €90",
+    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
   },
 ];
 
@@ -41,23 +41,37 @@ export default function PricingPreview() {
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+
+        {/* World Cup promo header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="flex items-center justify-center gap-3 mb-8"
+        >
+          <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3">
+            <span className="text-2xl">🏆</span>
+            <span className="text-green-300 text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
+            <span className="bg-yellow-400 text-black text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
+          </div>
+        </motion.div>
+
         <div className="text-center mb-12">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl sm:text-4xl font-bold text-white mb-4"
+            className="text-3xl sm:text-5xl font-black text-white mb-4"
           >
-            Simple,{" "}
+            Choose Your{" "}
             <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-              Transparent
-            </span>{" "}
-            Pricing
+              Plan
+            </span>
           </motion.h2>
-          <p className="text-brand-muted">No hidden fees. Cancel anytime.</p>
+          <p className="text-brand-muted">All features included. No hidden fees. Cancel anytime.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 items-start">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.id}
@@ -67,56 +81,19 @@ export default function PricingPreview() {
               transition={{ delay: i * 0.1 }}
             >
               {plan.highlighted ? (
-                <div className="relative p-[1px] rounded-2xl bg-gradient-to-b from-brand-primary/60 to-brand-secondary/60 shadow-xl shadow-brand-primary/20">
-                  {/* Most Popular badge */}
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                    <span className="bg-brand-primary text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
-                      <Zap className="w-3 h-3 fill-current" /> Most Popular
+                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                      <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
                     </span>
                   </div>
-                  {/* Glow */}
-                  <div className="absolute inset-0 rounded-2xl bg-brand-primary/5 blur-xl -z-10 scale-105" />
-                  <div className="bg-brand-card rounded-[15px] p-6">
-                    <h3 className="text-white font-bold text-xl mb-1">{plan.name}</h3>
-                    <div className="mb-6">
-                      <span className="text-5xl font-black text-white">&pound;{plan.price}</span>
-                      <span className="text-brand-muted text-sm">/month</span>
-                    </div>
-                    <ul className="space-y-2 mb-6">
-                      {plan.features.map((f) => (
-                        <li key={f} className="flex items-center gap-2 text-sm text-brand-muted">
-                          <Check className="w-4 h-4 text-green-400 shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <Link href={`/checkout?plan=${plan.id}`}>
-                      <Button variant="primary" fullWidth>
-                        Get Started
-                      </Button>
-                    </Link>
+                  <div className="bg-brand-card rounded-[14px] p-6 pt-8">
+                    <PlanCardContent plan={plan} />
                   </div>
                 </div>
               ) : (
-                <div className="relative rounded-2xl border border-brand-border bg-brand-card p-6 h-full">
-                  <h3 className="text-white font-bold text-xl mb-1">{plan.name}</h3>
-                  <div className="mb-6">
-                    <span className="text-5xl font-black text-white">&pound;{plan.price}</span>
-                    <span className="text-brand-muted text-sm">/month</span>
-                  </div>
-                  <ul className="space-y-2 mb-6">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-brand-muted">
-                        <Check className="w-4 h-4 text-green-400 shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={`/checkout?plan=${plan.id}`}>
-                    <Button variant="outline" fullWidth>
-                      Get Started
-                    </Button>
-                  </Link>
+                <div className={`rounded-2xl border p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/20 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+                  <PlanCardContent plan={plan} />
                 </div>
               )}
             </motion.div>
@@ -126,11 +103,61 @@ export default function PricingPreview() {
         <div className="text-center">
           <Link href="/pricing">
             <Button variant="ghost" size="lg">
-              View All Plans &amp; Features
+              View Full Plan Details &amp; FAQ
             </Button>
           </Link>
         </div>
       </div>
     </section>
+  );
+}
+
+function PlanCardContent({ plan }: { plan: typeof plans[0] }) {
+  return (
+    <>
+      {plan.badge && (
+        <div className="mb-3">
+          {plan.badge === "WORLD CUP 2026" ? (
+            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+              <Trophy className="w-3 h-3" /> WORLD CUP 2026
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+              <Flame className="w-3 h-3" /> MOST POPULAR
+            </span>
+          )}
+        </div>
+      )}
+
+      <h3 className="text-white font-black text-xl mb-1">{plan.name}</h3>
+
+      <div className="mb-5">
+        {"regularPrice" in plan && plan.regularPrice && (
+          <div className="text-brand-muted line-through text-sm mb-0.5">&euro;{plan.regularPrice}</div>
+        )}
+        <div className="flex items-end gap-1">
+          <span className="text-5xl font-black text-white leading-none">&euro;{plan.price}</span>
+        </div>
+        <p className="text-brand-muted text-xs mt-1">{plan.duration}</p>
+        {"promoNote" in plan && plan.promoNote && (
+          <p className="text-green-400 text-xs mt-0.5 font-semibold">{plan.promoNote}</p>
+        )}
+      </div>
+
+      <ul className="space-y-2 mb-6">
+        {plan.features.map((f) => (
+          <li key={f} className="flex items-center gap-2 text-sm text-brand-muted">
+            <Check className="w-4 h-4 text-green-400 shrink-0" />
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <Link href={`/checkout?plan=${plan.id}`}>
+        <Button variant={plan.highlighted ? "primary" : plan.badge ? "secondary" : "outline"} fullWidth>
+          {plan.id === "monthly" ? "Subscribe Monthly" : `Get ${plan.name}`}
+        </Button>
+      </Link>
+    </>
   );
 }
