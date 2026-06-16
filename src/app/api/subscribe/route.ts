@@ -1,82 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PANEL_URL = process.env.RESELLER_PANEL_URL || "https://e4kpremuim.com/e4k/reseller/";
+const API_BASE = "http://api.elg-26.com/api/dev_api.php";
 const API_KEY = process.env.RESELLER_API_KEY || "";
-// The base server URL used to build M3U / EPG stream links
-const STREAM_HOST = "https://e4kpremuim.com";
+
+// Package IDs from the reseller panel
+// Starter / Pro / Ultimate all use 1-month lines (package 149).
+// For multi-connection plans we create multiple lines.
+const PLAN_PACKAGE: Record<string, number> = {
+  starter: 149,   // EAGLE_4k__1M — 1 connection
+  pro:     149,   // 2 × EAGLE_4k__1M lines
+  ultimate: 149,  // 4 × EAGLE_4k__1M lines
+};
 
 const PLAN_CONNECTIONS: Record<string, number> = {
   starter: 1,
-  pro: 2,
+  pro:     2,
   ultimate: 4,
 };
 
-function generateUsername(name: string): string {
-  const base = name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "enktel";
-  const suffix = Math.random().toString(36).slice(2, 6);
-  return `${base}_${suffix}`;
+interface PanelLineResult {
+  status: boolean;
+  message?: string;
+  username: string;
+  password: string;
+  url: string;          // e.g. "http://server.elg-26.com:8080"
 }
 
-function generatePassword(length = 10): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
-
-function makeM3UUrl(username: string, password: string): string {
-  return `${STREAM_HOST}/get.php?username=${username}&password=${password}&type=m3u_plus&output=ts`;
-}
-
-function makeEPGUrl(username: string, password: string): string {
-  return `${STREAM_HOST}/xmltv.php?username=${username}&password=${password}`;
-}
-
-async function createResellerLine(
-  username: string,
-  password: string,
-  connections: number,
-  expireDate: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!API_KEY) return { success: false, error: "No API key configured" };
-
+async function createLine(
+  note: string,
+  packageId: number
+): Promise<{ ok: true; data: PanelLineResult } | { ok: false; error: string }> {
   const params = new URLSearchParams({
-    api_key: API_KEY,
-    action: "add_member",
-    username,
-    password,
-    max_connections: String(connections),
-    expire_date: expireDate,
-    is_trial: "0",
-    is_e2: "0",
+    action:     "user",
+    type:       "create",
+    package_id: String(packageId),
+    note:       note,
+    country:    "GB",
+    api_key:    API_KEY,
   });
 
   try {
-    const res = await fetch(`${PANEL_URL}?${params.toString()}`, {
+    const res = await fetch(`${API_BASE}?${params.toString()}`, {
       method: "GET",
       headers: { "User-Agent": "EnktelIPTV/1.0" },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(12000),
     });
 
-    if (!res.ok) return { success: false, error: `Panel returned ${res.status}` };
-
     const text = await res.text();
-    if (!text || text.trim() === "") {
-      // Empty 200 — panel accepted the request (common behaviour on some panels)
-      return { success: true };
-    }
 
-    try {
-      const json = JSON.parse(text);
-      if (json.error || json.status === "error") {
-        return { success: false, error: json.error || json.message || "Panel error" };
-      }
-      return { success: true };
-    } catch {
-      // Non-JSON 200 — treat as success
-      return { success: true };
-    }
+    if (!res.ok) return { ok: false, error: `Panel HTTP ${res.status}` };
+    if (!text || text.trim() === "") return { ok: false, error: "Empty response from panel" };
+
+    const json: PanelLineResult = JSON.parse(text);
+    if (!json.status) return { ok: false, error: json.message || "Panel returned status=false" };
+
+    return { ok: true, data: json };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    return { ok: false, error: err instanceof Error ? err.message : "Network error" };
   }
+}
+
+function buildM3U(serverUrl: string, username: string, password: string): string {
+  const base = serverUrl.replace(/\/$/, "");
+  return `${base}/get.php?username=${username}&password=${password}&type=m3u_plus&output=ts`;
+}
+
+function buildEPG(serverUrl: string, username: string, password: string): string {
+  const base = serverUrl.replace(/\/$/, "");
+  return `${base}/xmltv.php?username=${username}&password=${password}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -90,39 +81,72 @@ export async function POST(req: NextRequest) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
+    if (!API_KEY) {
+      return NextResponse.json({ error: "Service not configured — contact support" }, { status: 503 });
+    }
 
     const connections = PLAN_CONNECTIONS[plan] ?? 1;
-    const username = generateUsername(name);
-    const password = generatePassword();
+    const packageId = PLAN_PACKAGE[plan] ?? 149;
+    const noteBase = `${email}|${plan}`;
     const subscriptionId = `ENK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+    // Create one line per connection (all packages are single-connection)
+    const linePromises = Array.from({ length: connections }, (_, i) =>
+      createLine(`${noteBase}|conn${i + 1}`, packageId)
+    );
+    const results = await Promise.all(linePromises);
+
+    const failed = results.filter((r) => !r.ok);
+    const succeeded = results.filter((r): r is { ok: true; data: PanelLineResult } => r.ok);
+
+    if (succeeded.length === 0) {
+      // All failed — return a useful error
+      const firstError = failed[0] && !failed[0].ok ? failed[0].error : "Panel unavailable";
+      return NextResponse.json(
+        { error: `Could not activate subscription: ${firstError}. Please contact support.` },
+        { status: 502 }
+      );
+    }
+
+    // Primary line (first one) drives the URLs shown to the customer
+    const primary = succeeded[0].data;
+    const serverUrl = primary.url || "http://api.elg-26.com";
+
+    // Build credentials list for all lines created
+    const lines = succeeded.map((r, i) => ({
+      connection: i + 1,
+      username: r.data.username,
+      password: r.data.password,
+      m3uUrl:   buildM3U(serverUrl, r.data.username, r.data.password),
+      epgUrl:   buildEPG(serverUrl, r.data.username, r.data.password),
+    }));
+
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const expireDate = endDate.toISOString().split("T")[0]; // YYYY-MM-DD
-
-    // Attempt to create line on reseller panel
-    const panelResult = await createResellerLine(username, password, connections, expireDate);
 
     const subscription = {
-      id: subscriptionId,
-      username,
-      password,
+      id:          subscriptionId,
       plan,
-      status: "active",
-      connections,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      m3uUrl: makeM3UUrl(username, password),
-      epgUrl: makeEPGUrl(username, password),
-      panelSync: panelResult.success,
+      status:      "active",
+      connections: succeeded.length,
+      startDate:   startDate.toISOString(),
+      endDate:     endDate.toISOString(),
+      // Convenience fields for single-line display (primary connection)
+      username:    primary.username,
+      password:    primary.password,
+      m3uUrl:      buildM3U(serverUrl, primary.username, primary.password),
+      epgUrl:      buildEPG(serverUrl, primary.username, primary.password),
+      // All lines (for multi-connection plans)
+      lines,
+      panelSync:   true,
+      partialSync: failed.length > 0,
     };
 
-    return NextResponse.json({
-      success: true,
-      message: panelResult.success
-        ? "Subscription created and activated on our streaming servers."
-        : "Subscription created. Your credentials will be activated within a few minutes.",
-      subscription,
-    });
+    const message = failed.length > 0
+      ? `Subscription activated with ${succeeded.length}/${connections} connections. Contact support for the remaining line(s).`
+      : `Subscription created and activated. ${connections > 1 ? `${connections} connections ready.` : ""}`;
+
+    return NextResponse.json({ success: true, message, subscription });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
