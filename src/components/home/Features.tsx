@@ -1,108 +1,58 @@
 "use client";
 import { motion } from "framer-motion";
-import { Tv, Zap, Clock, Monitor, CalendarDays, Film } from "lucide-react";
+import { Tv, Zap, Clock, Monitor, CalendarDays, Film, Globe, Headphones } from "lucide-react";
 
 const features = [
-  {
-    icon: Tv,
-    title: "10,000+ Live Channels",
-    description: "Access thousands of live channels from around the world including sports, movies, news, entertainment, kids, and more.",
-    color: "brand-primary",
-  },
-  {
-    icon: Zap,
-    title: "4K Ultra HD Quality",
-    description: "Enjoy crystal-clear 4K UHD, Full HD, and HD streams. Experience your content the way it was meant to be seen.",
-    color: "brand-secondary",
-  },
-  {
-    icon: Clock,
-    title: "7-30 Day Catch-Up",
-    description: "Never miss a show again. With our catch-up TV feature, rewind and watch programs from the last 7 to 30 days.",
-    color: "brand-accent",
-  },
-  {
-    icon: Monitor,
-    title: "Multi-Device Support",
-    description: "Watch on Smart TVs, Firestick, MAG boxes, phones, tablets, and computers. Up to 3 simultaneous connections.",
-    color: "brand-primary",
-  },
-  {
-    icon: CalendarDays,
-    title: "Electronic Program Guide",
-    description: "Intuitive EPG with detailed program listings, schedules, and descriptions. Plan your viewing with ease.",
-    color: "brand-secondary",
-  },
-  {
-    icon: Film,
-    title: "Massive VOD Library",
-    description: "Thousands of movies and TV shows on demand. New content added daily. Watch what you want, when you want.",
-    color: "brand-accent",
-  },
+  { icon: Tv, title: "10,000+ Live Channels", description: "Sports, movies, news, kids, music and entertainment — all in one place, streaming live 24/7.", gradient: "from-brand-primary to-blue-600" },
+  { icon: Zap, title: "4K Ultra HD Quality", description: "Crystal-clear 4K UHD streams. Watch your content the way it was meant to be seen.", gradient: "from-brand-secondary to-teal-500" },
+  { icon: Globe, title: "50+ Countries", description: "Croatian, Balkan, UK, European and worldwide channels. Your home TV, wherever you are.", gradient: "from-[#CE2C1A] to-brand-accent" },
+  { icon: Clock, title: "30-Day Catch-Up TV", description: "Missed a show? Rewind and watch up to 30 days of past programming, any time.", gradient: "from-brand-accent to-orange-500" },
+  { icon: CalendarDays, title: "Electronic Program Guide", description: "Intuitive EPG with detailed schedules, descriptions, and reminders.", gradient: "from-brand-primary to-brand-secondary" },
+  { icon: Film, title: "Massive VOD Library", description: "Thousands of movies and series on demand. New content added daily.", gradient: "from-purple-600 to-brand-primary" },
+  { icon: Monitor, title: "All Devices", description: "Smart TV, Firestick, phone, tablet, computer — stream on any screen, anywhere.", gradient: "from-brand-secondary to-blue-600" },
+  { icon: Headphones, title: "24/7 Support", description: "Expert support team available around the clock. Setup help, technical issues — we&apos;ve got you.", gradient: "from-green-500 to-teal-600" },
 ];
-
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
 
 export default function Features() {
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-3xl sm:text-4xl font-bold text-white mb-4"
-          >
+        <div className="text-center mb-16">
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-brand-primary text-sm font-bold uppercase tracking-widest mb-3">
+            Everything You Need
+          </motion.p>
+          <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-5xl font-black text-white mb-4">
             Why Choose{" "}
-            <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-              Enktel IPTV?
-            </span>
+            <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">Enktel IPTV?</span>
           </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-brand-muted text-lg max-w-2xl mx-auto"
-          >
-            Everything you need for the ultimate streaming experience, all in one place.
+          <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-brand-muted text-lg max-w-2xl mx-auto">
+            Premium streaming built for Croatian and worldwide audiences.
           </motion.p>
         </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {features.map((feature) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {features.map((feature, i) => (
             <motion.div
               key={feature.title}
-              variants={itemVariants}
-              className="bg-brand-card border border-brand-border rounded-xl p-6 hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.07 }}
+              className="group relative bg-brand-card border border-brand-border rounded-2xl p-6 hover:border-brand-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/10 hover:-translate-y-1 overflow-hidden"
             >
-              <div className={`w-12 h-12 rounded-xl bg-${feature.color}/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <feature.icon className={`w-6 h-6 text-${feature.color}`} />
+              {/* Gradient corner glow */}
+              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br ${feature.gradient} rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} p-0.5 mb-4`}>
+                <div className="w-full h-full bg-brand-card rounded-[10px] flex items-center justify-center">
+                  <feature.icon className="w-6 h-6 text-white" />
+                </div>
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">{feature.title}</h3>
+              <h3 className="text-white font-bold text-base mb-2">{feature.title}</h3>
               <p className="text-brand-muted text-sm leading-relaxed">{feature.description}</p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

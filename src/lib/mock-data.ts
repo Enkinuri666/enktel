@@ -179,12 +179,60 @@ export const mockUpcomingMovies: Movie[] = [
 ];
 
 export const mockTestimonials: Testimonial[] = [
-  { id: "1", name: "James Mitchell", location: "London, UK", rating: 5, text: "Enktel IPTV has completely replaced my Sky subscription. The 4K quality is incredible and I haven't had a single buffering issue in 6 months. Absolutely worth every penny.", plan: "Pro", avatar: "JM" },
-  { id: "2", name: "Sarah Thompson", location: "Manchester, UK", rating: 5, text: "The channel selection is unbeatable. I get every sports channel I need including all the football plus international channels for my family. Setup was super easy too.", plan: "Ultimate", avatar: "ST" },
-  { id: "3", name: "David O'Brien", location: "Dublin, Ireland", rating: 5, text: "I was sceptical at first but Enktel has blown me away. The EPG is so easy to use and the 30-day catch-up means I never miss anything. Customer support is brilliant too.", plan: "Ultimate", avatar: "DO" },
-  { id: "4", name: "Emma Williams", location: "Birmingham, UK", rating: 4, text: "Great service overall. The Starter plan gives me everything I need for a great price. Occasionally have minor issues but they're always resolved quickly.", plan: "Starter", avatar: "EW" },
-  { id: "5", name: "Michael Chen", location: "Edinburgh, UK", rating: 5, text: "The quality of streams is phenomenal. 4K HDR on my LG OLED looks stunning. The VOD library has thousands of movies and shows. This is the future of TV.", plan: "Pro", avatar: "MC" },
-  { id: "6", name: "Lisa Johnson", location: "Leeds, UK", rating: 5, text: "Switched from a competitor and the difference is night and day. Enktel is faster, more reliable and has more channels. The kids channels alone are worth the subscription!", plan: "Pro", avatar: "LJ" },
+  {
+    id: "1",
+    name: "Mate Kovačević",
+    location: "München, Germany 🇩🇪",
+    avatar: "MK",
+    rating: 5,
+    text: "Živim u Njemačkoj već 10 godina i Enktel mi je promijenio život. Konačno mogu gledati HRT i Nova TV kao da sam kod kuće u Splitu. Preporučujem svima!",
+    plan: "Pro",
+  },
+  {
+    id: "2",
+    name: "Ivan Tomić",
+    location: "London, UK 🇬🇧",
+    avatar: "IT",
+    rating: 5,
+    text: "Watched the entire Croatian World Cup 2022 campaign on Enktel from my flat in London. Crystal clear 4K, zero buffering. Absolutely brilliant service!",
+    plan: "Pro",
+  },
+  {
+    id: "3",
+    name: "Sarah M.",
+    location: "Manchester, UK 🇬🇧",
+    avatar: "SM",
+    rating: 5,
+    text: "Switched from another IPTV provider and the difference is night and day. 10,000+ channels, the EPG is perfect, and the 4K quality is stunning. Worth every penny.",
+    plan: "Ultimate",
+  },
+  {
+    id: "4",
+    name: "Amir Hadžić",
+    location: "Vienna, Austria 🇦🇹",
+    avatar: "AH",
+    rating: 5,
+    text: "Mogu gledati sve bosanske i hrvatske kanale bez problema. Hayat TV, FTV, HRT — sve radi savršeno. Podrška je odlična, odmah mi pomogli s postavljanjem.",
+    plan: "Pro",
+  },
+  {
+    id: "5",
+    name: "James O.",
+    location: "Dublin, Ireland 🇮🇪",
+    avatar: "JO",
+    rating: 5,
+    text: "I get every Premier League match, Champions League, and even Croatian HNL. The sports coverage is exceptional. Setup took 5 minutes on my Firestick.",
+    plan: "Ultimate",
+  },
+  {
+    id: "6",
+    name: "Ana Petrović",
+    location: "Zürich, Switzerland 🇨🇭",
+    avatar: "AP",
+    rating: 5,
+    text: "Enktel je jedini IPTV servis koji mi daje sve što trebam — HRT, Nova TV, RTL, ali i Sky i BBC. Kvaliteta slike je izvrsna. Toplo preporučujem!",
+    plan: "Pro",
+  },
 ];
 
 export function getMockWhatsOn(): WhatsOnItem[] {

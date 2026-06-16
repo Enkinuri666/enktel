@@ -20,7 +20,7 @@ export default function Testimonials() {
             </span>{" "}
             Say
           </motion.h2>
-          <p className="text-brand-muted">Trusted by thousands of streamers across the UK and beyond.</p>
+          <p className="text-brand-muted">Trusted by Croatian expats and viewers across Europe and beyond.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -18,6 +18,7 @@ const config: Config = {
           muted: "#9BA3B8",
           card: "#0D1220",
           border: "#1E2A42",
+          hr: "#CE2C1A",
         },
       },
       fontFamily: {
@@ -35,6 +36,8 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.5s ease-out",
         shimmer: "shimmer 2s linear infinite",
+        "marquee": "marquee 35s linear infinite",
+        "marquee-reverse": "marquee 35s linear infinite reverse",
       },
       keyframes: {
         pulseGlow: {
@@ -64,6 +67,10 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
+        },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
       },
     },

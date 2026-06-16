@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Trophy, Film, Newspaper, Star, Baby, BookOpen, Music } from "lucide-react";
+import { Trophy, Film, Newspaper, Star, Baby, BookOpen, Music, Globe } from "lucide-react";
 import { channels } from "@/lib/channels";
 
 const categories = [
+  { name: "Croatian & Balkan", icon: Globe, color: "brand-accent", description: "HRT, Nova TV, RTL, Doma TV, CMC & more" },
   { name: "Sports", icon: Trophy, color: "brand-primary", description: "Live football, cricket, F1, tennis and more" },
   { name: "Movies", icon: Film, color: "brand-secondary", description: "Blockbusters, classics, and indie films" },
   { name: "News", icon: Newspaper, color: "brand-accent", description: "24/7 news from around the globe" },
