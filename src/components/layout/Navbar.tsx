@@ -9,6 +9,7 @@ import { clsx } from "clsx";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/channels", label: "Channels" },
+  { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
   { href: "/whats-on", label: "What's On" },
   { href: "/latest-releases", label: "Latest Releases" },

@@ -8,32 +8,43 @@ function getTimeOffset(minutesFromNow: number): string {
   return d.toISOString();
 }
 
-function buildSchedule(
-  channelId: string,
-  programs: Array<{ title: string; description: string; duration: number; category: string; rating?: string }>
-): EPGProgram[] {
+interface ProgramTemplate {
+  title: string;
+  description: string;
+  duration: number;
+  category: string;
+  rating?: string;
+}
+
+// Tiles a list of program templates back-to-back, looping as needed, to cover
+// a rolling window from 3 hours in the past to 24 hours in the future,
+// computed relative to `now` so the EPG never goes stale.
+function tileSchedule(channelId: string, templates: ProgramTemplate[], now: Date): EPGProgram[] {
   const result: EPGProgram[] = [];
   let offset = -180;
-  programs.forEach((p, i) => {
-    const start = getTimeOffset(offset);
-    offset += p.duration;
-    const end = getTimeOffset(offset);
+  let i = 0;
+  while (offset < 1440) {
+    const t = templates[i % templates.length];
+    const start = new Date(now.getTime() + offset * 60000);
+    offset += t.duration;
+    const end = new Date(now.getTime() + offset * 60000);
     result.push({
       id: `${channelId}-${i}`,
       channelId,
-      title: p.title,
-      description: p.description,
-      startTime: start,
-      endTime: end,
-      category: p.category,
-      rating: p.rating,
+      title: t.title,
+      description: t.description,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      category: t.category,
+      rating: t.rating,
     });
-  });
+    i++;
+  }
   return result;
 }
 
-export const mockEPGPrograms: EPGProgram[] = [
-  ...buildSchedule("bbc-one", [
+const curatedTemplates: Record<string, ProgramTemplate[]> = {
+  "bbc-one": [
     { title: "Breakfast", description: "The latest news, sport, business and weather from the BBC.", duration: 120, category: "News" },
     { title: "Morning Live", description: "Magazine programme with expert advice, recipes, and lifestyle features.", duration: 60, category: "Entertainment" },
     { title: "Doctors", description: "Drama series set in a Midlands GP practice.", duration: 30, category: "Drama", rating: "PG" },
@@ -42,8 +53,8 @@ export const mockEPGPrograms: EPGProgram[] = [
     { title: "EastEnders", description: "Life in Albert Square takes a dramatic turn.", duration: 30, category: "Drama", rating: "PG" },
     { title: "BBC News at Six", description: "National and international news.", duration: 30, category: "News" },
     { title: "Antiques Roadshow", description: "Experts value the nation's hidden treasures.", duration: 60, category: "Entertainment" },
-  ]),
-  ...buildSchedule("bbc-two", [
+  ],
+  "bbc-two": [
     { title: "Flog It!", description: "Paul Martin travels the country looking for antiques to sell at auction.", duration: 60, category: "Entertainment" },
     { title: "Escape to the Country", description: "Helping house hunters find their dream rural retreat.", duration: 60, category: "Lifestyle" },
     { title: "Bargain Hunt", description: "Two teams compete to buy antiques and sell them at profit.", duration: 45, category: "Entertainment" },
@@ -51,8 +62,8 @@ export const mockEPGPrograms: EPGProgram[] = [
     { title: "Newsnight", description: "In-depth investigation and analysis of the stories behind the day's headlines.", duration: 45, category: "News" },
     { title: "The Culture Show", description: "Arts and culture magazine programme.", duration: 60, category: "Arts" },
     { title: "QI", description: "Stephen Fry hosts a quiz show celebrating ignorance.", duration: 30, category: "Entertainment" },
-  ]),
-  ...buildSchedule("itv1", [
+  ],
+  "itv1": [
     { title: "Good Morning Britain", description: "News and current affairs programme.", duration: 120, category: "News" },
     { title: "Lorraine", description: "Chat show hosted by Lorraine Kelly.", duration: 60, category: "Entertainment" },
     { title: "This Morning", description: "Magazine show covering news, lifestyle and celebrity interviews.", duration: 120, category: "Entertainment" },
@@ -61,8 +72,8 @@ export const mockEPGPrograms: EPGProgram[] = [
     { title: "Emmerdale", description: "The drama continues in the Dales.", duration: 30, category: "Drama", rating: "PG" },
     { title: "Coronation Street", description: "Life on the cobbles takes a dramatic turn.", duration: 60, category: "Drama", rating: "PG" },
     { title: "ITV News at Ten", description: "The day's top stories.", duration: 30, category: "News" },
-  ]),
-  ...buildSchedule("channel4", [
+  ],
+  "channel4": [
     { title: "A Place in the Sun", description: "Couples search for their dream overseas property.", duration: 60, category: "Lifestyle" },
     { title: "Countdown", description: "Long-running letters and numbers game show.", duration: 60, category: "Entertainment" },
     { title: "Channel 4 News", description: "Award-winning news programme.", duration: 60, category: "News" },
@@ -70,52 +81,52 @@ export const mockEPGPrograms: EPGProgram[] = [
     { title: "Gogglebox", description: "Opinionated people watching and commenting on television.", duration: 60, category: "Entertainment" },
     { title: "The Great British Bake Off", description: "Amateur bakers compete in themed challenges.", duration: 75, category: "Entertainment" },
     { title: "Channel 4 Late News", description: "Evening news bulletin.", duration: 30, category: "News" },
-  ]),
-  ...buildSchedule("sky-sports-main", [
+  ],
+  "sky-sports-main": [
     { title: "Football: Premier League Preview", description: "Preview of the weekend's Premier League action.", duration: 60, category: "Sports" },
     { title: "Cricket: County Championship", description: "Live county cricket from venues around England.", duration: 180, category: "Sports" },
     { title: "Soccer Saturday", description: "Live updates and goals from across the day's football matches.", duration: 120, category: "Sports" },
     { title: "Goals on Sunday", description: "All the goals and talking points from the Premier League.", duration: 90, category: "Sports" },
     { title: "Fantasy Football Club", description: "Tips and analysis for fantasy football managers.", duration: 30, category: "Sports" },
-  ]),
-  ...buildSchedule("sky-sports-football", [
+  ],
+  "sky-sports-football": [
     { title: "EFL Championship Live: Leeds vs Sheffield Wed", description: "Live EFL Championship match from Elland Road.", duration: 150, category: "Sports" },
     { title: "Football: Lower League Action", description: "Highlights from across the football pyramid.", duration: 60, category: "Sports" },
     { title: "Premier League Legends", description: "Classic Premier League matches from the archives.", duration: 90, category: "Sports" },
     { title: "Women's Super League: Arsenal vs Chelsea", description: "Live WSL match from the Emirates Stadium.", duration: 120, category: "Sports" },
     { title: "The Debate", description: "Football pundits debate the biggest talking points.", duration: 60, category: "Sports" },
-  ]),
-  ...buildSchedule("bbc-news", [
+  ],
+  "bbc-news": [
     { title: "BBC World News", description: "The latest international news and analysis.", duration: 60, category: "News" },
     { title: "Click", description: "Technology news and features.", duration: 30, category: "News" },
     { title: "HARDtalk", description: "In-depth interview programme.", duration: 30, category: "News" },
     { title: "BBC World News", description: "Breaking news and international stories.", duration: 60, category: "News" },
     { title: "Outside Source", description: "News programme drawing on BBC's worldwide network of journalists.", duration: 60, category: "News" },
     { title: "BBC World News", description: "Comprehensive world news coverage.", duration: 60, category: "News" },
-  ]),
-  ...buildSchedule("sky-news", [
+  ],
+  "sky-news": [
     { title: "Kay Burley at Breakfast", description: "Morning news with Kay Burley.", duration: 90, category: "News" },
     { title: "Ian King Live", description: "Business news and analysis.", duration: 60, category: "News" },
     { title: "Sky News Live", description: "Rolling news coverage.", duration: 120, category: "News" },
     { title: "The Story with Dermot Murnaghan", description: "In-depth look at the biggest story of the day.", duration: 60, category: "News" },
     { title: "Sky News Tonight", description: "Evening news analysis.", duration: 60, category: "News" },
-  ]),
-  ...buildSchedule("discovery", [
+  ],
+  "discovery": [
     { title: "Gold Rush", description: "Miners battle to strike it rich in the Yukon.", duration: 60, category: "Documentary" },
     { title: "Deadliest Catch", description: "Crab fishermen brave the Bering Sea.", duration: 60, category: "Documentary" },
     { title: "How It's Made", description: "Exploring the manufacturing process of everyday objects.", duration: 30, category: "Documentary" },
     { title: "MythBusters", description: "Adam and Jamie test popular myths.", duration: 60, category: "Documentary" },
     { title: "Dirty Jobs", description: "Mike Rowe takes on America's dirtiest professions.", duration: 60, category: "Documentary" },
     { title: "Naked and Afraid", description: "Two strangers survive in the wild with nothing.", duration: 60, category: "Documentary" },
-  ]),
-  ...buildSchedule("nat-geo", [
+  ],
+  "nat-geo": [
     { title: "National Geographic Specials", description: "Award-winning natural history documentary.", duration: 60, category: "Documentary" },
     { title: "Brain Games", description: "Exploring the science of human perception.", duration: 30, category: "Documentary" },
     { title: "Cosmos: A Spacetime Odyssey", description: "Neil deGrasse Tyson explores the universe.", duration: 60, category: "Documentary" },
     { title: "Gordon Ramsay: Uncharted", description: "Gordon travels to remote locations to discover local cuisine.", duration: 60, category: "Documentary" },
     { title: "Photographer", description: "Following award-winning photographers on assignment.", duration: 60, category: "Documentary" },
-  ]),
-  ...buildSchedule("cbbc", [
+  ],
+  "cbbc": [
     { title: "Danger Mouse", description: "The world's greatest secret agent saves the day.", duration: 15, category: "Kids" },
     { title: "Hey Duggee", description: "Duggee and the squirrel club go on adventures.", duration: 15, category: "Kids" },
     { title: "Horrible Histories", description: "Bringing history to life with gross facts and comedy.", duration: 30, category: "Kids" },
@@ -123,25 +134,91 @@ export const mockEPGPrograms: EPGProgram[] = [
     { title: "Newsround", description: "The latest news for younger viewers.", duration: 15, category: "Kids" },
     { title: "Tracy Beaker Returns", description: "Tracy navigates life in the care system.", duration: 30, category: "Kids", rating: "PG" },
     { title: "The Dumping Ground", description: "Life continues at Ashdene Ridge.", duration: 30, category: "Kids", rating: "PG" },
-  ]),
-  ...buildSchedule("mtv", [
+  ],
+  "mtv": [
     { title: "MTV Hits", description: "The biggest music videos right now.", duration: 60, category: "Music" },
     { title: "Ridiculousness", description: "Rob Dyrdek and friends react to viral videos.", duration: 30, category: "Entertainment" },
     { title: "Jersey Shore: Family Vacation", description: "The gang reunites in Miami.", duration: 60, category: "Entertainment" },
     { title: "MTV Base Presents: Top 20", description: "The biggest urban music videos.", duration: 60, category: "Music" },
     { title: "Catfish: The TV Show", description: "Nev and Max help people who suspect online deception.", duration: 60, category: "Entertainment" },
-  ]),
-  ...buildSchedule("sky-cinema-premiere", [
+  ],
+  "sky-cinema-premiere": [
     { title: "Top Gun: Maverick", description: "After thirty years, Maverick is still pushing the envelope as a top naval aviator.", duration: 131, category: "Movies", rating: "12A" },
     { title: "The Batman", description: "Batman ventures into Gotham City's underworld when a sadistic killer targets Gotham's elite.", duration: 176, category: "Movies", rating: "15" },
     { title: "Avatar: The Way of Water", description: "Jake Sully lives with his newfound family formed on the planet of Pandora.", duration: 192, category: "Movies", rating: "12A" },
-  ]),
-  ...buildSchedule("film4", [
+  ],
+  "film4": [
     { title: "The Shawshank Redemption", description: "Two imprisoned men bond over years, finding solace and eventual redemption.", duration: 142, category: "Movies", rating: "15" },
     { title: "Goodfellas", description: "The story of Henry Hill and his life in the mob.", duration: 146, category: "Movies", rating: "18" },
     { title: "The Dark Knight", description: "When the menace known as the Joker wreaks havoc, Batman must accept the role of hero.", duration: 152, category: "Movies", rating: "12A" },
-  ]),
-];
+  ],
+};
+
+// Generic per-category templates so every channel — even ones without a
+// hand-written schedule above — gets a full, populated rolling EPG.
+const categoryFallbackTemplates: Record<string, ProgramTemplate[]> = {
+  Sports: [
+    { title: "Live Match Coverage", description: "Live coverage of today's biggest fixture, with build-up and analysis.", duration: 120, category: "Sports" },
+    { title: "Sports Centre", description: "Rolling highlights and breaking sports news.", duration: 30, category: "Sports" },
+    { title: "Matchday Live", description: "Pre-match build-up, team news and expert analysis.", duration: 60, category: "Sports" },
+    { title: "Classic Encounters", description: "Re-live legendary moments from the archives.", duration: 60, category: "Sports" },
+    { title: "The Locker Room", description: "Pundits break down the day's biggest talking points.", duration: 45, category: "Sports" },
+  ],
+  Movies: [
+    { title: "Feature Film Premiere", description: "A premium feature film, presented uncut in 4K.", duration: 110, category: "Movies", rating: "15" },
+    { title: "Movie Matinee", description: "A family-friendly film for the afternoon.", duration: 95, category: "Movies", rating: "PG" },
+    { title: "Director's Spotlight", description: "An acclaimed film from a celebrated director.", duration: 130, category: "Movies", rating: "12A" },
+    { title: "Late Night Feature", description: "A gripping late-night feature presentation.", duration: 115, category: "Movies", rating: "15" },
+  ],
+  News: [
+    { title: "Morning Briefing", description: "Breaking news, weather, and business updates.", duration: 60, category: "News" },
+    { title: "World Report", description: "International news and in-depth analysis.", duration: 30, category: "News" },
+    { title: "Evening Bulletin", description: "The day's top stories from around the world.", duration: 30, category: "News" },
+    { title: "Newsroom Live", description: "Rolling live news coverage.", duration: 60, category: "News" },
+  ],
+  Entertainment: [
+    { title: "Primetime Special", description: "A celebrity-packed entertainment special.", duration: 60, category: "Entertainment" },
+    { title: "The Talk Show", description: "Interviews and entertainment news with a live audience.", duration: 45, category: "Entertainment" },
+    { title: "Game Night", description: "Contestants compete for cash prizes in this popular quiz show.", duration: 30, category: "Entertainment" },
+    { title: "Reality Hour", description: "Drama unfolds in this hit reality series.", duration: 60, category: "Entertainment" },
+  ],
+  Kids: [
+    { title: "Morning Cartoons", description: "A fun-filled block of animated adventures.", duration: 30, category: "Kids" },
+    { title: "Adventure Time", description: "Young heroes embark on an exciting quest.", duration: 25, category: "Kids" },
+    { title: "Storytime Friends", description: "Friendly characters share lessons and laughs.", duration: 20, category: "Kids" },
+    { title: "Family Fun Hour", description: "Games and activities for the whole family.", duration: 30, category: "Kids" },
+  ],
+  Documentary: [
+    { title: "Wonders of the World", description: "Exploring remarkable places and natural phenomena.", duration: 60, category: "Documentary" },
+    { title: "Inside Story", description: "A deep dive into a fascinating real-world subject.", duration: 50, category: "Documentary" },
+    { title: "Behind the Lens", description: "Award-winning documentary filmmaking.", duration: 60, category: "Documentary" },
+    { title: "Science Unlocked", description: "Breaking down complex science for everyone.", duration: 45, category: "Documentary" },
+  ],
+  Music: [
+    { title: "Top Chart Hits", description: "Counting down the biggest music videos right now.", duration: 60, category: "Music" },
+    { title: "Live Sessions", description: "Acoustic performances from rising artists.", duration: 45, category: "Music" },
+    { title: "Throwback Hour", description: "Classic hits from the last three decades.", duration: 60, category: "Music" },
+  ],
+};
+
+function templatesForChannel(channelId: string, category: string): ProgramTemplate[] {
+  return (
+    curatedTemplates[channelId] ||
+    categoryFallbackTemplates[category] ||
+    categoryFallbackTemplates.Entertainment
+  );
+}
+
+// Builds a fresh rolling EPG for every channel, relative to `now`, so the
+// guide always has full coverage and is never stale.
+export function generateLiveSchedule(now: Date = new Date()): EPGProgram[] {
+  const programs: EPGProgram[] = [];
+  for (const channel of channels) {
+    const templates = templatesForChannel(channel.id, channel.category);
+    programs.push(...tileSchedule(channel.id, templates, now));
+  }
+  return programs;
+}
 
 export const mockMovies: Movie[] = [
   { id: 1, title: "Dune: Part Two", overview: "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen.", posterPath: null, backdropPath: null, releaseDate: "2024-03-01", rating: 8.4, genres: ["Sci-Fi", "Adventure"], type: "movie" },
@@ -238,9 +315,10 @@ export const mockTestimonials: Testimonial[] = [
 export function getMockWhatsOn(): WhatsOnItem[] {
   const now = new Date();
   const items: WhatsOnItem[] = [];
+  const allPrograms = generateLiveSchedule(now);
 
-  for (const channel of channels.slice(0, 12)) {
-    const channelPrograms = mockEPGPrograms.filter(
+  for (const channel of channels) {
+    const channelPrograms = allPrograms.filter(
       (p) => p.channelId === channel.id
     );
     const currentProgram = channelPrograms.find(

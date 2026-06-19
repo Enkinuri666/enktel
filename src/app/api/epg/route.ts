@@ -14,11 +14,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ items });
   }
 
-  try {
-    const programs = await fetchEPGData();
-    const filtered = channelId ? programs.filter((p) => p.channelId === channelId) : programs;
-    return NextResponse.json({ programs: filtered, count: filtered.length });
-  } catch {
-    return NextResponse.json({ programs: [], count: 0 }, { status: 500 });
-  }
+  const programs = fetchEPGData();
+  const filtered = channelId ? programs.filter((p) => p.channelId === channelId) : programs;
+  return NextResponse.json({ programs: filtered, count: filtered.length });
 }
