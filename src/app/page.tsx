@@ -3,6 +3,7 @@ import CountryBanner from "@/components/home/CountryBanner";
 import StatsBar from "@/components/home/StatsBar";
 import CroatianPromo from "@/components/home/CroatianPromo";
 import WhatsOnWidget from "@/components/home/WhatsOnWidget";
+import UpcomingEventsWidget from "@/components/home/UpcomingEventsWidget";
 import SportsBanner from "@/components/home/SportsBanner";
 import LatestReleases from "@/components/home/LatestReleases";
 import ComingSoonWidget from "@/components/home/ComingSoonWidget";
@@ -19,6 +20,7 @@ export default function HomePage() {
       <StatsBar />
       <CroatianPromo />
       <WhatsOnWidget />
+      <UpcomingEventsWidget />
       <SportsBanner />
       <LatestReleases />
       <ComingSoonWidget />

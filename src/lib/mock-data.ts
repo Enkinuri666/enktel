@@ -1,4 +1,4 @@
-import { EPGProgram, Movie, TVShow, Testimonial, WhatsOnItem } from "@/types";
+import { EPGProgram, Movie, TVShow, Testimonial, WhatsOnItem, UpcomingEvent } from "@/types";
 import { channels } from "./channels";
 
 function getTimeOffset(minutesFromNow: number): string {
@@ -260,4 +260,21 @@ export function getMockWhatsOn(): WhatsOnItem[] {
   }
 
   return items;
+}
+
+export function getMockUpcomingEvents(): UpcomingEvent[] {
+  const events: UpcomingEvent[] = [
+    { id: "ev-1", title: "Croatia vs. Brazil — World Cup 2026", competition: "FIFA World Cup 2026", emoji: "🏆", channel: "HRT 1", startTime: getTimeOffset(95), isPPV: false, isLive: false },
+    { id: "ev-2", title: "England vs. Argentina — World Cup 2026", competition: "FIFA World Cup 2026", emoji: "🏆", channel: "Sky Sports", startTime: getTimeOffset(40), isPPV: false, isLive: false },
+    { id: "ev-3", title: "Canelo vs. Benavidez — World Title", competition: "Boxing PPV", emoji: "🥊", channel: "DAZN PPV", startTime: getTimeOffset(260), isPPV: true, isLive: false },
+    { id: "ev-4", title: "Manchester City vs. Real Madrid", competition: "Champions League", emoji: "⚽", channel: "BT Sport", startTime: getTimeOffset(1450), isPPV: false, isLive: false },
+    { id: "ev-5", title: "UFC 312: Title Unification Bout", competition: "UFC PPV", emoji: "🥋", channel: "ESPN+ PPV", startTime: getTimeOffset(2030), isPPV: true, isLive: false },
+    { id: "ev-6", title: "Dinamo Zagreb vs. Hajduk Split", competition: "HNL", emoji: "⚽", channel: "Arena Sport 1", startTime: getTimeOffset(2880), isPPV: false, isLive: false },
+    { id: "ev-7", title: "Verstappen vs. Norris — Race Day", competition: "Formula 1", emoji: "🏎️", channel: "Sky Sports F1", startTime: getTimeOffset(4150), isPPV: false, isLive: false },
+  ];
+
+  return events.map((e) => ({
+    ...e,
+    isLive: new Date(e.startTime).getTime() <= Date.now(),
+  }));
 }

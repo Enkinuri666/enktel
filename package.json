@@ -16,6 +16,7 @@
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",
+    "stripe": "^22.2.2",
     "swr": "^2.2.5",
     "tailwind-merge": "^2.4.0",
     "xml2js": "^0.6.2"

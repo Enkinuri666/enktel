@@ -1,7 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, CreditCard, Check, Loader2, Trophy } from "lucide-react";
+import { Shield, Lock, Loader2, Check, Trophy } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 
@@ -29,15 +29,6 @@ const PLANS = {
   },
 };
 
-interface SubscriptionResult {
-  id: string;
-  username: string;
-  password: string;
-  m3uUrl: string;
-  epgUrl: string;
-  panelSync: boolean;
-}
-
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const planId = (searchParams.get("plan") || "annual") as keyof typeof PLANS;
@@ -45,7 +36,6 @@ function CheckoutContent() {
 
   const [form, setForm] = useState({ name: "", email: "" });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<SubscriptionResult | null>(null);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,67 +43,18 @@ function CheckoutContent() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/subscribe", {
+      const res = await fetch("/api/checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: form.name, email: form.email, plan: planId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
-      setSuccess(data.subscription);
+      if (!res.ok || !data.url) throw new Error(data.error || "Something went wrong");
+      window.location.href = data.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setLoading(false);
     }
-  }
-
-  if (success) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <div className="w-20 h-20 bg-green-500/20 border border-green-500/40 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Check className="w-10 h-10 text-green-400" />
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-3">Subscription Active!</h1>
-        <p className="text-brand-muted mb-8">
-          Welcome to Enktel IPTV! Your {plan.name} subscription is now live. Here are your credentials:
-        </p>
-        <div className="bg-brand-card border border-brand-border rounded-xl p-5 text-left space-y-4 mb-8">
-          <div>
-            <p className="text-brand-muted text-xs mb-1">Subscription ID</p>
-            <p className="text-white font-mono text-sm">{success.id}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-brand-muted text-xs mb-1">Username</p>
-              <p className="text-white font-mono text-sm font-bold">{success.username}</p>
-            </div>
-            <div>
-              <p className="text-brand-muted text-xs mb-1">Password</p>
-              <p className="text-white font-mono text-sm font-bold">{success.password}</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-brand-muted text-xs mb-1">M3U Playlist URL</p>
-            <p className="text-brand-primary font-mono text-xs break-all">{success.m3uUrl}</p>
-          </div>
-          <div>
-            <p className="text-brand-muted text-xs mb-1">EPG / XML TV URL</p>
-            <p className="text-brand-primary font-mono text-xs break-all">{success.epgUrl}</p>
-          </div>
-          {!success.panelSync && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-4 py-3 text-yellow-400 text-xs">
-              Your credentials will be activated on our streaming servers within a few minutes.
-            </div>
-          )}
-        </div>
-        <p className="text-brand-muted text-sm">
-          Visit your{" "}
-          <a href="/dashboard" className="text-brand-primary hover:underline">dashboard</a>{" "}
-          to manage your subscription and access setup guides.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -168,45 +109,22 @@ function CheckoutContent() {
                 </div>
               </div>
               <p className="text-brand-muted/60 text-xs mt-3">
-                Your subscription credentials will be sent to this email address.
+                Your subscription credentials will be activated automatically once payment is confirmed.
               </p>
             </div>
 
             {/* Payment */}
             <div className="bg-brand-card border border-brand-border rounded-xl p-6">
               <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-brand-primary" />
-                Payment Details
+                <Lock className="w-5 h-5 text-brand-primary" />
+                Payment
               </h2>
-              <div className="bg-brand-bg border border-brand-border rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Shield className="w-5 h-5 text-green-400" />
-                  <span className="text-green-400 text-sm font-medium">Secure payment powered by Stripe</span>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-brand-muted text-xs mb-1">Card Number</label>
-                    <input
-                      type="text"
-                      disabled
-                      placeholder="4242 4242 4242 4242"
-                      className="w-full bg-brand-card border border-brand-border rounded-lg px-4 py-2.5 text-brand-muted text-sm placeholder:text-brand-muted/30 cursor-not-allowed"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-brand-muted text-xs mb-1">Expiry</label>
-                      <input type="text" disabled placeholder="MM / YY" className="w-full bg-brand-card border border-brand-border rounded-lg px-4 py-2.5 text-brand-muted text-sm placeholder:text-brand-muted/30 cursor-not-allowed" />
-                    </div>
-                    <div>
-                      <label className="block text-brand-muted text-xs mb-1">CVC</label>
-                      <input type="text" disabled placeholder="123" className="w-full bg-brand-card border border-brand-border rounded-lg px-4 py-2.5 text-brand-muted text-sm placeholder:text-brand-muted/30 cursor-not-allowed" />
-                    </div>
-                  </div>
-                  <p className="text-brand-muted/50 text-xs text-center">
-                    Stripe integration ready — connect your Stripe keys to enable live payments
-                  </p>
-                </div>
+              <div className="bg-brand-bg border border-brand-border rounded-lg p-4 flex items-center gap-3">
+                <Shield className="w-5 h-5 text-green-400 shrink-0" />
+                <p className="text-brand-muted text-sm">
+                  You&apos;ll be redirected to <strong className="text-white">Stripe Checkout</strong> to securely
+                  enter your card details. We never see or store your card information.
+                </p>
               </div>
             </div>
 
@@ -220,12 +138,12 @@ function CheckoutContent() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
+                  Redirecting to secure payment...
                 </>
               ) : (
                 <>
                   <Shield className="w-4 h-4 mr-2" />
-                  Pay &euro;{plan.price} &mdash; {plan.name}
+                  Continue to Payment &mdash; &euro;{plan.price}
                 </>
               )}
             </Button>

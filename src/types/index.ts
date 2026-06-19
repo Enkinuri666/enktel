@@ -91,6 +91,17 @@ export interface WhatsOnItem {
   progressPercent: number;
 }
 
+export interface UpcomingEvent {
+  id: string;
+  title: string;
+  competition: string;
+  emoji: string;
+  channel: string;
+  startTime: string;
+  isPPV: boolean;
+  isLive: boolean;
+}
+
 export interface Testimonial {
   id: string;
   name: string;
