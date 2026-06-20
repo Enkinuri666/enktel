@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -15,6 +16,11 @@ const liveChannels = [
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#060910" }}>
+
+      {/* ── Generated aurora backdrop ── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none opacity-50">
+        <Image src="/images/hero-bg.png" alt="" fill priority className="object-cover" />
+      </div>
 
       {/* ── Vivid aurora orbs ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">

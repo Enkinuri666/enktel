@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import useSWR from "swr";
 import { Trophy, Radio, Ticket } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -41,9 +42,10 @@ export default function WorldCup2026Page() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e] to-[#0d5c2b] border border-green-700/40 rounded-xl px-5 py-4 mb-8">
-        <Trophy className="w-8 h-8 text-yellow-400 shrink-0" />
-        <div>
+      <div className="relative flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e] to-[#0d5c2b] border border-green-700/40 rounded-xl px-5 py-4 mb-8 overflow-hidden">
+        <Image src="/images/world-cup-bg.png" alt="" fill className="object-cover opacity-30" />
+        <Trophy className="relative z-10 w-8 h-8 text-yellow-400 shrink-0" />
+        <div className="relative z-10">
           <p className="text-yellow-400 text-xs font-black uppercase tracking-widest">2026</p>
           <h1 className="text-2xl sm:text-3xl font-black text-white">FIFA World Cup on Enktel IPTV</h1>
         </div>

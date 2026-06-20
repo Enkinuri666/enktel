@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Tv } from "lucide-react";
 
@@ -32,6 +33,7 @@ export default function CroatianPromo() {
     <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
+        <Image src="/images/croatian-bg.png" alt="" fill className="object-cover opacity-25" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#CE2C1A]/5 via-brand-bg to-brand-bg" />
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#CE2C1A]/30 to-transparent" />
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand-border to-transparent" />

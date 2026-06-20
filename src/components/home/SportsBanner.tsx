@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Trophy, ArrowRight, Zap } from "lucide-react";
 
@@ -19,6 +20,7 @@ const sports = [
 export default function SportsBanner() {
   return (
     <section className="relative py-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <Image src="/images/sports-bg.png" alt="" fill className="object-cover opacity-20" />
       <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-primary/5 to-brand-bg" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-accent/3 to-transparent" />
 

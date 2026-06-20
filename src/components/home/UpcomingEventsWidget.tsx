@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import useSWR from "swr";
 import { Radio, Ticket, ChevronRight, Trophy } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
@@ -111,6 +112,7 @@ export default function UpcomingEventsWidget() {
             {/* Featured: FIFA World Cup 2026 */}
             {worldCupEvents.length > 0 && (
               <div className="relative overflow-hidden rounded-2xl border border-green-700/40 bg-gradient-to-r from-[#0a3a1e] via-[#0d5c2b] to-[#0a3a1e]">
+                <Image src="/images/world-cup-bg.png" alt="" fill className="object-cover opacity-20" />
                 <div
                   className="absolute inset-0 opacity-10"
                   style={{ backgroundImage: "radial-gradient(circle at 15% 50%, #22c55e 0%, transparent 50%), radial-gradient(circle at 85% 50%, #fbbf24 0%, transparent 50%)" }}
