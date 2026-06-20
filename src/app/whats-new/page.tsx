@@ -3,6 +3,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Film, Radio, Ticket, Sparkles } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import Badge from "@/components/ui/Badge";
 import MediaPoster from "@/components/ui/MediaPoster";
 import { Movie, TVShow, UpcomingEvent } from "@/types";
 
@@ -111,9 +112,7 @@ export default function WhatsNewPage() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-brand-muted text-xs font-medium">{h.category}</span>
-                    <span className="bg-brand-accent/20 text-brand-accent border border-brand-accent/30 text-xs font-bold px-2 py-0.5 rounded-full">
-                      LIVE
-                    </span>
+                    <Badge variant="accent" className="font-bold">LIVE</Badge>
                   </div>
                   <h3 className="text-white font-semibold text-sm mb-1">{h.nowShowing}</h3>
                   <p className="text-brand-muted text-xs mb-3 line-clamp-2">{h.description}</p>
@@ -145,9 +144,9 @@ export default function WhatsNewPage() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xl">{event.emoji}</span>
                     {event.isPPV && (
-                      <span className="flex items-center gap-1 bg-yellow-400/15 text-yellow-400 border border-yellow-400/30 text-xs font-bold px-2 py-0.5 rounded-full">
+                      <Badge variant="warning" className="font-bold">
                         <Ticket className="w-3 h-3" /> PPV
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2">{event.title}</h3>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { ChevronRight } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import Badge from "@/components/ui/Badge";
 import ChannelLogo from "@/components/ui/ChannelLogo";
 import { WhatsOnItem } from "@/types";
 
@@ -28,7 +29,10 @@ export default function WhatsOnWidget() {
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse" />
             <h2 className="text-2xl sm:text-3xl font-bold text-white">
-              What&apos;s On <span className="text-brand-accent">Now</span>
+              What&apos;s On{" "}
+              <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+                Now
+              </span>
             </h2>
           </div>
           <Link
@@ -61,9 +65,7 @@ export default function WhatsOnWidget() {
                       <span className="text-brand-muted text-[11px]">{item.channel.country}</span>
                     </div>
                   </div>
-                  <span className="bg-brand-accent/20 text-brand-accent border border-brand-accent/30 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-2">
-                    LIVE
-                  </span>
+                  <Badge variant="accent" className="font-bold shrink-0 ml-2">LIVE</Badge>
                 </div>
                 <h3 className="text-white font-semibold text-sm mb-1 line-clamp-1">
                   {item.currentProgram.title}

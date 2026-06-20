@@ -4,6 +4,12 @@ import { UpcomingEvent } from "@/types";
 // lookups we do here (one cheap request per league, cached for a while).
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json/123";
 
+// FIFA World Cup. While the tournament is on it's our headline event, so we
+// pull several upcoming fixtures from it instead of just the single next one.
+export const WORLD_CUP_LEAGUE_ID = "4429";
+export const WORLD_CUP_COMPETITION = "FIFA World Cup";
+const WORLD_CUP_EVENT_LIMIT = 5;
+
 interface LeagueConfig {
   id: string;
   sport: string;
@@ -18,7 +24,7 @@ interface LeagueConfig {
 // Enktel channel that actually exists in src/lib/channels.ts so the
 // "find it on" claim is consistent with the rest of the site.
 const LEAGUES: LeagueConfig[] = [
-  { id: "4429", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", isPPV: false, competition: "FIFA World Cup" },
+  { id: WORLD_CUP_LEAGUE_ID, sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", isPPV: false, competition: WORLD_CUP_COMPETITION },
   { id: "4629", sport: "Football", emoji: "⚽", channel: "Arena Sport 1", isPPV: false, competition: "HNL" },
   { id: "4328", sport: "Football", emoji: "🏆", channel: "Sky Sports Football", isPPV: false, competition: "Premier League" },
   { id: "4480", sport: "Football", emoji: "🏆", channel: "BT Sport 1", isPPV: false, competition: "Champions League" },
@@ -39,43 +45,92 @@ interface SportsDbEvent {
   strTimestamp?: string;
 }
 
-async function fetchNextEvent(league: LeagueConfig): Promise<UpcomingEvent | null> {
+function mapEvent(event: SportsDbEvent, league: LeagueConfig): UpcomingEvent {
+  const startTime = event.strTimestamp
+    ? `${event.strTimestamp}Z`
+    : new Date(`${event.dateEvent}T${event.strTime || "00:00:00"}Z`).toISOString();
+
+  return {
+    id: `sportsdb-${event.idEvent}`,
+    title: event.strEvent,
+    competition: league.competition || event.strLeague,
+    sport: league.sport,
+    emoji: league.emoji,
+    channel: league.channel,
+    startTime,
+    isPPV: league.isPPV,
+    isLive: new Date(startTime).getTime() <= Date.now(),
+  };
+}
+
+async function fetchSportsDb(path: string): Promise<SportsDbEvent[]> {
   try {
-    const res = await fetch(`${SPORTSDB_BASE}/eventsnextleague.php?id=${league.id}`, {
+    const res = await fetch(`${SPORTSDB_BASE}/${path}`, {
       next: { revalidate: 1800 },
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const data = await res.json();
-    const event: SportsDbEvent | undefined = data?.events?.[0];
-    if (!event) return null;
-
-    const startTime = event.strTimestamp
-      ? `${event.strTimestamp}Z`
-      : new Date(`${event.dateEvent}T${event.strTime || "00:00:00"}Z`).toISOString();
-
-    return {
-      id: `sportsdb-${event.idEvent}`,
-      title: event.strEvent,
-      competition: league.competition || event.strLeague,
-      sport: league.sport,
-      emoji: league.emoji,
-      channel: league.channel,
-      startTime,
-      isPPV: league.isPPV,
-      isLive: new Date(startTime).getTime() <= Date.now(),
-    };
+    return Array.isArray(data?.events) ? data.events : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-// Real upcoming fixtures pulled from TheSportsDB's free API, one per
-// tracked league/competition. Returns whatever resolved successfully -
-// callers should fall back to mock data if this comes back empty.
+// Keep only fixtures that haven't finished yet (still upcoming, or kicked off
+// within the last couple of hours so an in-progress match still shows).
+function isUpcomingOrLive(event: UpcomingEvent): boolean {
+  return new Date(event.startTime).getTime() > Date.now() - 2 * 60 * 60 * 1000;
+}
+
+// Pull the single next fixture for a league. Used for the non-headline
+// leagues, where we just want one representative event for variety.
+async function fetchNextEvent(league: LeagueConfig): Promise<UpcomingEvent[]> {
+  const events = await fetchSportsDb(`eventsnextleague.php?id=${league.id}`);
+  return events.slice(0, 1).map((e) => mapEvent(e, league));
+}
+
+// Pull a cluster of upcoming World Cup fixtures. The free "next league" feed
+// only returns one event, so we also pull the full season and merge — this
+// stays at one match on the free test key but automatically fills out to the
+// real upcoming slate once a richer API key is configured.
+async function fetchWorldCupEvents(league: LeagueConfig): Promise<UpcomingEvent[]> {
+  const season = new Date().getFullYear().toString();
+  const [next, seasonEvents] = await Promise.all([
+    fetchSportsDb(`eventsnextleague.php?id=${league.id}`),
+    fetchSportsDb(`eventsseason.php?id=${league.id}&s=${season}`),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: UpcomingEvent[] = [];
+  for (const raw of [...next, ...seasonEvents]) {
+    if (seen.has(raw.idEvent)) continue;
+    seen.add(raw.idEvent);
+    const event = mapEvent(raw, league);
+    if (isUpcomingOrLive(event)) merged.push(event);
+  }
+
+  return merged
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    .slice(0, WORLD_CUP_EVENT_LIMIT);
+}
+
+// Real upcoming fixtures pulled from TheSportsDB's free API. We take several
+// World Cup fixtures plus one representative fixture per other league, then
+// sort with the World Cup first (our headline event) and otherwise by kickoff.
+// Callers should fall back to mock data if this comes back empty.
 export async function getRealUpcomingEvents(): Promise<UpcomingEvent[]> {
-  const results = await Promise.all(LEAGUES.map(fetchNextEvent));
-  return results
-    .filter((e): e is UpcomingEvent => e !== null)
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  const results = await Promise.all(
+    LEAGUES.map((l) =>
+      l.id === WORLD_CUP_LEAGUE_ID ? fetchWorldCupEvents(l) : fetchNextEvent(l)
+    )
+  );
+
+  const isWorldCup = (e: UpcomingEvent) => e.competition === WORLD_CUP_COMPETITION;
+
+  return results.flat().sort((a, b) => {
+    if (isWorldCup(a) && !isWorldCup(b)) return -1;
+    if (!isWorldCup(a) && isWorldCup(b)) return 1;
+    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+  });
 }

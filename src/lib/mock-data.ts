@@ -477,6 +477,12 @@ export function buildWhatsOn(allPrograms: EPGProgram[], now: Date = new Date()):
 // than empty.
 export function getMockUpcomingEvents(): UpcomingEvent[] {
   const events: UpcomingEvent[] = [
+    // FIFA World Cup 2026 — our headline event while the tournament is on.
+    // Kept at the front so the fallback never hides it during an API outage.
+    { id: "wc-1", title: "Netherlands vs. Sweden", competition: "FIFA World Cup", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", startTime: getTimeOffset(75), isPPV: false, isLive: false },
+    { id: "wc-2", title: "Argentina vs. Croatia", competition: "FIFA World Cup", sport: "Football", emoji: "🏆", channel: "BBC One", startTime: getTimeOffset(255), isPPV: false, isLive: false },
+    { id: "wc-3", title: "Brazil vs. Portugal", competition: "FIFA World Cup", sport: "Football", emoji: "🏆", channel: "ITV 1", startTime: getTimeOffset(1290), isPPV: false, isLive: false },
+    { id: "wc-4", title: "England vs. France", competition: "FIFA World Cup", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", startTime: getTimeOffset(1500), isPPV: false, isLive: false },
     { id: "ev-1", title: "Dinamo Zagreb vs. Hajduk Split", competition: "HNL", sport: "Football", emoji: "⚽", channel: "Arena Sport 1", startTime: getTimeOffset(95), isPPV: false, isLive: false },
     { id: "ev-2", title: "Arsenal vs. Liverpool", competition: "Premier League", sport: "Football", emoji: "🏆", channel: "Sky Sports Football", startTime: getTimeOffset(40), isPPV: false, isLive: false },
     { id: "ev-3", title: "UFC Fight Night: Main Card", competition: "UFC", sport: "Combat Sports", emoji: "🥊", channel: "ESPN", startTime: getTimeOffset(260), isPPV: true, isLive: false },
