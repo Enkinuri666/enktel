@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { Trophy, Radio, Ticket } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import Badge from "@/components/ui/Badge";
 import { UpcomingEvent } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -79,9 +80,9 @@ export default function WorldCup2026Page() {
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-2xl">⚽</span>
                     {match.isPPV && (
-                      <span className="flex items-center gap-1 bg-yellow-400/15 text-yellow-400 border border-yellow-400/30 text-xs font-bold px-2 py-0.5 rounded-full">
+                      <Badge variant="warning">
                         <Ticket className="w-3 h-3" /> PPV
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   <h3 className="text-white font-bold text-lg mb-3">{match.title}</h3>

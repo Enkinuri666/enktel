@@ -4,6 +4,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { Radio, Ticket, ChevronRight } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import Badge from "@/components/ui/Badge";
 import { UpcomingEvent } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -113,9 +114,9 @@ export default function UpcomingEventsWidget() {
                       </span>
                     </div>
                     {event.isPPV && (
-                      <span className="flex items-center gap-1 bg-yellow-400/15 text-yellow-400 border border-yellow-400/30 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-2">
+                      <Badge variant="warning" className="shrink-0 ml-2">
                         <Ticket className="w-3 h-3" /> PPV
-                      </span>
+                      </Badge>
                     )}
                   </div>
 

@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight, AlertTriangle } from "lucide-react";
+import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight, AlertTriangle, Sparkles, X } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+
+const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
 
 const MOCK_SUBSCRIPTION = {
   id: "ENK-1234567890-DEMO",
@@ -93,9 +96,19 @@ const setupGuides: Record<string, Array<{ step: number; title: string; descripti
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("firestick");
+  const [showWelcome, setShowWelcome] = useState(false);
   const sub = MOCK_SUBSCRIPTION;
 
   const daysLeft = Math.max(0, Math.floor((new Date(sub.endDate).getTime() - Date.now()) / 86400000));
+
+  useEffect(() => {
+    if (!localStorage.getItem(WELCOME_DISMISSED_KEY)) setShowWelcome(true);
+  }, []);
+
+  function dismissWelcome() {
+    localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
+    setShowWelcome(false);
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -106,6 +119,26 @@ export default function DashboardPage() {
         </span>
       </h1>
 
+      {showWelcome && (
+        <div className="relative flex items-start gap-4 bg-gradient-to-r from-brand-primary/15 to-brand-secondary/10 border border-brand-primary/30 rounded-xl p-5 mb-8">
+          <Sparkles className="w-5 h-5 text-brand-secondary shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="text-white font-bold mb-1">Welcome to Enktel — let&apos;s get you streaming</h3>
+            <p className="text-brand-muted text-sm leading-relaxed">
+              1. Copy your M3U &amp; EPG URLs below. &nbsp; 2. Pick your device in the Setup Guides section. &nbsp;
+              3. Paste the URLs into your IPTV app and you&apos;re live.
+            </p>
+          </div>
+          <button
+            onClick={dismissWelcome}
+            aria-label="Dismiss welcome message"
+            className="shrink-0 p-1 rounded text-brand-muted hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Subscription Status */}
         <div className="lg:col-span-2 bg-brand-card border border-brand-border rounded-xl p-6">
@@ -114,9 +147,7 @@ export default function DashboardPage() {
               <h2 className="text-white font-bold text-xl">{sub.plan} Plan</h2>
               <p className="text-brand-muted text-sm">{sub.id}</p>
             </div>
-            <span className="bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-bold px-3 py-1.5 rounded-full">
-              ACTIVE
-            </span>
+            <Badge variant="success" size="md" className="font-bold">ACTIVE</Badge>
           </div>
 
           {daysLeft <= 14 && (

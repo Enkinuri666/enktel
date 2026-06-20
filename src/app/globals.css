@@ -16,6 +16,13 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 
+/* Accessible keyboard focus ring, dark-theme friendly */
+:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 body {
   background-color: var(--bg);
   color: #ffffff;

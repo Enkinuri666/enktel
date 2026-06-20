@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -167,9 +168,9 @@ export default function PricingPage() {
             {plan.highlighted ? (
               <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg shadow-yellow-400/30">
+                  <Badge variant="gold" className="px-5 py-1.5 shadow-lg shadow-yellow-400/30">
                     <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
-                  </span>
+                  </Badge>
                 </div>
                 <div className="bg-brand-card rounded-[14px] p-7">
                   <PlanCard plan={plan} />
@@ -181,6 +182,24 @@ export default function PricingPage() {
               </div>
             )}
           </motion.div>
+        ))}
+      </div>
+
+      {/* Quick comparison strip */}
+      <div className="grid grid-cols-3 divide-x divide-brand-border bg-brand-card border border-brand-border rounded-2xl mb-16 overflow-hidden text-center">
+        {plans.map((plan) => (
+          <div key={plan.id} className="px-3 py-5 sm:px-6">
+            <p className="text-brand-muted text-xs uppercase tracking-wide mb-1">{plan.name}</p>
+            <p className="text-white font-black text-lg sm:text-xl mb-1">€{plan.price}</p>
+            <p className="text-brand-muted text-xs mb-2">{plan.duration}</p>
+            {plan.id === "monthly" ? (
+              <Badge variant="default" size="sm">No World Cup</Badge>
+            ) : (
+              <Badge variant="warning" size="sm">
+                <Trophy className="w-3 h-3" /> World Cup
+              </Badge>
+            )}
+          </div>
         ))}
       </div>
 
@@ -240,14 +259,14 @@ function PlanCard({ plan }: { plan: typeof plans[0] }) {
       {/* Badge row */}
       <div className="flex items-center gap-2 mb-3 min-h-[28px]">
         {plan.badge === "WORLD CUP 2026" && (
-          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+          <Badge variant="warning" size="md">
             <Trophy className="w-3 h-3" /> WORLD CUP 2026
-          </span>
+          </Badge>
         )}
         {plan.badge === "BEST VALUE" && (
-          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+          <Badge variant="warning" size="md">
             <Flame className="w-3 h-3" /> MOST POPULAR
-          </span>
+          </Badge>
         )}
       </div>
 

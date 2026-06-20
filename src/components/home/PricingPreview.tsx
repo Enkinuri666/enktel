@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -73,7 +74,7 @@ export default function PricingPreview() {
               Plan
             </span>
           </motion.h2>
-          <p className="text-brand-muted">All features included. No hidden fees. Cancel anytime.</p>
+          <p className="text-brand-muted">All features included. No hidden fees. No auto-renewal.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 items-start">
@@ -88,9 +89,9 @@ export default function PricingPreview() {
               {plan.highlighted ? (
                 <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                    <Badge variant="gold" className="px-4 py-1.5 shadow-lg">
                       <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
-                    </span>
+                    </Badge>
                   </div>
                   <div className="bg-brand-card rounded-[14px] p-6 pt-8">
                     <PlanCardContent plan={plan} />
@@ -122,15 +123,10 @@ function PlanCardContent({ plan }: { plan: typeof plans[0] }) {
     <>
       {plan.badge && (
         <div className="mb-3">
-          {plan.badge === "WORLD CUP 2026" ? (
-            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
-              <Trophy className="w-3 h-3" /> WORLD CUP 2026
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
-              <Flame className="w-3 h-3" /> MOST POPULAR
-            </span>
-          )}
+          <Badge variant="warning" size="md">
+            {plan.badge === "WORLD CUP 2026" ? <Trophy className="w-3 h-3" /> : <Flame className="w-3 h-3" />}
+            {plan.badge === "WORLD CUP 2026" ? "WORLD CUP 2026" : "MOST POPULAR"}
+          </Badge>
         </div>
       )}
 

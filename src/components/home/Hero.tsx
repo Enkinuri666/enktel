@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
-const trustBadges = ["No Contract", "Cancel Anytime", "Instant Activation", "4K Ultra HD"];
+const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
 const liveChannels = [
   { name: "HRT 1", show: "Dnevnik 2", progress: 68, genre: "News", color: "#6C63FF" },
@@ -150,7 +150,7 @@ export default function Hero() {
               <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
                 className="rounded-2xl border p-4 text-center"
                 style={{ background: "rgba(108,99,255,0.14)", backdropFilter: "blur(20px)", borderColor: "rgba(108,99,255,0.3)" }}>
-                <div className="text-3xl font-black text-white">10K+</div>
+                <div className="text-3xl font-black text-white">{CHANNEL_COUNT_LABEL}</div>
                 <div className="text-xs font-semibold mt-0.5" style={{ color: "#6C63FF" }}>Live Channels</div>
               </motion.div>
               <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}

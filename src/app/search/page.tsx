@@ -5,6 +5,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Search as SearchIcon } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import MediaPoster from "@/components/ui/MediaPoster";
 import ChannelLogo from "@/components/ui/ChannelLogo";
 import { Channel, Movie, TVShow } from "@/types";
@@ -40,6 +41,7 @@ function SearchPageInner() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <Breadcrumbs items={q ? [{ label: "Search", href: "/search" }, { label: `"${q}"` }] : [{ label: "Search" }]} />
       <form onSubmit={handleSubmit} className="relative mb-10 max-w-xl">
         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
         <input
