@@ -1,10 +1,9 @@
 import Hero from "@/components/home/Hero";
-import CountryBanner from "@/components/home/CountryBanner";
 import StatsBar from "@/components/home/StatsBar";
 import CroatianPromo from "@/components/home/CroatianPromo";
 import WhatsOnWidget from "@/components/home/WhatsOnWidget";
-import UpcomingEventsWidget from "@/components/home/UpcomingEventsWidget";
 import SportsBanner from "@/components/home/SportsBanner";
+import UpcomingEventsWidget from "@/components/home/UpcomingEventsWidget";
 import LatestReleases from "@/components/home/LatestReleases";
 import ComingSoonWidget from "@/components/home/ComingSoonWidget";
 import ChannelShowcase from "@/components/home/ChannelShowcase";
@@ -16,12 +15,11 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <CountryBanner />
       <StatsBar />
       <CroatianPromo />
       <WhatsOnWidget />
-      <UpcomingEventsWidget />
       <SportsBanner />
+      <UpcomingEventsWidget />
       <LatestReleases />
       <ComingSoonWidget />
       <ChannelShowcase />
