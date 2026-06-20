@@ -2,7 +2,7 @@ export interface Channel {
   id: string;
   name: string;
   category: ChannelCategory;
-  logoUrl: string;
+  logoUrl?: string;
   epgId: string;
   isHD: boolean;
   country: string;
@@ -10,6 +10,7 @@ export interface Channel {
 
 export type ChannelCategory =
   | "All"
+  | "Croatian & Balkan"
   | "Sports"
   | "Movies"
   | "News"

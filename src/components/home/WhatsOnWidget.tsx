@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import useSWR from "swr";
-import { ChevronRight, Radio } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import ChannelLogo from "@/components/ui/ChannelLogo";
 import { WhatsOnItem } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -50,11 +51,14 @@ export default function WhatsOnWidget() {
                 className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-primary/40 transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Radio className="w-4 h-4 text-brand-accent shrink-0" />
-                    <span className="text-brand-muted text-xs font-medium truncate">
-                      {item.channel.name}
-                    </span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <ChannelLogo name={item.channel.name} id={item.channel.id} size="sm" />
+                    <div className="min-w-0">
+                      <span className="text-white text-xs font-semibold truncate block">
+                        {item.channel.name}
+                      </span>
+                      <span className="text-brand-muted text-[11px]">{item.channel.country}</span>
+                    </div>
                   </div>
                   <span className="bg-brand-accent/20 text-brand-accent border border-brand-accent/30 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-2">
                     LIVE

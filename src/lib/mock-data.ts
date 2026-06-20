@@ -8,214 +8,344 @@ function getTimeOffset(minutesFromNow: number): string {
   return d.toISOString();
 }
 
-interface ProgramTemplate {
+// A program slot anchored to a real wall-clock time of day (24h). Each slot
+// runs until the next slot begins, so morning shows air in the morning,
+// the evening news airs in the evening, and primetime is primetime — the
+// guide always reflects a believable real schedule for the current time.
+interface DaySlot {
+  h: number;
+  m?: number;
   title: string;
   description: string;
-  duration: number;
   category: string;
   rating?: string;
 }
 
-// Tiles a list of program templates back-to-back, looping as needed, to cover
-// a rolling window from 3 hours in the past to 24 hours in the future,
-// computed relative to `now` so the EPG never goes stale.
-function tileSchedule(channelId: string, templates: ProgramTemplate[], now: Date): EPGProgram[] {
+// Expands a channel's day-part slots into concrete programmes for a single
+// calendar day. The final slot wraps overnight into the next day's first
+// slot, giving seamless 24h coverage with no gaps.
+function buildDay(channelId: string, slots: DaySlot[], day: Date): EPGProgram[] {
+  // Order by wall-clock time so after-midnight slots sit at the start of the
+  // day and the final evening slot wraps cleanly overnight into the next
+  // day's first programme — no gaps, no negative-length cells.
+  const ordered = [...slots].sort(
+    (a, b) => (a.h * 60 + (a.m || 0)) - (b.h * 60 + (b.m || 0))
+  );
+
   const result: EPGProgram[] = [];
-  let offset = -180;
-  let i = 0;
-  while (offset < 1440) {
-    const t = templates[i % templates.length];
-    const start = new Date(now.getTime() + offset * 60000);
-    offset += t.duration;
-    const end = new Date(now.getTime() + offset * 60000);
+  for (let i = 0; i < ordered.length; i++) {
+    const slot = ordered[i];
+    const start = new Date(day);
+    start.setHours(slot.h, slot.m || 0, 0, 0);
+
+    const next = ordered[(i + 1) % ordered.length];
+    const end = new Date(day);
+    if (i === ordered.length - 1) end.setDate(end.getDate() + 1);
+    end.setHours(next.h, next.m || 0, 0, 0);
+
     result.push({
-      id: `${channelId}-${i}`,
+      id: `${channelId}-${day.toISOString().slice(0, 10)}-${i}`,
       channelId,
-      title: t.title,
-      description: t.description,
+      title: slot.title,
+      description: slot.description,
       startTime: start.toISOString(),
       endTime: end.toISOString(),
-      category: t.category,
-      rating: t.rating,
+      category: slot.category,
+      rating: slot.rating,
     });
-    i++;
   }
   return result;
 }
 
-const curatedTemplates: Record<string, ProgramTemplate[]> = {
+const curatedSchedules: Record<string, DaySlot[]> = {
+  // ── Croatian flagships ──
+  "hrt-1": [
+    { h: 6, title: "Dobro jutro, Hrvatska", description: "Informativno-zabavni jutarnji program s aktualnim temama, gostima i vremenskom prognozom.", category: "News" },
+    { h: 8, m: 30, title: "Vijesti", description: "Pregled najnovijih domaćih i svjetskih vijesti.", category: "News" },
+    { h: 8, m: 45, title: "Hrvatska uživo", description: "Reportaže i priče iz svih krajeva Hrvatske.", category: "News" },
+    { h: 10, m: 30, title: "Kod nas doma", description: "Lifestyle magazin o domu, kuhinji i vrtu.", category: "Entertainment" },
+    { h: 12, title: "Dnevnik 1", description: "Središnja dnevna informativna emisija HRT-a.", category: "News" },
+    { h: 12, m: 40, title: "Sve u 7!", description: "Popularni kviz znanja s vrijednim nagradama.", category: "Entertainment" },
+    { h: 14, m: 10, title: "Tema dana", description: "Detaljna analiza najvažnije priče dana.", category: "News" },
+    { h: 15, title: "Popodne s nama", description: "Opušteni popodnevni magazin uz glazbu i goste.", category: "Entertainment" },
+    { h: 17, title: "Reporteri", description: "Istraživački novinarski serijal.", category: "Documentary" },
+    { h: 18, title: "Lijepom našom", description: "Glazbeno-putopisna emisija iz hrvatskih krajeva.", category: "Music" },
+    { h: 19, m: 30, title: "Dnevnik", description: "Središnja informativna emisija.", category: "News" },
+    { h: 20, m: 10, title: "Domaća dramska serija", description: "Nova epizoda popularne domaće dramske serije.", category: "Drama", rating: "12" },
+    { h: 21, m: 50, title: "Otvoreno", description: "Aktualni politički talk-show.", category: "News" },
+    { h: 23, title: "Dnevnik 3", description: "Pregled dana i najava sutrašnjih događaja.", category: "News" },
+    { h: 23, m: 40, title: "Filmski maraton", description: "Cjelovečernji igrani film.", category: "Movies", rating: "15" },
+    { h: 1, m: 30, title: "Noćni glazbeni program", description: "Glazbeni spotovi do jutra.", category: "Music" },
+  ],
+  "hrt-2": [
+    { h: 6, title: "Crtani filmovi", description: "Jutarnji blok animiranih serija za najmlađe.", category: "Kids" },
+    { h: 8, title: "Školski program", description: "Obrazovni sadržaj za učenike i studente.", category: "Documentary" },
+    { h: 9, m: 30, title: "Dokumentarac", description: "Strani dokumentarni film.", category: "Documentary" },
+    { h: 11, title: "Prijenos: Hrvatski sabor", description: "Izravni prijenos saborske rasprave.", category: "News" },
+    { h: 13, title: "Filmski klasik", description: "Klasik svjetske kinematografije.", category: "Movies", rating: "12" },
+    { h: 15, title: "Reprize serija", description: "Omiljene epizode domaćih i stranih serija.", category: "Drama" },
+    { h: 17, m: 30, title: "Košarka: Prijenos uživo", description: "Izravni prijenos košarkaške utakmice ABA lige.", category: "Sports" },
+    { h: 19, m: 30, title: "Glazbeni specijal", description: "Koncertni program i glazbene zvijezde.", category: "Music" },
+    { h: 20, title: "Nogomet: HNL uživo", description: "Izravni prijenos utakmice SuperSport HNL-a.", category: "Sports" },
+    { h: 22, title: "Pregled kola", description: "Saetak i analiza nogometnog kola.", category: "Sports" },
+    { h: 23, title: "Filmski program", description: "Igrani film kasno navečer.", category: "Movies", rating: "15" },
+    { h: 1, title: "Noćni program", description: "Reprizni sadržaj.", category: "Entertainment" },
+  ],
+  "nova-tv": [
+    { h: 6, m: 15, title: "Crtani filmovi", description: "Jutarnji crtani program za djecu.", category: "Kids" },
+    { h: 8, title: "IN magazin", description: "Showbiz vijesti iz Hrvatske i svijeta.", category: "Entertainment" },
+    { h: 9, title: "Turske serije", description: "Omiljene turske dramske serije.", category: "Drama", rating: "12" },
+    { h: 12, title: "Razvedi me", description: "Domaći reality sudski program.", category: "Entertainment" },
+    { h: 13, title: "IN magazin", description: "Popodnevno izdanje showbiz magazina.", category: "Entertainment" },
+    { h: 14, title: "Walker", description: "Akcijska dramska serija.", category: "Drama", rating: "12" },
+    { h: 16, title: "Provjereno", description: "Istraživačka novinarska emisija.", category: "News" },
+    { h: 17, title: "Vijesti Nove TV", description: "Aktualne dnevne vijesti.", category: "News" },
+    { h: 17, m: 25, title: "Na granici", description: "Domaća dramska serija.", category: "Drama", rating: "12" },
+    { h: 19, m: 15, title: "Dnevnik Nove TV", description: "Središnja informativna emisija Nove TV.", category: "News" },
+    { h: 20, m: 5, title: "Supertalent", description: "Spektakularni show talenata.", category: "Entertainment" },
+    { h: 22, title: "Red Carpet", description: "Magazin s crvenog tepiha.", category: "Entertainment" },
+    { h: 23, title: "Film: Premijera", description: "Premijerni igrani film.", category: "Movies", rating: "15" },
+    { h: 1, title: "Astro show", description: "Noćni interaktivni program.", category: "Entertainment" },
+  ],
+  "rtl-hrvatska": [
+    { h: 6, title: "Jutarnje crtane serije", description: "Animirani program za najmlađe.", category: "Kids" },
+    { h: 8, title: "RTL Danas", description: "Jutarnje izdanje informativne emisije.", category: "News" },
+    { h: 9, title: "Exkluziv Tabloid", description: "Svijet poznatih i estrade.", category: "Entertainment" },
+    { h: 10, title: "Ljubav je na selu", description: "Popularni reality o traženju ljubavi.", category: "Entertainment" },
+    { h: 12, title: "Krv nije voda", description: "Domaća dramska serija.", category: "Drama", rating: "12" },
+    { h: 13, title: "Turska serija", description: "Popodnevna dramska serija.", category: "Drama", rating: "12" },
+    { h: 15, title: "Punom parom", description: "Kulinarski natjecateljski show.", category: "Entertainment" },
+    { h: 16, title: "RTL Danas", description: "Popodnevne vijesti.", category: "News" },
+    { h: 17, title: "Večera za 5", description: "Gastronomski reality.", category: "Entertainment" },
+    { h: 18, title: "Exkluziv", description: "Večernji showbiz magazin.", category: "Entertainment" },
+    { h: 19, title: "RTL Direkt", description: "Večernji informativni program.", category: "News" },
+    { h: 20, title: "Big Brother", description: "Najgledaniji reality show u izravnom prijenosu.", category: "Entertainment" },
+    { h: 22, title: "Film", description: "Cjelovečernji igrani film.", category: "Movies", rating: "15" },
+    { h: 0, m: 30, title: "Noćni program", description: "Reprizni sadržaj.", category: "Entertainment" },
+  ],
+  "doma-tv": [
+    { h: 6, title: "Telenovela", description: "Jutarnja epizoda latino telenovele.", category: "Drama" },
+    { h: 8, title: "Zauvijek susjedi", description: "Popularna humoristična serija.", category: "Entertainment" },
+    { h: 10, title: "Latino serija", description: "Dramska serija s puno strasti.", category: "Drama", rating: "12" },
+    { h: 12, title: "Kobra 11", description: "Njemačka akcijska serija.", category: "Drama", rating: "12" },
+    { h: 14, title: "Walker, Texas Ranger", description: "Klasična akcijska serija.", category: "Drama", rating: "12" },
+    { h: 16, title: "Telenovela", description: "Popodnevna telenovela.", category: "Drama" },
+    { h: 18, title: "Zauvijek susjedi", description: "Večernje izdanje humoristične serije.", category: "Entertainment" },
+    { h: 19, title: "Latino serija", description: "Nova epizoda omiljene serije.", category: "Drama", rating: "12" },
+    { h: 20, title: "Film tjedna", description: "Igrani film u glavnom terminu.", category: "Movies", rating: "15" },
+    { h: 22, title: "Krimi serija", description: "Napeta kriminalistička serija.", category: "Drama", rating: "15" },
+    { h: 0, title: "Noćni program", description: "Reprize serija.", category: "Entertainment" },
+  ],
+  "cmc-tv": [
+    { h: 6, title: "CMC Express", description: "Jutarnji blok glazbenih spotova.", category: "Music" },
+    { h: 9, title: "CMC Top 20", description: "Ljestvica najslušanijih domaćih hitova.", category: "Music" },
+    { h: 12, title: "Glazbene želje", description: "Spotovi po željama gledatelja.", category: "Music" },
+    { h: 15, title: "Domaći hitovi", description: "Najbolje iz hrvatske zabavne glazbe.", category: "Music" },
+    { h: 18, title: "CMC Cafe", description: "Glazbeno-zabavna emisija uz goste.", category: "Music" },
+    { h: 20, title: "Koncert: Klapske večeri", description: "Snimka koncerta dalmatinskih klapa.", category: "Music" },
+    { h: 22, title: "Noćni program", description: "Zabavna glazba do jutra.", category: "Music" },
+  ],
+  "n1-info": [
+    { h: 6, title: "Novi dan", description: "Jutarnji informativni program N1 televizije.", category: "News" },
+    { h: 9, title: "N1 Studio uživo", description: "Vijesti i analize tijekom prijepodneva.", category: "News" },
+    { h: 11, title: "Pressing", description: "Politički talk-show s aktualnim gostima.", category: "News" },
+    { h: 13, title: "Vijesti u 13", description: "Središnje podnevne vijesti.", category: "News" },
+    { h: 14, title: "Newsroom", description: "Rolling vijesti iz regije i svijeta.", category: "News" },
+    { h: 17, title: "Novi dan: Popodne", description: "Popodnevni informativni blok.", category: "News" },
+    { h: 18, title: "Dnevnik u 18", description: "Glavna informativna emisija.", category: "News" },
+    { h: 19, title: "Intervju tjedna", description: "Razgovor s važnim sugovornikom.", category: "News" },
+    { h: 20, title: "Pregled dana", description: "Saetak najvažnijih događaja.", category: "News" },
+    { h: 22, title: "Vijesti", description: "Večernje vijesti.", category: "News" },
+    { h: 0, title: "Najava dana", description: "Pregled tema za sutra i reprize.", category: "News" },
+  ],
+  "arena-sport-1": [
+    { h: 6, title: "Sportski pregled", description: "Jutarnji pregled sportskih događaja.", category: "Sports" },
+    { h: 8, title: "Klasici: Liga prvaka", description: "Nezaboravne utakmice Lige prvaka.", category: "Sports" },
+    { h: 10, title: "Magazin: Serie A", description: "Tjedni magazin talijanskog nogometa.", category: "Sports" },
+    { h: 12, title: "Najava kola HNL", description: "Pregled i najava nogometnog kola.", category: "Sports" },
+    { h: 13, title: "Rukomet: Prijenos uživo", description: "Izravni prijenos rukometne utakmice.", category: "Sports" },
+    { h: 15, title: "Studio: Premier League", description: "Analiza i najava engleskog nogometa.", category: "Sports" },
+    { h: 16, title: "Nogomet: Premier League uživo", description: "Izravni prijenos utakmice Premier lige.", category: "Sports" },
+    { h: 18, m: 30, title: "Studio: HNL", description: "Pretkutakmična analiza derbija.", category: "Sports" },
+    { h: 19, title: "Nogomet: Dinamo – Hajduk", description: "Izravni prijenos vječnog derbija SuperSport HNL-a.", category: "Sports" },
+    { h: 21, title: "Pregled kola", description: "Golovi i analiza odigranog kola.", category: "Sports" },
+    { h: 22, title: "Boks: Borilački spektakl", description: "Prijenos boksačke priredbe.", category: "Sports" },
+    { h: 0, title: "Sportski pregled dana", description: "Saetak dana u sportu.", category: "Sports" },
+  ],
+
+  // ── UK flagships ──
   "bbc-one": [
-    { title: "Breakfast", description: "The latest news, sport, business and weather from the BBC.", duration: 120, category: "News" },
-    { title: "Morning Live", description: "Magazine programme with expert advice, recipes, and lifestyle features.", duration: 60, category: "Entertainment" },
-    { title: "Doctors", description: "Drama series set in a Midlands GP practice.", duration: 30, category: "Drama", rating: "PG" },
-    { title: "BBC News at One", description: "The latest national and international news stories.", duration: 30, category: "News" },
-    { title: "The One Show", description: "Magazine programme with celebrity guests and human interest stories.", duration: 30, category: "Entertainment" },
-    { title: "EastEnders", description: "Life in Albert Square takes a dramatic turn.", duration: 30, category: "Drama", rating: "PG" },
-    { title: "BBC News at Six", description: "National and international news.", duration: 30, category: "News" },
-    { title: "Antiques Roadshow", description: "Experts value the nation's hidden treasures.", duration: 60, category: "Entertainment" },
-  ],
-  "bbc-two": [
-    { title: "Flog It!", description: "Paul Martin travels the country looking for antiques to sell at auction.", duration: 60, category: "Entertainment" },
-    { title: "Escape to the Country", description: "Helping house hunters find their dream rural retreat.", duration: 60, category: "Lifestyle" },
-    { title: "Bargain Hunt", description: "Two teams compete to buy antiques and sell them at profit.", duration: 45, category: "Entertainment" },
-    { title: "University Challenge", description: "Jeremy Paxman quizzes teams from UK universities.", duration: 30, category: "Entertainment" },
-    { title: "Newsnight", description: "In-depth investigation and analysis of the stories behind the day's headlines.", duration: 45, category: "News" },
-    { title: "The Culture Show", description: "Arts and culture magazine programme.", duration: 60, category: "Arts" },
-    { title: "QI", description: "Stephen Fry hosts a quiz show celebrating ignorance.", duration: 30, category: "Entertainment" },
-  ],
-  "itv1": [
-    { title: "Good Morning Britain", description: "News and current affairs programme.", duration: 120, category: "News" },
-    { title: "Lorraine", description: "Chat show hosted by Lorraine Kelly.", duration: 60, category: "Entertainment" },
-    { title: "This Morning", description: "Magazine show covering news, lifestyle and celebrity interviews.", duration: 120, category: "Entertainment" },
-    { title: "Loose Women", description: "Female-led chat show discussing the day's hot topics.", duration: 60, category: "Entertainment" },
-    { title: "ITV News", description: "National and international news.", duration: 30, category: "News" },
-    { title: "Emmerdale", description: "The drama continues in the Dales.", duration: 30, category: "Drama", rating: "PG" },
-    { title: "Coronation Street", description: "Life on the cobbles takes a dramatic turn.", duration: 60, category: "Drama", rating: "PG" },
-    { title: "ITV News at Ten", description: "The day's top stories.", duration: 30, category: "News" },
-  ],
-  "channel4": [
-    { title: "A Place in the Sun", description: "Couples search for their dream overseas property.", duration: 60, category: "Lifestyle" },
-    { title: "Countdown", description: "Long-running letters and numbers game show.", duration: 60, category: "Entertainment" },
-    { title: "Channel 4 News", description: "Award-winning news programme.", duration: 60, category: "News" },
-    { title: "Hollyoaks", description: "The lives of young people living in Chester.", duration: 30, category: "Drama", rating: "PG" },
-    { title: "Gogglebox", description: "Opinionated people watching and commenting on television.", duration: 60, category: "Entertainment" },
-    { title: "The Great British Bake Off", description: "Amateur bakers compete in themed challenges.", duration: 75, category: "Entertainment" },
-    { title: "Channel 4 Late News", description: "Evening news bulletin.", duration: 30, category: "News" },
+    { h: 6, title: "BBC Breakfast", description: "The latest news, sport, business and weather.", category: "News" },
+    { h: 9, m: 15, title: "Morning Live", description: "Magazine programme with expert advice and lifestyle features.", category: "Entertainment" },
+    { h: 10, title: "Homes Under the Hammer", description: "Buyers transform run-down auction properties.", category: "Entertainment" },
+    { h: 11, m: 15, title: "Bargain Hunt", description: "Two teams hunt for antiques to sell at a profit.", category: "Entertainment" },
+    { h: 13, title: "BBC News at One", description: "The latest national and international news.", category: "News" },
+    { h: 13, m: 45, title: "Doctors", description: "Drama set in a Midlands GP practice.", category: "Drama", rating: "PG" },
+    { h: 14, m: 15, title: "Escape to the Country", description: "House hunters search for their rural dream home.", category: "Entertainment" },
+    { h: 16, m: 30, title: "The Bidding Room", description: "Sellers pitch their antiques to expert dealers.", category: "Entertainment" },
+    { h: 17, m: 15, title: "Pointless", description: "Quiz show hunting for the most obscure correct answers.", category: "Entertainment" },
+    { h: 18, title: "BBC News at Six", description: "National and international news.", category: "News" },
+    { h: 19, title: "The One Show", description: "Magazine show with celebrity guests.", category: "Entertainment" },
+    { h: 19, m: 30, title: "EastEnders", description: "Life in Albert Square takes a dramatic turn.", category: "Drama", rating: "PG" },
+    { h: 20, title: "Primetime Drama", description: "A gripping new episode in the evening's headline drama.", category: "Drama", rating: "15" },
+    { h: 22, title: "BBC News at Ten", description: "The day's top stories.", category: "News" },
+    { h: 22, m: 30, title: "Match of the Day", description: "Premier League highlights and analysis.", category: "Sports" },
+    { h: 0, title: "Weather for the Week Ahead", description: "Overnight news and weather.", category: "News" },
   ],
   "sky-sports-main": [
-    { title: "Football: Premier League Preview", description: "Preview of the weekend's Premier League action.", duration: 60, category: "Sports" },
-    { title: "Cricket: County Championship", description: "Live county cricket from venues around England.", duration: 180, category: "Sports" },
-    { title: "Soccer Saturday", description: "Live updates and goals from across the day's football matches.", duration: 120, category: "Sports" },
-    { title: "Goals on Sunday", description: "All the goals and talking points from the Premier League.", duration: 90, category: "Sports" },
-    { title: "Fantasy Football Club", description: "Tips and analysis for fantasy football managers.", duration: 30, category: "Sports" },
-  ],
-  "sky-sports-football": [
-    { title: "EFL Championship Live: Leeds vs Sheffield Wed", description: "Live EFL Championship match from Elland Road.", duration: 150, category: "Sports" },
-    { title: "Football: Lower League Action", description: "Highlights from across the football pyramid.", duration: 60, category: "Sports" },
-    { title: "Premier League Legends", description: "Classic Premier League matches from the archives.", duration: 90, category: "Sports" },
-    { title: "Women's Super League: Arsenal vs Chelsea", description: "Live WSL match from the Emirates Stadium.", duration: 120, category: "Sports" },
-    { title: "The Debate", description: "Football pundits debate the biggest talking points.", duration: 60, category: "Sports" },
-  ],
-  "bbc-news": [
-    { title: "BBC World News", description: "The latest international news and analysis.", duration: 60, category: "News" },
-    { title: "Click", description: "Technology news and features.", duration: 30, category: "News" },
-    { title: "HARDtalk", description: "In-depth interview programme.", duration: 30, category: "News" },
-    { title: "BBC World News", description: "Breaking news and international stories.", duration: 60, category: "News" },
-    { title: "Outside Source", description: "News programme drawing on BBC's worldwide network of journalists.", duration: 60, category: "News" },
-    { title: "BBC World News", description: "Comprehensive world news coverage.", duration: 60, category: "News" },
+    { h: 6, title: "Good Morning Sports Fans", description: "Start the day with the biggest sports stories.", category: "Sports" },
+    { h: 9, title: "Soccer AM", description: "Football entertainment and Premier League build-up.", category: "Sports" },
+    { h: 11, title: "Saturday Social", description: "Football, gaming and online culture collide.", category: "Sports" },
+    { h: 12, m: 30, title: "Live Build-Up", description: "Team news and analysis ahead of the lunchtime kick-off.", category: "Sports" },
+    { h: 13, title: "Live EFL", description: "Live Championship football.", category: "Sports" },
+    { h: 15, m: 15, title: "Gillette Soccer Saturday", description: "Live scores and reaction from across the day's fixtures.", category: "Sports" },
+    { h: 17, m: 30, title: "Super Sunday Build-Up", description: "Pre-match analysis ahead of the big game.", category: "Sports" },
+    { h: 18, title: "Live Premier League", description: "Live top-flight football in 4K Ultra HD.", category: "Sports" },
+    { h: 20, m: 15, title: "Premier League Reaction", description: "Post-match interviews and expert analysis.", category: "Sports" },
+    { h: 21, title: "The Football Show", description: "Debate and discussion on the day's big talking points.", category: "Sports" },
+    { h: 22, m: 30, title: "Sky Sports News", description: "Round-the-clock sports headlines.", category: "Sports" },
+    { h: 0, title: "Overnight Sports", description: "Highlights and rolling sports news.", category: "Sports" },
   ],
   "sky-news": [
-    { title: "Kay Burley at Breakfast", description: "Morning news with Kay Burley.", duration: 90, category: "News" },
-    { title: "Ian King Live", description: "Business news and analysis.", duration: 60, category: "News" },
-    { title: "Sky News Live", description: "Rolling news coverage.", duration: 120, category: "News" },
-    { title: "The Story with Dermot Murnaghan", description: "In-depth look at the biggest story of the day.", duration: 60, category: "News" },
-    { title: "Sky News Tonight", description: "Evening news analysis.", duration: 60, category: "News" },
-  ],
-  "discovery": [
-    { title: "Gold Rush", description: "Miners battle to strike it rich in the Yukon.", duration: 60, category: "Documentary" },
-    { title: "Deadliest Catch", description: "Crab fishermen brave the Bering Sea.", duration: 60, category: "Documentary" },
-    { title: "How It's Made", description: "Exploring the manufacturing process of everyday objects.", duration: 30, category: "Documentary" },
-    { title: "MythBusters", description: "Adam and Jamie test popular myths.", duration: 60, category: "Documentary" },
-    { title: "Dirty Jobs", description: "Mike Rowe takes on America's dirtiest professions.", duration: 60, category: "Documentary" },
-    { title: "Naked and Afraid", description: "Two strangers survive in the wild with nothing.", duration: 60, category: "Documentary" },
-  ],
-  "nat-geo": [
-    { title: "National Geographic Specials", description: "Award-winning natural history documentary.", duration: 60, category: "Documentary" },
-    { title: "Brain Games", description: "Exploring the science of human perception.", duration: 30, category: "Documentary" },
-    { title: "Cosmos: A Spacetime Odyssey", description: "Neil deGrasse Tyson explores the universe.", duration: 60, category: "Documentary" },
-    { title: "Gordon Ramsay: Uncharted", description: "Gordon travels to remote locations to discover local cuisine.", duration: 60, category: "Documentary" },
-    { title: "Photographer", description: "Following award-winning photographers on assignment.", duration: 60, category: "Documentary" },
-  ],
-  "cbbc": [
-    { title: "Danger Mouse", description: "The world's greatest secret agent saves the day.", duration: 15, category: "Kids" },
-    { title: "Hey Duggee", description: "Duggee and the squirrel club go on adventures.", duration: 15, category: "Kids" },
-    { title: "Horrible Histories", description: "Bringing history to life with gross facts and comedy.", duration: 30, category: "Kids" },
-    { title: "Blue Peter", description: "The world's longest-running children's magazine show.", duration: 30, category: "Kids" },
-    { title: "Newsround", description: "The latest news for younger viewers.", duration: 15, category: "Kids" },
-    { title: "Tracy Beaker Returns", description: "Tracy navigates life in the care system.", duration: 30, category: "Kids", rating: "PG" },
-    { title: "The Dumping Ground", description: "Life continues at Ashdene Ridge.", duration: 30, category: "Kids", rating: "PG" },
-  ],
-  "mtv": [
-    { title: "MTV Hits", description: "The biggest music videos right now.", duration: 60, category: "Music" },
-    { title: "Ridiculousness", description: "Rob Dyrdek and friends react to viral videos.", duration: 30, category: "Entertainment" },
-    { title: "Jersey Shore: Family Vacation", description: "The gang reunites in Miami.", duration: 60, category: "Entertainment" },
-    { title: "MTV Base Presents: Top 20", description: "The biggest urban music videos.", duration: 60, category: "Music" },
-    { title: "Catfish: The TV Show", description: "Nev and Max help people who suspect online deception.", duration: 60, category: "Entertainment" },
-  ],
-  "sky-cinema-premiere": [
-    { title: "Top Gun: Maverick", description: "After thirty years, Maverick is still pushing the envelope as a top naval aviator.", duration: 131, category: "Movies", rating: "12A" },
-    { title: "The Batman", description: "Batman ventures into Gotham City's underworld when a sadistic killer targets Gotham's elite.", duration: 176, category: "Movies", rating: "15" },
-    { title: "Avatar: The Way of Water", description: "Jake Sully lives with his newfound family formed on the planet of Pandora.", duration: 192, category: "Movies", rating: "12A" },
-  ],
-  "film4": [
-    { title: "The Shawshank Redemption", description: "Two imprisoned men bond over years, finding solace and eventual redemption.", duration: 142, category: "Movies", rating: "15" },
-    { title: "Goodfellas", description: "The story of Henry Hill and his life in the mob.", duration: 146, category: "Movies", rating: "18" },
-    { title: "The Dark Knight", description: "When the menace known as the Joker wreaks havoc, Batman must accept the role of hero.", duration: 152, category: "Movies", rating: "12A" },
+    { h: 6, title: "Sunrise", description: "Sky News breakfast programme.", category: "News" },
+    { h: 10, title: "Sky News Daily", description: "The morning's developing stories.", category: "News" },
+    { h: 12, title: "Lunchtime Live", description: "Midday news and analysis.", category: "News" },
+    { h: 14, title: "Afternoon Live", description: "Rolling afternoon news coverage.", category: "News" },
+    { h: 17, title: "Sky News Drive", description: "The day's stories on the evening commute.", category: "News" },
+    { h: 19, title: "The UK Tonight", description: "In-depth look at the UK's biggest stories.", category: "News" },
+    { h: 20, title: "Sky News at Eight", description: "Evening news bulletin.", category: "News" },
+    { h: 21, title: "The Politics Hub", description: "Westminster news and political debate.", category: "News" },
+    { h: 22, title: "Sky News Tonight", description: "Late evening news analysis.", category: "News" },
+    { h: 0, title: "Overnight Live", description: "Rolling overnight news coverage.", category: "News" },
   ],
 };
 
-// Generic per-category templates so every channel — even ones without a
-// hand-written schedule above — gets a full, populated rolling EPG.
-const categoryFallbackTemplates: Record<string, ProgramTemplate[]> = {
+// Generic day-part schedules so every channel — even ones without a
+// hand-written guide above — reflects a realistic time of day.
+const categorySchedules: Record<string, DaySlot[]> = {
+  "Croatian & Balkan": [
+    { h: 6, title: "Jutarnji program", description: "Informativno-zabavni jutarnji program.", category: "News" },
+    { h: 9, title: "Magazin", description: "Lifestyle teme, gosti i savjeti.", category: "Entertainment" },
+    { h: 11, title: "Domaća serija", description: "Reprize omiljenih domaćih serija.", category: "Drama" },
+    { h: 13, title: "Vijesti", description: "Pregled dnevnih događaja.", category: "News" },
+    { h: 13, m: 30, title: "Popodnevni program", description: "Zabavni sadržaj za cijelu obitelj.", category: "Entertainment" },
+    { h: 16, title: "Turska serija", description: "Popularna dramska serija.", category: "Drama", rating: "12" },
+    { h: 17, m: 30, title: "Reality show", description: "Najgledaniji reality format.", category: "Entertainment" },
+    { h: 19, title: "Dnevnik", description: "Središnja informativna emisija.", category: "News" },
+    { h: 20, title: "Primetime emisija", description: "Glavni večernji program.", category: "Entertainment" },
+    { h: 22, title: "Film večeri", description: "Cjelovečernji igrani film.", category: "Movies", rating: "15" },
+    { h: 0, title: "Noćni program", description: "Reprizni sadržaj do jutra.", category: "Entertainment" },
+  ],
   Sports: [
-    { title: "Live Match Coverage", description: "Live coverage of today's biggest fixture, with build-up and analysis.", duration: 120, category: "Sports" },
-    { title: "Sports Centre", description: "Rolling highlights and breaking sports news.", duration: 30, category: "Sports" },
-    { title: "Matchday Live", description: "Pre-match build-up, team news and expert analysis.", duration: 60, category: "Sports" },
-    { title: "Classic Encounters", description: "Re-live legendary moments from the archives.", duration: 60, category: "Sports" },
-    { title: "The Locker Room", description: "Pundits break down the day's biggest talking points.", duration: 45, category: "Sports" },
+    { h: 6, title: "Sports Breakfast", description: "The morning's headlines and build-up to the day's action.", category: "Sports" },
+    { h: 9, title: "Morning Highlights", description: "The best of last night's sport.", category: "Sports" },
+    { h: 11, title: "Classic Encounters", description: "Re-live legendary matches from the archives.", category: "Sports" },
+    { h: 13, title: "Live Build-Up", description: "Team news and expert analysis ahead of the main event.", category: "Sports" },
+    { h: 14, title: "Live Match Coverage", description: "Live coverage of today's biggest fixture.", category: "Sports" },
+    { h: 16, m: 30, title: "Full-Time Analysis", description: "Reaction and tactical breakdown after the final whistle.", category: "Sports" },
+    { h: 18, title: "Matchday Live", description: "Pre-match build-up to the evening kick-off.", category: "Sports" },
+    { h: 19, m: 30, title: "Live Match Coverage", description: "Live evening fixture in 4K Ultra HD.", category: "Sports" },
+    { h: 22, title: "The Debate", description: "Pundits break down the day's biggest talking points.", category: "Sports" },
+    { h: 23, m: 30, title: "Sports Tonight", description: "Rolling highlights and breaking sports news.", category: "Sports" },
+    { h: 1, title: "Overnight Sports", description: "Highlights through the night.", category: "Sports" },
   ],
   Movies: [
-    { title: "Feature Film Premiere", description: "A premium feature film, presented uncut in 4K.", duration: 110, category: "Movies", rating: "15" },
-    { title: "Movie Matinee", description: "A family-friendly film for the afternoon.", duration: 95, category: "Movies", rating: "PG" },
-    { title: "Director's Spotlight", description: "An acclaimed film from a celebrated director.", duration: 130, category: "Movies", rating: "12A" },
-    { title: "Late Night Feature", description: "A gripping late-night feature presentation.", duration: 115, category: "Movies", rating: "15" },
+    { h: 6, title: "Morning Matinee", description: "An easy-watching film to start the day.", category: "Movies", rating: "PG" },
+    { h: 8, title: "Family Feature", description: "A film the whole family can enjoy.", category: "Movies", rating: "PG" },
+    { h: 10, title: "Comedy Classic", description: "A much-loved comedy favourite.", category: "Movies", rating: "12" },
+    { h: 12, title: "Afternoon Feature", description: "A blockbuster for the afternoon.", category: "Movies", rating: "12" },
+    { h: 14, m: 30, title: "Action Hour", description: "Edge-of-your-seat action and adventure.", category: "Movies", rating: "15" },
+    { h: 16, m: 30, title: "Premiere Matinee", description: "A recent cinema release.", category: "Movies", rating: "12" },
+    { h: 19, title: "Primetime Premiere", description: "Tonight's headline premiere, uncut in 4K.", category: "Movies", rating: "15" },
+    { h: 21, title: "Feature Presentation", description: "An award-winning feature film.", category: "Movies", rating: "15" },
+    { h: 23, m: 15, title: "Late Night Thriller", description: "A gripping late-night thriller.", category: "Movies", rating: "18" },
+    { h: 1, m: 30, title: "Cult Cinema", description: "A cult favourite for the night owls.", category: "Movies", rating: "18" },
   ],
   News: [
-    { title: "Morning Briefing", description: "Breaking news, weather, and business updates.", duration: 60, category: "News" },
-    { title: "World Report", description: "International news and in-depth analysis.", duration: 30, category: "News" },
-    { title: "Evening Bulletin", description: "The day's top stories from around the world.", duration: 30, category: "News" },
-    { title: "Newsroom Live", description: "Rolling live news coverage.", duration: 60, category: "News" },
+    { h: 6, title: "Morning Briefing", description: "Breaking news, weather and business updates.", category: "News" },
+    { h: 9, title: "Business Today", description: "The latest from the world's markets.", category: "News" },
+    { h: 11, title: "World Report", description: "International news and in-depth analysis.", category: "News" },
+    { h: 13, title: "News at One", description: "The day's top stories at lunchtime.", category: "News" },
+    { h: 15, title: "Afternoon Live", description: "Rolling afternoon news coverage.", category: "News" },
+    { h: 17, title: "The Brief", description: "A round-up of the day so far.", category: "News" },
+    { h: 18, title: "Evening News", description: "Comprehensive evening bulletin.", category: "News" },
+    { h: 20, title: "Tonight", description: "In-depth analysis of the day's biggest story.", category: "News" },
+    { h: 22, title: "News at Ten", description: "The day's headlines and reaction.", category: "News" },
+    { h: 0, title: "Overnight Live", description: "Rolling international news through the night.", category: "News" },
   ],
   Entertainment: [
-    { title: "Primetime Special", description: "A celebrity-packed entertainment special.", duration: 60, category: "Entertainment" },
-    { title: "The Talk Show", description: "Interviews and entertainment news with a live audience.", duration: 45, category: "Entertainment" },
-    { title: "Game Night", description: "Contestants compete for cash prizes in this popular quiz show.", duration: 30, category: "Entertainment" },
-    { title: "Reality Hour", description: "Drama unfolds in this hit reality series.", duration: 60, category: "Entertainment" },
+    { h: 6, title: "Morning Magazine", description: "A bright start with news, chat and lifestyle.", category: "Entertainment" },
+    { h: 9, title: "Lifestyle & Home", description: "Home, garden and cooking inspiration.", category: "Entertainment" },
+    { h: 11, title: "Daytime Talk", description: "Topical chat with a live studio audience.", category: "Entertainment" },
+    { h: 13, title: "Afternoon Drama", description: "A daytime drama serial.", category: "Drama", rating: "PG" },
+    { h: 15, title: "Game Show", description: "Contestants compete for cash and prizes.", category: "Entertainment" },
+    { h: 17, title: "Quiz Hour", description: "A fast-paced general knowledge quiz.", category: "Entertainment" },
+    { h: 18, m: 30, title: "Early Evening News", description: "The day's news at a glance.", category: "News" },
+    { h: 19, title: "Primetime Series", description: "Tonight's must-watch returning series.", category: "Entertainment" },
+    { h: 21, title: "Featured Drama", description: "A gripping primetime drama.", category: "Drama", rating: "15" },
+    { h: 23, title: "Late Night Talk", description: "Comedy and celebrity guests after dark.", category: "Entertainment" },
+    { h: 1, title: "Overnight Replays", description: "Catch-up on the day's highlights.", category: "Entertainment" },
   ],
   Kids: [
-    { title: "Morning Cartoons", description: "A fun-filled block of animated adventures.", duration: 30, category: "Kids" },
-    { title: "Adventure Time", description: "Young heroes embark on an exciting quest.", duration: 25, category: "Kids" },
-    { title: "Storytime Friends", description: "Friendly characters share lessons and laughs.", duration: 20, category: "Kids" },
-    { title: "Family Fun Hour", description: "Games and activities for the whole family.", duration: 30, category: "Kids" },
+    { h: 6, title: "Morning Cartoons", description: "A fun-filled block of animated adventures.", category: "Kids" },
+    { h: 9, title: "Preschool Hour", description: "Gentle learning and play for little ones.", category: "Kids" },
+    { h: 11, title: "Adventure Time", description: "Young heroes embark on an exciting quest.", category: "Kids" },
+    { h: 13, title: "Cartoon Block", description: "Back-to-back animated favourites.", category: "Kids" },
+    { h: 15, title: "After-School Toons", description: "The perfect line-up after a day at school.", category: "Kids" },
+    { h: 17, title: "Family Movie", description: "An animated feature for all ages.", category: "Kids", rating: "PG" },
+    { h: 19, title: "Bedtime Stories", description: "Calm tales to wind down the day.", category: "Kids" },
+    { h: 20, title: "Teen Drama", description: "Drama and friendship for older kids.", category: "Kids", rating: "PG" },
+    { h: 22, title: "Overnight Animation", description: "Quiet cartoons through the night.", category: "Kids" },
   ],
   Documentary: [
-    { title: "Wonders of the World", description: "Exploring remarkable places and natural phenomena.", duration: 60, category: "Documentary" },
-    { title: "Inside Story", description: "A deep dive into a fascinating real-world subject.", duration: 50, category: "Documentary" },
-    { title: "Behind the Lens", description: "Award-winning documentary filmmaking.", duration: 60, category: "Documentary" },
-    { title: "Science Unlocked", description: "Breaking down complex science for everyone.", duration: 45, category: "Documentary" },
+    { h: 6, title: "Sunrise Earth", description: "Stunning natural landscapes to start the day.", category: "Documentary" },
+    { h: 8, title: "Wild Worlds", description: "Wildlife from the planet's remotest corners.", category: "Documentary" },
+    { h: 10, title: "History Hour", description: "Bringing the past vividly to life.", category: "Documentary" },
+    { h: 12, title: "Science Today", description: "Breaking down the science shaping our world.", category: "Documentary" },
+    { h: 14, title: "Nature's Wonders", description: "Remarkable natural phenomena explored.", category: "Documentary" },
+    { h: 16, title: "Engineering Marvels", description: "The stories behind humanity's greatest builds.", category: "Documentary" },
+    { h: 18, title: "Inside Story", description: "A deep dive into a fascinating real-world subject.", category: "Documentary" },
+    { h: 20, title: "Featured Documentary", description: "Tonight's award-winning feature documentary.", category: "Documentary" },
+    { h: 22, title: "True Crime", description: "A gripping real-life investigation.", category: "Documentary", rating: "15" },
+    { h: 0, title: "Late Night Docs", description: "Thought-provoking films through the night.", category: "Documentary" },
   ],
   Music: [
-    { title: "Top Chart Hits", description: "Counting down the biggest music videos right now.", duration: 60, category: "Music" },
-    { title: "Live Sessions", description: "Acoustic performances from rising artists.", duration: 45, category: "Music" },
-    { title: "Throwback Hour", description: "Classic hits from the last three decades.", duration: 60, category: "Music" },
+    { h: 6, title: "Wake Up Hits", description: "The biggest tracks to start your morning.", category: "Music" },
+    { h: 9, title: "Throwback Mornings", description: "Classic hits from the last three decades.", category: "Music" },
+    { h: 12, title: "Chart Countdown", description: "Counting down this week's biggest songs.", category: "Music" },
+    { h: 15, title: "New Music Now", description: "The freshest releases and rising artists.", category: "Music" },
+    { h: 18, title: "Drivetime Anthems", description: "Feel-good anthems for the journey home.", category: "Music" },
+    { h: 20, title: "Live Sessions", description: "Exclusive live performances and acoustic sets.", category: "Music" },
+    { h: 22, title: "Club Classics", description: "Dancefloor fillers to see in the night.", category: "Music" },
+    { h: 0, title: "After Hours", description: "Laid-back tracks into the early hours.", category: "Music" },
   ],
 };
 
-function templatesForChannel(channelId: string, category: string): ProgramTemplate[] {
+function scheduleForChannel(channelId: string, category: string): DaySlot[] {
   return (
-    curatedTemplates[channelId] ||
-    categoryFallbackTemplates[category] ||
-    categoryFallbackTemplates.Entertainment
+    curatedSchedules[channelId] ||
+    categorySchedules[category] ||
+    categorySchedules.Entertainment
   );
 }
 
-// Builds a fresh rolling EPG for every channel, relative to `now`, so the
-// guide always has full coverage and is never stale.
+// Builds a time-of-day accurate EPG for every channel covering yesterday,
+// today and tomorrow, so the rolling guide window always has full coverage
+// and "what's on now" matches the real wall-clock time.
 export function generateLiveSchedule(now: Date = new Date()): EPGProgram[] {
+  const days = [-1, 0, 1].map((offset) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + offset);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
   const programs: EPGProgram[] = [];
   for (const channel of channels) {
-    const templates = templatesForChannel(channel.id, channel.category);
-    programs.push(...tileSchedule(channel.id, templates, now));
+    const slots = scheduleForChannel(channel.id, channel.category);
+    for (const day of days) {
+      programs.push(...buildDay(channel.id, slots, day));
+    }
   }
   return programs;
 }

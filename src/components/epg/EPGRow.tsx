@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { Channel, EPGProgram } from "@/types";
 import EPGProgramCell from "./EPGProgram";
+import ChannelLogo from "@/components/ui/ChannelLogo";
 
 interface EPGRowProps {
   channel: Channel;
@@ -19,16 +19,7 @@ export default function EPGRow({ channel, programs, startTime, endTime, pixelsPe
     <div className="flex h-14 border-b border-brand-border/50">
       {/* Channel name - sticky */}
       <div className="w-40 shrink-0 sticky left-0 z-20 bg-brand-bg border-r border-brand-border flex items-center gap-2 px-3">
-        <div className="w-8 h-8 rounded-lg overflow-hidden bg-brand-card border border-brand-border shrink-0 flex items-center justify-center">
-          <Image
-            src={channel.logoUrl}
-            alt={channel.name}
-            width={32}
-            height={32}
-            className="object-contain w-full h-full"
-            unoptimized
-          />
-        </div>
+        <ChannelLogo name={channel.name} id={channel.id} size="sm" />
         <span className="text-white text-xs font-medium line-clamp-2 leading-tight">{channel.name}</span>
       </div>
 
