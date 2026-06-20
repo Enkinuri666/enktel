@@ -1,8 +1,9 @@
 "use client";
 import useSWR from "swr";
 import Link from "next/link";
-import { Film, Tv, Radio, Ticket, Sparkles } from "lucide-react";
+import { Film, Radio, Ticket, Sparkles } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import MediaPoster from "@/components/ui/MediaPoster";
 import { Movie, TVShow, UpcomingEvent } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -77,13 +78,7 @@ export default function WhatsNewPage() {
                     key={`${item.type}-${item.id}`}
                     className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 transition-all duration-300"
                   >
-                    <div className="aspect-[2/3] bg-gradient-to-br from-brand-primary/20 to-brand-secondary/10 flex items-center justify-center">
-                      {isMovie ? (
-                        <Film className="w-8 h-8 text-brand-primary/40" />
-                      ) : (
-                        <Tv className="w-8 h-8 text-brand-secondary/40" />
-                      )}
-                    </div>
+                    <MediaPoster posterPath={item.posterPath} title={item.title} type={item.type} />
                     <div className="p-3">
                       <h3 className="text-white text-sm font-semibold line-clamp-1 mb-1">{item.title}</h3>
                       <p className="text-brand-muted/70 text-xs">

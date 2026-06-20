@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
+import Image from "next/image";
 import { Clock, Film, Calendar } from "lucide-react";
 import { Movie } from "@/types";
 import Spinner from "@/components/ui/Spinner";
@@ -63,9 +64,19 @@ function MovieCard({ movie }: { movie: Movie }) {
   return (
     <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden hover:border-brand-primary/40 hover:shadow-xl hover:shadow-brand-primary/10 transition-all duration-300">
       {/* Poster area */}
-      <div className="aspect-video bg-gradient-to-br from-brand-primary/20 via-brand-secondary/10 to-brand-card relative flex items-center justify-center">
-        <Film className="w-16 h-16 text-brand-primary/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-card via-transparent to-transparent" />
+      <div className="aspect-video bg-gradient-to-br from-brand-primary/20 via-brand-secondary/10 to-brand-card relative flex items-center justify-center overflow-hidden">
+        {movie.backdropPath || movie.posterPath ? (
+          <Image
+            src={movie.backdropPath || movie.posterPath!}
+            alt={movie.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover"
+          />
+        ) : (
+          <Film className="w-16 h-16 text-brand-primary/30" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-card via-brand-card/40 to-transparent" />
         <div className="absolute bottom-4 left-4 right-4">
           <h3 className="text-white font-bold text-xl mb-1">{movie.title}</h3>
           <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, ChevronRight, Film } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 import { Movie } from "@/types";
@@ -44,8 +45,14 @@ function CountdownCard({ movie }: { movie: Movie }) {
   return (
     <div className="bg-brand-card border border-brand-border rounded-xl p-5 hover:border-brand-primary/40 transition-all duration-300">
       <div className="flex items-start gap-4">
-        <div className="w-16 h-16 bg-gradient-to-br from-brand-primary/30 to-brand-secondary/20 rounded-xl flex items-center justify-center shrink-0">
-          <Film className="w-8 h-8 text-brand-primary/60" />
+        <div className="w-16 h-16 rounded-xl shrink-0 relative overflow-hidden bg-gradient-to-br from-brand-primary/30 to-brand-secondary/20">
+          {movie.posterPath ? (
+            <Image src={movie.posterPath} alt={movie.title} fill sizes="64px" className="object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Film className="w-8 h-8 text-brand-primary/60" />
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-white font-semibold text-sm mb-1 line-clamp-1">{movie.title}</h3>

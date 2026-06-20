@@ -2,8 +2,9 @@
 import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { Star, ChevronRight, Film, Tv } from "lucide-react";
+import { Star, ChevronRight } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import MediaPoster from "@/components/ui/MediaPoster";
 import { Movie, TVShow } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -97,13 +98,8 @@ export default function LatestReleases() {
                   key={`${item.type}-${item.id}`}
                   className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
                 >
-                  {/* Poster placeholder */}
-                  <div className="aspect-[2/3] bg-gradient-to-br from-brand-primary/20 to-brand-secondary/10 relative flex items-center justify-center">
-                    {isMovie ? (
-                      <Film className="w-10 h-10 text-brand-primary/40" />
-                    ) : (
-                      <Tv className="w-10 h-10 text-brand-secondary/40" />
-                    )}
+                  <div className="relative">
+                    <MediaPoster posterPath={item.posterPath} title={title} type={item.type} />
                     <div className="absolute top-2 left-2">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isMovie ? "bg-brand-primary/80 text-white" : "bg-brand-secondary/80 text-brand-bg"}`}>
                         {isMovie ? "MOVIE" : "TV"}
