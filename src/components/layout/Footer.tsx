@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Zap, Twitter, Facebook, Instagram, Youtube, Mail } from "lucide-react";
+import { Zap, Twitter, Facebook, Instagram, Youtube } from "lucide-react";
+import NewsletterForm from "./NewsletterForm";
 
 const quickLinks = [
   { href: "/", label: "Home" },
@@ -14,18 +15,18 @@ const quickLinks = [
 const supportLinks = [
   { href: "/dashboard", label: "My Dashboard" },
   { href: "/checkout", label: "Subscribe Now" },
-  { href: "#", label: "Setup Guides" },
-  { href: "#", label: "Contact Support" },
-  { href: "#", label: "FAQs" },
-  { href: "#", label: "Status Page" },
+  { href: "/setup-guides", label: "Setup Guides" },
+  { href: "/contact", label: "Contact Support" },
+  { href: "/faqs", label: "FAQs" },
+  { href: "/status", label: "Status Page" },
 ];
 
 const legalLinks = [
-  { href: "#", label: "Privacy Policy" },
-  { href: "#", label: "Terms of Service" },
-  { href: "#", label: "Refund Policy" },
-  { href: "#", label: "Cookie Policy" },
-  { href: "#", label: "DMCA" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/refund-policy", label: "Refund Policy" },
+  { href: "/cookie-policy", label: "Cookie Policy" },
+  { href: "/dmca", label: "DMCA" },
 ];
 
 export default function Footer() {
@@ -124,19 +125,7 @@ export default function Footer() {
             {/* Newsletter */}
             <div>
               <h3 className="text-white font-semibold text-sm mb-3">Newsletter</h3>
-              <div className="flex gap-2">
-                <div className="flex-1 flex items-center bg-white/5 border border-brand-border rounded-lg px-3 gap-2">
-                  <Mail className="w-4 h-4 text-brand-muted shrink-0" />
-                  <input
-                    type="email"
-                    placeholder="Your email"
-                    className="bg-transparent text-white text-xs py-2 w-full outline-none placeholder:text-brand-muted/50"
-                  />
-                </div>
-              </div>
-              <button className="mt-2 w-full bg-brand-primary hover:bg-purple-600 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
-                Subscribe
-              </button>
+              <NewsletterForm />
             </div>
           </div>
         </div>
