@@ -1,37 +1,42 @@
 "use client";
 import { useState, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Shield, Lock, Loader2, Check, Trophy } from "lucide-react";
+import { Shield, Lock, Loader2, Check, Trophy, MessageCircle, BadgeCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import { PlanId, PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
-const PLANS = {
+const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
+
+const PLANS: Record<PlanId, { name: string; price: number; duration: string; isPromo: boolean; regularPrice: number | null }> = {
   monthly: {
     name: "Monthly",
-    price: 19.99,
-    duration: "1 month",
+    price: PLAN_PRICE_EUR.monthly,
+    duration: PLAN_DURATION_LABEL.monthly,
     isPromo: false,
-    regularPrice: null as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.monthly ?? null,
   },
   quarter: {
     name: "3 Months",
-    price: 59,
-    duration: "3 months",
+    price: PLAN_PRICE_EUR.quarter,
+    duration: PLAN_DURATION_LABEL.quarter,
     isPromo: true,
-    regularPrice: null as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
   },
   annual: {
     name: "12 Months",
-    price: 99,
-    duration: "12 months",
+    price: PLAN_PRICE_EUR.annual,
+    duration: PLAN_DURATION_LABEL.annual,
     isPromo: true,
-    regularPrice: 189 as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
   },
 };
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
-  const planId = (searchParams.get("plan") || "annual") as keyof typeof PLANS;
+  const planId = (searchParams.get("plan") || "annual") as PlanId;
   const plan = PLANS[planId] || PLANS.annual;
 
   const [form, setForm] = useState({ name: "", email: "" });
@@ -128,6 +133,32 @@ function CheckoutContent() {
               </div>
             </div>
 
+            {/* Trust signals */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-brand-bg border border-brand-border rounded-lg p-4 flex items-center gap-3">
+                <BadgeCheck className="w-5 h-5 text-green-400 shrink-0" />
+                <p className="text-brand-muted text-xs">
+                  <Link href="/refund-policy" className="text-white font-semibold hover:underline">
+                    48-hour refund window
+                  </Link>{" "}
+                  if the service isn&apos;t for you.
+                </p>
+              </div>
+              {whatsappNumber && (
+                <a
+                  href={`https://wa.me/${whatsappNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-brand-bg border border-brand-border rounded-lg p-4 flex items-center gap-3 hover:border-green-500/40 transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5 text-green-400 shrink-0" />
+                  <p className="text-brand-muted text-xs">
+                    Questions before you buy? <span className="text-white font-semibold">Chat with us on WhatsApp</span>
+                  </p>
+                </a>
+              )}
+            </div>
+
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
                 {error}
@@ -198,7 +229,7 @@ function CheckoutContent() {
               {[
                 "Instant activation after payment",
                 "Credentials sent by email",
-                "10,000+ channels included",
+                `${CHANNEL_COUNT_LABEL} channels included`,
                 "All Croatian & Balkan channels",
                 "World Cup 2026 matches live",
                 "24/7 customer support",

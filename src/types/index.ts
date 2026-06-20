@@ -40,6 +40,7 @@ export interface Movie {
   backdropPath: string | null;
   releaseDate: string;
   rating: number;
+  popularity: number;
   genres: string[];
   language: string;
   type: "movie";
@@ -53,6 +54,7 @@ export interface TVShow {
   backdropPath: string | null;
   firstAirDate: string;
   rating: number;
+  popularity: number;
   genres: string[];
   language: string;
   type: "tv";

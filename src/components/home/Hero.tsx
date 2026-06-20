@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
-const trustBadges = ["No Contract", "Cancel Anytime", "Instant Activation", "4K Ultra HD"];
+const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
 const liveChannels = [
   { name: "HRT 1", show: "Dnevnik 2", progress: 68, genre: "News", color: "#6C63FF" },
@@ -61,7 +62,7 @@ export default function Hero() {
               className="leading-relaxed mb-8 max-w-xl" style={{ color: "rgba(255,255,255,0.55)", fontSize: "1.1rem" }}>
               Stream <strong className="text-white">HRT</strong>, <strong className="text-white">Nova TV</strong>,{" "}
               <strong className="text-white">RTL Hrvatska</strong>, <strong className="text-white">Doma TV</strong>{" "}
-              and <strong className="text-white">10,000+</strong> channels from anywhere in the world —
+              and <strong className="text-white">{CHANNEL_COUNT_LABEL}</strong> channels from anywhere in the world —
               in crystal-clear <strong className="text-white">4K Ultra HD</strong>.
             </motion.p>
 
@@ -149,7 +150,7 @@ export default function Hero() {
               <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
                 className="rounded-2xl border p-4 text-center"
                 style={{ background: "rgba(108,99,255,0.14)", backdropFilter: "blur(20px)", borderColor: "rgba(108,99,255,0.3)" }}>
-                <div className="text-3xl font-black text-white">10K+</div>
+                <div className="text-3xl font-black text-white">{CHANNEL_COUNT_LABEL}</div>
                 <div className="text-xs font-semibold mt-0.5" style={{ color: "#6C63FF" }}>Live Channels</div>
               </motion.div>
               <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}

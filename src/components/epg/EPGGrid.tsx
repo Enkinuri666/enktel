@@ -8,6 +8,7 @@ import { EPGProgram, Channel } from "@/types";
 import EPGRow from "./EPGRow";
 import TimeSlots from "./TimeSlots";
 import Spinner from "@/components/ui/Spinner";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { clsx } from "clsx";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -38,6 +39,8 @@ export default function EPGGrid() {
     ? allChannels
     : allChannels.filter((c) => c.category === category);
 
+  const focusChannel = focusChannelId ? allChannels.find((c) => c.id === focusChannelId) : undefined;
+
   const programs = data?.programs || [];
 
   // Auto-scroll to current time on load
@@ -65,6 +68,10 @@ export default function EPGGrid() {
 
   return (
     <div className="flex flex-col h-full">
+      {focusChannel && (
+        <Breadcrumbs items={[{ label: "EPG Guide", href: "/epg" }, { label: focusChannel.name }]} />
+      )}
+
       {/* Category filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-thin">
         {channelCategories.map((cat) => (

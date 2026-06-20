@@ -1,9 +1,10 @@
 "use client";
 import { motion } from "framer-motion";
 import { Tv, Zap, Clock, Monitor, CalendarDays, Film, Globe, Headphones } from "lucide-react";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const features = [
-  { icon: Tv, title: "10,000+ Live Channels", description: "Sports, movies, news, kids, music and entertainment — all in one place, streaming live 24/7.", gradient: "from-brand-primary to-blue-600" },
+  { icon: Tv, title: `${CHANNEL_COUNT_LABEL} Live Channels`, description: "Sports, movies, news, kids, music and entertainment — all in one place, streaming live 24/7.", gradient: "from-brand-primary to-blue-600" },
   { icon: Zap, title: "4K Ultra HD Quality", description: "Crystal-clear 4K UHD streams. Watch your content the way it was meant to be seen.", gradient: "from-brand-secondary to-teal-500" },
   { icon: Globe, title: "50+ Countries", description: "Croatian, Balkan, UK, European and worldwide channels. Your home TV, wherever you are.", gradient: "from-[#CE2C1A] to-brand-accent" },
   { icon: Clock, title: "30-Day Catch-Up TV", description: "Missed a show? Rewind and watch up to 30 days of past programming, any time.", gradient: "from-brand-accent to-orange-500" },

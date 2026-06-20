@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Zap, Twitter, Facebook, Instagram, Youtube } from "lucide-react";
 import NewsletterForm from "./NewsletterForm";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const quickLinks = [
   { href: "/", label: "Home" },
@@ -48,7 +49,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-brand-muted text-sm leading-relaxed mb-4 max-w-xs">
-              Stream Beyond Limits. Premium IPTV service with 10,000+ channels, 4K quality, and 99.9% uptime. Your ultimate streaming companion.
+              Stream Beyond Limits. Premium IPTV service with {CHANNEL_COUNT_LABEL} channels, 4K quality, and 99.9% uptime. Your ultimate streaming companion.
             </p>
             <p className="text-brand-muted/60 text-xs mb-6">
               &quot;Stream Beyond Limits&quot;

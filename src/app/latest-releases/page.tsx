@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
 import useSWR from "swr";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Flame, Sparkles } from "lucide-react";
 import { Movie, TVShow } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import MediaPoster from "@/components/ui/MediaPoster";
+import Badge from "@/components/ui/Badge";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -29,8 +30,13 @@ interface ReleasesData {
 }
 
 type MediaFilter = "all" | "movies" | "shows";
+type SortMode = "popular" | "rating" | "newest";
 
 const PAGE_SIZE = 20;
+const SPOTLIGHT_SIZE = 6;
+// Threshold for surfacing the "Crowd Favorite" badge / blockbuster quick filter —
+// chosen so it catches well-known mainstream hits without being so strict it's ever empty.
+const BLOCKBUSTER_RATING_THRESHOLD = 7.5;
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
@@ -45,10 +51,24 @@ const LANGUAGE_NAMES: Record<string, string> = {
   ko: "Korean",
 };
 
+function dateOf(item: Movie | TVShow): string {
+  return item.type === "movie" ? item.releaseDate : item.firstAirDate;
+}
+
+function sortItems(items: (Movie | TVShow)[], mode: SortMode): (Movie | TVShow)[] {
+  const sorted = [...items];
+  if (mode === "popular") sorted.sort((a, b) => b.popularity - a.popularity);
+  else if (mode === "rating") sorted.sort((a, b) => b.rating - a.rating);
+  else sorted.sort((a, b) => new Date(dateOf(b)).getTime() - new Date(dateOf(a)).getTime());
+  return sorted;
+}
+
 export default function LatestReleasesPage() {
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [language, setLanguage] = useState("All");
   const [genre, setGenre] = useState("All");
+  const [sort, setSort] = useState<SortMode>("popular");
+  const [blockbustersOnly, setBlockbustersOnly] = useState(false);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useSWR<ReleasesData>("/api/latest-releases", fetcher);
@@ -66,12 +86,22 @@ export default function LatestReleasesPage() {
   const languages = ["All", ...Array.from(new Set(baseItems.map((i) => i.language)))];
   const genres = ["All", ...Array.from(new Set(baseItems.flatMap((i) => i.genres)))].sort();
 
+  // Spotlight always reflects the most popular picks for the current media-type filter,
+  // independent of language/genre/sort/blockbuster filters — it's the "don't know where
+  // to start" shortcut, so it shouldn't disappear just because someone narrowed the grid.
+  const spotlightItems = sortItems(baseItems, "popular").slice(0, SPOTLIGHT_SIZE);
+
   const allItems = baseItems.filter(
-    (i) => (language === "All" || i.language === language) && (genre === "All" || i.genres.includes(genre))
+    (i) =>
+      (language === "All" || i.language === language) &&
+      (genre === "All" || i.genres.includes(genre)) &&
+      (!blockbustersOnly || i.rating >= BLOCKBUSTER_RATING_THRESHOLD)
   );
 
-  const totalPages = Math.ceil(allItems.length / PAGE_SIZE);
-  const paginatedItems = allItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sortedItems = sortItems(allItems, sort);
+
+  const totalPages = Math.ceil(sortedItems.length / PAGE_SIZE);
+  const paginatedItems = sortedItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -86,6 +116,47 @@ export default function LatestReleasesPage() {
           The newest movies and TV shows available on Enktel IPTV.
         </p>
       </div>
+
+      {/* Spotlight: not sure what to watch? */}
+      {!isLoading && spotlightItems.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="w-5 h-5 text-brand-accent" />
+            <h2 className="text-white font-bold text-lg">Not sure what to watch? Start here</h2>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
+            {spotlightItems.map((item, i) => {
+              const isMovie = item.type === "movie";
+              const year = dateOf(item) ? new Date(dateOf(item)).getFullYear() : "";
+              return (
+                <div
+                  key={`spotlight-${item.type}-${item.id}`}
+                  className="relative shrink-0 w-44 bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 transition-colors"
+                >
+                  <div className="relative">
+                    <MediaPoster posterPath={item.posterPath} title={item.title} type={item.type} />
+                    <div className="absolute top-2 left-2">
+                      <Badge variant="gold" size="sm">#{i + 1} Popular</Badge>
+                    </div>
+                    <div className="absolute top-2 right-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isMovie ? "bg-brand-primary/80 text-white" : "bg-brand-secondary/80 text-brand-bg"}`}>
+                        {isMovie ? "MOVIE" : "TV"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="text-white text-sm font-semibold line-clamp-1 mb-1">{item.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-brand-muted text-xs">{year}</span>
+                      {item.rating > 0 && <RatingStars rating={item.rating} />}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -102,6 +173,28 @@ export default function LatestReleasesPage() {
             {f === "all" ? "All" : f === "movies" ? "Movies" : "TV Shows"}
           </button>
         ))}
+
+        <button
+          onClick={() => { setBlockbustersOnly((v) => !v); setPage(1); }}
+          className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+            blockbustersOnly
+              ? "bg-brand-accent text-white shadow-lg shadow-brand-accent/25"
+              : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent/40"
+          }`}
+          title="Show only widely-loved, highly-rated titles"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Blockbusters Only
+        </button>
+
+        <select
+          value={sort}
+          onChange={(e) => { setSort(e.target.value as SortMode); setPage(1); }}
+          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+        >
+          <option value="popular">Sort: Most Popular</option>
+          <option value="rating">Sort: Highest Rated</option>
+          <option value="newest">Sort: Newest</option>
+        </select>
         <select
           value={language}
           onChange={(e) => { setLanguage(e.target.value); setPage(1); }}
@@ -124,7 +217,7 @@ export default function LatestReleasesPage() {
             </option>
           ))}
         </select>
-        <span className="text-brand-muted text-sm ml-2">{allItems.length} items</span>
+        <span className="text-brand-muted text-sm ml-2">{sortedItems.length} items</span>
       </div>
 
       {isLoading ? (
@@ -135,8 +228,8 @@ export default function LatestReleasesPage() {
             {paginatedItems.map((item) => {
               const isMovie = item.type === "movie";
               const title = item.title;
-              const date = isMovie ? (item as Movie).releaseDate : (item as TVShow).firstAirDate;
-              const year = date ? new Date(date).getFullYear() : "";
+              const year = dateOf(item) ? new Date(dateOf(item)).getFullYear() : "";
+              const isCrowdFavorite = item.rating >= BLOCKBUSTER_RATING_THRESHOLD;
               return (
                 <div
                   key={`${item.type}-${item.id}`}
@@ -149,6 +242,13 @@ export default function LatestReleasesPage() {
                         {isMovie ? "MOVIE" : "TV"}
                       </span>
                     </div>
+                    {isCrowdFavorite && (
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="warning" size="sm">
+                          <Flame className="w-3 h-3" /> Crowd Favorite
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
                     <h3 className="text-white text-sm font-semibold line-clamp-1 mb-1">{title}</h3>
@@ -169,6 +269,12 @@ export default function LatestReleasesPage() {
               );
             })}
           </div>
+
+          {paginatedItems.length === 0 && (
+            <p className="text-brand-muted text-center py-16">
+              No titles match these filters. Try clearing a filter or turning off &quot;Blockbusters Only&quot;.
+            </p>
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (

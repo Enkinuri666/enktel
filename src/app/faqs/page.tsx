@@ -29,7 +29,7 @@ const categories = [
       },
       {
         q: "Do monthly plans auto-renew?",
-        a: "Yes, monthly plans renew automatically until cancelled. The 3-month and 12-month plans are one-time payments with no auto-renewal.",
+        a: "No — every plan (monthly, 3-month, and 12-month) is a one-time payment with no automatic renewal or recurring billing. When your subscription is about to expire, simply purchase again to keep your service running without interruption.",
       },
       {
         q: "Can I get a refund?",

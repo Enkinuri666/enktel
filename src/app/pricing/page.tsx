@@ -3,21 +3,24 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
+import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: 19.99,
-    totalPrice: 19.99,
-    duration: "1 month",
+    price: PLAN_PRICE_EUR.monthly,
+    totalPrice: PLAN_PRICE_EUR.monthly,
+    duration: PLAN_DURATION_LABEL.monthly,
     promo: false,
     badge: null,
     highlighted: false,
     description: "Flexible month-to-month, cancel anytime.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -29,17 +32,17 @@ const plans = [
   {
     id: "quarter",
     name: "3 Months",
-    price: 59,
-    totalPrice: 59,
-    duration: "3 months",
+    price: PLAN_PRICE_EUR.quarter,
+    totalPrice: PLAN_PRICE_EUR.quarter,
+    duration: PLAN_DURATION_LABEL.quarter,
     promo: true,
     badge: "WORLD CUP 2026",
-    regularPrice: null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
     saving: null,
     highlighted: false,
     description: "Stream every World Cup 2026 match live — start to finish.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -52,17 +55,17 @@ const plans = [
   {
     id: "annual",
     name: "12 Months",
-    price: 99,
-    totalPrice: 99,
-    duration: "12 months",
+    price: PLAN_PRICE_EUR.annual,
+    totalPrice: PLAN_PRICE_EUR.annual,
+    duration: PLAN_DURATION_LABEL.annual,
     promo: true,
     badge: "BEST VALUE",
-    regularPrice: 189,
-    saving: 90,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
+    saving: (PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual,
     highlighted: true,
     description: "Full year access. Watch it all — World Cup and beyond.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -130,7 +133,7 @@ export default function PricingPage() {
           </div>
           <div className="h-px sm:h-10 w-full sm:w-px bg-green-700/50 shrink-0" />
           <p className="text-green-200 text-sm text-center sm:text-left">
-            Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus 10,000+ channels all year round.
+            Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus {CHANNEL_COUNT_LABEL} channels all year round.
           </p>
           <div className="shrink-0">
             <span className="bg-yellow-400 text-black text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
@@ -165,9 +168,9 @@ export default function PricingPage() {
             {plan.highlighted ? (
               <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg shadow-yellow-400/30">
+                  <Badge variant="gold" className="px-5 py-1.5 shadow-lg shadow-yellow-400/30">
                     <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
-                  </span>
+                  </Badge>
                 </div>
                 <div className="bg-brand-card rounded-[14px] p-7">
                   <PlanCard plan={plan} />
@@ -182,6 +185,24 @@ export default function PricingPage() {
         ))}
       </div>
 
+      {/* Quick comparison strip */}
+      <div className="grid grid-cols-3 divide-x divide-brand-border bg-brand-card border border-brand-border rounded-2xl mb-16 overflow-hidden text-center">
+        {plans.map((plan) => (
+          <div key={plan.id} className="px-3 py-5 sm:px-6">
+            <p className="text-brand-muted text-xs uppercase tracking-wide mb-1">{plan.name}</p>
+            <p className="text-white font-black text-lg sm:text-xl mb-1">€{plan.price}</p>
+            <p className="text-brand-muted text-xs mb-2">{plan.duration}</p>
+            {plan.id === "monthly" ? (
+              <Badge variant="default" size="sm">No World Cup</Badge>
+            ) : (
+              <Badge variant="warning" size="sm">
+                <Trophy className="w-3 h-3" /> World Cup
+              </Badge>
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* What's included */}
       <div className="bg-brand-card border border-brand-border rounded-2xl p-8 mb-16">
         <h2 className="text-2xl font-black text-white mb-2 text-center">Everything Included in Every Plan</h2>
@@ -190,7 +211,7 @@ export default function PricingPage() {
           {[
             { emoji: "🇭🇷", text: "Croatian & Balkan Channels" },
             { emoji: "⚽", text: "All FIFA World Cup 2026 Matches" },
-            { emoji: "📺", text: "10,000+ Live Channels" },
+            { emoji: "📺", text: `${CHANNEL_COUNT_LABEL} Live Channels` },
             { emoji: "🎬", text: "4K Ultra HD Streaming" },
             { emoji: "⏪", text: "30-Day Catch-Up TV" },
             { emoji: "🎥", text: "Full VOD Movie & Series Library" },
@@ -238,14 +259,14 @@ function PlanCard({ plan }: { plan: typeof plans[0] }) {
       {/* Badge row */}
       <div className="flex items-center gap-2 mb-3 min-h-[28px]">
         {plan.badge === "WORLD CUP 2026" && (
-          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+          <Badge variant="warning" size="md">
             <Trophy className="w-3 h-3" /> WORLD CUP 2026
-          </span>
+          </Badge>
         )}
         {plan.badge === "BEST VALUE" && (
-          <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+          <Badge variant="warning" size="md">
             <Flame className="w-3 h-3" /> MOST POPULAR
-          </span>
+          </Badge>
         )}
       </div>
 

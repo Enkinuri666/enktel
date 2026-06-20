@@ -18,6 +18,7 @@ interface LeagueConfig {
 // Enktel channel that actually exists in src/lib/channels.ts so the
 // "find it on" claim is consistent with the rest of the site.
 const LEAGUES: LeagueConfig[] = [
+  { id: "4429", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", isPPV: false, competition: "FIFA World Cup" },
   { id: "4629", sport: "Football", emoji: "⚽", channel: "Arena Sport 1", isPPV: false, competition: "HNL" },
   { id: "4328", sport: "Football", emoji: "🏆", channel: "Sky Sports Football", isPPV: false, competition: "Premier League" },
   { id: "4480", sport: "Football", emoji: "🏆", channel: "BT Sport 1", isPPV: false, competition: "Champions League" },

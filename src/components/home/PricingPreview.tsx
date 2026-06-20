@@ -2,38 +2,41 @@
 import Link from "next/link";
 import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
+import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: 19.99,
+    price: PLAN_PRICE_EUR.monthly,
     duration: "per month",
     badge: null,
     highlighted: false,
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "EPG Guide"],
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "EPG Guide"],
   },
   {
     id: "quarter",
     name: "3 Months",
-    price: 59,
+    price: PLAN_PRICE_EUR.quarter,
     duration: "one-time · 3 months",
     badge: "WORLD CUP 2026",
     highlighted: false,
-    promoNote: "≈ €19.67/month",
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
+    promoNote: `≈ €${(PLAN_PRICE_EUR.quarter / 3).toFixed(2)}/month`,
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
   },
   {
     id: "annual",
     name: "12 Months",
-    price: 99,
-    regularPrice: 189,
+    price: PLAN_PRICE_EUR.annual,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual,
     duration: "one-time · 12 months",
     badge: "BEST VALUE",
     highlighted: true,
-    promoNote: "≈ €8.25/month — Save €90",
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
+    promoNote: `≈ €${(PLAN_PRICE_EUR.annual / 12).toFixed(2)}/month — Save €${(PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual}`,
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
   },
 ];
 
@@ -49,11 +52,14 @@ export default function PricingPreview() {
           viewport={{ once: true }}
           className="flex items-center justify-center gap-3 mb-8"
         >
-          <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3">
+          <Link
+            href="/world-cup-2026"
+            className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3 hover:border-green-500/60 transition-colors"
+          >
             <span className="text-2xl">🏆</span>
             <span className="text-green-300 text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
             <span className="bg-yellow-400 text-black text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
-          </div>
+          </Link>
         </motion.div>
 
         <div className="text-center mb-12">
@@ -68,7 +74,7 @@ export default function PricingPreview() {
               Plan
             </span>
           </motion.h2>
-          <p className="text-brand-muted">All features included. No hidden fees. Cancel anytime.</p>
+          <p className="text-brand-muted">All features included. No hidden fees. No auto-renewal.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 items-start">
@@ -83,9 +89,9 @@ export default function PricingPreview() {
               {plan.highlighted ? (
                 <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black text-xs font-black px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                    <Badge variant="gold" className="px-4 py-1.5 shadow-lg">
                       <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
-                    </span>
+                    </Badge>
                   </div>
                   <div className="bg-brand-card rounded-[14px] p-6 pt-8">
                     <PlanCardContent plan={plan} />
@@ -117,15 +123,10 @@ function PlanCardContent({ plan }: { plan: typeof plans[0] }) {
     <>
       {plan.badge && (
         <div className="mb-3">
-          {plan.badge === "WORLD CUP 2026" ? (
-            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
-              <Trophy className="w-3 h-3" /> WORLD CUP 2026
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
-              <Flame className="w-3 h-3" /> MOST POPULAR
-            </span>
-          )}
+          <Badge variant="warning" size="md">
+            {plan.badge === "WORLD CUP 2026" ? <Trophy className="w-3 h-3" /> : <Flame className="w-3 h-3" />}
+            {plan.badge === "WORLD CUP 2026" ? "WORLD CUP 2026" : "MOST POPULAR"}
+          </Badge>
         </div>
       )}
 
