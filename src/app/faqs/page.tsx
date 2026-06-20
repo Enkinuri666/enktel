@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 const categories = [
   {
@@ -65,6 +66,7 @@ export default function FaqsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <Breadcrumbs items={[{ label: "FAQs" }]} />
       <div className="text-center mb-10">
         <div className="w-14 h-14 bg-brand-primary/10 border border-brand-primary/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <HelpCircle className="w-7 h-7 text-brand-primary" />

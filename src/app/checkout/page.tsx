@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Shield, Lock, Loader2, Check, Trophy, MessageCircle, BadgeCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { PlanId, PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
@@ -64,6 +65,7 @@ function CheckoutContent() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <Breadcrumbs items={[{ label: "Pricing", href: "/pricing" }, { label: "Checkout" }]} />
 
       {/* World Cup promo strip */}
       {plan.isPromo && (
@@ -75,7 +77,7 @@ function CheckoutContent() {
         </div>
       )}
 
-      <h1 className="text-3xl font-bold text-white mb-8">
+      <h1 className="text-3xl sm:text-4xl font-black text-white mb-8">
         Complete Your{" "}
         <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
           Order

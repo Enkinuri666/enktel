@@ -31,8 +31,11 @@ export default function WhatsOnPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
           <span className="w-3 h-3 bg-brand-accent rounded-full animate-pulse" />
-          <h1 className="text-3xl sm:text-4xl font-bold text-white">
-            What&apos;s On <span className="text-brand-accent">Now</span>
+          <h1 className="text-4xl sm:text-5xl font-black text-white">
+            What&apos;s On{" "}
+            <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+              Now
+            </span>
           </h1>
         </div>
         <p className="text-brand-muted text-lg">

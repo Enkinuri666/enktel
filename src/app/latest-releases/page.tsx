@@ -106,7 +106,7 @@ export default function LatestReleasesPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+        <h1 className="text-4xl sm:text-5xl font-black text-white mb-3">
           Latest{" "}
           <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
             Releases

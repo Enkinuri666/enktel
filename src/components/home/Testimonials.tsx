@@ -5,7 +5,7 @@ import { mockTestimonials } from "@/lib/mock-data";
 
 export default function Testimonials() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-brand-card/30">
+    <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <motion.h2

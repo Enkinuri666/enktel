@@ -48,7 +48,7 @@ export default function WhatsNewPage() {
           <Sparkles className="w-5 h-5 text-brand-secondary" />
           <span className="text-brand-secondary text-sm font-bold uppercase tracking-wide">Auto-Updating</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+        <h1 className="text-4xl sm:text-5xl font-black text-white mb-3">
           What&apos;s New on{" "}
           <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
             Enktel IPTV

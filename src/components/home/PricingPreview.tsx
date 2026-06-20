@@ -42,7 +42,7 @@ const plans = [
 
 export default function PricingPreview() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-brand-card/30">
       <div className="max-w-7xl mx-auto">
 
         {/* World Cup promo header */}
