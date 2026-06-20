@@ -4,14 +4,15 @@ import Link from "next/link";
 import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
+import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
 
 const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: 19.99,
-    totalPrice: 19.99,
-    duration: "1 month",
+    price: PLAN_PRICE_EUR.monthly,
+    totalPrice: PLAN_PRICE_EUR.monthly,
+    duration: PLAN_DURATION_LABEL.monthly,
     promo: false,
     badge: null,
     highlighted: false,
@@ -29,12 +30,12 @@ const plans = [
   {
     id: "quarter",
     name: "3 Months",
-    price: 59,
-    totalPrice: 59,
-    duration: "3 months",
+    price: PLAN_PRICE_EUR.quarter,
+    totalPrice: PLAN_PRICE_EUR.quarter,
+    duration: PLAN_DURATION_LABEL.quarter,
     promo: true,
     badge: "WORLD CUP 2026",
-    regularPrice: null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
     saving: null,
     highlighted: false,
     description: "Stream every World Cup 2026 match live — start to finish.",
@@ -52,13 +53,13 @@ const plans = [
   {
     id: "annual",
     name: "12 Months",
-    price: 99,
-    totalPrice: 99,
-    duration: "12 months",
+    price: PLAN_PRICE_EUR.annual,
+    totalPrice: PLAN_PRICE_EUR.annual,
+    duration: PLAN_DURATION_LABEL.annual,
     promo: true,
     badge: "BEST VALUE",
-    regularPrice: 189,
-    saving: 90,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
+    saving: (PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual,
     highlighted: true,
     description: "Full year access. Watch it all — World Cup and beyond.",
     features: [

@@ -4,34 +4,35 @@ import { useSearchParams } from "next/navigation";
 import { Shield, Lock, Loader2, Check, Trophy } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import { PlanId, PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
 
-const PLANS = {
+const PLANS: Record<PlanId, { name: string; price: number; duration: string; isPromo: boolean; regularPrice: number | null }> = {
   monthly: {
     name: "Monthly",
-    price: 19.99,
-    duration: "1 month",
+    price: PLAN_PRICE_EUR.monthly,
+    duration: PLAN_DURATION_LABEL.monthly,
     isPromo: false,
-    regularPrice: null as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.monthly ?? null,
   },
   quarter: {
     name: "3 Months",
-    price: 59,
-    duration: "3 months",
+    price: PLAN_PRICE_EUR.quarter,
+    duration: PLAN_DURATION_LABEL.quarter,
     isPromo: true,
-    regularPrice: null as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
   },
   annual: {
     name: "12 Months",
-    price: 99,
-    duration: "12 months",
+    price: PLAN_PRICE_EUR.annual,
+    duration: PLAN_DURATION_LABEL.annual,
     isPromo: true,
-    regularPrice: 189 as number | null,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
   },
 };
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
-  const planId = (searchParams.get("plan") || "annual") as keyof typeof PLANS;
+  const planId = (searchParams.get("plan") || "annual") as PlanId;
   const plan = PLANS[planId] || PLANS.annual;
 
   const [form, setForm] = useState({ name: "", email: "" });

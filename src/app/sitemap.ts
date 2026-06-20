@@ -6,6 +6,7 @@ const routes = [
   "/epg",
   "/whats-on",
   "/whats-new",
+  "/search",
   "/latest-releases",
   "/coming-soon",
   "/pricing",

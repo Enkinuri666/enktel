@@ -3,12 +3,13 @@ import Link from "next/link";
 import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
+import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
 
 const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: 19.99,
+    price: PLAN_PRICE_EUR.monthly,
     duration: "per month",
     badge: null,
     highlighted: false,
@@ -17,22 +18,22 @@ const plans = [
   {
     id: "quarter",
     name: "3 Months",
-    price: 59,
+    price: PLAN_PRICE_EUR.quarter,
     duration: "one-time · 3 months",
     badge: "WORLD CUP 2026",
     highlighted: false,
-    promoNote: "≈ €19.67/month",
+    promoNote: `≈ €${(PLAN_PRICE_EUR.quarter / 3).toFixed(2)}/month`,
     features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
   },
   {
     id: "annual",
     name: "12 Months",
-    price: 99,
-    regularPrice: 189,
+    price: PLAN_PRICE_EUR.annual,
+    regularPrice: PLAN_REGULAR_PRICE_EUR.annual,
     duration: "one-time · 12 months",
     badge: "BEST VALUE",
     highlighted: true,
-    promoNote: "≈ €8.25/month — Save €90",
+    promoNote: `≈ €${(PLAN_PRICE_EUR.annual / 12).toFixed(2)}/month — Save €${(PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual}`,
     features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
   },
 ];
