@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchNowPlaying, fetchOnTheAir } from "@/lib/tmdb";
 import { mockMovies, mockTVShows, getMockUpcomingEvents } from "@/lib/mock-data";
 import { fetchEPGData } from "@/lib/epg";
+import { getRealUpcomingEvents } from "@/lib/sportsApi";
 import { channels } from "@/lib/channels";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET() {
   }
 
   const now = new Date();
-  const programs = fetchEPGData();
+  const programs = await fetchEPGData();
 
   const liveHighlights = HIGHLIGHT_CHANNEL_IDS.map((id) => {
     const channel = channels.find((c) => c.id === id);
@@ -42,7 +43,9 @@ export async function GET() {
     };
   }).filter((h): h is NonNullable<typeof h> => h !== null);
 
-  const events = getMockUpcomingEvents().slice(0, 4);
+  let events = await getRealUpcomingEvents();
+  if (events.length === 0) events = getMockUpcomingEvents();
+  events = events.slice(0, 4);
 
   return NextResponse.json({
     vod: { movies: movies.slice(0, 6), shows: shows.slice(0, 6) },

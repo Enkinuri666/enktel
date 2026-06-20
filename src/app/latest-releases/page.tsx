@@ -32,8 +32,23 @@ type MediaFilter = "all" | "movies" | "shows";
 
 const PAGE_SIZE = 20;
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  hr: "Croatian",
+  sr: "Serbian",
+  bs: "Bosnian",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  ja: "Japanese",
+  ko: "Korean",
+};
+
 export default function LatestReleasesPage() {
   const [filter, setFilter] = useState<MediaFilter>("all");
+  const [language, setLanguage] = useState("All");
+  const [genre, setGenre] = useState("All");
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useSWR<ReleasesData>("/api/latest-releases", fetcher);
@@ -41,12 +56,19 @@ export default function LatestReleasesPage() {
   const movies = data?.movies || [];
   const shows = data?.shows || [];
 
-  const allItems =
+  const baseItems =
     filter === "movies"
       ? movies
       : filter === "shows"
       ? shows
       : [...movies, ...shows];
+
+  const languages = ["All", ...Array.from(new Set(baseItems.map((i) => i.language)))];
+  const genres = ["All", ...Array.from(new Set(baseItems.flatMap((i) => i.genres)))].sort();
+
+  const allItems = baseItems.filter(
+    (i) => (language === "All" || i.language === language) && (genre === "All" || i.genres.includes(genre))
+  );
 
   const totalPages = Math.ceil(allItems.length / PAGE_SIZE);
   const paginatedItems = allItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -65,8 +87,8 @@ export default function LatestReleasesPage() {
         </p>
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         {(["all", "movies", "shows"] as MediaFilter[]).map((f) => (
           <button
             key={f}
@@ -80,6 +102,28 @@ export default function LatestReleasesPage() {
             {f === "all" ? "All" : f === "movies" ? "Movies" : "TV Shows"}
           </button>
         ))}
+        <select
+          value={language}
+          onChange={(e) => { setLanguage(e.target.value); setPage(1); }}
+          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+        >
+          {languages.map((l) => (
+            <option key={l} value={l}>
+              {l === "All" ? "All Languages" : LANGUAGE_NAMES[l] || l.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        <select
+          value={genre}
+          onChange={(e) => { setGenre(e.target.value); setPage(1); }}
+          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+        >
+          {genres.map((g) => (
+            <option key={g} value={g}>
+              {g === "All" ? "All Genres" : g}
+            </option>
+          ))}
+        </select>
         <span className="text-brand-muted text-sm ml-2">{allItems.length} items</span>
       </div>
 

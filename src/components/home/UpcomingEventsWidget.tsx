@@ -29,18 +29,27 @@ export default function UpcomingEventsWidget() {
     { refreshInterval: 60000 }
   );
   const [now, setNow] = useState(() => Date.now());
+  const [sportFilter, setSportFilter] = useState("All");
+  const [channelFilter, setChannelFilter] = useState("All");
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
 
-  const events = data?.events?.slice(0, 6) || [];
+  const allEvents = data?.events || [];
+  const sports = ["All", ...Array.from(new Set(allEvents.map((e) => e.sport)))];
+  const eventChannels = ["All", ...Array.from(new Set(allEvents.map((e) => e.channel)))];
+
+  const filtered = allEvents.filter(
+    (e) => (sportFilter === "All" || e.sport === sportFilter) && (channelFilter === "All" || e.channel === channelFilter)
+  );
+  const events = filtered.slice(0, 6);
 
   return (
     <section className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 bg-brand-secondary rounded-full animate-pulse" />
             <h2 className="text-2xl sm:text-3xl font-bold text-white">
@@ -55,10 +64,37 @@ export default function UpcomingEventsWidget() {
           </Link>
         </div>
 
+        {!isLoading && allEvents.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-8">
+            <select
+              value={sportFilter}
+              onChange={(e) => setSportFilter(e.target.value)}
+              className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+            >
+              {sports.map((s) => (
+                <option key={s} value={s}>
+                  {s === "All" ? "All Sports" : s}
+                </option>
+              ))}
+            </select>
+            <select
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+              className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+            >
+              {eventChannels.map((c) => (
+                <option key={c} value={c}>
+                  {c === "All" ? "All Channels" : c}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {isLoading ? (
           <Spinner className="py-12" />
         ) : events.length === 0 ? (
-          <p className="text-brand-muted text-center py-12">No upcoming events found.</p>
+          <p className="text-brand-muted text-center py-12">No upcoming events match these filters.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.map((event) => {

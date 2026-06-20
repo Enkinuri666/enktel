@@ -19,7 +19,7 @@ export default function ChannelGrid({ initialCategory = "All" }: { initialCatego
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useSWR<ChannelsData>(
-    `/api/channels?category=${category}`,
+    `/api/channels?category=${encodeURIComponent(category)}`,
     fetcher
   );
 

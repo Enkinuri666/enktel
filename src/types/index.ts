@@ -29,6 +29,7 @@ export interface EPGProgram {
   category: string;
   rating?: string;
   imageUrl?: string;
+  source?: "live" | "simulated";
 }
 
 export interface Movie {
@@ -40,6 +41,7 @@ export interface Movie {
   releaseDate: string;
   rating: number;
   genres: string[];
+  language: string;
   type: "movie";
 }
 
@@ -52,6 +54,7 @@ export interface TVShow {
   firstAirDate: string;
   rating: number;
   genres: string[];
+  language: string;
   type: "tv";
 }
 
@@ -96,6 +99,7 @@ export interface UpcomingEvent {
   id: string;
   title: string;
   competition: string;
+  sport: string;
   emoji: string;
   channel: string;
   startTime: string;

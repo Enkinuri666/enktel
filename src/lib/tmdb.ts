@@ -56,6 +56,7 @@ function mapMovie(m: Record<string, unknown>): Movie {
     releaseDate: (m.release_date as string) || "",
     rating: (m.vote_average as number) || 0,
     genres: genreNames,
+    language: (m.original_language as string) || "en",
     type: "movie",
   };
 }
@@ -73,6 +74,7 @@ function mapTVShow(s: Record<string, unknown>): TVShow {
     firstAirDate: (s.first_air_date as string) || "",
     rating: (s.vote_average as number) || 0,
     genres: genreNames,
+    language: (s.original_language as string) || "en",
     type: "tv",
   };
 }
