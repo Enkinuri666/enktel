@@ -1,7 +1,8 @@
 import { Tv, Users, Clock, Globe } from "lucide-react";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const stats = [
-  { icon: Tv, value: "10,000+", label: "Live Channels", color: "#6C63FF" },
+  { icon: Tv, value: CHANNEL_COUNT_LABEL, label: "Live Channels", color: "#6C63FF" },
   { icon: Globe, value: "50+", label: "Countries Covered", color: "#00D4FF" },
   { icon: Clock, value: "99.9%", label: "Uptime Guarantee", color: "#FF4757" },
   { icon: Users, value: "50,000+", label: "Happy Customers", color: "#6C63FF" },

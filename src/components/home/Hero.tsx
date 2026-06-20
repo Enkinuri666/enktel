@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const trustBadges = ["No Contract", "Cancel Anytime", "Instant Activation", "4K Ultra HD"];
 
@@ -61,7 +62,7 @@ export default function Hero() {
               className="leading-relaxed mb-8 max-w-xl" style={{ color: "rgba(255,255,255,0.55)", fontSize: "1.1rem" }}>
               Stream <strong className="text-white">HRT</strong>, <strong className="text-white">Nova TV</strong>,{" "}
               <strong className="text-white">RTL Hrvatska</strong>, <strong className="text-white">Doma TV</strong>{" "}
-              and <strong className="text-white">10,000+</strong> channels from anywhere in the world —
+              and <strong className="text-white">{CHANNEL_COUNT_LABEL}</strong> channels from anywhere in the world —
               in crystal-clear <strong className="text-white">4K Ultra HD</strong>.
             </motion.p>
 

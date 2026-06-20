@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Trophy, Film, Newspaper, Star, Baby, BookOpen, Music, Globe } from "lucide-react";
-import { channels } from "@/lib/channels";
+import { channels, CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const categories = [
   { name: "Croatian & Balkan", icon: Globe, color: "#FF4757", description: "HRT, Nova TV, RTL, Doma TV, CMC, N1 & more" },
@@ -31,7 +31,7 @@ export default function ChannelShowcase() {
               Channel Categories
             </span>
           </motion.h2>
-          <p className="text-brand-muted">Over 10,000 channels across every genre imaginable</p>
+          <p className="text-brand-muted">{CHANNEL_COUNT_LABEL} channels across every genre imaginable</p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
@@ -87,7 +87,7 @@ export default function ChannelShowcase() {
                   <Star className="w-6 h-6 text-brand-primary" />
                 </div>
                 <h3 className="text-white font-semibold text-sm mb-1">View All</h3>
-                <p className="text-brand-muted text-xs">Browse 10,000+ channels</p>
+                <p className="text-brand-muted text-xs">Browse {CHANNEL_COUNT_LABEL} channels</p>
               </div>
             </Link>
           </motion.div>

@@ -411,7 +411,7 @@ export const mockTestimonials: Testimonial[] = [
     location: "Manchester, UK 🇬🇧",
     avatar: "SM",
     rating: 5,
-    text: "Switched from another IPTV provider and the difference is night and day. 10,000+ channels, the EPG is perfect, and the 4K quality is stunning. Worth every penny.",
+    text: "Switched from another IPTV provider and the difference is night and day. All my Croatian channels, the EPG is perfect, and the 4K quality is stunning. Worth every penny.",
     plan: "Ultimate",
   },
   {

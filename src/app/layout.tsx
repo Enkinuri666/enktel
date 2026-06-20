@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/layout/WhatsAppButton";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://enktel.tv"),
@@ -11,21 +12,21 @@ export const metadata: Metadata = {
     template: "%s | Enktel IPTV",
   },
   description:
-    "Premium IPTV service with 10,000+ channels, 4K Ultra HD quality, 99.9% uptime, and UK & international content. Stream live TV, sports, movies, and more.",
+    `Premium IPTV service with ${CHANNEL_COUNT_LABEL} channels, 4K Ultra HD quality, 99.9% uptime, and UK & international content. Stream live TV, sports, movies, and more.`,
   keywords: [
     "IPTV", "live TV", "stream", "channels", "EPG", "4K", "sports", "movies",
     "Sky Sports", "Premier League", "IPTV subscription", "UK IPTV",
   ],
   openGraph: {
     title: "Enktel IPTV – Stream Beyond Limits",
-    description: "Premium IPTV with 10,000+ channels. 4K quality. 99.9% uptime.",
+    description: `Premium IPTV with ${CHANNEL_COUNT_LABEL} channels. 4K quality. 99.9% uptime.`,
     type: "website",
     locale: "en_GB",
   },
   twitter: {
     card: "summary_large_image",
     title: "Enktel IPTV – Stream Beyond Limits",
-    description: "Premium IPTV with 10,000+ channels. 4K quality.",
+    description: `Premium IPTV with ${CHANNEL_COUNT_LABEL} channels. 4K quality.`,
   },
 };
 

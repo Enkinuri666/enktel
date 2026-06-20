@@ -5,6 +5,7 @@ import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const plans = [
   {
@@ -18,7 +19,7 @@ const plans = [
     highlighted: false,
     description: "Flexible month-to-month, cancel anytime.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -40,7 +41,7 @@ const plans = [
     highlighted: false,
     description: "Stream every World Cup 2026 match live — start to finish.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -63,7 +64,7 @@ const plans = [
     highlighted: true,
     description: "Full year access. Watch it all — World Cup and beyond.",
     features: [
-      "10,000+ Live Channels",
+      `${CHANNEL_COUNT_LABEL} Live Channels`,
       "Croatian & Balkan Channels",
       "4K Ultra HD Quality",
       "30-Day Catch-Up TV",
@@ -131,7 +132,7 @@ export default function PricingPage() {
           </div>
           <div className="h-px sm:h-10 w-full sm:w-px bg-green-700/50 shrink-0" />
           <p className="text-green-200 text-sm text-center sm:text-left">
-            Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus 10,000+ channels all year round.
+            Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus {CHANNEL_COUNT_LABEL} channels all year round.
           </p>
           <div className="shrink-0">
             <span className="bg-yellow-400 text-black text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
@@ -191,7 +192,7 @@ export default function PricingPage() {
           {[
             { emoji: "🇭🇷", text: "Croatian & Balkan Channels" },
             { emoji: "⚽", text: "All FIFA World Cup 2026 Matches" },
-            { emoji: "📺", text: "10,000+ Live Channels" },
+            { emoji: "📺", text: `${CHANNEL_COUNT_LABEL} Live Channels` },
             { emoji: "🎬", text: "4K Ultra HD Streaming" },
             { emoji: "⏪", text: "30-Day Catch-Up TV" },
             { emoji: "🎥", text: "Full VOD Movie & Series Library" },

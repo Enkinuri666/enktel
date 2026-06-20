@@ -95,6 +95,11 @@ export function getChannelById(id: string): Channel | undefined {
   return channels.find((c) => c.id === id);
 }
 
+// Rounded down to the nearest 5 so the marketing copy stays truthful as
+// channels are added/removed, instead of drifting from the real catalog size.
+export const CHANNEL_COUNT = channels.length;
+export const CHANNEL_COUNT_LABEL = `${Math.floor(CHANNEL_COUNT / 5) * 5}+`;
+
 export const channelCategories = [
   "All",
   "Croatian & Balkan",

@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight, AlertTriangle } from "lucide-react";
+import Button from "@/components/ui/Button";
 
 const MOCK_SUBSCRIPTION = {
   id: "ENK-1234567890-DEMO",
@@ -116,6 +118,23 @@ export default function DashboardPage() {
               ACTIVE
             </span>
           </div>
+
+          {daysLeft <= 14 && (
+            <div className="flex items-center justify-between gap-4 bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 mb-5">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0" />
+                <p className="text-yellow-200 text-sm">
+                  {daysLeft === 0
+                    ? "Your subscription expires today."
+                    : `Your subscription expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`}{" "}
+                  Renew now to avoid interruption.
+                </p>
+              </div>
+              <Link href="/checkout" className="shrink-0">
+                <Button size="sm">Renew Now</Button>
+              </Link>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             {[

@@ -4,6 +4,7 @@ import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const plans = [
   {
@@ -13,7 +14,7 @@ const plans = [
     duration: "per month",
     badge: null,
     highlighted: false,
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "EPG Guide"],
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "EPG Guide"],
   },
   {
     id: "quarter",
@@ -23,7 +24,7 @@ const plans = [
     badge: "WORLD CUP 2026",
     highlighted: false,
     promoNote: `≈ €${(PLAN_PRICE_EUR.quarter / 3).toFixed(2)}/month`,
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
   },
   {
     id: "annual",
@@ -34,7 +35,7 @@ const plans = [
     badge: "BEST VALUE",
     highlighted: true,
     promoNote: `≈ €${(PLAN_PRICE_EUR.annual / 12).toFixed(2)}/month — Save €${(PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual}`,
-    features: ["10,000+ Live Channels", "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
+    features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
   },
 ];
 
@@ -50,11 +51,14 @@ export default function PricingPreview() {
           viewport={{ once: true }}
           className="flex items-center justify-center gap-3 mb-8"
         >
-          <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3">
+          <Link
+            href="/world-cup-2026"
+            className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3 hover:border-green-500/60 transition-colors"
+          >
             <span className="text-2xl">🏆</span>
             <span className="text-green-300 text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
             <span className="bg-yellow-400 text-black text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
-          </div>
+          </Link>
         </motion.div>
 
         <div className="text-center mb-12">

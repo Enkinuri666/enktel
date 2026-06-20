@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import ChannelGrid from "@/components/channels/ChannelGrid";
+import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 export const metadata: Metadata = {
   title: "Channel List",
-  description: "Browse our full channel list with 10,000+ live TV channels across sports, movies, news, entertainment, kids, documentary and music.",
+  description: `Browse our full channel list with ${CHANNEL_COUNT_LABEL} live TV channels across sports, movies, news, entertainment, kids, documentary and music.`,
 };
 
 interface ChannelsPageProps {
@@ -23,7 +24,7 @@ export default function ChannelsPage({ searchParams }: ChannelsPageProps) {
           </span>
         </h1>
         <p className="text-brand-muted text-lg">
-          Browse our complete selection of 10,000+ live channels. Filter by category or search by name.
+          Browse our complete selection of {CHANNEL_COUNT_LABEL} live channels. Filter by category or search by name.
         </p>
       </div>
       <ChannelGrid initialCategory={category} />
