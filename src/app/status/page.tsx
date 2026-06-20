@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import Card from "@/components/ui/Card";
+import DataSourceStatus from "@/components/status/DataSourceStatus";
 
 export const metadata: Metadata = { title: "Status" };
 
@@ -36,6 +37,8 @@ export default function StatusPage() {
           </div>
         ))}
       </Card>
+
+      <DataSourceStatus />
 
       <p className="text-brand-muted text-xs text-center mt-8">
         Experiencing an issue not reflected here?{" "}

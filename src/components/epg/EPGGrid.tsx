@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { channels as allChannels, channelCategories } from "@/lib/channels";
 import { getProgramsForChannel } from "@/lib/epg";
@@ -21,8 +22,11 @@ export default function EPGGrid() {
     revalidateOnFocus: false,
   });
 
+  const searchParams = useSearchParams();
+  const focusChannelId = searchParams.get("channel");
   const [category, setCategory] = useState("All");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const now = new Date();
   const startTime = new Date(now);
@@ -43,6 +47,21 @@ export default function EPGGrid() {
       scrollRef.current.scrollLeft = minutesFromStart * PIXELS_PER_MINUTE - 80;
     }
   }, []);
+
+  // If we arrived via a "Tune to" / search deep link (?channel=id), jump
+  // straight to that channel's category so its row is actually rendered.
+  useEffect(() => {
+    if (!focusChannelId) return;
+    const targetChannel = allChannels.find((c) => c.id === focusChannelId);
+    if (targetChannel) setCategory(targetChannel.category);
+  }, [focusChannelId]);
+
+  // Once that category's rows are rendered, scroll the target row into view.
+  useEffect(() => {
+    if (!focusChannelId || isLoading) return;
+    const row = rowRefs.current[focusChannelId];
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusChannelId, isLoading, category]);
 
   return (
     <div className="flex flex-col h-full">
@@ -82,14 +101,19 @@ export default function EPGGrid() {
           {filteredChannels.map((channel) => {
             const channelPrograms = getProgramsForChannel(programs, channel.id, startTime, endTime);
             return (
-              <EPGRow
+              <div
                 key={channel.id}
-                channel={channel}
-                programs={channelPrograms}
-                startTime={startTime}
-                endTime={endTime}
-                pixelsPerMinute={PIXELS_PER_MINUTE}
-              />
+                ref={(el) => { rowRefs.current[channel.id] = el; }}
+                className={clsx(channel.id === focusChannelId && "ring-2 ring-brand-primary/60 rounded-lg")}
+              >
+                <EPGRow
+                  channel={channel}
+                  programs={channelPrograms}
+                  startTime={startTime}
+                  endTime={endTime}
+                  pixelsPerMinute={PIXELS_PER_MINUTE}
+                />
+              </div>
             );
           })}
 

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 import { Radio } from "lucide-react";
 import { WhatsOnItem } from "@/types";
 import Spinner from "@/components/ui/Spinner";
@@ -71,9 +72,10 @@ export default function WhatsOnPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
             {items.map((item) => (
-              <div
+              <Link
                 key={item.channel.id}
-                className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
+                href={`/epg?channel=${encodeURIComponent(item.channel.id)}`}
+                className="block bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -122,7 +124,7 @@ export default function WhatsOnPage() {
                     </p>
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </>

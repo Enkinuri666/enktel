@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import EPGGrid from "@/components/epg/EPGGrid";
+import Spinner from "@/components/ui/Spinner";
 
 export const metadata: Metadata = {
   title: "EPG Guide",
@@ -21,7 +23,9 @@ export default function EPGPage() {
         </p>
       </div>
       <div className="max-w-full">
-        <EPGGrid />
+        <Suspense fallback={<Spinner className="py-20" />}>
+          <EPGGrid />
+        </Suspense>
       </div>
     </div>
   );

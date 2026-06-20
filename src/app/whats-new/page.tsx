@@ -104,9 +104,10 @@ export default function WhatsNewPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(data?.liveHighlights || []).map((h) => (
-                <div
+                <Link
                   key={h.channelId}
-                  className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
+                  href={`/epg?channel=${encodeURIComponent(h.channelId)}`}
+                  className="block bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-brand-muted text-xs font-medium">{h.category}</span>
@@ -119,7 +120,7 @@ export default function WhatsNewPage() {
                   <p className="text-brand-secondary text-xs font-medium">
                     Tune to: {h.channelName}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
             <div className="text-center mt-5">

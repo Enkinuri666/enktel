@@ -90,7 +90,10 @@ async function fetchAndParseFile(file: string, sourceIds: string[]): Promise<Map
   const result = new Map<string, EPGProgram[]>();
   for (const id of sourceIds) result.set(id, []);
 
-  const res = await fetch(SOURCE_URL(file), { signal: AbortSignal.timeout(20000) });
+  const res = await fetch(SOURCE_URL(file), {
+    signal: AbortSignal.timeout(20000),
+    next: { revalidate: CACHE_TTL_MS / 1000 },
+  });
   if (!res.ok) throw new Error(`EPG source ${file} returned ${res.status}`);
   const gz = Buffer.from(await res.arrayBuffer());
   const xml = gunzipSync(gz).toString("utf-8");

@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Zap } from "lucide-react";
+import { Menu, X, Zap, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { clsx } from "clsx";
 
@@ -19,7 +19,18 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!searchValue.trim()) return;
+    router.push(`/search?q=${encodeURIComponent(searchValue.trim())}`);
+    setSearchOpen(false);
+    setSearchValue("");
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-brand-border/50 bg-brand-bg/80 backdrop-blur-xl">
@@ -57,6 +68,26 @@ export default function Navbar() {
 
           {/* CTA + Mobile Toggle */}
           <div className="flex items-center gap-3">
+            {searchOpen ? (
+              <form onSubmit={handleSearchSubmit} className="hidden sm:block">
+                <input
+                  autoFocus
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onBlur={() => !searchValue && setSearchOpen(false)}
+                  placeholder="Search..."
+                  className="w-48 bg-brand-card border border-brand-border rounded-full px-4 py-1.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
+                />
+              </form>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="hidden sm:flex p-2 rounded-lg text-brand-muted hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Search"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            )}
             <Link href="/pricing" className="hidden sm:block">
               <Button size="sm">Get Started</Button>
             </Link>
@@ -74,6 +105,17 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="lg:hidden border-t border-brand-border/50 bg-brand-bg/95 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
+            <form
+              onSubmit={(e) => { handleSearchSubmit(e); setMobileOpen(false); }}
+              className="mb-2"
+            >
+              <input
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                placeholder="Search channels, movies..."
+                className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
+              />
+            </form>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
