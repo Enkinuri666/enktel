@@ -1,12 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight, AlertTriangle, Sparkles, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Copy, Check, Tv, ChevronRight, AlertTriangle, Sparkles, X, Clock,
+  MessageCircle, HelpCircle, ChevronDown, MonitorX,
+} from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { StoredSubscription, loadSubscription } from "@/lib/subscriptionStorage";
+import { DEVICE_GUIDES, getDeviceGuide } from "@/lib/deviceGuides";
 
 const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
+const TOUR_DISMISSED_KEY = "enktel_dashboard_tour_dismissed";
+const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
 
 function CopyableUrl({ label, url }: { label: string; url: string }) {
   const [copied, setCopied] = useState(false);
@@ -33,69 +40,149 @@ function CopyableUrl({ label, url }: { label: string; url: string }) {
   );
 }
 
-const setupTabs = [
-  { id: "firestick", label: "Firestick", icon: Tv },
-  { id: "smart-tv", label: "Smart TV", icon: Tv },
-  { id: "mag", label: "MAG Box", icon: Tv },
-  { id: "mobile", label: "iPhone / Android", icon: Smartphone },
-  { id: "pc", label: "Windows / Mac", icon: Monitor },
-  { id: "router", label: "Router", icon: Wifi },
+const tourSteps = [
+  { title: "Your Stream Credentials", description: "Your username, password, M3U and EPG URLs live here. Copy them with one click whenever you set up a new device." },
+  { title: "Setup Guides", description: "Pick your device below for a step-by-step walkthrough — Firestick, Smart TV, MAG box, mobile, PC, or router." },
+  { title: "Troubleshooting", description: "Buffering, black screen, or login issues? Check the troubleshooting section before reaching out — most issues are fixed in seconds." },
+  { title: "24/7 WhatsApp Support", description: "Stuck? Our team is on WhatsApp around the clock. Tap the green button anytime, on any page." },
 ];
 
-const setupGuides: Record<string, Array<{ step: number; title: string; description: string }>> = {
-  firestick: [
-    { step: 1, title: "Install Downloader App", description: "Go to the Firestick home screen, search for 'Downloader' and install it. Enable 'Apps from Unknown Sources' in Settings > Device > Developer Options." },
-    { step: 2, title: "Download IPTV Smarters", description: "Open Downloader and enter: https://enktel.tv/smarters — this will download the IPTV Smarters APK. Install it." },
-    { step: 3, title: "Add Your Playlist", description: "Open IPTV Smarters. Select 'Add User'. Enter your name, then paste your M3U URL and EPG URL from above. Tap 'Add User'." },
-    { step: 4, title: "Enjoy!", description: "Your channels will load automatically. Browse by category, set up favourites, and enjoy 4K streaming." },
-  ],
-  "smart-tv": [
-    { step: 1, title: "Install Smart IPTV App", description: "On Samsung or LG Smart TVs, go to the App Store and search for 'Smart IPTV' or 'SS IPTV'. Install the app." },
-    { step: 2, title: "Note Your MAC Address", description: "Open the app to find your TV's MAC address on the welcome screen. You'll need this for activation." },
-    { step: 3, title: "Load Your Playlist", description: "Visit our portal and enter your MAC address along with your M3U URL. The playlist will load on your TV." },
-    { step: 4, title: "Start Watching", description: "Restart the app on your TV. All channels will appear organised by category." },
-  ],
-  mag: [
-    { step: 1, title: "Connect MAG Box", description: "Connect your MAG box to your TV via HDMI and to your router via Ethernet (recommended) or WiFi." },
-    { step: 2, title: "Get MAC Address", description: "Go to Settings > System Information to find your MAG box's MAC address." },
-    { step: 3, title: "Configure Portal", description: "In Settings > Servers > Portals, enter our server URL: http://enktel.tv/portal as Portal 1." },
-    { step: 4, title: "Reboot and Enjoy", description: "Reboot your MAG box. It will connect to our server and load your subscription automatically." },
-  ],
-  mobile: [
-    { step: 1, title: "Download IPTV App", description: "iPhone: Download 'GSE Smart IPTV' from the App Store. Android: Download 'IPTV Smarters Pro' or 'TiviMate' from Google Play." },
-    { step: 2, title: "Add M3U Playlist", description: "Open the app and look for 'Add Playlist' or 'Add M3U URL'. Paste your M3U URL from above." },
-    { step: 3, title: "Add EPG (Optional)", description: "For programme guides, add your EPG URL in the app settings under EPG / XMLTV." },
-    { step: 4, title: "Browse Channels", description: "Your channels will load. Browse live TV, VOD, and use the programme guide." },
-  ],
-  pc: [
-    { step: 1, title: "Download VLC Media Player", description: "Download and install VLC from https://videolan.org (free, works on Windows and Mac)." },
-    { step: 2, title: "Open Network Stream", description: "In VLC, go to Media > Open Network Stream (Ctrl+N on Windows, Cmd+N on Mac)." },
-    { step: 3, title: "Enter Your M3U URL", description: "Paste your M3U URL into the Network URL field and click Play. All channels will load." },
-    { step: 4, title: "Advanced: TiviMate for PC", description: "For a better experience on Android emulators, install BlueStacks and then TiviMate for a full TV guide experience on PC." },
-  ],
-  router: [
-    { step: 1, title: "Check Router Compatibility", description: "This method works with routers running DD-WRT, OpenWRT, or Tomato firmware. Check if your router is compatible." },
-    { step: 2, title: "Configure DNS", description: "In your router's DNS settings, add our server details (contact support for router-specific credentials)." },
-    { step: 3, title: "Install on Devices", description: "Once configured, any device on your network can stream IPTV without needing to enter credentials individually." },
-    { step: 4, title: "Contact Support", description: "For router-level setup assistance, contact our support team with your router model for custom instructions." },
-  ],
-};
+const troubleshootingItems = [
+  {
+    q: "I'm getting a black screen or the stream won't load",
+    a: "Double-check your M3U URL was copied in full with no spaces. Restart your IPTV app, and make sure your internet connection has at least 15 Mbps download speed for HD or 25 Mbps for 4K.",
+  },
+  {
+    q: "My app says \"Invalid Username or Password\"",
+    a: "Credentials are case-sensitive — copy them directly from your dashboard rather than retyping. If you recently renewed, make sure you're using the latest credentials shown above, not an old saved login.",
+  },
+  {
+    q: "Channels are buffering or freezing",
+    a: "Switch to a wired Ethernet connection if possible, or move closer to your WiFi router. Lowering the stream quality in your player's settings (if available) can also help on slower connections.",
+  },
+  {
+    q: "The EPG / program guide isn't showing",
+    a: "Some apps require the EPG URL to be added separately from the M3U URL — look for an \"EPG\" or \"XMLTV\" field in your app's settings and paste it there. EPG data can also take a few minutes to load after first setup.",
+  },
+  {
+    q: "Can I use my subscription on multiple devices?",
+    a: "Your plan includes the number of connections shown in your dashboard. Using more devices simultaneously than your plan allows may cause one stream to disconnect — contact support to add connections.",
+  },
+  {
+    q: "My trial expired — can I keep my same login?",
+    a: "Upgrading to a paid plan provisions a new, permanent line, so credentials will change. We'll email your new details the moment your payment is confirmed.",
+  },
+];
+
+function Troubleshooting() {
+  const [open, setOpen] = useState<number | null>(null);
+
+  return (
+    <div className="bg-brand-card border border-brand-border rounded-xl p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <MonitorX className="w-5 h-5 text-brand-primary" />
+        <h2 className="text-white font-bold text-xl">Troubleshooting</h2>
+      </div>
+      <div className="space-y-2.5 mb-5">
+        {troubleshootingItems.map((item, i) => (
+          <div key={i} className="bg-brand-bg border border-brand-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-white text-sm font-medium pr-4">{item.q}</span>
+              <ChevronDown className={`w-4 h-4 text-brand-muted shrink-0 transition-transform ${open === i ? "rotate-180" : ""}`} />
+            </button>
+            {open === i && (
+              <div className="px-4 pb-3 text-brand-muted text-sm leading-relaxed border-t border-brand-border pt-3">
+                {item.a}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {whatsappNumber && (
+        <a
+          href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi! I need help with my Enktel IPTV setup.")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2.5 bg-green-500/10 border border-green-500/30 rounded-lg p-3.5 hover:bg-green-500/15 transition-colors text-sm"
+        >
+          <MessageCircle className="w-4 h-4 text-green-400 shrink-0" />
+          <span className="text-white font-semibold">Still stuck? Chat with us on WhatsApp — we're here 24/7</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
+function DashboardTour({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState(0);
+  const isLast = step === tourSteps.length - 1;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="bg-brand-card border border-brand-primary/30 rounded-2xl p-7 max-w-sm w-full shadow-2xl shadow-brand-primary/20"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          {tourSteps.map((_, i) => (
+            <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-brand-primary" : "bg-brand-border"}`} />
+          ))}
+        </div>
+        <h3 className="text-white font-bold text-lg mb-2">{tourSteps[step].title}</h3>
+        <p className="text-brand-muted text-sm leading-relaxed mb-6">{tourSteps[step].description}</p>
+        <div className="flex items-center justify-between gap-3">
+          <button onClick={onClose} className="text-brand-muted text-sm hover:text-white transition-colors">
+            Skip tour
+          </button>
+          <Button size="sm" onClick={() => (isLast ? onClose() : setStep(step + 1))}>
+            {isLast ? "Got it!" : "Next"}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("firestick");
+  const [activeTab, setActiveTab] = useState<string>(DEVICE_GUIDES[0].id);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [sub, setSub] = useState<StoredSubscription | null>(null);
   const [checked, setChecked] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    setSub(loadSubscription());
+    const loaded = loadSubscription();
+    setSub(loaded);
     setChecked(true);
+    if (loaded?.device && getDeviceGuide(loaded.device)) setActiveTab(loaded.device);
     if (!localStorage.getItem(WELCOME_DISMISSED_KEY)) setShowWelcome(true);
+    if (!localStorage.getItem(TOUR_DISMISSED_KEY)) setShowTour(true);
   }, []);
+
+  useEffect(() => {
+    if (!sub?.isTrial) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sub?.isTrial]);
 
   function dismissWelcome() {
     localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
     setShowWelcome(false);
+  }
+
+  function closeTour() {
+    localStorage.setItem(TOUR_DISMISSED_KEY, "1");
+    setShowTour(false);
   }
 
   if (checked && !sub) {
@@ -112,11 +199,16 @@ export default function DashboardPage() {
           <h2 className="text-white font-bold text-xl mb-2">No active subscription</h2>
           <p className="text-brand-muted text-sm mb-6 max-w-md mx-auto">
             We couldn&apos;t find a subscription linked to this browser. If you just subscribed, open the
-            confirmation link from your checkout email, or subscribe now to get your M3U &amp; EPG URLs.
+            confirmation link from your checkout email, or get started below.
           </p>
-          <Link href="/pricing">
-            <Button>View Plans</Button>
-          </Link>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link href="/trial">
+              <Button variant="outline">Start Free Trial</Button>
+            </Link>
+            <Link href="/pricing">
+              <Button>View Plans</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -124,10 +216,19 @@ export default function DashboardPage() {
 
   if (!sub) return null;
 
-  const daysLeft = Math.max(0, Math.floor((new Date(sub.endDate).getTime() - Date.now()) / 86400000));
+  const isTrial = Boolean(sub.isTrial);
+  const endMs = new Date(sub.endDate).getTime();
+  const msLeft = Math.max(0, endMs - now);
+  const daysLeft = Math.floor(msLeft / 86400000);
+  const hoursLeft = Math.floor((msLeft % 86400000) / 3600000);
+  const minutesLeft = Math.floor((msLeft % 3600000) / 60000);
+  const secondsLeft = Math.floor((msLeft % 60000) / 1000);
+  const expired = msLeft <= 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <AnimatePresence>{showTour && <DashboardTour onClose={closeTour} />}</AnimatePresence>
+
       <h1 className="text-3xl font-bold text-white mb-8">
         My{" "}
         <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
@@ -135,38 +236,84 @@ export default function DashboardPage() {
         </span>
       </h1>
 
-      {showWelcome && (
-        <div className="relative flex items-start gap-4 bg-gradient-to-r from-brand-primary/15 to-brand-secondary/10 border border-brand-primary/30 rounded-xl p-5 mb-8">
-          <Sparkles className="w-5 h-5 text-brand-secondary shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-white font-bold mb-1">Welcome to Enktel — let&apos;s get you streaming</h3>
-            <p className="text-brand-muted text-sm leading-relaxed">
-              1. Copy your M3U &amp; EPG URLs below. &nbsp; 2. Pick your device in the Setup Guides section. &nbsp;
-              3. Paste the URLs into your IPTV app and you&apos;re live.
-            </p>
-          </div>
-          <button
-            onClick={dismissWelcome}
-            aria-label="Dismiss welcome message"
-            className="shrink-0 p-1 rounded text-brand-muted hover:text-white hover:bg-white/10 transition-colors"
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="relative flex items-start gap-4 bg-gradient-to-r from-brand-primary/15 to-brand-secondary/10 border border-brand-primary/30 rounded-xl p-5 mb-8 overflow-hidden"
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            <Sparkles className="w-5 h-5 text-brand-secondary shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-white font-bold mb-1">
+                {isTrial ? "Welcome to your 24-hour trial — let's get you streaming" : "Welcome to Enktel — let's get you streaming"}
+              </h3>
+              <p className="text-brand-muted text-sm leading-relaxed">
+                1. Copy your M3U &amp; EPG URLs below. &nbsp; 2. Pick your device in the Setup Guides section. &nbsp;
+                3. Paste the URLs into your IPTV app and you&apos;re live. Need help? We&apos;re on WhatsApp 24/7.
+              </p>
+            </div>
+            <button
+              onClick={dismissWelcome}
+              aria-label="Dismiss welcome message"
+              className="shrink-0 p-1 rounded text-brand-muted hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isTrial && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`flex items-center justify-between gap-4 rounded-xl p-4 mb-8 border ${
+            expired ? "bg-red-500/10 border-red-500/30" : "bg-yellow-400/10 border-yellow-400/30"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Clock className={`w-5 h-5 shrink-0 ${expired ? "text-red-400" : "text-yellow-400"}`} />
+            <div>
+              <p className={`text-sm font-bold ${expired ? "text-red-300" : "text-yellow-200"}`}>
+                {expired ? "Your free trial has ended" : "Free Trial Active"}
+              </p>
+              {!expired && (
+                <p className="text-yellow-200/80 text-xs font-mono">
+                  {daysLeft > 0 && `${daysLeft}d `}
+                  {String(hoursLeft).padStart(2, "0")}:{String(minutesLeft).padStart(2, "0")}:{String(secondsLeft).padStart(2, "0")} remaining
+                </p>
+              )}
+            </div>
+          </div>
+          <Link href="/pricing" className="shrink-0">
+            <Button size="sm">{expired ? "Reactivate Now" : "Upgrade Now"}</Button>
+          </Link>
+        </motion.div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Subscription Status */}
-        <div className="lg:col-span-2 bg-brand-card border border-brand-border rounded-xl p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 bg-brand-card border border-brand-border rounded-xl p-6"
+        >
           <div className="flex items-start justify-between mb-5">
             <div>
-              <h2 className="text-white font-bold text-xl">{sub.plan} Plan</h2>
+              <h2 className="text-white font-bold text-xl flex items-center gap-2">
+                {isTrial ? "24-Hour Trial" : `${sub.plan} Plan`}
+                {isTrial && <Badge variant="warning" size="sm">FREE</Badge>}
+              </h2>
               <p className="text-brand-muted text-sm">{sub.id}</p>
             </div>
-            <Badge variant="success" size="md" className="font-bold">ACTIVE</Badge>
+            <Badge variant={expired ? "default" : "success"} size="md" className="font-bold">
+              {expired ? "EXPIRED" : "ACTIVE"}
+            </Badge>
           </div>
 
-          {daysLeft <= 14 && (
+          {!isTrial && daysLeft <= 14 && !expired && (
             <div className="flex items-center justify-between gap-4 bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 mb-5">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0" />
@@ -185,10 +332,10 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             {[
-              { label: "Status", value: "Active" },
-              { label: "Days Remaining", value: daysLeft.toString() },
+              { label: "Status", value: expired ? "Expired" : "Active" },
+              { label: isTrial ? "Time Left" : "Days Remaining", value: isTrial ? `${hoursLeft}h ${minutesLeft}m` : daysLeft.toString() },
               { label: "Connections", value: "1/1" },
-              { label: "Renewal", value: new Date(sub.endDate).toLocaleDateString("en-GB") },
+              { label: isTrial ? "Trial Ends" : "Renewal", value: new Date(sub.endDate).toLocaleDateString("en-GB") },
             ].map((item) => (
               <div key={item.label} className="bg-brand-bg border border-brand-border rounded-lg p-3">
                 <p className="text-brand-muted text-xs mb-1">{item.label}</p>
@@ -201,10 +348,15 @@ export default function DashboardPage() {
             <CopyableUrl label="M3U Playlist URL" url={sub.m3uUrl} />
             <CopyableUrl label="EPG URL (XMLTV)" url={sub.epgUrl} />
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Stats */}
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-4"
+        >
           <div className="bg-brand-card border border-brand-border rounded-xl p-5">
             <h3 className="text-white font-semibold mb-3">Connection Usage</h3>
             <div className="mb-2">
@@ -216,53 +368,60 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-brand-card border border-brand-border rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-3">Subscription Period</h3>
+            <h3 className="text-white font-semibold mb-3">{isTrial ? "Trial Period" : "Subscription Period"}</h3>
             <div className="mb-2">
               <div className="h-2 bg-brand-border rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-brand-secondary to-brand-primary rounded-full"
-                  style={{ width: `${Math.max(5, (daysLeft / 365) * 100)}%` }}
+                  className="h-full bg-gradient-to-r from-brand-secondary to-brand-primary rounded-full transition-all"
+                  style={{ width: `${Math.max(2, Math.min(100, (msLeft / (isTrial ? 86400000 : 365 * 86400000)) * 100))}%` }}
                 />
               </div>
             </div>
-            <p className="text-brand-muted text-xs">{daysLeft} days remaining</p>
+            <p className="text-brand-muted text-xs">
+              {expired ? "Expired" : isTrial ? `${hoursLeft}h ${minutesLeft}m remaining` : `${daysLeft} days remaining`}
+            </p>
           </div>
 
-          <a href="/pricing" className="flex items-center justify-between bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-4 hover:bg-brand-primary/20 transition-colors group">
+          <Link href={isTrial ? "/pricing" : "/pricing"} className="flex items-center justify-between bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-4 hover:bg-brand-primary/20 transition-colors group">
             <div>
-              <p className="text-white font-semibold text-sm">Upgrade Plan</p>
-              <p className="text-brand-muted text-xs">Get more connections & features</p>
+              <p className="text-white font-semibold text-sm">{isTrial ? "Upgrade to a Full Plan" : "Upgrade Plan"}</p>
+              <p className="text-brand-muted text-xs">{isTrial ? "Keep streaming after your trial ends" : "Get more connections & features"}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-brand-primary group-hover:translate-x-1 transition-transform" />
-          </a>
-        </div>
+          </Link>
+        </motion.div>
       </div>
 
       {/* Setup Guides */}
-      <div className="bg-brand-card border border-brand-border rounded-xl p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-brand-card border border-brand-border rounded-xl p-6 mb-6"
+      >
         <h2 className="text-white font-bold text-xl mb-5">Device Setup Guides</h2>
 
         {/* Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-thin">
-          {setupTabs.map((tab) => (
+          {DEVICE_GUIDES.map((guide) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              key={guide.id}
+              onClick={() => setActiveTab(guide.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
-                activeTab === tab.id
+                activeTab === guide.id
                   ? "bg-brand-primary text-white"
                   : "bg-brand-bg border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
               }`}
             >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
+              <guide.icon className="w-4 h-4" />
+              {guide.label}
             </button>
           ))}
         </div>
 
         {/* Steps */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {(setupGuides[activeTab] || []).map((step) => (
+          {(getDeviceGuide(activeTab)?.steps || []).map((step) => (
             <div
               key={step.step}
               className="flex gap-4 bg-brand-bg border border-brand-border rounded-xl p-4"
@@ -277,6 +436,20 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+      </motion.div>
+
+      {/* Troubleshooting */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <Troubleshooting />
+      </motion.div>
+
+      <div className="flex items-center justify-center mt-6">
+        <button
+          onClick={() => { localStorage.removeItem(TOUR_DISMISSED_KEY); setShowTour(true); }}
+          className="flex items-center gap-2 text-brand-muted text-xs hover:text-white transition-colors"
+        >
+          <HelpCircle className="w-3.5 h-3.5" /> Replay dashboard tour
+        </button>
       </div>
     </div>
   );

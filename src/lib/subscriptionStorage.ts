@@ -10,6 +10,8 @@ export interface StoredSubscription {
   password: string;
   m3uUrl: string;
   epgUrl: string;
+  isTrial?: boolean;
+  device?: string;
 }
 
 export function saveSubscription(sub: StoredSubscription) {

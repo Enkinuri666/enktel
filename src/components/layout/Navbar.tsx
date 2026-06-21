@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/trial", label: "Free Trial" },
 ];
 
 export default function Navbar() {

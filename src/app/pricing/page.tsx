@@ -90,7 +90,7 @@ const faqs = [
   },
   {
     q: "Can I trial Enktel IPTV before purchasing?",
-    a: "Yes! Contact our support team for a free 24-hour trial. We're confident you'll love the quality.",
+    a: "Yes! Start a free 24-hour trial — no card required — and get instant access to your stream credentials. Visit the Free Trial page to sign up in seconds.",
   },
   {
     q: "Will I get all FIFA World Cup 2026 matches?",
@@ -154,6 +154,9 @@ export default function PricingPage() {
         <p className="text-brand-muted text-xl">
           All plans include every feature. Pay once, stream everything.
         </p>
+        <Link href="/trial" className="inline-flex items-center gap-1.5 text-brand-secondary text-sm font-semibold hover:underline mt-3">
+          Not sure yet? Try Enktel free for 24 hours →
+        </Link>
       </div>
 
       {/* Plans */}

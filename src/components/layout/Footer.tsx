@@ -15,6 +15,7 @@ const quickLinks = [
 
 const supportLinks = [
   { href: "/dashboard", label: "My Dashboard" },
+  { href: "/trial", label: "Free 24-Hour Trial" },
   { href: "/checkout", label: "Subscribe Now" },
   { href: "/setup-guides", label: "Setup Guides" },
   { href: "/contact", label: "Contact Support" },
