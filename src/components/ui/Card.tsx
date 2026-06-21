@@ -14,11 +14,11 @@ export default function Card({ children, className, hover = false, glass = false
     <div
       onClick={onClick}
       className={clsx(
-        "rounded-2xl border border-brand-border",
+        "rounded-2xl",
         glass
-          ? "glass-card"
-          : "bg-brand-card",
-        hover && (glass ? "glass-card-hover" : "card-hover hover:border-brand-primary/50"),
+          ? "cyber-panel"
+          : "bg-brand-card border border-brand-border",
+        hover && (glass ? "cyber-panel-hover" : "card-hover hover:border-brand-primary/50"),
         onClick && "cursor-pointer",
         className
       )}

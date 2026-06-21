@@ -93,12 +93,12 @@ export default function PricingPreview() {
                       <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
                     </Badge>
                   </div>
-                  <div className="glass-card rounded-2xl p-6 pt-8">
+                  <div className="cyber-panel rounded-2xl p-6 pt-8">
                     <PlanCardContent plan={plan} />
                   </div>
                 </div>
               ) : (
-                <div className={`glass-card glass-card-hover rounded-2xl p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/10 to-transparent" : ""}`}>
+                <div className={`cyber-panel cyber-panel-hover rounded-2xl p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/10 to-transparent" : ""}`}>
                   <PlanCardContent plan={plan} />
                 </div>
               )}

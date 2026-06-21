@@ -33,7 +33,7 @@ export default function Button({
     danger:
       "bg-brand-accent text-white hover:bg-red-600 focus:ring-brand-accent shadow-lg shadow-brand-accent/25",
     glass:
-      "glass-card text-white hover:border-brand-secondary/40 focus:ring-brand-secondary/40",
+      "cyber-panel text-white hover:border-brand-secondary/40 focus:ring-brand-secondary/40",
     glow:
       "btn-glow bg-gradient-to-r from-brand-primary to-brand-secondary text-white focus:ring-brand-primary",
   };

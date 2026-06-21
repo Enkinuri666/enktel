@@ -12,7 +12,7 @@ export default function StatsBar() {
   return (
     <section className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="glass-card rounded-2xl grid grid-cols-2 lg:grid-cols-4 divide-x-0 lg:divide-x divide-y lg:divide-y-0 divide-white/5 overflow-hidden">
+        <div className="cyber-panel rounded-2xl grid grid-cols-2 lg:grid-cols-4 divide-x-0 lg:divide-x divide-y lg:divide-y-0 divide-white/5 overflow-hidden">
           {stats.map((stat) => (
             <div key={stat.label} className="flex items-center gap-4 p-6 relative group">
               <div

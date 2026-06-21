@@ -30,7 +30,7 @@ export default function Hero() {
           style={{ background: "radial-gradient(circle, rgba(0,212,255,0.28) 0%, transparent 65%)", animation: "orbFloat 12s ease-in-out infinite reverse" }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
           style={{ background: "radial-gradient(circle, rgba(206,44,26,0.12) 0%, transparent 65%)", animation: "orbFloat 9s ease-in-out infinite 2s" }} />
-        <div className="absolute inset-0 dot-grid" />
+        <div className="absolute inset-0 cyber-grid" />
         <div className="absolute bottom-0 left-0 right-0 h-40"
           style={{ background: "linear-gradient(to bottom, transparent, #060910)" }} />
       </div>
@@ -105,7 +105,7 @@ export default function Hero() {
 
           {/* RIGHT */}
           <motion.div initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2, duration: 0.9 }}
-            className="hidden lg:flex flex-col gap-3 relative">
+            className="hidden lg:flex flex-col gap-3 relative scanline-overlay">
 
             <div className="absolute inset-0 -z-10 scale-110 rounded-3xl"
               style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(108,99,255,0.22) 0%, transparent 70%)", filter: "blur(24px)" }} />
@@ -116,7 +116,7 @@ export default function Hero() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
                 </span>
-                <span className="text-white/60 text-xs font-bold uppercase tracking-widest">Streaming Live</span>
+                <span className="text-white/60 text-xs font-bold uppercase tracking-widest neon-flicker">Streaming Live</span>
               </div>
               <span className="text-white/30 text-xs">3 channels</span>
             </div>
@@ -125,8 +125,8 @@ export default function Hero() {
               <motion.div key={ch.name}
                 initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.45 + i * 0.12 }}
-                className="relative overflow-hidden rounded-2xl p-4 border"
-                style={{ background: "rgba(13,18,32,0.85)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.07)" }}>
+                className="relative overflow-hidden rounded-2xl p-4 border corner-brackets"
+                style={{ background: "rgba(13,18,32,0.85)", backdropFilter: "blur(24px)", borderColor: "rgba(0,212,255,0.18)" }}>
                 <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl" style={{ background: ch.color }} />
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0"
@@ -154,15 +154,15 @@ export default function Hero() {
 
             <div className="grid grid-cols-2 gap-3 mt-2">
               <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                className="rounded-2xl border p-4 text-center"
-                style={{ background: "rgba(108,99,255,0.14)", backdropFilter: "blur(20px)", borderColor: "rgba(108,99,255,0.3)" }}>
-                <div className="text-3xl font-black text-white">{CHANNEL_COUNT_LABEL}</div>
+                className="rounded-2xl p-4 text-center neon-edge"
+                style={{ background: "rgba(108,99,255,0.14)", backdropFilter: "blur(20px)" }}>
+                <div className="text-3xl font-black text-white text-neon-primary">{CHANNEL_COUNT_LABEL}</div>
                 <div className="text-xs font-semibold mt-0.5" style={{ color: "#6C63FF" }}>Live Channels</div>
               </motion.div>
               <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
-                className="rounded-2xl border p-4 text-center"
-                style={{ background: "rgba(0,212,255,0.1)", backdropFilter: "blur(20px)", borderColor: "rgba(0,212,255,0.25)" }}>
-                <div className="text-3xl font-black text-white">99.9%</div>
+                className="rounded-2xl p-4 text-center neon-edge"
+                style={{ background: "rgba(0,212,255,0.1)", backdropFilter: "blur(20px)" }}>
+                <div className="text-3xl font-black text-white text-neon-cyan">99.9%</div>
                 <div className="text-xs font-semibold mt-0.5" style={{ color: "#00D4FF" }}>Uptime SLA</div>
               </motion.div>
             </div>

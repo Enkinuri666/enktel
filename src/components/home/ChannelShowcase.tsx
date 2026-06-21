@@ -47,7 +47,7 @@ export default function ChannelShowcase() {
               >
                 <Link href={`/channels?category=${encodeURIComponent(cat.name)}`}>
                   <div
-                    className="glass-card rounded-2xl p-5 transition-all duration-300 group cursor-pointer h-full hover:-translate-y-1"
+                    className="cyber-panel rounded-2xl p-5 transition-all duration-300 group cursor-pointer h-full hover:-translate-y-1"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = `${cat.color}80`;
                       e.currentTarget.style.boxShadow = `0 10px 30px -10px ${cat.color}40`;

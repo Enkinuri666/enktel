@@ -31,7 +31,7 @@ export default function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="glass-card glass-card-hover rounded-2xl p-6"
+              className="cyber-panel cyber-panel-hover rounded-2xl p-6"
             >
               {/* Stars */}
               <div className="flex items-center gap-1 mb-4">

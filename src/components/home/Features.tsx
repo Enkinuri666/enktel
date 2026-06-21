@@ -16,7 +16,7 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="relative py-20 px-4 sm:px-6 lg:px-8 dot-grid">
+    <section className="relative py-20 px-4 sm:px-6 lg:px-8 cyber-grid">
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16">
           <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-brand-primary text-sm font-bold uppercase tracking-widest mb-3">
@@ -39,7 +39,7 @@ export default function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="group relative glass-card glass-card-hover rounded-2xl p-6 overflow-hidden"
+              className="group relative cyber-panel cyber-panel-hover rounded-2xl p-6 overflow-hidden"
             >
               {/* Gradient corner glow */}
               <div className={`absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br ${feature.gradient} rounded-full blur-2xl opacity-0 group-hover:opacity-25 transition-opacity duration-500`} />
