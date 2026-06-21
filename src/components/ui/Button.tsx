@@ -2,7 +2,7 @@ import React from "react";
 import { clsx } from "clsx";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "glass" | "glow";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   loading?: boolean;
@@ -32,6 +32,10 @@ export default function Button({
       "text-brand-muted hover:text-white hover:bg-white/10 focus:ring-white/20",
     danger:
       "bg-brand-accent text-white hover:bg-red-600 focus:ring-brand-accent shadow-lg shadow-brand-accent/25",
+    glass:
+      "glass-card text-white hover:border-brand-secondary/40 focus:ring-brand-secondary/40",
+    glow:
+      "btn-glow bg-gradient-to-r from-brand-primary to-brand-secondary text-white focus:ring-brand-primary",
   };
 
   const sizes = {

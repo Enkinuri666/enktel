@@ -87,18 +87,18 @@ export default function PricingPreview() {
               transition={{ delay: i * 0.1 }}
             >
               {plan.highlighted ? (
-                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+                <div className="gradient-border-spin rounded-2xl shadow-2xl shadow-brand-primary/20">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <Badge variant="gold" className="px-4 py-1.5 shadow-lg">
                       <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
                     </Badge>
                   </div>
-                  <div className="bg-brand-card rounded-[14px] p-6 pt-8">
+                  <div className="glass-card rounded-2xl p-6 pt-8">
                     <PlanCardContent plan={plan} />
                   </div>
                 </div>
               ) : (
-                <div className={`rounded-2xl border p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/20 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+                <div className={`glass-card glass-card-hover rounded-2xl p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/10 to-transparent" : ""}`}>
                   <PlanCardContent plan={plan} />
                 </div>
               )}

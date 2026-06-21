@@ -16,8 +16,8 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <section className="relative py-20 px-4 sm:px-6 lg:px-8 dot-grid">
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16">
           <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-brand-primary text-sm font-bold uppercase tracking-widest mb-3">
             Everything You Need
@@ -38,13 +38,13 @@ export default function Features() {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-              className="group relative bg-brand-card border border-brand-border rounded-2xl p-6 hover:border-brand-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/10 hover:-translate-y-1 overflow-hidden"
+              transition={{ delay: i * 0.08 }}
+              className="group relative glass-card glass-card-hover rounded-2xl p-6 overflow-hidden"
             >
               {/* Gradient corner glow */}
-              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br ${feature.gradient} rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+              <div className={`absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br ${feature.gradient} rounded-full blur-2xl opacity-0 group-hover:opacity-25 transition-opacity duration-500`} />
 
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} p-0.5 mb-4`}>
+              <div className={`icon-glow w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} p-0.5 mb-4`}>
                 <div className="w-full h-full bg-brand-card rounded-[10px] flex items-center justify-center">
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>

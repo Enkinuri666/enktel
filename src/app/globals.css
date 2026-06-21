@@ -30,6 +30,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3 {
+  font-family: var(--font-display), 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
 /* Global grain texture overlay */
 body::after {
   content: '';
@@ -165,3 +170,62 @@ body::after {
 /* Mobile nav */
 @keyframes mobileNavIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 .mobile-nav-enter { animation: mobileNavIn 0.3s ease-out; }
+
+/* Premium glass card — frosted, layered border highlight, soft depth shadow */
+.glass-card {
+  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.glass-card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.glass-card-hover:hover {
+  transform: translateY(-6px);
+  border-color: rgba(108,99,255,0.4);
+  box-shadow: 0 20px 50px rgba(108,99,255,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* Icon glow halo — colored shadow behind icon containers */
+.icon-glow {
+  position: relative;
+}
+.icon-glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(14px);
+  opacity: 0.6;
+  z-index: -1;
+}
+
+/* Animated gradient border ring, for featured/highlighted cards */
+@keyframes borderRotate {
+  to { --border-angle: 360deg; }
+}
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.gradient-border-spin {
+  position: relative;
+  border-radius: inherit;
+}
+.gradient-border-spin::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from var(--border-angle), #6C63FF, #00D4FF, #fbbf24, #6C63FF);
+  animation: borderRotate 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: -1;
+}

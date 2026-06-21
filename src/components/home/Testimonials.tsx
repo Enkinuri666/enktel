@@ -5,8 +5,8 @@ import { mockTestimonials } from "@/lib/mock-data";
 
 export default function Testimonials() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <section className="relative py-20 px-4 sm:px-6 lg:px-8 aurora-bg">
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-12">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
@@ -31,7 +31,7 @@ export default function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-brand-card border border-brand-border rounded-xl p-6 hover:border-brand-primary/30 transition-all duration-300"
+              className="glass-card glass-card-hover rounded-2xl p-6"
             >
               {/* Stars */}
               <div className="flex items-center gap-1 mb-4">

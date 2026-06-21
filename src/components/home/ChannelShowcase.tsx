@@ -47,19 +47,18 @@ export default function ChannelShowcase() {
               >
                 <Link href={`/channels?category=${encodeURIComponent(cat.name)}`}>
                   <div
-                    className="bg-brand-card border border-brand-border rounded-xl p-5 transition-all duration-300 group cursor-pointer h-full hover:-translate-y-1"
-                    style={{ boxShadow: "0 0 0 0 transparent" }}
+                    className="glass-card rounded-2xl p-5 transition-all duration-300 group cursor-pointer h-full hover:-translate-y-1"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = `${cat.color}80`;
                       e.currentTarget.style.boxShadow = `0 10px 30px -10px ${cat.color}40`;
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = "";
-                      e.currentTarget.style.boxShadow = "0 0 0 0 transparent";
+                      e.currentTarget.style.boxShadow = "";
                     }}
                   >
                     <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
+                      className="icon-glow w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
                       style={{ backgroundColor: `${cat.color}1a` }}
                     >
                       <cat.icon className="w-6 h-6" style={{ color: cat.color }} />
