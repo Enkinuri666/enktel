@@ -10,9 +10,11 @@ interface ChannelCardProps {
 export default function ChannelCard({ channel }: ChannelCardProps) {
   return (
     <Link href={`/epg?channel=${channel.id}`}>
-      <div className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-primary/50 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group cursor-pointer">
+      <div className="cyber-panel cyber-panel-hover rounded-xl p-4 group cursor-pointer">
         <div className="flex items-center gap-3 mb-3">
-          <ChannelLogo name={channel.name} id={channel.id} size="md" />
+          <div className="icon-glow rounded-full">
+            <ChannelLogo name={channel.name} id={channel.id} size="md" />
+          </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate group-hover:text-brand-primary transition-colors">
               {channel.name}

@@ -38,7 +38,7 @@ export default function ChannelGrid({ initialCategory = "All" }: { initialCatego
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search channels..."
-            className="w-full bg-brand-card border border-brand-border rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+            className="w-full cyber-panel rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-brand-muted focus:outline-none focus:border-brand-secondary/50 transition-colors"
           />
         </div>
         {/* Category Filter */}

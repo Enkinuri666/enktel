@@ -19,7 +19,7 @@ export default function ChannelsPage({ searchParams }: ChannelsPageProps) {
       <div className="mb-8">
         <h1 className="text-4xl sm:text-5xl font-black text-white mb-3">
           Channel{" "}
-          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent text-neon-cyan">
             List
           </span>
         </h1>
