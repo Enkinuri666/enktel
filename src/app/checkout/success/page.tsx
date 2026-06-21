@@ -69,7 +69,7 @@ function SuccessContent() {
       <p className="text-brand-muted mb-8">
         Welcome to Enktel IPTV! Your subscription is now live. Here are your credentials:
       </p>
-      <div className="bg-brand-card border border-brand-border rounded-xl p-5 text-left space-y-4 mb-8">
+      <div className="cyber-panel rounded-xl p-5 text-left space-y-4 mb-8">
         <div>
           <p className="text-brand-muted text-xs mb-1">Subscription ID</p>
           <p className="text-white font-mono text-sm">{subscription.id}</p>

@@ -53,7 +53,7 @@ export default function WhatsOnWidget() {
               <Link
                 key={item.channel.id}
                 href={`/epg?channel=${encodeURIComponent(item.channel.id)}`}
-                className="block bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-primary/40 transition-all duration-300"
+                className="block cyber-panel rounded-xl p-4 hover:border-brand-primary/40 transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">

@@ -131,7 +131,7 @@ export default function LatestReleasesPage() {
               return (
                 <div
                   key={`spotlight-${item.type}-${item.id}`}
-                  className="relative shrink-0 w-44 bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 transition-colors"
+                  className="relative shrink-0 w-44 cyber-panel rounded-xl overflow-hidden hover:border-brand-primary/40 transition-colors"
                 >
                   <div className="relative">
                     <MediaPoster posterPath={item.posterPath} title={item.title} type={item.type} />
@@ -167,7 +167,7 @@ export default function LatestReleasesPage() {
             className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
               filter === f
                 ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25"
-                : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
+                : "cyber-panel text-brand-muted hover:text-white hover:border-brand-primary/40"
             }`}
           >
             {f === "all" ? "All" : f === "movies" ? "Movies" : "TV Shows"}
@@ -179,7 +179,7 @@ export default function LatestReleasesPage() {
           className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
             blockbustersOnly
               ? "bg-brand-accent text-white shadow-lg shadow-brand-accent/25"
-              : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent/40"
+              : "cyber-panel text-brand-muted hover:text-white hover:border-brand-accent/40"
           }`}
           title="Show only widely-loved, highly-rated titles"
         >
@@ -189,7 +189,7 @@ export default function LatestReleasesPage() {
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value as SortMode); setPage(1); }}
-          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+          className="cyber-panel text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
         >
           <option value="popular">Sort: Most Popular</option>
           <option value="rating">Sort: Highest Rated</option>
@@ -198,7 +198,7 @@ export default function LatestReleasesPage() {
         <select
           value={language}
           onChange={(e) => { setLanguage(e.target.value); setPage(1); }}
-          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+          className="cyber-panel text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
         >
           {languages.map((l) => (
             <option key={l} value={l}>
@@ -209,7 +209,7 @@ export default function LatestReleasesPage() {
         <select
           value={genre}
           onChange={(e) => { setGenre(e.target.value); setPage(1); }}
-          className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+          className="cyber-panel text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
         >
           {genres.map((g) => (
             <option key={g} value={g}>
@@ -233,7 +233,7 @@ export default function LatestReleasesPage() {
               return (
                 <div
                   key={`${item.type}-${item.id}`}
-                  className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
+                  className="cyber-panel rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
                 >
                   <div className="relative">
                     <MediaPoster posterPath={item.posterPath} title={title} type={item.type} />
@@ -282,7 +282,7 @@ export default function LatestReleasesPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-2 rounded-lg bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg cyber-panel text-brand-muted hover:text-white hover:border-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -293,7 +293,7 @@ export default function LatestReleasesPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="p-2 rounded-lg bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg cyber-panel text-brand-muted hover:text-white hover:border-brand-primary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

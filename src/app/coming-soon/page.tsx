@@ -62,7 +62,7 @@ function MovieCard({ movie }: { movie: Movie }) {
   const isPast = new Date(movie.releaseDate) < new Date();
 
   return (
-    <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden hover:border-brand-primary/40 hover:shadow-xl hover:shadow-brand-primary/10 transition-all duration-300">
+    <div className="cyber-panel rounded-2xl overflow-hidden hover:border-brand-primary/40 hover:shadow-xl hover:shadow-brand-primary/10 transition-all duration-300">
       {/* Poster area */}
       <div className="aspect-video bg-gradient-to-br from-brand-primary/20 via-brand-secondary/10 to-brand-card relative flex items-center justify-center overflow-hidden">
         {movie.backdropPath || movie.posterPath ? (

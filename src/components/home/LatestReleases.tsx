@@ -96,7 +96,7 @@ export default function LatestReleases() {
               return (
                 <div
                   key={`${item.type}-${item.id}`}
-                  className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
+                  className="cyber-panel rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300 group"
                 >
                   <div className="relative">
                     <MediaPoster posterPath={item.posterPath} title={title} type={item.type} />

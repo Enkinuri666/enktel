@@ -86,7 +86,7 @@ export default function FaqsPage() {
               const id = `${cat.name}-${faq.q}`;
               const isOpen = open === id;
               return (
-                <div key={id} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
+                <div key={id} className="cyber-panel rounded-xl overflow-hidden">
                   <button
                     onClick={() => setOpen(isOpen ? null : id)}
                     className="w-full flex items-center justify-between px-5 py-4 text-left"

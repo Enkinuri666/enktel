@@ -43,7 +43,7 @@ function CountdownCard({ movie }: { movie: Movie }) {
   });
 
   return (
-    <div className="bg-brand-card border border-brand-border rounded-xl p-5 hover:border-brand-primary/40 transition-all duration-300">
+    <div className="cyber-panel rounded-xl p-5 hover:border-brand-primary/40 transition-all duration-300">
       <div className="flex items-start gap-4">
         <div className="w-16 h-16 rounded-xl shrink-0 relative overflow-hidden bg-gradient-to-br from-brand-primary/30 to-brand-secondary/20">
           {movie.posterPath ? (

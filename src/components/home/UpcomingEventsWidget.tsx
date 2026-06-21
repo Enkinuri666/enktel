@@ -81,7 +81,7 @@ export default function UpcomingEventsWidget() {
             <select
               value={sportFilter}
               onChange={(e) => setSportFilter(e.target.value)}
-              className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+              className="cyber-panel text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
             >
               {sports.map((s) => (
                 <option key={s} value={s}>
@@ -92,7 +92,7 @@ export default function UpcomingEventsWidget() {
             <select
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="bg-brand-card border border-brand-border text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
+              className="cyber-panel text-brand-muted hover:text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:border-brand-primary/40"
             >
               {eventChannels.map((c) => (
                 <option key={c} value={c}>
@@ -177,7 +177,7 @@ export default function UpcomingEventsWidget() {
                   return (
                     <div
                       key={event.id}
-                      className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-secondary/40 transition-all duration-300"
+                      className="cyber-panel rounded-xl p-4 hover:border-brand-secondary/40 transition-all duration-300"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2 min-w-0">

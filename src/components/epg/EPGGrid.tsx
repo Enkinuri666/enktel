@@ -82,7 +82,7 @@ export default function EPGGrid() {
               "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
               category === cat
                 ? "bg-brand-primary text-white"
-                : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
+                : "cyber-panel text-brand-muted hover:text-white hover:border-brand-primary/40"
             )}
           >
             {cat}

@@ -77,7 +77,7 @@ export default function WhatsNewPage() {
                 return (
                   <div
                     key={`${item.type}-${item.id}`}
-                    className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 transition-all duration-300"
+                    className="cyber-panel rounded-xl overflow-hidden hover:border-brand-primary/40 transition-all duration-300"
                   >
                     <MediaPoster posterPath={item.posterPath} title={item.title} type={item.type} />
                     <div className="p-3">
@@ -108,7 +108,7 @@ export default function WhatsNewPage() {
                 <Link
                   key={h.channelId}
                   href={`/epg?channel=${encodeURIComponent(h.channelId)}`}
-                  className="block bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
+                  className="block cyber-panel rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-brand-muted text-xs font-medium">{h.category}</span>
@@ -139,7 +139,7 @@ export default function WhatsNewPage() {
               {(data?.events || []).map((event) => (
                 <div
                   key={event.id}
-                  className="bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-secondary/40 transition-all duration-300"
+                  className="cyber-panel rounded-xl p-4 hover:border-brand-secondary/40 transition-all duration-300"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xl">{event.emoji}</span>

@@ -56,7 +56,7 @@ export default function WorldCup2026Page() {
         for a separate sports subscription — it&apos;s all included in your plan.
       </p>
 
-      <div className="bg-brand-card border border-brand-border rounded-xl p-6 mb-10">
+      <div className="cyber-panel rounded-xl p-6 mb-10">
         <h2 className="text-white font-bold text-xl mb-5 flex items-center gap-2">
           <Radio className="w-5 h-5 text-brand-secondary" />
           Next Match

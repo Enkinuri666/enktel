@@ -52,7 +52,7 @@ export default function EPGProgramCell({ program, widthPx, isCurrentlyAiring }: 
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute bottom-full left-0 z-50 mb-2 w-64 bg-brand-card border border-brand-border rounded-xl p-3 shadow-xl shadow-black/50 pointer-events-none">
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-64 cyber-panel rounded-xl p-3 shadow-xl shadow-black/50 pointer-events-none">
           <div className="flex items-start justify-between gap-2 mb-1">
             <h4 className="text-white font-semibold text-sm leading-tight">{program.title}</h4>
             {isCurrentlyAiring && (

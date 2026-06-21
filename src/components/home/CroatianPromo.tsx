@@ -50,7 +50,7 @@ export default function CroatianPromo() {
             className="order-2 lg:order-1"
           >
             {/* Croatian channels card */}
-            <div className="bg-brand-card border border-brand-border rounded-2xl p-6 mb-4 relative overflow-hidden">
+            <div className="cyber-panel rounded-2xl p-6 mb-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#CE2C1A]/10 rounded-full blur-2xl" />
               <div className="flex items-center gap-3 mb-5">
                 <span className="text-2xl">🇭🇷</span>
@@ -71,7 +71,7 @@ export default function CroatianPromo() {
             </div>
 
             {/* Balkan channels strip */}
-            <div className="bg-brand-card border border-brand-border rounded-xl p-4">
+            <div className="cyber-panel rounded-xl p-4">
               <p className="text-brand-muted text-xs font-semibold uppercase tracking-wider mb-3">Also Included: Balkan Region</p>
               <div className="flex flex-wrap gap-2">
                 {balkanChannels.map((ch) => (

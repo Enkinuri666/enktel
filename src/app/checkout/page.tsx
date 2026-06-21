@@ -89,7 +89,7 @@ function CheckoutContent() {
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Details */}
-            <div className="bg-brand-card border border-brand-border rounded-xl p-6">
+            <div className="cyber-panel rounded-xl p-6">
               <h2 className="text-white font-semibold mb-4">Your Details</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -121,7 +121,7 @@ function CheckoutContent() {
             </div>
 
             {/* Payment */}
-            <div className="bg-brand-card border border-brand-border rounded-xl p-6">
+            <div className="cyber-panel rounded-xl p-6">
               <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
                 <Lock className="w-5 h-5 text-brand-primary" />
                 Payment
@@ -185,7 +185,7 @@ function CheckoutContent() {
 
         {/* Order Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-brand-card border border-brand-border rounded-xl p-6 sticky top-24">
+          <div className="cyber-panel rounded-xl p-6 sticky top-24">
             <h2 className="text-white font-semibold mb-5">Order Summary</h2>
 
             {plan.isPromo && (

@@ -32,14 +32,14 @@ const legalLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-brand-card border-t border-brand-border mt-20">
+    <footer className="bg-brand-card border-t border-brand-secondary/15 mt-20 cyber-grid">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer */}
         <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center">
+              <div className="icon-glow w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white fill-white" />
               </div>
               <span className="text-xl font-display font-bold">
@@ -66,7 +66,7 @@ export default function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-brand-border flex items-center justify-center text-brand-muted hover:text-brand-primary hover:border-brand-primary/50 transition-colors"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-brand-muted hover:text-brand-secondary hover:border-brand-secondary/50 hover:shadow-[0_0_14px_rgba(0,212,255,0.3)] transition-all"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -132,7 +132,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-brand-border py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/5 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-brand-muted text-xs">
             &copy; {new Date().getFullYear()} Enktel IPTV. All rights reserved.
           </p>

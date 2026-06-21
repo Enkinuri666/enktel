@@ -79,7 +79,7 @@ export default function Navbar() {
                   onChange={(e) => setSearchValue(e.target.value)}
                   onBlur={() => !searchValue && setSearchOpen(false)}
                   placeholder="Search..."
-                  className="w-48 bg-brand-card border border-brand-border rounded-full px-4 py-1.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
+                  className="w-48 cyber-panel rounded-full px-4 py-1.5 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
                 />
               </form>
             ) : (

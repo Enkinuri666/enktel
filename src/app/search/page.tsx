@@ -49,7 +49,7 @@ function SearchPageInner() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Search channels, movies, TV shows..."
-          className="w-full bg-brand-card border border-brand-border rounded-full pl-11 pr-4 py-3 text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
+          className="w-full cyber-panel rounded-full pl-11 pr-4 py-3 text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/40"
         />
       </form>
 
@@ -69,7 +69,7 @@ function SearchPageInner() {
                   <Link
                     key={c.id}
                     href={`/epg?channel=${encodeURIComponent(c.id)}`}
-                    className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-xl p-3 hover:border-brand-primary/40 transition-colors"
+                    className="flex items-center gap-3 cyber-panel rounded-xl p-3 hover:border-brand-primary/40 transition-colors"
                   >
                     <ChannelLogo name={c.name} id={c.id} size="sm" />
                     <div>
@@ -87,7 +87,7 @@ function SearchPageInner() {
               <h2 className="text-xl font-bold text-white mb-4">Movies</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {movies.map((m) => (
-                  <div key={m.id} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
+                  <div key={m.id} className="cyber-panel rounded-xl overflow-hidden">
                     <MediaPoster posterPath={m.posterPath} title={m.title} type="movie" />
                     <p className="text-white text-sm font-medium p-2 line-clamp-1">{m.title}</p>
                   </div>
@@ -101,7 +101,7 @@ function SearchPageInner() {
               <h2 className="text-xl font-bold text-white mb-4">TV Shows</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {shows.map((s) => (
-                  <div key={s.id} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
+                  <div key={s.id} className="cyber-panel rounded-xl overflow-hidden">
                     <MediaPoster posterPath={s.posterPath} title={s.title} type="tv" />
                     <p className="text-white text-sm font-medium p-2 line-clamp-1">{s.title}</p>
                   </div>

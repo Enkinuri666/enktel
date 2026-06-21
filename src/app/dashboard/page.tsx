@@ -141,7 +141,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Subscription Status */}
-        <div className="lg:col-span-2 bg-brand-card border border-brand-border rounded-xl p-6">
+        <div className="lg:col-span-2 cyber-panel rounded-xl p-6">
           <div className="flex items-start justify-between mb-5">
             <div>
               <h2 className="text-white font-bold text-xl">{sub.plan} Plan</h2>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
 
         {/* Quick Stats */}
         <div className="space-y-4">
-          <div className="bg-brand-card border border-brand-border rounded-xl p-5">
+          <div className="cyber-panel rounded-xl p-5">
             <h3 className="text-white font-semibold mb-3">Connection Usage</h3>
             <div className="mb-2">
               <div className="h-2 bg-brand-border rounded-full overflow-hidden">
@@ -202,7 +202,7 @@ export default function DashboardPage() {
             <p className="text-brand-muted text-xs">{sub.usedConnections} of {sub.connections} connections in use</p>
           </div>
 
-          <div className="bg-brand-card border border-brand-border rounded-xl p-5">
+          <div className="cyber-panel rounded-xl p-5">
             <h3 className="text-white font-semibold mb-3">Subscription Period</h3>
             <div className="mb-2">
               <div className="h-2 bg-brand-border rounded-full overflow-hidden">
@@ -226,7 +226,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Setup Guides */}
-      <div className="bg-brand-card border border-brand-border rounded-xl p-6">
+      <div className="cyber-panel rounded-xl p-6">
         <h2 className="text-white font-bold text-xl mb-5">Device Setup Guides</h2>
 
         {/* Tabs */}

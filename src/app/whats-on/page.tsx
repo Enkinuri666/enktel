@@ -53,7 +53,7 @@ export default function WhatsOnPage() {
               "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
               category === cat
                 ? "bg-brand-accent text-white"
-                : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-accent/40"
+                : "cyber-panel text-brand-muted hover:text-white hover:border-brand-accent/40"
             )}
           >
             {cat}
@@ -78,7 +78,7 @@ export default function WhatsOnPage() {
               <Link
                 key={item.channel.id}
                 href={`/epg?channel=${encodeURIComponent(item.channel.id)}`}
-                className="block bg-brand-card border border-brand-border rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
+                className="block cyber-panel rounded-xl p-4 hover:border-brand-accent/40 transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
