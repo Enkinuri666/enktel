@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { channels as allChannels, channelCategories } from "@/lib/channels";
 import { getProgramsForChannel } from "@/lib/epg";
+import { REAL_EPG_CHANNEL_IDS } from "@/lib/epgSource";
+import { TIMEZONE_OPTIONS, DEFAULT_TIMEZONE, detectBrowserTimezone } from "@/lib/timezone";
 import { EPGProgram, Channel } from "@/types";
 import EPGRow from "./EPGRow";
 import TimeSlots from "./TimeSlots";
@@ -21,11 +23,21 @@ interface EPGData {
 export default function EPGGrid() {
   const { data, isLoading } = useSWR<EPGData>("/api/epg", fetcher, {
     revalidateOnFocus: false,
+    refreshInterval: 5 * 60 * 1000,
   });
 
   const searchParams = useSearchParams();
   const focusChannelId = searchParams.get("channel");
   const [category, setCategory] = useState("All");
+  const [eagle4kOnly, setEagle4kOnly] = useState(false);
+  // Default to a fixed zone for the initial (server-matching) render, then
+  // upgrade to the visitor's real zone post-mount to avoid a hydration
+  // mismatch between server and client renders.
+  const [timeZone, setTimeZone] = useState(DEFAULT_TIMEZONE);
+  useEffect(() => {
+    setTimeZone(detectBrowserTimezone());
+  }, []);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -35,9 +47,9 @@ export default function EPGGrid() {
   const endTime = new Date(startTime);
   endTime.setHours(startTime.getHours() + 12, 0, 0, 0);
 
-  const filteredChannels: Channel[] = category === "All"
-    ? allChannels
-    : allChannels.filter((c) => c.category === category);
+  const filteredChannels: Channel[] = allChannels
+    .filter((c) => category === "All" || c.category === category)
+    .filter((c) => !eagle4kOnly || REAL_EPG_CHANNEL_IDS.has(c.id));
 
   const focusChannel = focusChannelId ? allChannels.find((c) => c.id === focusChannelId) : undefined;
 
@@ -72,22 +84,51 @@ export default function EPGGrid() {
         <Breadcrumbs items={[{ label: "EPG Guide", href: "/epg" }, { label: focusChannel.name }]} />
       )}
 
-      {/* Category filter */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-thin">
-        {channelCategories.map((cat) => (
+      {/* Filters row: category, Eagle 4K toggle, timezone */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {channelCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={clsx(
+                "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
+                category === cat
+                  ? "bg-brand-primary text-white"
+                  : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
+            onClick={() => setEagle4kOnly((v) => !v)}
+            title="Show only channels with real, live programme data"
             className={clsx(
-              "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
-              category === cat
-                ? "bg-brand-primary text-white"
-                : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
+              "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border",
+              eagle4kOnly
+                ? "bg-brand-accent text-white border-brand-accent"
+                : "bg-brand-card border-brand-border text-brand-muted hover:text-white hover:border-brand-accent/40"
             )}
           >
-            {cat}
+            🦅 Eagle 4K — Real EPG only
           </button>
-        ))}
+
+          <select
+            value={timeZone}
+            onChange={(e) => setTimeZone(e.target.value)}
+            className="bg-brand-card border border-brand-border text-white text-sm rounded-full px-3 py-1.5 focus:outline-none focus:border-brand-primary/40"
+          >
+            {TIMEZONE_OPTIONS.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -98,9 +139,10 @@ export default function EPGGrid() {
           <div className="flex sticky top-0 z-30 bg-brand-bg border-b border-brand-border">
             <div className="w-40 shrink-0 border-r border-brand-border bg-brand-bg z-40 sticky left-0" />
             <TimeSlots
-              startHour={startTime.getHours()}
-              endHour={endTime.getHours()}
+              startTime={startTime}
+              endTime={endTime}
               pixelsPerMinute={PIXELS_PER_MINUTE}
+              timeZone={timeZone}
             />
           </div>
 
@@ -119,6 +161,7 @@ export default function EPGGrid() {
                   startTime={startTime}
                   endTime={endTime}
                   pixelsPerMinute={PIXELS_PER_MINUTE}
+                  timeZone={timeZone}
                 />
               </div>
             );

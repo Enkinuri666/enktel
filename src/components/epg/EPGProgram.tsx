@@ -7,13 +7,14 @@ interface EPGProgramProps {
   program: EPGProgramType;
   widthPx: number;
   isCurrentlyAiring: boolean;
+  timeZone: string;
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function formatTime(iso: string, timeZone: string) {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone });
 }
 
-export default function EPGProgramCell({ program, widthPx, isCurrentlyAiring }: EPGProgramProps) {
+export default function EPGProgramCell({ program, widthPx, isCurrentlyAiring, timeZone }: EPGProgramProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -43,7 +44,7 @@ export default function EPGProgramCell({ program, widthPx, isCurrentlyAiring }: 
             </div>
             {widthPx > 100 && (
               <div className="text-brand-muted text-xs truncate">
-                {formatTime(program.startTime)}
+                {formatTime(program.startTime, timeZone)}
               </div>
             )}
           </>
@@ -60,7 +61,7 @@ export default function EPGProgramCell({ program, widthPx, isCurrentlyAiring }: 
             )}
           </div>
           <div className="text-brand-muted text-xs mb-2">
-            {formatTime(program.startTime)} – {formatTime(program.endTime)}
+            {formatTime(program.startTime, timeZone)} – {formatTime(program.endTime, timeZone)}
             {program.rating && <span className="ml-2 bg-white/10 px-1 rounded">{program.rating}</span>}
           </div>
           {program.description && (

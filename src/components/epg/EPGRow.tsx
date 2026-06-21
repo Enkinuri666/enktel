@@ -8,9 +8,10 @@ interface EPGRowProps {
   startTime: Date;
   endTime: Date;
   pixelsPerMinute: number;
+  timeZone: string;
 }
 
-export default function EPGRow({ channel, programs, startTime, endTime, pixelsPerMinute }: EPGRowProps) {
+export default function EPGRow({ channel, programs, startTime, endTime, pixelsPerMinute, timeZone }: EPGRowProps) {
   const now = new Date();
   const totalMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
   const totalWidth = totalMinutes * pixelsPerMinute;
@@ -49,6 +50,7 @@ export default function EPGRow({ channel, programs, startTime, endTime, pixelsPe
                 program={program}
                 widthPx={widthPx}
                 isCurrentlyAiring={isCurrentlyAiring}
+                timeZone={timeZone}
               />
             </div>
           );
