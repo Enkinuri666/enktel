@@ -147,7 +147,7 @@ export default function PricingPage() {
       <div className="text-center mb-12">
         <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
           Choose Your{" "}
-          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent text-neon-cyan">
             Plan
           </span>
         </h1>
@@ -166,18 +166,18 @@ export default function PricingPage() {
             transition={{ delay: i * 0.1 }}
           >
             {plan.highlighted ? (
-              <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+              <div className="gradient-border-spin rounded-2xl shadow-2xl shadow-brand-primary/20">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                   <Badge variant="gold" className="px-5 py-1.5 shadow-lg shadow-yellow-400/30">
                     <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
                   </Badge>
                 </div>
-                <div className="bg-brand-card rounded-[14px] p-7">
+                <div className="cyber-panel rounded-2xl p-7">
                   <PlanCard plan={plan} />
                 </div>
               </div>
             ) : (
-              <div className={`relative rounded-2xl border p-7 ${plan.promo ? "border-green-700/50 bg-gradient-to-b from-green-950/30 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+              <div className={`cyber-panel cyber-panel-hover rounded-2xl p-7 ${plan.promo ? "border-green-700/40 bg-gradient-to-b from-green-950/15 to-transparent" : ""}`}>
                 <PlanCard plan={plan} />
               </div>
             )}
@@ -186,7 +186,7 @@ export default function PricingPage() {
       </div>
 
       {/* Quick comparison strip */}
-      <div className="grid grid-cols-3 divide-x divide-brand-border bg-brand-card border border-brand-border rounded-2xl mb-16 overflow-hidden text-center">
+      <div className="grid grid-cols-3 divide-x divide-white/5 cyber-panel rounded-2xl mb-16 overflow-hidden text-center">
         {plans.map((plan) => (
           <div key={plan.id} className="px-3 py-5 sm:px-6">
             <p className="text-brand-muted text-xs uppercase tracking-wide mb-1">{plan.name}</p>
@@ -204,7 +204,7 @@ export default function PricingPage() {
       </div>
 
       {/* What's included */}
-      <div className="bg-brand-card border border-brand-border rounded-2xl p-8 mb-16">
+      <div className="cyber-panel rounded-2xl p-8 mb-16">
         <h2 className="text-2xl font-black text-white mb-2 text-center">Everything Included in Every Plan</h2>
         <p className="text-brand-muted text-center mb-8">No feature is locked behind a higher tier. Every plan gets the full Enktel experience.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -219,7 +219,7 @@ export default function PricingPage() {
             { emoji: "🌍", text: "50+ Countries' Channels" },
             { emoji: "📱", text: "Works on All Devices" },
           ].map((item) => (
-            <div key={item.text} className="flex items-center gap-3 bg-brand-bg border border-brand-border rounded-xl px-4 py-3">
+            <div key={item.text} className="icon-glow flex items-center gap-3 bg-brand-bg border border-brand-secondary/15 rounded-xl px-4 py-3">
               <span className="text-xl">{item.emoji}</span>
               <span className="text-white text-sm font-medium">{item.text}</span>
             </div>
@@ -232,16 +232,16 @@ export default function PricingPage() {
         <h2 className="text-2xl font-black text-white mb-6 text-center">Frequently Asked Questions</h2>
         <div className="space-y-3">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
+            <div key={i} className="cyber-panel rounded-xl overflow-hidden">
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between px-5 py-4 text-left"
               >
                 <span className="text-white font-medium text-sm pr-4">{faq.q}</span>
-                <ChevronDown className={`w-4 h-4 text-brand-muted shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-brand-secondary shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
               </button>
               {openFaq === i && (
-                <div className="px-5 pb-4 text-brand-muted text-sm leading-relaxed border-t border-brand-border pt-3">
+                <div className="px-5 pb-4 text-brand-muted text-sm leading-relaxed border-t border-white/5 pt-3">
                   {faq.a}
                 </div>
               )}
