@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
-import { Menu, X, Zap, Search } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { clsx } from "clsx";
 
@@ -37,14 +38,19 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center shadow-lg shadow-brand-primary/30 group-hover:shadow-brand-primary/50 transition-shadow">
-              <Zap className="w-5 h-5 text-white fill-white" />
-            </div>
-            <span className="text-xl font-bold">
-              <span className="text-white">ENK</span>
-              <span className="text-brand-primary">TEL</span>
-              <span className="text-brand-muted text-sm font-normal ml-1">IPTV</span>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Image
+              src="/logo-icon.png"
+              alt="Enktel IPTV"
+              width={36}
+              height={36}
+              className="w-9 h-9 drop-shadow-[0_0_10px_rgba(0,212,255,0.35)] group-hover:scale-105 transition-transform"
+              priority
+            />
+            <span className="text-xl font-bold flex items-center gap-1.5">
+              <span className="text-white">Enk</span>
+              <span className="text-brand-secondary">Tel</span>
+              <span className="text-[10px] font-bold rounded-full px-2 py-0.5 ml-0.5 bg-brand-secondary text-[#06122B]">IPTV</span>
             </span>
           </Link>
 

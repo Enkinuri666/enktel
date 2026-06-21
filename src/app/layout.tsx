@@ -22,11 +22,13 @@ export const metadata: Metadata = {
     description: `Premium IPTV with ${CHANNEL_COUNT_LABEL} channels. 4K quality. 99.9% uptime.`,
     type: "website",
     locale: "en_GB",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Enktel IPTV" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Enktel IPTV – Stream Beyond Limits",
     description: `Premium IPTV with ${CHANNEL_COUNT_LABEL} channels. 4K quality.`,
+    images: ["/og-image.png"],
   },
 };
 

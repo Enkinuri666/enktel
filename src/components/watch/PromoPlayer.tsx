@@ -7,6 +7,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
 
@@ -265,7 +266,8 @@ function SceneLogo() {
         <div className="flex flex-col items-center gap-5">
           <Kicker delay={0.3}>Enktel IPTV · Now Launching</Kicker>
           <Reveal delay={0.8} y={28} dur={0.75} ease={Easing.easeOutBack}>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
+              <Image src="/logo-icon.png" alt="" width={56} height={56} className="w-12 h-12 md:w-14 md:h-14" />
               <span className="font-black tracking-tight text-3xl md:text-4xl text-white" style={{ fontFamily: FD }}>EnkTel</span>
               <span className="font-black text-lg md:text-xl rounded-full px-3 py-1" style={{ fontFamily: FD, color: "#0A1A2B", background: C.secondary }}>IPTV</span>
             </div>
@@ -455,6 +457,7 @@ function SceneCTA() {
         <div className="flex flex-col items-center gap-5">
           <Reveal delay={0.2} y={26} dur={0.7} ease={Easing.easeOutBack}>
             <div className="flex items-center gap-2.5">
+              <Image src="/logo-icon.png" alt="" width={44} height={44} className="w-9 h-9 md:w-11 md:h-11" />
               <span className="font-black tracking-tight text-2xl md:text-3xl text-white" style={{ fontFamily: FD }}>EnkTel</span>
               <span className="font-black text-base md:text-lg rounded-full px-2.5 py-0.5" style={{ fontFamily: FD, color: "#0A1A2B", background: C.secondary }}>IPTV</span>
             </div>
