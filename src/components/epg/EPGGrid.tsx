@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { channels as allChannels, channelCategories } from "@/lib/channels";
 import { getProgramsForChannel } from "@/lib/epg";
-import { REAL_EPG_CHANNEL_IDS } from "@/lib/epgSource";
 import { TIMEZONE_OPTIONS, DEFAULT_TIMEZONE, detectBrowserTimezone } from "@/lib/timezone";
 import { EPGProgram, Channel } from "@/types";
 import EPGRow from "./EPGRow";
@@ -29,7 +28,6 @@ export default function EPGGrid() {
   const searchParams = useSearchParams();
   const focusChannelId = searchParams.get("channel");
   const [category, setCategory] = useState("All");
-  const [eagle4kOnly, setEagle4kOnly] = useState(false);
   // Default to a fixed zone for the initial (server-matching) render, then
   // upgrade to the visitor's real zone post-mount to avoid a hydration
   // mismatch between server and client renders.
@@ -48,8 +46,7 @@ export default function EPGGrid() {
   endTime.setHours(startTime.getHours() + 12, 0, 0, 0);
 
   const filteredChannels: Channel[] = allChannels
-    .filter((c) => category === "All" || c.category === category)
-    .filter((c) => !eagle4kOnly || REAL_EPG_CHANNEL_IDS.has(c.id));
+    .filter((c) => category === "All" || c.category === category);
 
   const focusChannel = focusChannelId ? allChannels.find((c) => c.id === focusChannelId) : undefined;
 
@@ -84,7 +81,7 @@ export default function EPGGrid() {
         <Breadcrumbs items={[{ label: "EPG Guide", href: "/epg" }, { label: focusChannel.name }]} />
       )}
 
-      {/* Filters row: category, Eagle 4K toggle, timezone */}
+      {/* Filters row: category, timezone */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {channelCategories.map((cat) => (
@@ -104,19 +101,6 @@ export default function EPGGrid() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => setEagle4kOnly((v) => !v)}
-            title="Show only channels with real, live programme data"
-            className={clsx(
-              "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border",
-              eagle4kOnly
-                ? "bg-brand-accent text-white border-brand-accent"
-                : "bg-brand-card border-brand-border text-brand-muted hover:text-white hover:border-brand-accent/40"
-            )}
-          >
-            🦅 Eagle 4K — Real EPG only
-          </button>
-
           <select
             value={timeZone}
             onChange={(e) => setTimeZone(e.target.value)}

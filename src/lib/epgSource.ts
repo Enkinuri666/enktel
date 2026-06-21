@@ -69,10 +69,6 @@ const EPG_SOURCE_MAP: Record<string, SourceChannelMapping> = {
   kerrang: { file: "UK1", sourceId: "Kerrang!.uk" },
 };
 
-// The "Eagle 4K" filter on the EPG page shows exactly this set: channels we
-// can actually back with real (non-simulated) programme data.
-export const REAL_EPG_CHANNEL_IDS: ReadonlySet<string> = new Set(Object.keys(EPG_SOURCE_MAP));
-
 const SOURCE_URL = (file: string) => `https://epgshare01.online/epgshare01/epg_ripper_${file}.xml.gz`;
 
 // These guides are regenerated roughly daily upstream, so a multi-hour
