@@ -42,7 +42,7 @@ export default function Footer() {
               <div className="w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white fill-white" />
               </div>
-              <span className="text-xl font-bold">
+              <span className="text-xl font-display font-bold">
                 <span className="text-white">ENK</span>
                 <span className="text-brand-primary">TEL</span>
                 <span className="text-brand-muted text-sm font-normal ml-1">IPTV</span>
