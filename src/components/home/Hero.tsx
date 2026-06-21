@@ -75,6 +75,12 @@ export default function Hero() {
                   Browse Channels
                 </button>
               </Link>
+              <Link href="/watch" className="flex items-center gap-2 text-sm font-semibold self-center sm:ml-1" style={{ color: "rgba(255,255,255,0.6)" }}>
+                <span className="w-9 h-9 rounded-full flex items-center justify-center border shrink-0" style={{ borderColor: "rgba(255,255,255,0.18)" }}>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                </span>
+                Watch Video
+              </Link>
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
