@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Zap, Twitter, Facebook, Instagram, Youtube } from "lucide-react";
+import Image from "next/image";
+import { Twitter, Facebook, Instagram, Youtube } from "lucide-react";
 import NewsletterForm from "./NewsletterForm";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
@@ -38,14 +39,12 @@ export default function Footer() {
         <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white fill-white" />
-              </div>
-              <span className="text-xl font-bold">
-                <span className="text-white">ENK</span>
-                <span className="text-brand-primary">TEL</span>
-                <span className="text-brand-muted text-sm font-normal ml-1">IPTV</span>
+            <Link href="/" className="flex items-center gap-2.5 mb-4">
+              <Image src="/logo-icon.png" alt="Enktel IPTV" width={32} height={32} className="w-8 h-8" />
+              <span className="text-xl font-bold flex items-center gap-1.5">
+                <span className="text-white">Enk</span>
+                <span className="text-brand-secondary">Tel</span>
+                <span className="text-[10px] font-bold rounded-full px-2 py-0.5 ml-0.5 bg-brand-secondary text-[#06122B]">IPTV</span>
               </span>
             </Link>
             <p className="text-brand-muted text-sm leading-relaxed mb-4 max-w-xs">

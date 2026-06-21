@@ -115,6 +115,32 @@ body::after {
 }
 .orb { animation: orbFloat 10s ease-in-out infinite; }
 
+/* Hero motion backdrop — perspective grid floor scroll */
+@keyframes heroGridScroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 78px; }
+}
+.hero-grid { animation: heroGridScroll 1.7s linear infinite; }
+
+/* Hero motion backdrop — drifting ambient particles */
+@keyframes heroParticleFloat {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  10%  { opacity: 0.65; }
+  55%  { opacity: 0.85; }
+  90%  { opacity: 0.15; }
+  100% { transform: translateY(-180px) scale(0.6); opacity: 0; }
+}
+.hero-particle { animation-name: heroParticleFloat; animation-timing-function: linear; animation-iteration-count: infinite; }
+
+/* Hero motion backdrop — slow diagonal light sweep, broadcast-glint feel */
+@keyframes heroSweep {
+  0%   { transform: translateX(-40%) rotate(8deg); opacity: 0; }
+  45%  { opacity: 0.06; }
+  55%  { opacity: 0.06; }
+  100% { transform: translateX(140%) rotate(8deg); opacity: 0; }
+}
+.hero-sweep { animation: heroSweep 9s ease-in-out infinite; }
+
 /* Marquee scroll */
 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .animate-marquee { animation: marquee 35s linear infinite; }
