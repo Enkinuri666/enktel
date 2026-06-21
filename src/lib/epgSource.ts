@@ -8,39 +8,65 @@ interface SourceChannelMapping {
 
 // Channels (by our internal channel id) with a known match in a free,
 // publicly hosted XMLTV guide (epgshare01.online), refreshed daily by that
-// project's own scrapers. Channels not listed here have no free real-data
-// source and fall back to the simulated schedule in src/lib/mock-data.ts.
+// project's own scrapers. Every channel in src/lib/channels.ts must have an
+// entry here - channels with no findable real source are removed from the
+// catalog entirely rather than shown with invented schedule data.
 const EPG_SOURCE_MAP: Record<string, SourceChannelMapping> = {
+  "hrt-1": { file: "BA1", sourceId: "HRT.1.HD.(BIH).ba" },
+  "hrt-2": { file: "BA1", sourceId: "HRT.2.HD.(BIH).ba" },
+  "hrt-3": { file: "BA1", sourceId: "HRT.3.HD.(BIH).ba" },
+  "hrt-4": { file: "BA1", sourceId: "HRT.4.HD.(BIH).ba" },
   "nova-tv": { file: "HR1", sourceId: "Nova.TV.HD.hr" },
   "rtl-hrvatska": { file: "HR1", sourceId: "RTL.HD.hr" },
   "rtl-2": { file: "HR1", sourceId: "RTL.2.HD.hr" },
   "doma-tv": { file: "HR1", sourceId: "Doma.TV.HD.hr" },
   "cmc-tv": { file: "HR1", sourceId: "CMC.hr" },
+  "n1-info": { file: "BA1", sourceId: "N1.HD.(HR)/(BIH).ba" },
   "arena-sport-1": { file: "HR1", sourceId: "Arena.Sport.1.HD.hr" },
   "arena-sport-2": { file: "HR1", sourceId: "Arena.Sport.2.HD.hr" },
+  "sportklub-1": { file: "SPORTKLUB1", sourceId: "SK.1.HD.(HR).ba" },
   "hayat-tv": { file: "BA1", sourceId: "Hayat.HD.ba" },
   ftv: { file: "BA1", sourceId: "FTV.HD.(BIH).ba" },
   "rts-1": { file: "RS1", sourceId: "RTS.1.HD.rs" },
   pink: { file: "RS1", sourceId: "Pink.HD.rs" },
   "nova-s": { file: "RS1", sourceId: "NOVA.S.HD.(RS).rs" },
+  "sky-sports-main": { file: "UK1", sourceId: "SkySpMainEvHD.uk" },
+  "sky-sports-football": { file: "UK1", sourceId: "Sky.Sports.Football.HD.uk" },
+  "sky-sports-cricket": { file: "UK1", sourceId: "SkySpCricket.HD.uk" },
+  "tnt-sports-1": { file: "UK1", sourceId: "TNT.Sports.1.HD.uk" },
+  "tnt-sports-2": { file: "UK1", sourceId: "TNT.Sports.2.HD.uk" },
+  "eurosport-1": { file: "BA1", sourceId: "Eurosport.1.HD.(BIH).ba" },
+  "sky-cinema-comedy": { file: "UK1", sourceId: "Sky.Cinema.Comedy.uk" },
+  film4: { file: "UK1", sourceId: "Film4.HD.uk" },
+  hbo: { file: "CZ1", sourceId: "HBO.(hr).cz" },
   "bbc-news": { file: "UK1", sourceId: "BBC.NEWS.HD.uk" },
-  cbbc: { file: "UK1", sourceId: "CBBC.HD.uk" },
-  cbeebies: { file: "UK1", sourceId: "CBeebies.HD.uk" },
+  "sky-news": { file: "UK1", sourceId: "Sky.News.HD.uk" },
   "cnn-intl": { file: "UK1", sourceId: "CNN.HD.uk" },
+  "bbc-world": { file: "AE1", sourceId: "BBC.World.News.ae" },
+  "bbc-one": { file: "UK1", sourceId: "BBC.One.Lon.HD.uk" },
+  "bbc-two": { file: "UK1", sourceId: "BBC.Two.HD.uk" },
+  itv1: { file: "UK1", sourceId: "ITV1.HD.uk" },
+  itv2: { file: "UK1", sourceId: "ITV2.HD.uk" },
   channel4: { file: "UK1", sourceId: "Channel.4.HD.uk" },
   channel5: { file: "UK1", sourceId: "Channel.5.HD.uk" },
   e4: { file: "UK1", sourceId: "E4.HD.uk" },
-  film4: { file: "UK1", sourceId: "Film4.HD.uk" },
-  itv1: { file: "UK1", sourceId: "ITV1.HD.uk" },
-  kerrang: { file: "UK1", sourceId: "Kerrang!.uk" },
-  mtv: { file: "UK1", sourceId: "MTV.HD.uk" },
-  "nat-geo": { file: "UK1", sourceId: "Nat.Geo.HD.uk" },
-  discovery: { file: "UK1", sourceId: "Discovery.HD.uk" },
-  "nick-jr": { file: "UK1", sourceId: "Nick.Jr..HD.uk" },
-  "sky-sports-football": { file: "UK1", sourceId: "Sky.Sports.Football.HD.uk" },
-  "sky-news": { file: "UK1", sourceId: "Sky.News.HD.uk" },
   dave: { file: "UK1", sourceId: "U.and.Dave.HD.uk" },
   gold: { file: "UK1", sourceId: "U.and.GOLD.HD.uk" },
+  "sky-one": { file: "UK1", sourceId: "Sky.One.HD.uk" },
+  cbbc: { file: "UK1", sourceId: "CBBC.HD.uk" },
+  cbeebies: { file: "UK1", sourceId: "CBeebies.HD.uk" },
+  "cartoon-network": { file: "UK1", sourceId: "Cartoon.Net.HD.uk" },
+  "nick-jr": { file: "UK1", sourceId: "Nick.Jr..HD.uk" },
+  "disney-channel": { file: "CZ1", sourceId: "Disney.Channel.cz" },
+  "disney-jr": { file: "CZ1", sourceId: "Disney.Junior.cz" },
+  discovery: { file: "UK1", sourceId: "Discovery.HD.uk" },
+  "nat-geo": { file: "UK1", sourceId: "Nat.Geo.HD.uk" },
+  history: { file: "UK1", sourceId: "Disc.History.uk" },
+  "bbc-four": { file: "UK1", sourceId: "BBC.Four.HD.uk" },
+  eden: { file: "UK1", sourceId: "U.and.Eden.uk" },
+  "animal-planet": { file: "UK1", sourceId: "Animal.Planet.uk" },
+  mtv: { file: "UK1", sourceId: "MTV.HD.uk" },
+  kerrang: { file: "UK1", sourceId: "Kerrang!.uk" },
 };
 
 const SOURCE_URL = (file: string) => `https://epgshare01.online/epgshare01/epg_ripper_${file}.xml.gz`;
@@ -155,8 +181,7 @@ async function getFilePrograms(file: string): Promise<Map<string, EPGProgram[]>>
 
 // Real EPG schedules pulled from a free, publicly hosted XMLTV guide, for
 // the subset of channels it carries. Returns an empty object (never
-// throws) if every source is unreachable, so callers can safely fall back
-// to the simulated schedule for everything.
+// throws) if every source is unreachable, rather than fabricating data.
 export async function getRealEpgPrograms(): Promise<Record<string, EPGProgram[]>> {
   const files = Array.from(new Set(Object.values(EPG_SOURCE_MAP).map((m) => m.file)));
   const filePrograms = await Promise.all(

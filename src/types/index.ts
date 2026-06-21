@@ -29,7 +29,7 @@ export interface EPGProgram {
   category: string;
   rating?: string;
   imageUrl?: string;
-  source?: "live" | "simulated";
+  source?: "live";
 }
 
 export interface Movie {

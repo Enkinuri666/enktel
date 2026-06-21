@@ -4,22 +4,9 @@ import Link from "next/link";
 import { Copy, Check, Tv, Smartphone, Monitor, Wifi, ChevronRight, AlertTriangle, Sparkles, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import { StoredSubscription, loadSubscription } from "@/lib/subscriptionStorage";
 
 const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
-
-const MOCK_SUBSCRIPTION = {
-  id: "ENK-1234567890-DEMO",
-  plan: "Pro",
-  status: "active",
-  username: "demo_user",
-  password: "Demo1234",
-  startDate: "2024-01-15",
-  endDate: "2025-01-15",
-  m3uUrl: "https://e4kpremuim.com/get.php?username=demo_user&password=Demo1234&type=m3u_plus&output=ts",
-  epgUrl: "https://e4kpremuim.com/xmltv.php?username=demo_user&password=Demo1234",
-  connections: 1,
-  usedConnections: 1,
-};
 
 function CopyableUrl({ label, url }: { label: string; url: string }) {
   const [copied, setCopied] = useState(false);
@@ -97,11 +84,12 @@ const setupGuides: Record<string, Array<{ step: number; title: string; descripti
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("firestick");
   const [showWelcome, setShowWelcome] = useState(false);
-  const sub = MOCK_SUBSCRIPTION;
-
-  const daysLeft = Math.max(0, Math.floor((new Date(sub.endDate).getTime() - Date.now()) / 86400000));
+  const [sub, setSub] = useState<StoredSubscription | null>(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    setSub(loadSubscription());
+    setChecked(true);
     if (!localStorage.getItem(WELCOME_DISMISSED_KEY)) setShowWelcome(true);
   }, []);
 
@@ -109,6 +97,34 @@ export default function DashboardPage() {
     localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
     setShowWelcome(false);
   }
+
+  if (checked && !sub) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h1 className="text-3xl font-bold text-white mb-8">
+          My{" "}
+          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+            Dashboard
+          </span>
+        </h1>
+        <div className="bg-brand-card border border-brand-border rounded-xl p-10 text-center">
+          <Tv className="w-10 h-10 text-brand-muted mx-auto mb-4" />
+          <h2 className="text-white font-bold text-xl mb-2">No active subscription</h2>
+          <p className="text-brand-muted text-sm mb-6 max-w-md mx-auto">
+            We couldn&apos;t find a subscription linked to this browser. If you just subscribed, open the
+            confirmation link from your checkout email, or subscribe now to get your M3U &amp; EPG URLs.
+          </p>
+          <Link href="/pricing">
+            <Button>View Plans</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sub) return null;
+
+  const daysLeft = Math.max(0, Math.floor((new Date(sub.endDate).getTime() - Date.now()) / 86400000));
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -171,7 +187,7 @@ export default function DashboardPage() {
             {[
               { label: "Status", value: "Active" },
               { label: "Days Remaining", value: daysLeft.toString() },
-              { label: "Connections", value: `${sub.usedConnections}/${sub.connections}` },
+              { label: "Connections", value: "1/1" },
               { label: "Renewal", value: new Date(sub.endDate).toLocaleDateString("en-GB") },
             ].map((item) => (
               <div key={item.label} className="bg-brand-bg border border-brand-border rounded-lg p-3">
@@ -193,13 +209,10 @@ export default function DashboardPage() {
             <h3 className="text-white font-semibold mb-3">Connection Usage</h3>
             <div className="mb-2">
               <div className="h-2 bg-brand-border rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full"
-                  style={{ width: `${(sub.usedConnections / sub.connections) * 100}%` }}
-                />
+                <div className="h-full bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full w-full" />
               </div>
             </div>
-            <p className="text-brand-muted text-xs">{sub.usedConnections} of {sub.connections} connections in use</p>
+            <p className="text-brand-muted text-xs">1 of 1 connections in use</p>
           </div>
 
           <div className="bg-brand-card border border-brand-border rounded-xl p-5">

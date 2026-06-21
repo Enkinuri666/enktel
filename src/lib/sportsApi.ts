@@ -21,13 +21,13 @@ const LEAGUES: LeagueConfig[] = [
   { id: "4429", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", isPPV: false, competition: "FIFA World Cup" },
   { id: "4629", sport: "Football", emoji: "⚽", channel: "Arena Sport 1", isPPV: false, competition: "HNL" },
   { id: "4328", sport: "Football", emoji: "🏆", channel: "Sky Sports Football", isPPV: false, competition: "Premier League" },
-  { id: "4480", sport: "Football", emoji: "🏆", channel: "BT Sport 1", isPPV: false, competition: "Champions League" },
+  { id: "4480", sport: "Football", emoji: "🏆", channel: "TNT Sports 1", isPPV: false, competition: "Champions League" },
   { id: "4335", sport: "Football", emoji: "⚽", channel: "Eurosport 1", isPPV: false, competition: "La Liga" },
-  { id: "4331", sport: "Football", emoji: "⚽", channel: "BT Sport 2", isPPV: false, competition: "Bundesliga" },
+  { id: "4331", sport: "Football", emoji: "⚽", channel: "TNT Sports 2", isPPV: false, competition: "Bundesliga" },
   { id: "4332", sport: "Football", emoji: "⚽", channel: "Eurosport 1", isPPV: false, competition: "Serie A" },
   { id: "4370", sport: "Motorsport", emoji: "🏎️", channel: "Sky Sports Main Event", isPPV: false, competition: "Formula 1" },
-  { id: "4443", sport: "Combat Sports", emoji: "🥊", channel: "ESPN", isPPV: true, competition: "UFC" },
-  { id: "4387", sport: "Basketball", emoji: "🏀", channel: "ESPN", isPPV: false, competition: "NBA" },
+  { id: "4443", sport: "Combat Sports", emoji: "🥊", channel: "Eurosport 1", isPPV: true, competition: "UFC" },
+  { id: "4387", sport: "Basketball", emoji: "🏀", channel: "Sky Sports Main Event", isPPV: false, competition: "NBA" },
 ];
 
 interface SportsDbEvent {
