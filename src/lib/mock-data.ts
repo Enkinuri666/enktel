@@ -486,8 +486,8 @@ export function getMockUpcomingEvents(): UpcomingEvent[] {
     { id: "ev-7", title: "Monaco Grand Prix — Race Day", competition: "Formula 1", sport: "Motorsport", emoji: "🏎️", channel: "Sky Sports Main Event", startTime: getTimeOffset(4150), isPPV: false, isLive: false },
   ];
 
-  return events.map((e) => ({
-    ...e,
-    isLive: new Date(e.startTime).getTime() <= Date.now(),
-  }));
+  return events.map((e) => {
+    const elapsed = Date.now() - new Date(e.startTime).getTime();
+    return { ...e, isLive: elapsed >= 0 && elapsed <= 3 * 60 * 60 * 1000 };
+  });
 }

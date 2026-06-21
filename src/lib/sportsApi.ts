@@ -39,6 +39,11 @@ interface SportsDbEvent {
   strTimestamp?: string;
 }
 
+// A football match rarely runs past ~2 hours; this generous 3-hour window
+// covers extra time/delays while still letting "LIVE NOW" clear once
+// TheSportsDB's "next event" cache hasn't rotated to the new fixture yet.
+const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000;
+
 async function fetchNextEvent(league: LeagueConfig): Promise<UpcomingEvent | null> {
   try {
     const res = await fetch(`${SPORTSDB_BASE}/eventsnextleague.php?id=${league.id}`, {
@@ -54,6 +59,13 @@ async function fetchNextEvent(league: LeagueConfig): Promise<UpcomingEvent | nul
       ? `${event.strTimestamp}Z`
       : new Date(`${event.dateEvent}T${event.strTime || "00:00:00"}Z`).toISOString();
 
+    const startMs = new Date(startTime).getTime();
+    const elapsed = Date.now() - startMs;
+    // Stale: this fixture has clearly finished but TheSportsDB hasn't
+    // advanced to the next one yet — better to show nothing than a fake
+    // "LIVE NOW" for a match that ended hours ago.
+    if (elapsed > LIVE_WINDOW_MS) return null;
+
     return {
       id: `sportsdb-${event.idEvent}`,
       title: event.strEvent,
@@ -63,7 +75,7 @@ async function fetchNextEvent(league: LeagueConfig): Promise<UpcomingEvent | nul
       channel: league.channel,
       startTime,
       isPPV: league.isPPV,
-      isLive: new Date(startTime).getTime() <= Date.now(),
+      isLive: elapsed >= 0,
     };
   } catch {
     return null;

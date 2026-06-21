@@ -2,40 +2,44 @@
 import { useEffect, useState } from "react";
 
 interface TimeSlotsProps {
-  startHour: number;
-  endHour: number;
+  startTime: Date;
+  endTime: Date;
   pixelsPerMinute: number;
+  timeZone: string;
 }
 
-export default function TimeSlots({ startHour, endHour, pixelsPerMinute }: TimeSlotsProps) {
-  const [currentMinutes, setCurrentMinutes] = useState<number | null>(null);
+export default function TimeSlots({ startTime, endTime, pixelsPerMinute, timeZone }: TimeSlotsProps) {
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
     function calc() {
-      const now = new Date();
-      const mins = (now.getHours() - startHour) * 60 + now.getMinutes();
-      setCurrentMinutes(mins);
+      setNowMs(Date.now());
     }
     calc();
     const id = setInterval(calc, 60000);
     return () => clearInterval(id);
-  }, [startHour]);
+  }, []);
 
+  const totalMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
   const slots: { label: string; minuteOffset: number }[] = [];
-  for (let h = startHour; h <= endHour; h++) {
-    slots.push({ label: `${String(h % 24).padStart(2, "0")}:00`, minuteOffset: (h - startHour) * 60 });
-    if (h < endHour) {
-      slots.push({ label: `${String(h % 24).padStart(2, "0")}:30`, minuteOffset: (h - startHour) * 60 + 30 });
-    }
+  for (let m = 0; m <= totalMinutes; m += 30) {
+    const label = new Date(startTime.getTime() + m * 60000).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone,
+    });
+    slots.push({ label, minuteOffset: m });
   }
 
-  const totalWidth = (endHour - startHour) * 60 * pixelsPerMinute;
+  const totalWidth = totalMinutes * pixelsPerMinute;
+  const currentMinutes = nowMs !== null ? (nowMs - startTime.getTime()) / 60000 : null;
 
   return (
     <div className="relative h-8 shrink-0" style={{ width: `${totalWidth}px` }}>
       {slots.map((slot) => (
         <div
-          key={slot.label}
+          key={slot.minuteOffset}
           className="absolute top-0 h-full flex items-center"
           style={{ left: `${slot.minuteOffset * pixelsPerMinute}px` }}
         >
@@ -44,7 +48,7 @@ export default function TimeSlots({ startHour, endHour, pixelsPerMinute }: TimeS
         </div>
       ))}
       {/* Current time indicator */}
-      {currentMinutes !== null && currentMinutes >= 0 && currentMinutes <= (endHour - startHour) * 60 && (
+      {currentMinutes !== null && currentMinutes >= 0 && currentMinutes <= totalMinutes && (
         <div
           className="absolute top-0 h-full w-0.5 bg-brand-accent z-10"
           style={{ left: `${currentMinutes * pixelsPerMinute}px` }}
