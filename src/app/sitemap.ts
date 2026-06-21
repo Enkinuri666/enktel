@@ -4,7 +4,6 @@ const routes = [
   "",
   "/channels",
   "/epg",
-  "/whats-on",
   "/whats-new",
   "/world-cup-2026",
   "/search",

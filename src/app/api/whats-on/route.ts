@@ -4,16 +4,9 @@ import { fetchEPGData } from "@/lib/epg";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category");
-
+export async function GET() {
   const programs = await fetchEPGData();
-  let items = buildWhatsOn(programs, new Date());
-
-  if (category && category !== "All") {
-    items = items.filter((item) => item.channel.category === category);
-  }
+  const items = buildWhatsOn(programs, new Date());
 
   return NextResponse.json({ items, updatedAt: new Date().toISOString() });
 }

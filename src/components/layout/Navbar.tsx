@@ -12,7 +12,6 @@ const navLinks = [
   { href: "/channels", label: "Channels" },
   { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
-  { href: "/whats-on", label: "What's On" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },

@@ -32,10 +32,10 @@ export default function WhatsOnWidget() {
             </h2>
           </div>
           <Link
-            href="/whats-on"
+            href="/epg"
             className="flex items-center gap-1 text-brand-primary hover:text-brand-secondary transition-colors text-sm font-medium"
           >
-            See all <ChevronRight className="w-4 h-4" />
+            Full guide <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
