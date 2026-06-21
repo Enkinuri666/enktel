@@ -12,7 +12,6 @@ export const channels: Channel[] = [
   { id: "doma-tv", name: "Doma TV", category: "Croatian & Balkan", epgId: "doma-tv.hr", isHD: true, country: "HR" },
   { id: "cmc-tv", name: "CMC TV", category: "Croatian & Balkan", epgId: "cmc.hr", isHD: false, country: "HR" },
   { id: "n1-info", name: "N1 Info", category: "Croatian & Balkan", epgId: "n1.hr", isHD: true, country: "HR" },
-  { id: "24sata-tv", name: "24sata TV", category: "Croatian & Balkan", epgId: "24sata.hr", isHD: false, country: "HR" },
   { id: "arena-sport-1", name: "Arena Sport 1", category: "Croatian & Balkan", epgId: "arena-1.hr", isHD: true, country: "HR" },
   { id: "arena-sport-2", name: "Arena Sport 2", category: "Croatian & Balkan", epgId: "arena-2.hr", isHD: true, country: "HR" },
   { id: "sportklub-1", name: "SportKlub 1", category: "Croatian & Balkan", epgId: "sportklub-1.hr", isHD: true, country: "HR" },
@@ -23,30 +22,23 @@ export const channels: Channel[] = [
   { id: "nova-s", name: "Nova S", category: "Croatian & Balkan", epgId: "nova-s.rs", isHD: true, country: "RS" },
 
   // ── Sports ──
-  { id: "bbc-sport", name: "BBC Sport", category: "Sports", epgId: "bbc-sport.uk", isHD: true, country: "UK" },
   { id: "sky-sports-main", name: "Sky Sports Main Event", category: "Sports", epgId: "sky-sports-main.uk", isHD: true, country: "UK" },
   { id: "sky-sports-football", name: "Sky Sports Football", category: "Sports", epgId: "sky-sports-football.uk", isHD: true, country: "UK" },
   { id: "sky-sports-cricket", name: "Sky Sports Cricket", category: "Sports", epgId: "sky-sports-cricket.uk", isHD: true, country: "UK" },
-  { id: "bt-sport-1", name: "BT Sport 1", category: "Sports", epgId: "bt-sport-1.uk", isHD: true, country: "UK" },
-  { id: "bt-sport-2", name: "BT Sport 2", category: "Sports", epgId: "bt-sport-2.uk", isHD: true, country: "UK" },
+  { id: "tnt-sports-1", name: "TNT Sports 1", category: "Sports", epgId: "tnt-sports-1.uk", isHD: true, country: "UK" },
+  { id: "tnt-sports-2", name: "TNT Sports 2", category: "Sports", epgId: "tnt-sports-2.uk", isHD: true, country: "UK" },
   { id: "eurosport-1", name: "Eurosport 1", category: "Sports", epgId: "eurosport-1.uk", isHD: true, country: "UK" },
-  { id: "espn", name: "ESPN", category: "Sports", epgId: "espn.us", isHD: true, country: "US" },
 
   // ── Movies ──
-  { id: "sky-cinema-premiere", name: "Sky Cinema Premiere", category: "Movies", epgId: "sky-cinema-premiere.uk", isHD: true, country: "UK" },
-  { id: "sky-cinema-action", name: "Sky Cinema Action", category: "Movies", epgId: "sky-cinema-action.uk", isHD: true, country: "UK" },
   { id: "sky-cinema-comedy", name: "Sky Cinema Comedy", category: "Movies", epgId: "sky-cinema-comedy.uk", isHD: true, country: "UK" },
-  { id: "sky-cinema-thriller", name: "Sky Cinema Thriller", category: "Movies", epgId: "sky-cinema-thriller.uk", isHD: true, country: "UK" },
   { id: "film4", name: "Film4", category: "Movies", epgId: "film4.uk", isHD: true, country: "UK" },
-  { id: "hbo", name: "HBO", category: "Movies", epgId: "hbo.us", isHD: true, country: "US" },
+  { id: "hbo", name: "HBO", category: "Movies", epgId: "hbo.cz", isHD: true, country: "HR" },
 
   // ── News ──
   { id: "bbc-news", name: "BBC News", category: "News", epgId: "bbc-news.uk", isHD: true, country: "UK" },
   { id: "sky-news", name: "Sky News", category: "News", epgId: "sky-news.uk", isHD: true, country: "UK" },
-  { id: "itv-news", name: "ITV News", category: "News", epgId: "itv-news.uk", isHD: true, country: "UK" },
-  { id: "channel4-news", name: "Channel 4 News", category: "News", epgId: "channel4-news.uk", isHD: true, country: "UK" },
   { id: "cnn-intl", name: "CNN International", category: "News", epgId: "cnn.us", isHD: true, country: "US" },
-  { id: "bbc-world", name: "BBC World News", category: "News", epgId: "bbc-world.uk", isHD: true, country: "UK" },
+  { id: "bbc-world", name: "BBC World News", category: "News", epgId: "bbc-world.ae", isHD: true, country: "UK" },
 
   // ── Entertainment ──
   { id: "bbc-one", name: "BBC One", category: "Entertainment", epgId: "bbc-one.uk", isHD: true, country: "UK" },
@@ -59,15 +51,14 @@ export const channels: Channel[] = [
   { id: "dave", name: "Dave", category: "Entertainment", epgId: "dave.uk", isHD: false, country: "UK" },
   { id: "gold", name: "Gold", category: "Entertainment", epgId: "gold.uk", isHD: false, country: "UK" },
   { id: "sky-one", name: "Sky One", category: "Entertainment", epgId: "sky-one.uk", isHD: true, country: "UK" },
-  { id: "sky-max", name: "Sky Max", category: "Entertainment", epgId: "sky-max.uk", isHD: true, country: "UK" },
 
   // ── Kids ──
   { id: "cbbc", name: "CBBC", category: "Kids", epgId: "cbbc.uk", isHD: true, country: "UK" },
   { id: "cbeebies", name: "CBeebies", category: "Kids", epgId: "cbeebies.uk", isHD: true, country: "UK" },
-  { id: "cartoon-network", name: "Cartoon Network", category: "Kids", epgId: "cartoon-network.us", isHD: true, country: "US" },
+  { id: "cartoon-network", name: "Cartoon Network", category: "Kids", epgId: "cartoon-network.uk", isHD: true, country: "UK" },
   { id: "nick-jr", name: "Nick Jr.", category: "Kids", epgId: "nick-jr.uk", isHD: true, country: "UK" },
-  { id: "disney-channel", name: "Disney Channel", category: "Kids", epgId: "disney.uk", isHD: true, country: "UK" },
-  { id: "disney-jr", name: "Disney Junior", category: "Kids", epgId: "disney-jr.uk", isHD: true, country: "UK" },
+  { id: "disney-channel", name: "Disney Channel", category: "Kids", epgId: "disney.cz", isHD: true, country: "HR" },
+  { id: "disney-jr", name: "Disney Junior", category: "Kids", epgId: "disney-jr.cz", isHD: true, country: "HR" },
 
   // ── Documentary ──
   { id: "discovery", name: "Discovery Channel", category: "Documentary", epgId: "discovery.uk", isHD: true, country: "UK" },
@@ -79,11 +70,7 @@ export const channels: Channel[] = [
 
   // ── Music ──
   { id: "mtv", name: "MTV", category: "Music", epgId: "mtv.uk", isHD: true, country: "UK" },
-  { id: "mtv-base", name: "MTV Base", category: "Music", epgId: "mtv-base.uk", isHD: true, country: "UK" },
-  { id: "vh1", name: "VH1", category: "Music", epgId: "vh1.uk", isHD: false, country: "UK" },
   { id: "kerrang", name: "Kerrang!", category: "Music", epgId: "kerrang.uk", isHD: false, country: "UK" },
-  { id: "kiss", name: "Kiss", category: "Music", epgId: "kiss.uk", isHD: false, country: "UK" },
-  { id: "magic-tv", name: "Magic TV", category: "Music", epgId: "magic.uk", isHD: false, country: "UK" },
 ];
 
 export function getChannelsByCategory(category: string): Channel[] {

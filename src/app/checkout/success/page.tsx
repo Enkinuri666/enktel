@@ -3,14 +3,9 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, AlertTriangle } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import { StoredSubscription, saveSubscription } from "@/lib/subscriptionStorage";
 
-interface SubscriptionResult {
-  id: string;
-  plan: string;
-  username: string;
-  password: string;
-  m3uUrl: string;
-  epgUrl: string;
+interface SubscriptionResult extends StoredSubscription {
   panelSync: boolean;
 }
 
@@ -34,6 +29,7 @@ function SuccessContent() {
       .then(({ ok, data }) => {
         if (!ok) throw new Error(data.error || "Could not confirm payment");
         setSubscription(data.subscription);
+        saveSubscription(data.subscription);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Something went wrong"))
       .finally(() => setLoading(false));

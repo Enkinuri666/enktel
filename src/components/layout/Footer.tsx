@@ -8,7 +8,6 @@ const quickLinks = [
   { href: "/", label: "Home" },
   { href: "/channels", label: "Channel List" },
   { href: "/epg", label: "EPG Guide" },
-  { href: "/whats-on", label: "What's On" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },
@@ -16,6 +15,7 @@ const quickLinks = [
 
 const supportLinks = [
   { href: "/dashboard", label: "My Dashboard" },
+  { href: "/trial", label: "Free 24-Hour Trial" },
   { href: "/checkout", label: "Subscribe Now" },
   { href: "/setup-guides", label: "Setup Guides" },
   { href: "/contact", label: "Contact Support" },

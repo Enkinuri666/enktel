@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, stripeEnabled } from "@/lib/stripe";
 import { PLAN_NAME, PLAN_PRICE_EUR, provisionSubscription } from "@/lib/reseller";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Payment not completed" }, { status: 402 });
     }
 
-    const { email, plan } = session.metadata as { name: string; email: string; plan: string };
+    const { name, email, plan } = session.metadata as { name: string; email: string; plan: string };
 
     const result = await provisionSubscription(plan, email);
     if (!result.ok) {
@@ -80,6 +81,7 @@ export async function GET(req: NextRequest) {
     }
 
     provisionedSessions.set(sessionId, result.subscription);
+    sendWelcomeEmail({ to: email, name, subscription: result.subscription }).catch(() => {});
     return NextResponse.json({ success: true, subscription: result.subscription });
   } catch (err) {
     return NextResponse.json(
