@@ -3,6 +3,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
+import HeroVideoBackdrop from "./HeroVideoBackdrop";
 
 const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
@@ -16,18 +17,8 @@ export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#060910" }}>
 
-      {/* ── Vivid aurora orbs ── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-        <div className="absolute -top-40 -left-40 w-[1000px] h-[1000px] rounded-full orb"
-          style={{ background: "radial-gradient(circle, rgba(108,99,255,0.38) 0%, transparent 65%)" }} />
-        <div className="absolute -bottom-56 -right-56 w-[900px] h-[900px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(0,212,255,0.28) 0%, transparent 65%)", animation: "orbFloat 12s ease-in-out infinite reverse" }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(206,44,26,0.12) 0%, transparent 65%)", animation: "orbFloat 9s ease-in-out infinite 2s" }} />
-        <div className="absolute inset-0 dot-grid" />
-        <div className="absolute bottom-0 left-0 right-0 h-40"
-          style={{ background: "linear-gradient(to bottom, transparent, #060910)" }} />
-      </div>
+      {/* ── Animated hero backdrop (channel grid + drifting particles) ── */}
+      <HeroVideoBackdrop />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[82vh]">
