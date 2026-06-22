@@ -45,7 +45,7 @@ export default function ChannelShowcase() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Link href={`/channels?category=${encodeURIComponent(cat.name)}`}>
+                <Link href="/epg">
                   <div
                     className="bg-brand-card border border-brand-border rounded-xl p-5 transition-all duration-300 group cursor-pointer h-full hover:-translate-y-1"
                     style={{ boxShadow: "0 0 0 0 transparent" }}
@@ -81,13 +81,13 @@ export default function ChannelShowcase() {
             viewport={{ once: true }}
             transition={{ delay: categories.length * 0.05 }}
           >
-            <Link href="/channels">
+            <Link href="/epg">
               <div className="bg-gradient-to-br from-brand-primary/20 to-brand-secondary/10 border border-brand-primary/30 rounded-xl p-5 hover:border-brand-primary/60 hover:shadow-lg hover:shadow-brand-primary/20 transition-all duration-300 group cursor-pointer h-full flex flex-col items-center justify-center text-center hover:-translate-y-1">
                 <div className="w-12 h-12 rounded-xl bg-brand-primary/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                   <Star className="w-6 h-6 text-brand-primary" />
                 </div>
-                <h3 className="text-white font-semibold text-sm mb-1">View All</h3>
-                <p className="text-brand-muted text-xs">Browse {CHANNEL_COUNT_LABEL} channels</p>
+                <h3 className="text-white font-semibold text-sm mb-1">View Full Guide</h3>
+                <p className="text-brand-muted text-xs">Browse {CHANNEL_COUNT_LABEL} channels live</p>
               </div>
             </Link>
           </motion.div>

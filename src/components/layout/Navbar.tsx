@@ -10,7 +10,7 @@ import { loadSubscription, clearSubscription, SUBSCRIPTION_CHANGED_EVENT } from 
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/channels", label: "Channels" },
+  { href: "/blog", label: "Blog" },
   { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
   { href: "/latest-releases", label: "Latest Releases" },

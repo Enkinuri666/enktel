@@ -58,7 +58,7 @@ export default function UpcomingEventsWidget() {
             </h2>
           </div>
           <Link
-            href="/channels?category=Sports"
+            href="/epg"
             className="flex items-center gap-1 text-brand-primary hover:text-brand-secondary transition-colors text-sm font-medium"
           >
             See all <ChevronRight className="w-4 h-4" />

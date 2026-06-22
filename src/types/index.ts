@@ -123,3 +123,19 @@ export interface EPGDay {
   date: string;
   label: string;
 }
+
+export type BlogPostKind = "now-showing" | "on-air" | "coming-soon";
+
+export interface BlogPost {
+  id: string;
+  kind: BlogPostKind;
+  section: string;
+  title: string;
+  excerpt: string;
+  posterPath: string | null;
+  backdropPath: string | null;
+  publishedAt: string;
+  rating: number;
+  genres: string[];
+  mediaType: "movie" | "tv";
+}

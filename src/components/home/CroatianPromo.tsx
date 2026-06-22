@@ -128,7 +128,7 @@ export default function CroatianPromo() {
               ))}
             </ul>
 
-            <Link href={`/channels?category=${encodeURIComponent("Croatian & Balkan")}`}>
+            <Link href="/epg">
               <button className="group flex items-center gap-3 bg-[#CE2C1A] hover:bg-red-700 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-[#CE2C1A]/30 hover:-translate-y-0.5">
                 Browse Croatian Channels
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

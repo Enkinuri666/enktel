@@ -46,7 +46,7 @@ export default function SportsBanner() {
                 From the Croatian HNL to the Premier League, Formula 1 to Wimbledon — watch every match, race, and tournament live in stunning 4K.
               </p>
 
-              <Link href="/channels?category=Sports">
+              <Link href="/epg">
                 <button className="group flex items-center gap-3 bg-brand-accent hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-brand-accent/30 hover:-translate-y-0.5">
                   <Trophy className="w-5 h-5 shrink-0" />
                   Browse Sport Channels

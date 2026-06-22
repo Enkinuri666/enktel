@@ -104,7 +104,7 @@ export default function Hero() {
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0 relative z-10" />
                 </button>
               </Link>
-              <Link href="/channels">
+              <Link href="/epg">
                 <button className="flex items-center gap-3 text-white font-semibold px-8 py-4 rounded-xl text-base transition-all duration-300 hover:-translate-y-0.5 w-full sm:w-auto justify-center border"
                   style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.12)" }}>
                   Browse Channels
