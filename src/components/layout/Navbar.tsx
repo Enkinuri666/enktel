@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { clsx } from "clsx";
+import { loadSubscription, clearSubscription, SUBSCRIPTION_CHANGED_EVENT } from "@/lib/subscriptionStorage";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -24,6 +25,21 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(Boolean(loadSubscription()));
+  }, [pathname]);
+
+  useEffect(() => {
+    const sync = () => setLoggedIn(Boolean(loadSubscription()));
+    window.addEventListener(SUBSCRIPTION_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(SUBSCRIPTION_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +47,13 @@ export default function Navbar() {
     router.push(`/search?q=${encodeURIComponent(searchValue.trim())}`);
     setSearchOpen(false);
     setSearchValue("");
+  }
+
+  function handleLogout() {
+    clearSubscription();
+    setLoggedIn(false);
+    setMobileOpen(false);
+    router.push("/");
   }
 
   return (
@@ -94,14 +117,23 @@ export default function Navbar() {
                 <Search className="w-4 h-4" />
               </button>
             )}
-            <Link
-              href="/login"
-              className="hidden sm:block text-sm font-medium text-brand-muted hover:text-white transition-colors"
-            >
-              Log In
-            </Link>
-            <Link href="/pricing" className="hidden sm:block">
-              <Button size="sm">Get Started</Button>
+            {loggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="hidden sm:block text-sm font-medium text-brand-muted hover:text-white transition-colors"
+              >
+                Log Out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden sm:block text-sm font-medium text-brand-muted hover:text-white transition-colors"
+              >
+                Log In
+              </Link>
+            )}
+            <Link href={loggedIn ? "/dashboard" : "/pricing"} className="hidden sm:block">
+              <Button size="sm">{loggedIn ? "My Dashboard" : "Get Started"}</Button>
             </Link>
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -143,16 +175,25 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2.5 rounded-lg text-sm font-medium text-brand-muted hover:text-white hover:bg-white/5 transition-colors"
-            >
-              Log In
-            </Link>
+            {loggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-brand-muted hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Log Out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-brand-muted hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Log In
+              </Link>
+            )}
             <div className="pt-2 pb-1">
-              <Link href="/pricing" onClick={() => setMobileOpen(false)}>
-                <Button fullWidth size="sm">Get Started</Button>
+              <Link href={loggedIn ? "/dashboard" : "/pricing"} onClick={() => setMobileOpen(false)}>
+                <Button fullWidth size="sm">{loggedIn ? "My Dashboard" : "Get Started"}</Button>
               </Link>
             </div>
           </div>
