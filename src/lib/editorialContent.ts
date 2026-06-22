@@ -19,39 +19,39 @@ export const editorialPosts: EditorialPost[] = [
     category: "player-review",
     title: "IPTV Smarters Pro Review: Still the Best All-Rounder for Enktel Playlists?",
     excerpt:
-      "Cross-platform, fast EPG loading, and a clean catch-up UI. We put Enktel's M3U and XMLTV feeds through it on Fire TV, Android, and iOS.",
+      "We ran Enktel's feeds through it on Fire TV, Android, and iOS for months. It did not crash once, which we found almost suspicious.",
     icon: "📱",
     publishedAt: "2026-06-15T09:00:00.000Z",
     readMinutes: 6,
     sections: [
       {
         paragraphs: [
-          "IPTV Smarters Pro is the app we point most new Enktel members toward first, and after months of running our own M3U and XMLTV URLs through it across Fire TV, Android, iOS, and a couple of Smart TVs, it's still our default recommendation for anyone who wants one app that just works everywhere.",
+          "IPTV Smarters Pro is the app we hand new Enktel members first, mostly so they stop calling us. We've now run our own M3U and XMLTV feeds through it on Fire TV, Android, iOS, and a couple of Smart TVs old enough to have their own opinions about HDMI, and it has yet to do anything embarrassing. That's the whole review, really, but we're contractually obligated to pad it out.",
         ],
       },
       {
         heading: "Setup with Enktel credentials",
         paragraphs: [
-          "Adding your Enktel line takes under a minute: open the app, choose \"Login with Xtream Codes API\", and paste in the Server URL, username, and password from your Enktel dashboard. The app pulls your full channel list and EPG automatically — no manual M3U upload needed, though that option exists too if you prefer pasting your playlist and XMLTV URLs directly.",
-          "On Fire TV specifically, install via Downloader using the APK link from the IPTV Smarters Pro website (it isn't on the Amazon Appstore), then sideload as usual. Once it's in, performance on even a base Fire TV Stick (non-4K) is solid for SD/HD channels; 4K channels are smoother on a Fire TV Stick 4K Max or Fire TV Cube.",
+          "Adding your Enktel line takes under a minute, which is faster than it takes most people to find the remote. Open the app, choose \"Login with Xtream Codes API\", and paste in the Server URL, username, and password from your Enktel dashboard. The app pulls your full channel list and EPG automatically — no manual M3U upload required, though that option is sitting there too, for the three people on Earth who enjoy pasting URLs by hand.",
+          "On Fire TV specifically, install via Downloader using the APK link from the IPTV Smarters Pro website, because Amazon, in its infinite wisdom, has not seen fit to stock it. Sideload as usual. A base Fire TV Stick handles SD/HD without complaint; 4K wants a Fire TV Stick 4K Max or Cube, because asking a decade-old potato to render 4K is how you start a support ticket.",
         ],
       },
       {
         heading: "What we liked",
         paragraphs: [
-          "EPG rendering is fast even with Enktel's full channel count loaded, and the catch-up/timeshift menu (when a channel supports it) is one of the cleanest implementations we've tested. Multi-screen and parental PIN controls are also genuinely useful if more than one person uses the line.",
+          "EPG rendering stays fast even with Enktel's full channel count loaded, and the catch-up/timeshift menu — where a channel supports it — is the cleanest we've tested. Multi-screen support and a parental PIN are quietly the two most-used features in any household with more than one opinion about what's on.",
         ],
       },
       {
         heading: "What to watch out for",
         paragraphs: [
-          "The free version carries ads on the home screen; the one-time Pro unlock removes them and is worth it if you're using this as your daily driver. We'd also recommend disabling EPG auto-refresh on a schedule rather than on every app open — it shaves a few seconds off cold-start time, especially on older Fire TV hardware.",
+          "The free tier serves ads on the home screen with the enthusiasm of a timeshare pitch; the one-time Pro unlock removes them and earns its keep if this is your daily driver. We'd also turn off EPG auto-refresh on every app open and put it on a schedule instead — your cold-start time will thank you, particularly on Fire TV hardware that remembers when 720p was exciting.",
         ],
       },
       {
         heading: "Enktel verdict",
         paragraphs: [
-          "If you want a single player that covers phones, tablets, Fire TV, and Smart TVs without compromise, IPTV Smarters Pro is the safest first install. Pair it with your Enktel Xtream Codes login from your dashboard and you'll be streaming in minutes.",
+          "If you want one app that covers phones, tablets, Fire TV, and Smart TVs without drama, this is the safest first install we know of. Pair it with your Enktel Xtream Codes login and you'll be streaming before your tea's gone cold.",
         ],
       },
     ],
@@ -61,38 +61,38 @@ export const editorialPosts: EditorialPost[] = [
     category: "player-review",
     title: "TiviMate on Fire TV: Why It's Our Top Pick for Live TV + EPG",
     excerpt:
-      "If live TV and a proper TV-guide grid are what you care about most, TiviMate's Premium EPG layout is hard to beat on Fire TV.",
+      "TiviMate's guide grid is the closest thing to a real TV guide we've found in an app that isn't, in fact, a TV guide.",
     icon: "📺",
     publishedAt: "2026-06-12T09:00:00.000Z",
     readMinutes: 5,
     sections: [
       {
         paragraphs: [
-          "TiviMate was built around the TV experience first, and it shows the moment you load an Enktel playlist into it on a Fire TV Stick or Cube. The EPG grid view — channels down the side, a scrolling timeline across the top — is the closest thing to a traditional cable guide that we've tested in any third-party app.",
+          "TiviMate was built by people who clearly missed the experience of channel-surfing with a physical remote and decided to do something about it. Load an Enktel playlist into it on a Fire TV Stick or Cube and the EPG grid — channels down the side, a timeline scrolling along the top — is the closest thing to an old cable box guide we've found in any third-party app, minus the part where the cable box also breaks down every winter.",
         ],
       },
       {
         heading: "Adding your Enktel line",
         paragraphs: [
-          "From the home screen, choose \"Add playlist\" → \"Xtream Codes login\", then enter your Enktel Server URL, username, and password exactly as shown in your dashboard. TiviMate will fetch your full channel list and EPG in one step; you can add your EPG/XMLTV URL separately under playlist settings if you want to merge multiple guide sources.",
+          "From the home screen, choose \"Add playlist\" → \"Xtream Codes login\", then enter your Enktel Server URL, username, and password exactly as shown in your dashboard — exactly, not \"close enough,\" a distinction that has generated more support tickets than we'd like to admit. TiviMate fetches your full channel list and EPG in one step; an extra EPG/XMLTV URL can be merged in under playlist settings if you're the sort of person who needs two TV guides agreeing with each other.",
         ],
       },
       {
         heading: "Premium vs free tier",
         paragraphs: [
-          "The free tier covers single-playlist use fine, but TiviMate Premium unlocks multiple playlists, a second EPG source, and channel-list backup/restore — handy if you ever reset your Fire TV or move to a new device and want your favourites and channel order to come with you.",
+          "The free tier is perfectly serviceable for one playlist, in the same way a bicycle is perfectly serviceable transport. TiviMate Premium adds multiple playlists, a second EPG source, and channel-list backup/restore, which matters a great deal on the day your Fire TV dies and you have to rebuild your favourites from memory.",
         ],
       },
       {
         heading: "Performance notes",
         paragraphs: [
-          "Channel-switching latency is consistently the lowest we've measured against Enktel streams compared to other Fire TV players, and the picture-in-picture EPG browsing (keep watching while you scroll the guide) is genuinely useful during live sport.",
+          "Channel-switching latency against Enktel streams is the lowest we've measured of any Fire TV player, and the picture-in-picture EPG browsing — keep watching while you scroll the guide — is the kind of feature you don't know you need until halftime, when everyone in the room suddenly has opinions about the other match.",
         ],
       },
       {
         heading: "Enktel verdict",
         paragraphs: [
-          "For members who mostly watch live channels rather than VOD, TiviMate paired with your Enktel Xtream login is our top Fire TV recommendation. Sideload it via Downloader, log in with your Enktel credentials, and you've got the closest thing to a satellite-box guide experience on a streaming stick.",
+          "If you watch mostly live channels rather than VOD, this is our top Fire TV pick, full stop. Sideload it via Downloader, log in with your Enktel credentials, and enjoy a guide experience your old satellite box would have charged you extra for.",
         ],
       },
     ],
@@ -102,34 +102,34 @@ export const editorialPosts: EditorialPost[] = [
     category: "player-review",
     title: "Perfect Player vs VLC: Which One Should You Use With Enktel?",
     excerpt:
-      "Two very different philosophies — one is a dedicated IPTV player, the other a general media player that happens to handle M3U fine. Here's when to use which.",
+      "One is built for IPTV. The other is a Swiss Army knife that happens to also open M3U files. Neither will judge you, but we might.",
     icon: "⚔️",
     publishedAt: "2026-06-08T09:00:00.000Z",
     readMinutes: 5,
     sections: [
       {
         paragraphs: [
-          "Perfect Player and VLC come up constantly in support tickets as alternatives when someone's primary IPTV app is misbehaving, and they solve different problems. Here's how each performs with an Enktel playlist loaded.",
+          "Perfect Player and VLC come up in support tickets constantly, usually right after someone's main IPTV app has done something inexplicable. They are not the same kind of tool, despite both technically playing video, in the same way a scalpel and a chainsaw both technically cut.",
         ],
       },
       {
         heading: "Perfect Player",
         paragraphs: [
-          "Perfect Player is purpose-built for IPTV: paste in your Enktel M3U playlist URL and EPG/XMLTV URL under Settings → General, and it builds a channel list with a TV-guide style EPG overlay. It's lighter on resources than most full Xtream-style apps, which makes it a good pick for older Android boxes or Fire TV Stick (1st gen / Lite) hardware that struggles with heavier players.",
-          "The trade-off is a less polished UI and no native VOD/series browsing — it's a live-TV-first tool, which is exactly what makes it fast.",
+          "Perfect Player is built for IPTV and nothing else, which is the entire point. Paste your Enktel M3U playlist URL and EPG/XMLTV URL under Settings → General, and it assembles a channel list with a TV-guide style overlay, using a fraction of the resources a full Xtream-style app demands. This makes it the dignified choice for older Android boxes and the Fire TV Stick (1st gen / Lite), hardware that struggles to open a second tab, let alone a second app.",
+          "The trade-off is a UI that looks like it was designed in 2014, because it largely was, and no native VOD or series browsing. It's a live-TV tool that does one thing, and does it without apologising for the interface.",
         ],
       },
       {
         heading: "VLC",
         paragraphs: [
-          "VLC isn't an IPTV app at all — it's a general media player that can open an M3U file or URL like any other media source. You can paste your Enktel M3U URL directly into VLC's \"Open Network Stream\" dialog and it'll play, but you lose EPG, channel categories, and any kind of guide entirely; it's just a flat list of streams.",
-          "Where VLC earns its place is as a diagnostic tool: if a channel won't play in your main app, opening the same stream URL directly in VLC tells you in seconds whether the problem is the stream itself or the app rendering it.",
+          "VLC is not an IPTV app. It is a general media player that will open an M3U the same way it'll open a wedding video from 2009 — without complaint, without context, and without an EPG. Paste your Enktel M3U URL into \"Open Network Stream\" and it plays, but you get a flat list of streams and nothing resembling a guide. It is, in effect, a TV with the channel numbers sanded off.",
+          "Where VLC actually earns its spot on your device is as a diagnostic tool. If a channel refuses to play in your main app, opening the same stream URL directly in VLC tells you in seconds whether the stream itself is the problem or your app is simply being difficult — a distinction worth knowing before you write us an angry message.",
         ],
       },
       {
         heading: "Enktel verdict",
         paragraphs: [
-          "Use Perfect Player as a lightweight daily driver on older or lower-powered hardware. Keep VLC installed purely as a troubleshooting tool to isolate stream issues — it's rarely the best full-time choice, but it's the fastest way to rule out \"is it the app or the stream?\" when something stops working.",
+          "Run Perfect Player as a lightweight daily driver on older or weaker hardware. Keep VLC installed purely as a troubleshooting tool — it will rarely be your full-time player, but it remains the fastest way to answer \"is it the app or the stream?\" without filing a ticket first.",
         ],
       },
     ],
@@ -141,14 +141,14 @@ export const editorialPosts: EditorialPost[] = [
     category: "troubleshooting",
     title: "Fire TV Buffering Constantly? Here's the Real Fix",
     excerpt:
-      "Before you blame your Enktel line, check these four things — most buffering on Fire TV traces back to Wi-Fi, not the stream.",
+      "Before you fire off an angry message about your Enktel line, check these four things first — buffering on Fire TV is almost always a Wi-Fi problem wearing a stream's clothes.",
     icon: "🔄",
     publishedAt: "2026-06-18T09:00:00.000Z",
     readMinutes: 4,
     sections: [
       {
         paragraphs: [
-          "Buffering is the single most common ticket we get, and on Fire TV the cause is almost always one of four things — rarely the Enktel stream itself, since the same line typically plays clean on a phone or laptop on the same network.",
+          "Buffering is the top ticket in our inbox, and on Fire TV the culprit is almost always one of four things — rarely the Enktel stream itself, since the exact same line usually plays clean on a phone or laptop sitting on the same network.",
         ],
       },
       {
@@ -188,14 +188,14 @@ export const editorialPosts: EditorialPost[] = [
     category: "troubleshooting",
     title: "App Won't Install on Fire TV Stick? Try This First",
     excerpt:
-      "Most install failures on Fire TV come down to storage, Developer Options, or a stale Downloader cache — not a broken APK.",
+      "Nine times out of ten, the APK is fine. The culprit is storage, a buried toggle, or a Downloader cache holding a grudge.",
     icon: "📦",
     publishedAt: "2026-06-16T09:00:00.000Z",
     readMinutes: 4,
     sections: [
       {
         paragraphs: [
-          "\"Installation failed\" or an app that silently never appears after sideloading is almost always one of three causes, in this order of likelihood.",
+          "\"Installation failed,\" or an app that quietly never shows up after sideloading, is almost always one of three causes — check them in this order before you start questioning the APK itself.",
         ],
       },
       {
@@ -229,14 +229,14 @@ export const editorialPosts: EditorialPost[] = [
     category: "troubleshooting",
     title: "EPG Not Loading on Fire TV: 5-Minute Fix",
     excerpt:
-      "A blank or stuck TV guide is almost always a stale cache or a re-typed EPG URL — here's the checklist before you assume something's broken.",
+      "A blank guide rarely means anything is actually broken — it usually means a URL got retyped slightly wrong or a cache needs a nudge.",
     icon: "🗓️",
     publishedAt: "2026-06-10T09:00:00.000Z",
     readMinutes: 4,
     sections: [
       {
         paragraphs: [
-          "Channels playing fine but the guide showing blank, \"No data\", or spinning forever is one of the most common Fire TV tickets — and one of the quickest to fix yourself.",
+          "Channels playing fine while the guide sits blank, says \"No data,\" or spins forever is one of the most common Fire TV tickets — and one of the fastest to fix yourself, no waiting on us required.",
         ],
       },
       {
@@ -270,14 +270,14 @@ export const editorialPosts: EditorialPost[] = [
     category: "troubleshooting",
     title: "Fire TV Remote Not Pairing? Step-by-Step Reset",
     excerpt:
-      "Not an Enktel issue, but it stops you watching just the same — here's the fastest way to get an unresponsive Fire TV remote back online.",
+      "Not an Enktel issue in the slightest, but a dead remote stops you watching just as effectively as a dead stream — here's the fix.",
     icon: "🎮",
     publishedAt: "2026-06-05T09:00:00.000Z",
     readMinutes: 3,
     sections: [
       {
         paragraphs: [
-          "A remote that's gone unresponsive is a hardware/Bluetooth issue rather than anything to do with your Enktel subscription, but since it blocks you from watching, here's the reset sequence that resolves it most often.",
+          "An unresponsive remote is a Bluetooth/hardware problem with nothing to do with your Enktel subscription — but it still leaves you stuck on the couch staring at a frozen screen, so here's the reset sequence that resolves it most often.",
         ],
       },
       {
@@ -305,14 +305,14 @@ export const editorialPosts: EditorialPost[] = [
     category: "troubleshooting",
     title: "Fire TV Storage Full: How to Free Up Space Without Losing Your Apps",
     excerpt:
-      "Entry-level Fire TV Sticks run out of space fast once you've got two or three IPTV apps with EPG caches installed. Here's what to clear first.",
+      "Entry-level Fire TV Sticks run out of room the moment you install more than one IPTV app and let the EPG caches pile up. Here's what to clear first.",
     icon: "🧹",
     publishedAt: "2026-06-02T09:00:00.000Z",
     readMinutes: 4,
     sections: [
       {
         paragraphs: [
-          "\"Storage space running low\" warnings, slow app launches, and failed installs almost always trace back to the same cause on base Fire TV Stick models: limited onboard storage filled up by app data and EPG caches.",
+          "\"Storage space running low\" warnings, sluggish app launches, and installs that just won't finish all trace back to the same cause on base Fire TV Stick models: tiny onboard storage, slowly buried under app data and EPG caches.",
         ],
       },
       {
