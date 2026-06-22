@@ -27,3 +27,7 @@ export function loadSubscription(): StoredSubscription | null {
     return null;
   }
 }
+
+export function clearSubscription() {
+  localStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+}

@@ -94,6 +94,12 @@ export default function Navbar() {
                 <Search className="w-4 h-4" />
               </button>
             )}
+            <Link
+              href="/login"
+              className="hidden sm:block text-sm font-medium text-brand-muted hover:text-white transition-colors"
+            >
+              Log In
+            </Link>
             <Link href="/pricing" className="hidden sm:block">
               <Button size="sm">Get Started</Button>
             </Link>
@@ -137,6 +143,13 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/login"
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2.5 rounded-lg text-sm font-medium text-brand-muted hover:text-white hover:bg-white/5 transition-colors"
+            >
+              Log In
+            </Link>
             <div className="pt-2 pb-1">
               <Link href="/pricing" onClick={() => setMobileOpen(false)}>
                 <Button fullWidth size="sm">Get Started</Button>

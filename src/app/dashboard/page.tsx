@@ -4,11 +4,11 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Copy, Check, Tv, ChevronRight, AlertTriangle, Sparkles, X, Clock,
-  MessageCircle, HelpCircle, ChevronDown, MonitorX,
+  MessageCircle, HelpCircle, ChevronDown, MonitorX, LogOut,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { StoredSubscription, loadSubscription } from "@/lib/subscriptionStorage";
+import { StoredSubscription, loadSubscription, clearSubscription } from "@/lib/subscriptionStorage";
 import { DEVICE_GUIDES, getDeviceGuide } from "@/lib/deviceGuides";
 
 const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
@@ -185,6 +185,11 @@ export default function DashboardPage() {
     setShowTour(false);
   }
 
+  function handleLogout() {
+    clearSubscription();
+    setSub(null);
+  }
+
   if (checked && !sub) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -198,15 +203,18 @@ export default function DashboardPage() {
           <Tv className="w-10 h-10 text-brand-muted mx-auto mb-4" />
           <h2 className="text-white font-bold text-xl mb-2">No active subscription</h2>
           <p className="text-brand-muted text-sm mb-6 max-w-md mx-auto">
-            We couldn&apos;t find a subscription linked to this browser. If you just subscribed, open the
-            confirmation link from your checkout email, or get started below.
+            We couldn&apos;t find a subscription linked to this browser. If you already have an active line,
+            log in with your IPTV username and password. Otherwise, get started below.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link href="/login">
+              <Button>Log In</Button>
+            </Link>
             <Link href="/trial">
               <Button variant="outline">Start Free Trial</Button>
             </Link>
             <Link href="/pricing">
-              <Button>View Plans</Button>
+              <Button variant="outline">View Plans</Button>
             </Link>
           </div>
         </div>
@@ -229,12 +237,20 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <AnimatePresence>{showTour && <DashboardTour onClose={closeTour} />}</AnimatePresence>
 
-      <h1 className="text-3xl font-bold text-white mb-8">
-        My{" "}
-        <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-          Dashboard
-        </span>
-      </h1>
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <h1 className="text-3xl font-bold text-white">
+          My{" "}
+          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+            Dashboard
+          </span>
+        </h1>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-brand-muted text-sm hover:text-white transition-colors shrink-0"
+        >
+          <LogOut className="w-4 h-4" /> Log out
+        </button>
+      </div>
 
       <AnimatePresence>
         {showWelcome && (
