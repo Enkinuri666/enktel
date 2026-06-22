@@ -8,7 +8,7 @@ export type PlanId = "monthly" | "quarter" | "annual";
 // unchecked `plan` value from a request body can safely index these without
 // a cast, while still being populated with exactly the three known plans.
 export const PLAN_PRICE_EUR: Record<string, number> = {
-  monthly: 19.99,
+  monthly: 29.99,
   quarter: 59,
   annual: 99,
 };
