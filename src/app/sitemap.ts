@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 const routes = [
   "",
-  "/channels",
+  "/blog",
   "/epg",
   "/whats-new",
   "/world-cup-2026",

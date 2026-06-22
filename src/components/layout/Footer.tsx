@@ -6,7 +6,7 @@ import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const quickLinks = [
   { href: "/", label: "Home" },
-  { href: "/channels", label: "Channel List" },
+  { href: "/blog", label: "Blog" },
   { href: "/epg", label: "EPG Guide" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
