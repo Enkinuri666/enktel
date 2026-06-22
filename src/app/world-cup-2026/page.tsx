@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import useSWR from "swr";
-import { Trophy, Radio } from "lucide-react";
+import { Trophy, Radio, MapPin } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { WorldCupMatch } from "@/lib/worldCup";
+import MatchPromoVideo from "@/components/world-cup/MatchPromoVideo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -41,14 +43,43 @@ function MatchCard({ match }: { match: WorldCupMatch }) {
           <span className="text-brand-muted font-semibold uppercase">Full Time</span>
         )}
       </div>
+      {(match.group || match.round) && (
+        <div className="flex items-center gap-2 mb-2">
+          {match.group && (
+            <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wide bg-yellow-400/10 px-2 py-0.5 rounded-full">
+              Group {match.group}
+            </span>
+          )}
+          {match.round && (
+            <span className="text-brand-muted text-[10px] font-bold uppercase tracking-wide bg-white/5 px-2 py-0.5 rounded-full">
+              Round {match.round}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-white font-bold text-base flex-1 truncate">{match.homeTeam}</span>
+        <span className="flex items-center gap-2 flex-1 min-w-0">
+          {match.homeTeamBadge && (
+            <Image src={match.homeTeamBadge} alt="" width={20} height={20} className="w-5 h-5 object-contain shrink-0" unoptimized />
+          )}
+          <span className="text-white font-bold text-base truncate">{match.homeTeam}</span>
+        </span>
         <span className="text-white font-black text-lg shrink-0 px-3">
           {hasScore ? `${match.homeScore} – ${match.awayScore}` : "vs"}
         </span>
-        <span className="text-white font-bold text-base flex-1 truncate text-right">{match.awayTeam}</span>
+        <span className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <span className="text-white font-bold text-base truncate text-right">{match.awayTeam}</span>
+          {match.awayTeamBadge && (
+            <Image src={match.awayTeamBadge} alt="" width={20} height={20} className="w-5 h-5 object-contain shrink-0" unoptimized />
+          )}
+        </span>
       </div>
-      {match.venue && <p className="text-brand-muted text-xs mt-3 text-center">{match.venue}</p>}
+      {(match.venue || match.city) && (
+        <p className="text-brand-muted text-xs mt-3 text-center flex items-center justify-center gap-1">
+          <MapPin className="w-3 h-3 shrink-0" />
+          {[match.venue, match.city, match.country].filter(Boolean).join(", ")}
+        </p>
+      )}
     </div>
   );
 }
@@ -77,6 +108,10 @@ export default function WorldCup2026Page() {
         for a separate sports subscription — it&apos;s all included in your plan. Fixtures and results
         below update automatically.
       </p>
+
+      <div className="mb-8 max-w-xl">
+        <MatchPromoVideo className="aspect-[16/9]" />
+      </div>
 
       <div className="bg-brand-card border border-brand-border rounded-xl p-6 mb-8">
         <h2 className="text-white font-bold text-xl mb-5 flex items-center gap-2">

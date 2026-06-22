@@ -22,7 +22,7 @@ export default function WatchPage() {
           <Link
             href="/checkout?plan=annual"
             className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-base text-white transition-all duration-300 hover:-translate-y-1"
-            style={{ background: "linear-gradient(135deg, #6C63FF 0%, #5348d4 100%)" }}
+            style={{ background: "linear-gradient(135deg, #2F6FFF 0%, #1947CC 100%)" }}
           >
             Start Watching
             <ArrowRight className="w-4 h-4" />

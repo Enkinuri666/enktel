@@ -10,6 +10,12 @@ export interface WorldCupMatch {
   startTime: string;
   status: "upcoming" | "live" | "finished";
   venue: string | null;
+  city: string | null;
+  country: string | null;
+  group: string | null;
+  round: string | null;
+  homeTeamBadge: string | null;
+  awayTeamBadge: string | null;
 }
 
 interface SportsDbEvent {
@@ -22,6 +28,12 @@ interface SportsDbEvent {
   strTime: string;
   strTimestamp?: string;
   strVenue?: string | null;
+  strCity?: string | null;
+  strCountry?: string | null;
+  strGroup?: string | null;
+  intRound?: string | null;
+  strHomeTeamBadge?: string | null;
+  strAwayTeamBadge?: string | null;
 }
 
 // A match is realistically over within ~2.5 hours of kickoff (90 mins +
@@ -54,6 +66,12 @@ function toMatch(event: SportsDbEvent): WorldCupMatch {
     startTime,
     status,
     venue: event.strVenue || null,
+    city: event.strCity || null,
+    country: event.strCountry || null,
+    group: event.strGroup || null,
+    round: event.intRound || null,
+    homeTeamBadge: event.strHomeTeamBadge || null,
+    awayTeamBadge: event.strAwayTeamBadge || null,
   };
 }
 

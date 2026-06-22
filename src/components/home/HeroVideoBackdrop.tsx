@@ -17,11 +17,11 @@ export default function HeroVideoBackdrop() {
       {/* Aurora orbs */}
       <div
         className="absolute -top-40 -left-40 w-[1000px] h-[1000px] rounded-full orb"
-        style={{ background: "radial-gradient(circle, rgba(108,99,255,0.38) 0%, transparent 65%)" }}
+        style={{ background: "radial-gradient(circle, rgba(47,111,255,0.38) 0%, transparent 65%)" }}
       />
       <div
         className="absolute -bottom-56 -right-56 w-[900px] h-[900px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(0,212,255,0.28) 0%, transparent 65%)", animation: "orbFloat 12s ease-in-out infinite reverse" }}
+        style={{ background: "radial-gradient(circle, rgba(31,216,242,0.28) 0%, transparent 65%)", animation: "orbFloat 12s ease-in-out infinite reverse" }}
       />
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
@@ -35,7 +35,7 @@ export default function HeroVideoBackdrop() {
           transform: "perspective(620px) rotateX(73deg)",
           transformOrigin: "bottom center",
           backgroundImage:
-            "linear-gradient(to right, rgba(108,99,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(108,99,255,0.22) 1px, transparent 1px)",
+            "linear-gradient(to right, rgba(47,111,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(47,111,255,0.22) 1px, transparent 1px)",
           backgroundSize: "78px 78px",
           WebkitMaskImage: "linear-gradient(to top, #000 0%, #000 26%, transparent 72%)",
           maskImage: "linear-gradient(to top, #000 0%, #000 26%, transparent 72%)",
@@ -43,7 +43,7 @@ export default function HeroVideoBackdrop() {
       />
       <div
         className="absolute left-1/5 right-1/5 bottom-[28%] h-44"
-        style={{ background: "radial-gradient(60% 100% at 50% 100%, rgba(108,99,255,0.22) 0%, transparent 70%)", filter: "blur(8px)" }}
+        style={{ background: "radial-gradient(60% 100% at 50% 100%, rgba(47,111,255,0.22) 0%, transparent 70%)", filter: "blur(8px)" }}
       />
 
       {/* Drifting particles */}
@@ -55,7 +55,7 @@ export default function HeroVideoBackdrop() {
             left: `${p.x}%`,
             width: p.size,
             height: p.size,
-            background: p.accent ? "#00D4FF" : "#6C63FF",
+            background: p.accent ? "#1FD8F2" : "#2F6FFF",
             animationDuration: `${p.duration}s`,
             animationDelay: `${p.delay}s`,
           }}
