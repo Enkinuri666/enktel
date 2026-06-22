@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import TopTicker from "@/components/layout/TopTicker";
 import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/layout/WhatsAppButton";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -44,8 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="bg-brand-bg text-white antialiased">
-        <Navbar />
-        <main className="pt-16 min-h-screen">{children}</main>
+        <div className="fixed top-0 inset-x-0 z-50 flex flex-col">
+          <TopTicker />
+          <Navbar />
+        </div>
+        <main className="pt-24 min-h-screen">{children}</main>
         <Footer />
         <WhatsAppButton />
       </body>
