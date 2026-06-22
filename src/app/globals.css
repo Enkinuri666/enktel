@@ -145,6 +145,10 @@ body::after {
 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .animate-marquee { animation: marquee 35s linear infinite; }
 
+/* Slow rotation ring, e.g. around the hero centerpiece logo */
+@keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin-slow { animation: spinSlow 18s linear infinite; }
+
 /* Shimmer for progress bars */
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .progress-shimmer {

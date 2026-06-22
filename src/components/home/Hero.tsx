@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -21,7 +22,41 @@ export default function Hero() {
       <HeroVideoBackdrop />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[82vh]">
+
+        {/* ── Centerpiece animated logo ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="flex justify-center mb-10"
+        >
+          <motion.div
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="relative"
+          >
+            <div
+              className="absolute inset-0 -z-10 rounded-full orb"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(0,212,255,0.5) 0%, rgba(108,99,255,0.35) 45%, transparent 75%)",
+                filter: "blur(28px)",
+              }}
+            />
+            <div className="absolute -inset-5 rounded-full border border-white/15 spin-slow" />
+            <div className="absolute -inset-9 rounded-full border border-dashed border-white/8" />
+            <Image
+              src="/logo-icon.png"
+              alt="Enktel"
+              width={160}
+              height={160}
+              priority
+              className="relative w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 drop-shadow-[0_0_50px_rgba(0,212,255,0.6)]"
+            />
+          </motion.div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[70vh]">
 
           {/* LEFT */}
           <div>
