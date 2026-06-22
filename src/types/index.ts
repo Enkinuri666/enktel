@@ -139,3 +139,21 @@ export interface BlogPost {
   genres: string[];
   mediaType: "movie" | "tv";
 }
+
+export type EditorialCategory = "player-review" | "troubleshooting" | "weekly-mag";
+
+export interface EditorialSection {
+  heading?: string;
+  paragraphs: string[];
+}
+
+export interface EditorialPost {
+  slug: string;
+  category: EditorialCategory;
+  title: string;
+  excerpt: string;
+  icon: string;
+  publishedAt: string;
+  readMinutes: number;
+  sections: EditorialSection[];
+}

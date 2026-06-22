@@ -11,8 +11,8 @@ const config: Config = {
       colors: {
         brand: {
           bg: "#060910",
-          primary: "#6C63FF",
-          secondary: "#00D4FF",
+          primary: "#2F6FFF",
+          secondary: "#1FD8F2",
           accent: "#FF4757",
           text: "#FFFFFF",
           muted: "#9BA3B8",
@@ -36,16 +36,16 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.5s ease-out",
         shimmer: "shimmer 2s linear infinite",
-        "marquee": "marquee 35s linear infinite",
-        "marquee-reverse": "marquee 35s linear infinite reverse",
+        "marquee": "marquee 70s linear infinite",
+        "marquee-reverse": "marquee 70s linear infinite reverse",
       },
       keyframes: {
         pulseGlow: {
           "0%, 100%": {
-            boxShadow: "0 0 20px rgba(108, 99, 255, 0.5)",
+            boxShadow: "0 0 20px rgba(47, 111, 255, 0.5)",
           },
           "50%": {
-            boxShadow: "0 0 40px rgba(108, 99, 255, 0.8), 0 0 80px rgba(0, 212, 255, 0.3)",
+            boxShadow: "0 0 40px rgba(47, 111, 255, 0.8), 0 0 80px rgba(31, 216, 242, 0.3)",
           },
         },
         float: {

@@ -1,12 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { Newspaper, Star, Clock, Film, Tv, Sparkles } from "lucide-react";
+import { Newspaper, Star, Clock, Film, Tv, Sparkles, ArrowRight } from "lucide-react";
 import { BlogPost, BlogPostKind } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import MediaPoster from "@/components/ui/MediaPoster";
 import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import { loadSubscription, StoredSubscription } from "@/lib/subscriptionStorage";
+import { editorialPosts, CATEGORY_LABELS, CATEGORY_DESCRIPTIONS } from "@/lib/editorialContent";
+import { EditorialCategory } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -14,14 +18,19 @@ interface BlogData {
   posts: BlogPost[];
 }
 
-type FeedFilter = "all" | BlogPostKind;
+type FeedFilter = "all" | BlogPostKind | EditorialCategory;
 
 const FILTERS: { value: FeedFilter; label: string }[] = [
   { value: "all", label: "All Posts" },
   { value: "now-showing", label: "Now Showing" },
   { value: "on-air", label: "On Air" },
   { value: "coming-soon", label: "Coming Soon" },
+  { value: "weekly-mag", label: "Tel-Vision Weekly" },
+  { value: "player-review", label: "Player Reviews" },
+  { value: "troubleshooting", label: "Fire TV Fixes" },
 ];
+
+const EDITORIAL_CATEGORIES: EditorialCategory[] = ["weekly-mag", "player-review", "troubleshooting"];
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -37,13 +46,75 @@ function readTime(excerpt: string): string {
   return `${Math.max(1, Math.round(words / 200))} min read`;
 }
 
+function EditorialCard({ slug, icon, category, title, excerpt, readMinutes }: {
+  slug: string;
+  icon: string;
+  category: EditorialCategory;
+  title: string;
+  excerpt: string;
+  readMinutes: number;
+}) {
+  return (
+    <Link
+      href={`/blog/${slug}`}
+      className="block bg-brand-card border border-brand-border rounded-xl p-5 hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xl leading-none">{icon}</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
+          {CATEGORY_LABELS[category]}
+        </span>
+      </div>
+      <h3 className="text-white font-semibold mb-1.5 line-clamp-2">{title}</h3>
+      <p className="text-brand-muted text-sm line-clamp-3 mb-3">{excerpt}</p>
+      <span className="text-brand-secondary text-sm font-medium flex items-center gap-1">
+        {readMinutes} min read <ArrowRight className="w-3.5 h-3.5" />
+      </span>
+    </Link>
+  );
+}
+
 export default function BlogPage() {
   const [filter, setFilter] = useState<FeedFilter>("all");
+  const [sub, setSub] = useState<StoredSubscription | null>(null);
+  const [checked, setChecked] = useState(false);
   const { data, isLoading } = useSWR<BlogData>("/api/blog", fetcher, { refreshInterval: 60 * 60 * 1000 });
 
+  useEffect(() => {
+    setSub(loadSubscription());
+    setChecked(true);
+  }, []);
+
   const posts = data?.posts || [];
-  const filtered = filter === "all" ? posts : posts.filter((p) => p.kind === filter);
+  const isEditorialFilter = EDITORIAL_CATEGORIES.includes(filter as EditorialCategory);
+  const filtered = filter === "all" || isEditorialFilter ? posts : posts.filter((p) => p.kind === filter);
   const [featured, ...rest] = filtered;
+  const editorialFiltered = isEditorialFilter
+    ? editorialPosts.filter((p) => p.category === filter)
+    : editorialPosts;
+
+  if (checked && !sub) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <Newspaper className="w-10 h-10 text-brand-muted mx-auto mb-4" />
+        <h1 className="text-white font-bold text-2xl mb-2">The Blog is members-only</h1>
+        <p className="text-brand-muted text-sm mb-6 max-w-md mx-auto">
+          Log in with your Enktel subscription to read player reviews, Fire TV troubleshooting guides,
+          Tel-Vision Weekly, and the live entertainment feed.
+        </p>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <Link href="/login">
+            <Button>Log In</Button>
+          </Link>
+          <Link href="/trial">
+            <Button variant="outline">Start Free Trial</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sub) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -58,8 +129,8 @@ export default function BlogPage() {
           </span>
         </h1>
         <p className="text-brand-muted text-lg max-w-2xl">
-          Fresh stories on what&apos;s screening now, what&apos;s on air, and what&apos;s coming soon —
-          generated straight from live entertainment data, refreshed throughout the day.
+          Fresh stories on what&apos;s screening now, what&apos;s on air, and what&apos;s coming soon, plus
+          player reviews, Fire TV troubleshooting guides, and Tel-Vision Weekly — our members-only e-magazine.
         </p>
       </div>
 
@@ -80,12 +151,39 @@ export default function BlogPage() {
         ))}
       </div>
 
-      {isLoading ? (
-        <Spinner className="py-20" />
-      ) : filtered.length === 0 ? (
-        <p className="text-brand-muted text-center py-16">No posts in this category right now. Check back soon.</p>
+      {isEditorialFilter ? (
+        editorialFiltered.length === 0 ? (
+          <p className="text-brand-muted text-center py-16">No posts in this category right now. Check back soon.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {editorialFiltered.map((post) => (
+              <EditorialCard key={post.slug} {...post} />
+            ))}
+          </div>
+        )
       ) : (
         <>
+          {/* Tel-Vision Weekly + guides strip */}
+          {filter === "all" && (
+            <div className="mb-10">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-4 h-4 text-brand-secondary" />
+                <h2 className="text-white font-bold text-lg">Tel-Vision Weekly &amp; Guides</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {editorialPosts.slice(0, 3).map((post) => (
+                  <EditorialCard key={post.slug} {...post} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isLoading ? (
+            <Spinner className="py-20" />
+          ) : filtered.length === 0 ? (
+            <p className="text-brand-muted text-center py-16">No posts in this category right now. Check back soon.</p>
+          ) : (
+          <>
           {/* Featured post */}
           <Link
             href={`/watch`}
@@ -168,6 +266,8 @@ export default function BlogPage() {
               </article>
             ))}
           </div>
+          </>
+          )}
         </>
       )}
 
