@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Zap, Search } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { clsx } from "clsx";
 
@@ -37,15 +38,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-8 h-8 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-lg flex items-center justify-center shadow-lg shadow-brand-primary/30 group-hover:shadow-brand-primary/50 transition-shadow">
-              <Zap className="w-5 h-5 text-white fill-white" />
-            </div>
-            <span className="text-xl font-bold">
-              <span className="text-white">ENK</span>
-              <span className="text-brand-primary">TEL</span>
-              <span className="text-brand-muted text-sm font-normal ml-1">IPTV</span>
-            </span>
+          <Link href="/" className="flex items-center group">
+            <Image
+              src="/logo.png"
+              alt="Enktel IPTV"
+              width={1599}
+              height={899}
+              priority
+              className="h-9 w-auto group-hover:opacity-90 transition-opacity"
+            />
           </Link>
 
           {/* Desktop Nav */}

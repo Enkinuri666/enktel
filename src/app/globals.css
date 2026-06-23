@@ -162,6 +162,15 @@ body::after {
 .epg-program { transition: all 0.2s ease; }
 .epg-program:hover { z-index: 10; transform: scaleY(1.05); }
 
+/* Howling wolf mascot */
+@keyframes wolfHowl {
+  0%, 100% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 18px rgba(0,212,255,0.35)); }
+  20%       { transform: rotate(-4deg) scale(1.03); filter: drop-shadow(0 0 32px rgba(108,99,255,0.55)); }
+  50%       { transform: rotate(2deg) scale(1.05); filter: drop-shadow(0 0 40px rgba(0,212,255,0.6)); }
+  80%       { transform: rotate(-2deg) scale(1.02); filter: drop-shadow(0 0 28px rgba(108,99,255,0.45)); }
+}
+.wolf-howl { animation: wolfHowl 5s ease-in-out infinite; transform-origin: 70% 90%; }
+
 /* Mobile nav */
 @keyframes mobileNavIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 .mobile-nav-enter { animation: mobileNavIn 0.3s ease-out; }

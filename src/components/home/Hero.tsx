@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -33,9 +34,21 @@ export default function Hero() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[82vh]">
 
           {/* LEFT */}
-          <div>
+          <div className="relative">
+            <motion.div initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7 }}
+              className="absolute -top-6 -left-4 sm:left-0 w-28 h-28 sm:w-36 sm:h-36 pointer-events-none select-none z-0">
+              <Image
+                src="/wolf-head.png"
+                alt=""
+                fill
+                className="object-contain wolf-howl"
+                priority
+              />
+            </motion.div>
+
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2.5 mb-8 rounded-full px-4 py-2 text-sm font-semibold border"
+              className="relative inline-flex items-center gap-2.5 mb-8 ml-20 sm:ml-32 rounded-full px-4 py-2 text-sm font-semibold border"
               style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.1)" }}>
               <span className="text-xl leading-none">🇭🇷</span>
               <span className="text-white/90">Croatia&apos;s #1 IPTV Service</span>
