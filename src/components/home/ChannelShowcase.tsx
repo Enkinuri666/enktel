@@ -6,13 +6,13 @@ import { channels, CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const categories = [
   { name: "Croatian & Balkan", icon: Globe, color: "#FF4757", description: "HRT, Nova TV, RTL, Doma TV, CMC, N1 & more" },
-  { name: "Sports", icon: Trophy, color: "#2F6FFF", description: "Live football, cricket, F1, tennis and more" },
-  { name: "Movies", icon: Film, color: "#1FD8F2", description: "Blockbusters, classics, and indie films" },
+  { name: "Sports", icon: Trophy, color: "#6C63FF", description: "Live football, cricket, F1, tennis and more" },
+  { name: "Movies", icon: Film, color: "#00D4FF", description: "Blockbusters, classics, and indie films" },
   { name: "News", icon: Newspaper, color: "#FF4757", description: "24/7 news from around the globe" },
-  { name: "Entertainment", icon: Star, color: "#2F6FFF", description: "Soaps, reality TV, and dramas" },
-  { name: "Kids", icon: Baby, color: "#1FD8F2", description: "Safe, fun content for children" },
+  { name: "Entertainment", icon: Star, color: "#6C63FF", description: "Soaps, reality TV, and dramas" },
+  { name: "Kids", icon: Baby, color: "#00D4FF", description: "Safe, fun content for children" },
   { name: "Documentary", icon: BookOpen, color: "#FF4757", description: "Nature, history, science and more" },
-  { name: "Music", icon: Music, color: "#2F6FFF", description: "Music videos, live concerts, radio" },
+  { name: "Music", icon: Music, color: "#6C63FF", description: "Music videos, live concerts, radio" },
 ];
 
 export default function ChannelShowcase() {

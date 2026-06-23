@@ -67,7 +67,7 @@ export default function Navbar() {
               alt="Enktel IPTV"
               width={36}
               height={36}
-              className="w-9 h-9 drop-shadow-[0_0_10px_rgba(31,216,242,0.35)] group-hover:scale-105 transition-transform"
+              className="w-9 h-9 drop-shadow-[0_0_10px_rgba(0,212,255,0.35)] group-hover:scale-105 transition-transform"
               priority
             />
             <span className="text-xl font-bold flex items-center gap-1.5">

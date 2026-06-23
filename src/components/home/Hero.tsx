@@ -9,9 +9,9 @@ import HeroVideoBackdrop from "./HeroVideoBackdrop";
 const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
 const liveChannels = [
-  { name: "HRT 1", show: "Dnevnik 2", progress: 68, genre: "News", color: "#2F6FFF" },
+  { name: "HRT 1", show: "Dnevnik 2", progress: 68, genre: "News", color: "#6C63FF" },
   { name: "Nova TV", show: "Doma ljubav", progress: 42, genre: "Drama", color: "#CE2C1A" },
-  { name: "Sky Sports", show: "Premier League LIVE", progress: 85, genre: "Sport", color: "#1FD8F2" },
+  { name: "Sky Sports", show: "Premier League LIVE", progress: 85, genre: "Sport", color: "#00D4FF" },
 ];
 
 export default function Hero() {
@@ -39,7 +39,7 @@ export default function Hero() {
               className="absolute inset-0 -z-10 rounded-full orb"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(31,216,242,0.5) 0%, rgba(47,111,255,0.35) 45%, transparent 75%)",
+                  "radial-gradient(circle, rgba(0,212,255,0.5) 0%, rgba(108,99,255,0.35) 45%, transparent 75%)",
                 filter: "blur(28px)",
               }}
             />
@@ -51,7 +51,7 @@ export default function Hero() {
               width={160}
               height={160}
               priority
-              className="relative w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 drop-shadow-[0_0_50px_rgba(31,216,242,0.6)]"
+              className="relative w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 drop-shadow-[0_0_50px_rgba(0,212,255,0.6)]"
             />
           </motion.div>
         </motion.div>
@@ -66,7 +66,7 @@ export default function Hero() {
               <span className="text-xl leading-none">🇭🇷</span>
               <span className="text-white/90">Croatia&apos;s #1 IPTV Service</span>
               <span className="w-px h-4 bg-white/20" />
-              <span style={{ color: "#1FD8F2" }}>50+ Countries</span>
+              <span style={{ color: "#00D4FF" }}>50+ Countries</span>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
@@ -74,7 +74,7 @@ export default function Hero() {
                 <span className="block text-white" style={{ fontSize: "clamp(3.5rem, 10vw, 7rem)" }}>WATCH</span>
                 <span className="block" style={{
                   fontSize: "clamp(2.8rem, 8.5vw, 5.8rem)",
-                  background: "linear-gradient(120deg, #2F6FFF 0%, #1FD8F2 55%, #2F6FFF 100%)",
+                  background: "linear-gradient(120deg, #6C63FF 0%, #00D4FF 55%, #6C63FF 100%)",
                   backgroundSize: "200% auto",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
@@ -96,9 +96,9 @@ export default function Hero() {
               className="flex flex-col sm:flex-row gap-4 mb-10">
               <Link href="/checkout?plan=annual">
                 <button className="group relative flex items-center gap-3 text-white font-bold px-8 py-4 rounded-xl text-base transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto justify-center overflow-hidden btn-glow"
-                  style={{ background: "linear-gradient(135deg, #2F6FFF 0%, #1947CC 100%)" }}>
+                  style={{ background: "linear-gradient(135deg, #6C63FF 0%, #5348d4 100%)" }}>
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: "linear-gradient(135deg, #5B8AFF 0%, #2F6FFF 100%)" }} />
+                    style={{ background: "linear-gradient(135deg, #7b73ff 0%, #6C63FF 100%)" }} />
                   <Play className="w-5 h-5 fill-white shrink-0 relative z-10" />
                   <span className="relative z-10">Start Watching</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0 relative z-10" />
@@ -134,7 +134,7 @@ export default function Hero() {
             className="hidden lg:flex flex-col gap-3 relative">
 
             <div className="absolute inset-0 -z-10 scale-110 rounded-3xl"
-              style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(47,111,255,0.22) 0%, transparent 70%)", filter: "blur(24px)" }} />
+              style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(108,99,255,0.22) 0%, transparent 70%)", filter: "blur(24px)" }} />
 
             <div className="flex items-center justify-between px-1 mb-1">
               <div className="flex items-center gap-2">
@@ -181,15 +181,15 @@ export default function Hero() {
             <div className="grid grid-cols-2 gap-3 mt-2">
               <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
                 className="rounded-2xl border p-4 text-center"
-                style={{ background: "rgba(47,111,255,0.14)", backdropFilter: "blur(20px)", borderColor: "rgba(47,111,255,0.3)" }}>
+                style={{ background: "rgba(108,99,255,0.14)", backdropFilter: "blur(20px)", borderColor: "rgba(108,99,255,0.3)" }}>
                 <div className="text-3xl font-black text-white">{CHANNEL_COUNT_LABEL}</div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: "#2F6FFF" }}>Live Channels</div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: "#6C63FF" }}>Live Channels</div>
               </motion.div>
               <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
                 className="rounded-2xl border p-4 text-center"
-                style={{ background: "rgba(31,216,242,0.1)", backdropFilter: "blur(20px)", borderColor: "rgba(31,216,242,0.25)" }}>
+                style={{ background: "rgba(0,212,255,0.1)", backdropFilter: "blur(20px)", borderColor: "rgba(0,212,255,0.25)" }}>
                 <div className="text-3xl font-black text-white">99.9%</div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: "#1FD8F2" }}>Uptime SLA</div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: "#00D4FF" }}>Uptime SLA</div>
               </motion.div>
             </div>
           </motion.div>

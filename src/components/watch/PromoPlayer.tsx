@@ -139,7 +139,7 @@ function PlaybackBar({
       </button>
       <span className="text-xs text-white/50 font-mono tabular-nums w-9 text-right">{fmt(time)}</span>
       <div className="flex-1 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }}>
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #2F6FFF, #1FD8F2)" }} />
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #6C63FF, #00D4FF)" }} />
       </div>
       <span className="text-xs text-white/30 font-mono tabular-nums w-9">{fmt(duration)}</span>
     </div>
@@ -148,10 +148,10 @@ function PlaybackBar({
 
 // ───────────────────────── Brand tokens ─────────────────────────
 const C = {
-  primary: "#2F6FFF",
-  primaryBright: "#5B8AFF",
-  primaryDeep: "#0E1B3E",
-  secondary: "#1FD8F2",
+  primary: "#6C63FF",
+  primaryBright: "#9b93ff",
+  primaryDeep: "#1c1840",
+  secondary: "#00D4FF",
   white: "#F4F7F5",
   mute: "rgba(244,247,245,0.56)",
   card: "rgba(255,255,255,0.04)",
