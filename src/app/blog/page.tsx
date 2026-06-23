@@ -6,6 +6,7 @@ import { Newspaper, Star, Clock, Film, Tv, Sparkles, ArrowRight } from "lucide-r
 import { BlogPost, BlogPostKind } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import MediaPoster from "@/components/ui/MediaPoster";
+import BlogIllustration from "@/components/ui/BlogIllustration";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { loadSubscription, StoredSubscription } from "@/lib/subscriptionStorage";
@@ -57,19 +58,16 @@ function EditorialCard({ slug, icon, category, title, excerpt, readMinutes }: {
   return (
     <Link
       href={`/blog/${slug}`}
-      className="block bg-brand-card border border-brand-border rounded-xl p-5 hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300"
+      className="group block bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300"
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl leading-none">{icon}</span>
-        <span className="text-xs font-bold uppercase tracking-wide text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
-          {CATEGORY_LABELS[category]}
+      <BlogIllustration seed={slug} icon={icon} label={CATEGORY_LABELS[category]} />
+      <div className="p-5">
+        <h3 className="text-white font-semibold mb-1.5 line-clamp-2 group-hover:text-brand-primary transition-colors">{title}</h3>
+        <p className="text-brand-muted text-sm line-clamp-3 mb-3">{excerpt}</p>
+        <span className="text-brand-secondary text-sm font-medium flex items-center gap-1">
+          {readMinutes} min read <ArrowRight className="w-3.5 h-3.5" />
         </span>
       </div>
-      <h3 className="text-white font-semibold mb-1.5 line-clamp-2">{title}</h3>
-      <p className="text-brand-muted text-sm line-clamp-3 mb-3">{excerpt}</p>
-      <span className="text-brand-secondary text-sm font-medium flex items-center gap-1">
-        {readMinutes} min read <ArrowRight className="w-3.5 h-3.5" />
-      </span>
     </Link>
   );
 }

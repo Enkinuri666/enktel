@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Tv } from "lucide-react";
 import Button from "@/components/ui/Button";
+import BlogIllustration from "@/components/ui/BlogIllustration";
 import { loadSubscription, StoredSubscription } from "@/lib/subscriptionStorage";
 import { getEditorialPost, CATEGORY_LABELS } from "@/lib/editorialContent";
 
@@ -59,12 +60,12 @@ export default function EditorialPostPage({ params }: { params: { slug: string }
         <ArrowLeft className="w-4 h-4" /> Back to Blog
       </Link>
 
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-2xl leading-none">{post.icon}</span>
-        <span className="text-xs font-bold uppercase tracking-wide text-brand-primary bg-brand-primary/10 border border-brand-primary/30 px-2.5 py-1 rounded-full">
-          {CATEGORY_LABELS[post.category]}
-        </span>
-      </div>
+      <BlogIllustration
+        seed={post.slug}
+        icon={post.icon}
+        label={CATEGORY_LABELS[post.category]}
+        className="rounded-2xl border border-brand-border mb-6"
+      />
 
       <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 leading-tight">{post.title}</h1>
 
