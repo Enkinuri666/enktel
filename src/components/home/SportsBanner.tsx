@@ -35,7 +35,7 @@ export default function SportsBanner() {
                 <span className="text-brand-accent text-sm font-bold">2,000+ SPORT CHANNELS</span>
               </div>
 
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black text-white mb-4 leading-tight">
                 Live Sport.<br />
                 <span className="bg-gradient-to-r from-brand-accent to-brand-primary bg-clip-text text-transparent">
                   Never Miss a Match.

@@ -98,7 +98,7 @@ export default function CroatianPromo() {
               <span className="text-[#CE2C1A] text-sm font-bold">HRVATSKA / BALKAN</span>
             </div>
 
-            <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 leading-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-white mb-4 leading-tight">
               Gledajte Domaće TV<br />
               <span className="bg-gradient-to-r from-[#CE2C1A] to-brand-accent bg-clip-text text-transparent">
                 Gdje God Bili.

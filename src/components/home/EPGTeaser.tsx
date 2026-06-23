@@ -3,7 +3,7 @@ import { ChevronRight, Tv } from "lucide-react";
 
 export default function EPGTeaser() {
   return (
-    <section className="py-12 px-4 sm:px-6 lg:px-8">
+    <section className="py-14 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <Link
           href="/epg"
