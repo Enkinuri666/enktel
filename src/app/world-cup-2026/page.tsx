@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { Trophy, Radio, MapPin } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
+import BoardingPass from "@/components/ui/BoardingPass";
 import { WorldCupMatch } from "@/lib/worldCup";
 import MatchPromoVideo from "@/components/world-cup/MatchPromoVideo";
 
@@ -24,39 +25,38 @@ function formatTime(iso: string): string {
 
 function MatchCard({ match }: { match: WorldCupMatch }) {
   const hasScore = match.homeScore !== null && match.awayScore !== null;
+  const gateCode = match.group ? `G${match.group}` : match.round ? `R${match.round}` : "WC26";
+
   return (
-    <div
-      className={`bg-brand-bg border rounded-xl p-5 transition-all ${
-        match.status === "live"
-          ? "border-brand-accent/60"
-          : "border-brand-border hover:border-brand-secondary/40"
-      }`}
+    <BoardingPass
+      className={match.status === "live" ? "border-brand-accent/60" : "hover:border-brand-secondary/40"}
+      stub={
+        <>
+          <span className="text-brand-muted text-[10px] font-bold uppercase tracking-widest font-mono-flight">Gate</span>
+          <span className="text-white font-black text-2xl font-mono-flight">{gateCode}</span>
+          <span className="text-brand-muted text-[11px] font-mono-flight text-center">
+            {formatDate(match.startTime)}<br />{formatTime(match.startTime)}
+          </span>
+          {match.status === "live" ? (
+            <span className="flex items-center gap-1 text-brand-accent text-[10px] font-bold uppercase animate-pulse">
+              <Radio className="w-3 h-3" /> Live
+            </span>
+          ) : match.status === "finished" ? (
+            <span className="text-brand-muted text-[10px] font-bold uppercase">Landed</span>
+          ) : (
+            <span className="text-green-400 text-[10px] font-bold uppercase">Boarding</span>
+          )}
+        </>
+      }
     >
-      <div className="flex items-center justify-between mb-3 text-xs text-brand-muted">
+      <div className="flex items-center justify-between mb-3 text-xs text-brand-muted font-mono-flight">
         <span>{formatDate(match.startTime)} · {formatTime(match.startTime)}</span>
-        {match.status === "live" && (
-          <span className="flex items-center gap-1 text-brand-accent font-bold uppercase animate-pulse">
-            <Radio className="w-3 h-3" /> Live
+        {(match.group || match.round) && (
+          <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wide bg-yellow-400/10 px-2 py-0.5 rounded-full">
+            {match.group ? `Group ${match.group}` : `Round ${match.round}`}
           </span>
         )}
-        {match.status === "finished" && (
-          <span className="text-brand-muted font-semibold uppercase">Full Time</span>
-        )}
       </div>
-      {(match.group || match.round) && (
-        <div className="flex items-center gap-2 mb-2">
-          {match.group && (
-            <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wide bg-yellow-400/10 px-2 py-0.5 rounded-full">
-              Group {match.group}
-            </span>
-          )}
-          {match.round && (
-            <span className="text-brand-muted text-[10px] font-bold uppercase tracking-wide bg-white/5 px-2 py-0.5 rounded-full">
-              Round {match.round}
-            </span>
-          )}
-        </div>
-      )}
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 flex-1 min-w-0">
           {match.homeTeamBadge && (
@@ -64,7 +64,7 @@ function MatchCard({ match }: { match: WorldCupMatch }) {
           )}
           <span className="text-white font-bold text-base truncate">{match.homeTeam}</span>
         </span>
-        <span className="text-white font-black text-lg shrink-0 px-3">
+        <span className="text-white font-black text-lg shrink-0 px-3 font-mono-flight">
           {hasScore ? `${match.homeScore} – ${match.awayScore}` : "vs"}
         </span>
         <span className="flex items-center gap-2 flex-1 min-w-0 justify-end">
@@ -80,7 +80,7 @@ function MatchCard({ match }: { match: WorldCupMatch }) {
           {[match.venue, match.city, match.country].filter(Boolean).join(", ")}
         </p>
       )}
-    </div>
+    </BoardingPass>
   );
 }
 

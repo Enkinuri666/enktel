@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Twitter, Facebook, Instagram, Youtube } from "lucide-react";
 import NewsletterForm from "./NewsletterForm";
+import QRCode from "@/components/ui/QRCode";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const quickLinks = [
@@ -39,13 +40,8 @@ export default function Footer() {
         <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2.5 mb-4">
-              <Image src="/logo-icon.png" alt="Enktel IPTV" width={32} height={32} className="w-8 h-8" />
-              <span className="text-xl font-bold flex items-center gap-1.5">
-                <span className="text-white">Enk</span>
-                <span className="text-brand-secondary">Tel</span>
-                <span className="text-[10px] font-bold rounded-full px-2 py-0.5 ml-0.5 bg-brand-secondary text-[#06122B]">IPTV</span>
-              </span>
+            <Link href="/" className="flex items-center mb-4">
+              <Image src="/logo-full.png" alt="Enktel IPTV - Stream Beyond Limits" width={638} height={240} className="h-9 w-auto" />
             </Link>
             <p className="text-brand-muted text-sm leading-relaxed mb-4 max-w-xs">
               Stream Beyond Limits. Premium IPTV service with {CHANNEL_COUNT_LABEL} channels, 4K quality, and 99.9% uptime. Your ultimate streaming companion.
@@ -127,6 +123,21 @@ export default function Footer() {
               <h3 className="text-white font-semibold text-sm mb-3">Newsletter</h3>
               <NewsletterForm />
             </div>
+          </div>
+        </div>
+
+        {/* Boarding pass strip */}
+        <div className="ticket-perforation py-7 flex flex-col sm:flex-row items-center gap-5">
+          <QRCode size={72} />
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-brand-muted text-[10px] font-bold uppercase tracking-widest font-mono-flight mb-1">
+              Boarding Pass · Final Call
+            </p>
+            <p className="text-white font-bold">Scan to board enktel.tv and start streaming today</p>
+          </div>
+          <div className="hidden sm:flex flex-col items-end gap-1 font-mono-flight text-xs text-brand-muted shrink-0">
+            <span>GATE B1 &nbsp;·&nbsp; SEAT ANY &nbsp;·&nbsp; CLASS 4K</span>
+            <span>FLIGHT EK{new Date().getFullYear()}</span>
           </div>
         </div>
 
