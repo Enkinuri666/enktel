@@ -61,20 +61,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center group shrink-0">
             <Image
-              src="/logo-icon.png"
-              alt="Enktel IPTV"
-              width={36}
-              height={36}
-              className="w-9 h-9 drop-shadow-[0_0_10px_rgba(0,212,255,0.35)] group-hover:scale-105 transition-transform"
+              src="/logo-full.png"
+              alt="Enktel IPTV - Stream Beyond Limits"
+              width={638}
+              height={240}
+              className="h-11 sm:h-12 w-auto drop-shadow-[0_0_10px_rgba(0,212,255,0.35)] group-hover:scale-105 transition-transform"
               priority
             />
-            <span className="text-xl font-bold flex items-center gap-1.5">
-              <span className="text-white">Enk</span>
-              <span className="text-brand-secondary">Tel</span>
-              <span className="text-[10px] font-bold rounded-full px-2 py-0.5 ml-0.5 bg-brand-secondary text-[#06122B]">IPTV</span>
-            </span>
           </Link>
 
           {/* Desktop Nav */}

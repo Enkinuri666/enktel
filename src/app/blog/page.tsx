@@ -119,9 +119,6 @@ export default function BlogPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <div className="inline-flex items-center gap-2 bg-brand-primary/10 border border-brand-primary/30 text-brand-primary text-xs font-bold px-3 py-1.5 rounded-full mb-4">
-          <Newspaper className="w-3.5 h-3.5" /> AUTO-UPDATING ENTERTAINMENT BLOG
-        </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
           The Enktel{" "}
           <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
@@ -140,7 +137,7 @@ export default function BlogPage() {
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 sm:px-5 sm:py-2 rounded-full text-sm font-medium transition-colors ${
               filter === f.value
                 ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25"
                 : "bg-brand-card border border-brand-border text-brand-muted hover:text-white hover:border-brand-primary/40"
@@ -209,13 +206,18 @@ export default function BlogPage() {
                   {featured.title}
                 </h2>
                 <p className="text-brand-muted mb-4 line-clamp-3">{featured.excerpt}</p>
-                <div className="flex items-center gap-4 text-sm text-brand-muted">
-                  {featured.rating > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {featured.rating.toFixed(1)}
-                    </span>
-                  )}
-                  <span>{readTime(featured.excerpt)}</span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 text-sm text-brand-muted">
+                    {featured.rating > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {featured.rating.toFixed(1)}
+                      </span>
+                    )}
+                    <span>{readTime(featured.excerpt)}</span>
+                  </div>
+                  <span className="text-brand-secondary text-sm font-medium flex items-center gap-1 shrink-0">
+                    Read more <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
               </div>
             </div>
@@ -224,9 +226,10 @@ export default function BlogPage() {
           {/* Feed grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {rest.map((post) => (
-              <article
+              <Link
+                href="/watch"
                 key={post.id}
-                className="bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300"
+                className="group block bg-brand-card border border-brand-border rounded-xl overflow-hidden hover:border-brand-primary/40 hover:shadow-lg hover:shadow-brand-primary/10 transition-all duration-300"
               >
                 <div className="relative">
                   <MediaPoster
@@ -253,17 +256,22 @@ export default function BlogPage() {
                       </span>
                     )}
                   </div>
-                  <h3 className="text-white font-semibold mb-1.5 line-clamp-2">{post.title}</h3>
+                  <h3 className="text-white font-semibold mb-1.5 line-clamp-2 group-hover:text-brand-primary transition-colors">
+                    {post.title}
+                  </h3>
                   <p className="text-brand-muted text-sm line-clamp-3 mb-3">{post.excerpt}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {post.genres.slice(0, 2).map((g) => (
-                      <span key={g} className="text-xs bg-white/5 text-brand-muted px-2 py-0.5 rounded-full">
-                        {g}
-                      </span>
-                    ))}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      {post.genres.slice(0, 2).map((g) => (
+                        <span key={g} className="text-xs bg-white/5 text-brand-muted px-2 py-0.5 rounded-full">
+                          {g}
+                        </span>
+                      ))}
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-brand-secondary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
           </>
