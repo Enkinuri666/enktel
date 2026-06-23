@@ -3,8 +3,8 @@ import { clsx } from "clsx";
 // Curated gradient pairs — picked deterministically per channel so the
 // channel wall looks like a colourful logo grid instead of broken images.
 const palettes: [string, string][] = [
-  ["#2F6FFF", "#1947CC"],
-  ["#1FD8F2", "#0EA5E9"],
+  ["#6C63FF", "#5348d4"],
+  ["#00D4FF", "#0EA5E9"],
   ["#FF4757", "#E11D48"],
   ["#22C55E", "#16A34A"],
   ["#F59E0B", "#D97706"],

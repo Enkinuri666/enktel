@@ -11,8 +11,8 @@ const config: Config = {
       colors: {
         brand: {
           bg: "#060910",
-          primary: "#2F6FFF",
-          secondary: "#1FD8F2",
+          primary: "#6C63FF",
+          secondary: "#00D4FF",
           accent: "#FF4757",
           text: "#FFFFFF",
           muted: "#9BA3B8",

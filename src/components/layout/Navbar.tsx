@@ -67,7 +67,7 @@ export default function Navbar() {
               alt="Enktel IPTV - Stream Beyond Limits"
               width={638}
               height={240}
-              className="h-11 sm:h-12 w-auto drop-shadow-[0_0_10px_rgba(31,216,242,0.35)] group-hover:scale-105 transition-transform"
+              className="h-11 sm:h-12 w-auto drop-shadow-[0_0_10px_rgba(0,212,255,0.35)] group-hover:scale-105 transition-transform"
               priority
             />
           </Link>

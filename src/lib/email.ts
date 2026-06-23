@@ -71,7 +71,7 @@ function buildHtml(opts: WelcomeEmailOptions): string {
        <ol style="color:#c7ccd6;font-size:13px;line-height:1.6;padding-left:20px;margin:0;">
          ${guide.steps.map((s) => `<li style="margin-bottom:6px;"><strong style="color:#fff;">${s.title}</strong> — ${s.description}</li>`).join("")}
        </ol>`
-    : `<p style="color:#9aa3b2;font-size:14px;margin:0;">Head to <a href="${SITE_URL}/setup-guides" style="color:#1FD8F2;">${SITE_URL}/setup-guides</a> and pick your device for step-by-step setup instructions.</p>`;
+    : `<p style="color:#9aa3b2;font-size:14px;margin:0;">Head to <a href="${SITE_URL}/setup-guides" style="color:#00D4FF;">${SITE_URL}/setup-guides</a> and pick your device for step-by-step setup instructions.</p>`;
 
   return `<!DOCTYPE html>
 <html>
@@ -88,14 +88,14 @@ function buildHtml(opts: WelcomeEmailOptions): string {
       <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">Password</p>
       <p style="color:#fff;font-family:monospace;font-size:15px;font-weight:bold;margin:0 0 12px;">${sub.password}</p>
       <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">M3U Playlist URL</p>
-      <p style="color:#1FD8F2;font-family:monospace;font-size:12px;word-break:break-all;margin:0 0 12px;">${sub.m3uUrl}</p>
+      <p style="color:#00D4FF;font-family:monospace;font-size:12px;word-break:break-all;margin:0 0 12px;">${sub.m3uUrl}</p>
       <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">EPG / XMLTV URL</p>
-      <p style="color:#1FD8F2;font-family:monospace;font-size:12px;word-break:break-all;margin:0;">${sub.epgUrl}</p>
+      <p style="color:#00D4FF;font-family:monospace;font-size:12px;word-break:break-all;margin:0;">${sub.epgUrl}</p>
     </div>
 
     <p style="color:${isTrial ? "#fbbf24" : "#9aa3b2"};font-size:13px;margin:0 0 24px;">
       ${isTrial
-        ? `Your trial expires <strong>${expiry}</strong>. Love it? <a href="${SITE_URL}/pricing" style="color:#1FD8F2;">Upgrade to a full plan</a> any time before it ends to keep watching without interruption.`
+        ? `Your trial expires <strong>${expiry}</strong>. Love it? <a href="${SITE_URL}/pricing" style="color:#00D4FF;">Upgrade to a full plan</a> any time before it ends to keep watching without interruption.`
         : `Your subscription is valid until <strong>${expiry}</strong>.`}
     </p>
 
@@ -104,7 +104,7 @@ function buildHtml(opts: WelcomeEmailOptions): string {
       ${stepsHtml}
     </div>
 
-    <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#2F6FFF;color:#fff;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 24px;border-radius:8px;margin-bottom:20px;">
+    <a href="${SITE_URL}/dashboard" style="display:inline-block;background:#6C63FF;color:#fff;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 24px;border-radius:8px;margin-bottom:20px;">
       Open Your Dashboard
     </a>
 
