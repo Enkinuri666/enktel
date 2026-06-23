@@ -1,20 +1,40 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import useSWR from "swr";
 import { motion } from "framer-motion";
-import { Play, ArrowRight, Check, Wifi } from "lucide-react";
+import { Play, ArrowRight, Check } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
+import { WhatsOnItem } from "@/types";
 import HeroVideoBackdrop from "./HeroVideoBackdrop";
+import FlightBoard, { FlightBoardRow } from "@/components/ui/FlightBoard";
+import QRCode from "@/components/ui/QRCode";
 
 const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
-const liveChannels = [
-  { name: "HRT 1", show: "Dnevnik 2", progress: 68, genre: "News", color: "#2F6FFF" },
-  { name: "Nova TV", show: "Doma ljubav", progress: 42, genre: "Drama", color: "#CE2C1A" },
-  { name: "Sky Sports", show: "Premier League LIVE", progress: 85, genre: "Sport", color: "#1FD8F2" },
-];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+function channelCode(name: string): string {
+  const letters = name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return letters.slice(0, 3) || "TV";
+}
+
+function toBoardRows(items: WhatsOnItem[]): FlightBoardRow[] {
+  return items.slice(0, 4).map((item) => ({
+    code: channelCode(item.channel.name),
+    destination: item.currentProgram.title,
+    gate: item.channel.country?.slice(0, 3).toUpperCase() || "INT",
+    status: "LIVE",
+    href: `/epg?channel=${encodeURIComponent(item.channel.id)}`,
+  }));
+}
 
 export default function Hero() {
+  const { data } = useSWR<{ items: WhatsOnItem[] }>("/api/whats-on", fetcher, {
+    refreshInterval: 5 * 60 * 1000,
+  });
+  const boardRows = toBoardRows(data?.items || []);
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "#060910" }}>
 
@@ -127,6 +147,17 @@ export default function Hero() {
                 </div>
               ))}
             </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+              className="ticket-card ticket-card-light mt-10 inline-flex items-center gap-4 border border-dashed border-white/15 rounded-2xl px-5 py-4"
+              style={{ background: "rgba(255,255,255,0.03)" }}>
+              <QRCode size={64} />
+              <div>
+                <div className="text-white/40 text-[10px] font-bold uppercase tracking-widest font-mono-flight">Boarding Pass</div>
+                <div className="text-white font-semibold text-sm">Scan to board enktel.tv</div>
+                <div className="text-white/40 text-xs font-mono-flight mt-0.5">GATE B1 · SEAT ANY · CLASS 4K</div>
+              </div>
+            </motion.div>
           </div>
 
           {/* RIGHT */}
@@ -144,39 +175,10 @@ export default function Hero() {
                 </span>
                 <span className="text-white/60 text-xs font-bold uppercase tracking-widest">Streaming Live</span>
               </div>
-              <span className="text-white/30 text-xs">3 channels</span>
+              <span className="text-white/30 text-xs">{boardRows.length || CHANNEL_COUNT_LABEL} channels</span>
             </div>
 
-            {liveChannels.map((ch, i) => (
-              <motion.div key={ch.name}
-                initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.45 + i * 0.12 }}
-                className="relative overflow-hidden rounded-2xl p-4 border"
-                style={{ background: "rgba(13,18,32,0.85)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.07)" }}>
-                <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl" style={{ background: ch.color }} />
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${ch.color}cc, ${ch.color}66)`, boxShadow: `0 4px 16px ${ch.color}40` }}>
-                    {ch.name.replace(" ", "")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold text-sm truncate">{ch.show}</div>
-                    <div className="text-white/40 text-xs mt-0.5">{ch.name} · {ch.genre}</div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg" style={{ background: "rgba(74,222,128,0.1)" }}>
-                    <Wifi className="w-3 h-3" style={{ color: "#4ade80" }} />
-                    <span className="text-xs font-bold" style={{ color: "#4ade80" }}>4K</span>
-                  </div>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <div className="h-full rounded-full" style={{ width: `${ch.progress}%`, background: `linear-gradient(90deg, ${ch.color}, ${ch.color}99)` }} />
-                </div>
-                <div className="flex justify-between mt-1.5">
-                  <span className="text-white/25 text-xs">{ch.progress}% through</span>
-                  <span className="text-white/25 text-xs">{Math.round((100 - ch.progress) / 100 * 60)} min left</span>
-                </div>
-              </motion.div>
-            ))}
+            <FlightBoard rows={boardRows} />
 
             <div className="grid grid-cols-2 gap-3 mt-2">
               <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}

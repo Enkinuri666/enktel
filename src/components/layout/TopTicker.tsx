@@ -94,21 +94,26 @@ export default function TopTicker() {
   const renderSegments = (suffix: string) =>
     segments.map(({ key, node }, i) => (
       <span key={`${suffix}-${key}`} className="flex items-center shrink-0">
-        {i > 0 && <span className="w-1 h-1 rounded-full bg-white/20 mx-5 shrink-0" />}
+        {i > 0 && <span className="text-amber-400/40 mx-5 shrink-0 font-mono-flight">◆</span>}
         {node}
       </span>
     ));
 
   return (
     <div
-      className="h-8 overflow-hidden border-b border-white/10 shrink-0"
-      style={{ background: "linear-gradient(90deg, #0b0f1a 0%, #11162a 50%, #0b0f1a 100%)" }}
+      className="h-9 overflow-hidden border-b border-white/10 shrink-0 flex items-stretch"
+      style={{ background: "linear-gradient(90deg, #07090f 0%, #0c1020 50%, #07090f 100%)" }}
     >
-      <div className="h-full flex items-center">
-        <div className="flex items-center whitespace-nowrap animate-marquee text-xs">
-          {renderSegments("a")}
-          <span className="w-1 h-1 rounded-full bg-white/20 mx-5 shrink-0" />
-          {renderSegments("b")}
+      <div className="hidden sm:flex items-center gap-2 px-4 bg-amber-400/10 border-r border-amber-400/20 shrink-0">
+        <span className="text-amber-400 text-[10px] font-bold font-mono-flight tracking-widest">✈ DEPARTURES</span>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full flex items-center">
+          <div className="flex items-center whitespace-nowrap animate-marquee text-xs font-mono-flight">
+            {renderSegments("a")}
+            <span className="text-amber-400/40 mx-5 shrink-0">◆</span>
+            {renderSegments("b")}
+          </div>
         </div>
       </div>
     </div>

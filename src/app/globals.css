@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 :root {
   --bg: #060910;
@@ -195,3 +195,102 @@ body::after {
 /* Mobile nav */
 @keyframes mobileNavIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 .mobile-nav-enter { animation: mobileNavIn 0.3s ease-out; }
+
+/* ============================================================
+   Boarding pass / airport-terminal design system
+   ============================================================ */
+
+.font-mono-flight {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Ticket card: rounded rect with two punched-out notches on the
+   left/right edges, sitting at the vertical midpoint of the card.
+   The notches are faked with two circles colored to match whatever
+   sits behind the card (default: page bg) so they read as "punched". */
+.ticket-card {
+  position: relative;
+  border-radius: 1.25rem;
+}
+.ticket-card::before,
+.ticket-card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--bg);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.ticket-card::before { left: -0.875rem; }
+.ticket-card::after { right: -0.875rem; }
+.ticket-card-light::before,
+.ticket-card-light::after {
+  background: var(--card);
+}
+
+/* Perforated tear line — dashed divider used inside ticket cards,
+   typically just inside the punched-notch row. */
+.ticket-perforation {
+  border-top: 2px dashed rgba(255, 255, 255, 0.14);
+  position: relative;
+}
+
+/* Barcode-style decorative strip, e.g. bottom of a boarding-pass card. */
+.barcode-strip {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.9) 0px,
+    rgba(255, 255, 255, 0.9) 2px,
+    transparent 2px,
+    transparent 5px,
+    rgba(255, 255, 255, 0.9) 5px,
+    rgba(255, 255, 255, 0.9) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+  height: 2.25rem;
+  opacity: 0.85;
+}
+
+/* Subtle Croatian checkerboard (šahovnica) accent — used sparingly as
+   a thin trim strip, never as a dominant fill. */
+.checker-trim {
+  background-image:
+    linear-gradient(45deg, #CE2C1A 25%, transparent 25%, transparent 75%, #CE2C1A 75%),
+    linear-gradient(45deg, #CE2C1A 25%, transparent 25%, transparent 75%, #CE2C1A 75%);
+  background-color: #fff;
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+
+/* Split-flap departure-board tile flip-in, used by FlightBoard rows. */
+@keyframes flapIn {
+  0%   { transform: rotateX(-90deg); opacity: 0; }
+  60%  { transform: rotateX(8deg); opacity: 1; }
+  100% { transform: rotateX(0deg); opacity: 1; }
+}
+.flap-in { animation: flapIn 0.45s ease-out; transform-origin: top; }
+
+/* Departures-board row hover scan-line glow */
+.board-row {
+  transition: background-color 0.2s ease;
+}
+.board-row:hover {
+  background-color: rgba(47, 111, 255, 0.06);
+}
+
+/* Runway-light dashed guide line for terminal hero sections */
+.runway-line {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(31, 216, 242, 0.55) 0px,
+    rgba(31, 216, 242, 0.55) 22px,
+    transparent 22px,
+    transparent 44px
+  );
+  height: 2px;
+}
