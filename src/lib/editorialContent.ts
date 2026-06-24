@@ -373,7 +373,7 @@ export const editorialPosts: EditorialPost[] = [
       {
         heading: "This week's sport lap",
         paragraphs: [
-          "With the FIFA World Cup 2026 group stage in full swing, the World Cup hub on your dashboard is the fastest way to see real fixture times, live scores, and kickoff countdowns — including Croatia's group matches. We've also added a looping promo clip for the upcoming Panama vs Croatia group match on the homepage and World Cup page, so you won't miss the kickoff.",
+          "With the FIFA World Cup 2026 group stage in full swing, the World Cup hub on your dashboard is the fastest way to see real fixture times, live scores, and kickoff countdowns — including Croatia's group matches.",
         ],
       },
       {

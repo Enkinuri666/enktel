@@ -4,7 +4,6 @@ import Image from "next/image";
 import useSWR from "swr";
 import { Trophy } from "lucide-react";
 import { WorldCupMatch } from "@/lib/worldCup";
-import MatchPromoVideo from "@/components/world-cup/MatchPromoVideo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -70,12 +69,6 @@ export default function WorldCupTicker() {
             <MatchChip key={m.id} match={m} />
           ))}
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
-        <Link href="/world-cup-2026" className="block max-w-xl">
-          <MatchPromoVideo className="aspect-[16/8]" />
-        </Link>
       </div>
     </section>
   );

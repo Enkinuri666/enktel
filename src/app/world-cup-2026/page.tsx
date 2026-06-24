@@ -6,7 +6,6 @@ import { Trophy, Radio, MapPin } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { WorldCupMatch } from "@/lib/worldCup";
-import MatchPromoVideo from "@/components/world-cup/MatchPromoVideo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -108,10 +107,6 @@ export default function WorldCup2026Page() {
         for a separate sports subscription — it&apos;s all included in your plan. Fixtures and results
         below update automatically.
       </p>
-
-      <div className="mb-8 max-w-xl">
-        <MatchPromoVideo className="aspect-[16/9]" />
-      </div>
 
       <div className="bg-brand-card border border-brand-border rounded-xl p-6 mb-8">
         <h2 className="text-white font-bold text-xl mb-5 flex items-center gap-2">
