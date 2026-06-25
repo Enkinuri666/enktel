@@ -8,6 +8,28 @@ import { motion } from "framer-motion";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
+const trialPlan = {
+  id: "trial",
+  name: "24-Hour Trial",
+  price: 0,
+  totalPrice: 0,
+  duration: "24 Hours",
+  promo: false,
+  badge: null as string | null,
+  regularPrice: null as number | null,
+  saving: null as number | null,
+  highlighted: false,
+  isTrial: true,
+  description: "Full access, no card required. See for yourself before you subscribe.",
+  features: [
+    `${CHANNEL_COUNT_LABEL} Live Channels`,
+    "Croatian & Balkan Channels",
+    "4K Ultra HD Quality",
+    "Full VOD Library",
+    "Instant Activation",
+  ],
+};
+
 const plans = [
   {
     id: "monthly",
@@ -158,6 +180,26 @@ export default function PricingPage() {
           Not sure yet? Try Enktel free for 24 hours →
         </Link>
       </div>
+
+      {/* Trial option */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative rounded-2xl border border-brand-secondary/40 bg-gradient-to-r from-brand-secondary/10 to-brand-card p-7 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+      >
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant="default" size="sm">100% FREE</Badge>
+            <h2 className="text-white font-black text-xl">{trialPlan.name}</h2>
+          </div>
+          <p className="text-brand-muted text-sm max-w-md">{trialPlan.description}</p>
+        </div>
+        <Link href="/trial" className="shrink-0 w-full sm:w-auto">
+          <Button variant="secondary" size="lg" fullWidth>
+            Start My Free Trial
+          </Button>
+        </Link>
+      </motion.div>
 
       {/* Plans */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 items-start">

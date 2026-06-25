@@ -94,7 +94,7 @@ export default function Hero() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 mb-10">
-              <Link href="/checkout?plan=annual">
+              <Link href="/pricing">
                 <button className="group relative flex items-center gap-3 text-white font-bold px-8 py-4 rounded-xl text-base transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto justify-center overflow-hidden btn-glow"
                   style={{ background: "linear-gradient(135deg, #6C63FF 0%, #5348d4 100%)" }}>
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
