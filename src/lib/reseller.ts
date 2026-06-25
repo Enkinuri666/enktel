@@ -3,16 +3,16 @@ import { PLAN_PRICE_EUR } from "./plans";
 const API_BASE = "http://api.elg-26.com/api/dev_api.php";
 const API_KEY = process.env.RESELLER_API_KEY || "";
 
-// Confirmed panel package_id for the 24-hour trial line (EAGLE_4K_24H_TEST).
-const TRIAL_PACKAGE_ID = 143;
+// Confirmed panel package_id for the 24-hour trial line.
+const TRIAL_PACKAGE_ID = 143; // EAGLE_4K_24H_TEST (1 connection)
 
 export const TRIAL_DURATION_HOURS = 24;
 
-// Reseller panel package IDs
+// Reseller panel package IDs (confirmed against the panel's package list)
 export const PLAN_PACKAGE: Record<string, number> = {
-  monthly: 149, // EAGLE_4k__1M  (1 month)
-  quarter: 150, // EAGLE_4k__3M  (3 months)
-  annual: 152, // EAGLE_4k__1Y  (12 months)
+  monthly: 149, // EAGLE_4K_1M    (30 days, 1 connection)
+  quarter: 150, // EAGLE_4K_3M    (90 days, 1 connection)
+  annual: 152, // EAGLE_4K_1YEAR (365 days, 1 connection)
 };
 
 export const PLAN_DURATION_DAYS: Record<string, number> = {
