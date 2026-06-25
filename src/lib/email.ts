@@ -75,31 +75,33 @@ function buildHtml(opts: WelcomeEmailOptions): string {
 
   return `<!DOCTYPE html>
 <html>
-<body style="margin:0;padding:0;background:#0b0f1a;font-family:Arial,Helvetica,sans-serif;">
+<body style="margin:0;padding:0;background:#060910;font-family:Arial,Helvetica,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
+    <img src="${SITE_URL}/logo-full.png" alt="Enktel IPTV" width="160" style="display:block;margin:0 0 24px;height:auto;" />
+
     <h1 style="color:#fff;font-size:22px;margin:0 0 4px;">
       ${isTrial ? "Your 24-Hour Trial is Live 🎉" : "Welcome to Enktel IPTV 🎉"}
     </h1>
-    <p style="color:#9aa3b2;font-size:14px;margin:0 0 24px;">Hi ${name}, ${isTrial ? "your free trial has been activated." : "your subscription is now active."}</p>
+    <p style="color:#9BA3B8;font-size:14px;margin:0 0 24px;">Hi ${name}, ${isTrial ? "your free trial has been activated." : "your subscription is now active."}</p>
 
-    <div style="background:#141a2b;border:1px solid #232b40;border-radius:12px;padding:20px;margin-bottom:20px;">
-      <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">Username</p>
+    <div style="background:#0D1220;border:1px solid #1E2A42;border-radius:12px;padding:20px;margin-bottom:20px;">
+      <p style="color:#9BA3B8;font-size:12px;margin:0 0 4px;">Username</p>
       <p style="color:#fff;font-family:monospace;font-size:15px;font-weight:bold;margin:0 0 12px;">${sub.username}</p>
-      <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">Password</p>
+      <p style="color:#9BA3B8;font-size:12px;margin:0 0 4px;">Password</p>
       <p style="color:#fff;font-family:monospace;font-size:15px;font-weight:bold;margin:0 0 12px;">${sub.password}</p>
-      <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">M3U Playlist URL</p>
+      <p style="color:#9BA3B8;font-size:12px;margin:0 0 4px;">M3U Playlist URL</p>
       <p style="color:#00D4FF;font-family:monospace;font-size:12px;word-break:break-all;margin:0 0 12px;">${sub.m3uUrl}</p>
-      <p style="color:#9aa3b2;font-size:12px;margin:0 0 4px;">EPG / XMLTV URL</p>
+      <p style="color:#9BA3B8;font-size:12px;margin:0 0 4px;">EPG / XMLTV URL</p>
       <p style="color:#00D4FF;font-family:monospace;font-size:12px;word-break:break-all;margin:0;">${sub.epgUrl}</p>
     </div>
 
-    <p style="color:${isTrial ? "#fbbf24" : "#9aa3b2"};font-size:13px;margin:0 0 24px;">
+    <p style="color:${isTrial ? "#fbbf24" : "#9BA3B8"};font-size:13px;margin:0 0 24px;">
       ${isTrial
         ? `Your trial expires <strong>${expiry}</strong>. Love it? <a href="${SITE_URL}/pricing" style="color:#00D4FF;">Upgrade to a full plan</a> any time before it ends to keep watching without interruption.`
         : `Your subscription is valid until <strong>${expiry}</strong>.`}
     </p>
 
-    <div style="background:#141a2b;border:1px solid #232b40;border-radius:12px;padding:20px;margin-bottom:24px;">
+    <div style="background:#0D1220;border:1px solid #1E2A42;border-radius:12px;padding:20px;margin-bottom:24px;">
       <h2 style="color:#fff;font-size:15px;margin:0 0 10px;">Getting Started</h2>
       ${stepsHtml}
     </div>
@@ -108,7 +110,7 @@ function buildHtml(opts: WelcomeEmailOptions): string {
       Open Your Dashboard
     </a>
 
-    ${whatsappHref ? `<p style="color:#9aa3b2;font-size:13px;margin:16px 0 0;">Need a hand? Our support team is on <a href="${whatsappHref}" style="color:#25D366;font-weight:bold;">WhatsApp 24/7</a> — just say hi.</p>` : ""}
+    ${whatsappHref ? `<p style="color:#9BA3B8;font-size:13px;margin:16px 0 0;">Need a hand? Our support team is on <a href="${whatsappHref}" style="color:#25D366;font-weight:bold;">WhatsApp 24/7</a> — just say hi.</p>` : ""}
 
     <p style="color:#5a6275;font-size:12px;margin:32px 0 0;">Thanks for choosing Enktel IPTV.</p>
   </div>

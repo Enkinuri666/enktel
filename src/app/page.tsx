@@ -1,6 +1,7 @@
 import Hero from "@/components/home/Hero";
 import WorldCupTicker from "@/components/home/WorldCupTicker";
 import StatsBar from "@/components/home/StatsBar";
+import TrialBanner from "@/components/home/TrialBanner";
 import CroatianPromo from "@/components/home/CroatianPromo";
 import EPGTeaser from "@/components/home/EPGTeaser";
 import SportsBanner from "@/components/home/SportsBanner";
@@ -9,6 +10,7 @@ import LatestReleases from "@/components/home/LatestReleases";
 import ComingSoonWidget from "@/components/home/ComingSoonWidget";
 import ChannelShowcase from "@/components/home/ChannelShowcase";
 import Features from "@/components/home/Features";
+import DashboardExplainer from "@/components/home/DashboardExplainer";
 import PricingPreview from "@/components/home/PricingPreview";
 import Testimonials from "@/components/home/Testimonials";
 
@@ -18,6 +20,7 @@ export default function HomePage() {
       <Hero />
       <WorldCupTicker />
       <StatsBar />
+      <TrialBanner />
       <CroatianPromo />
       <EPGTeaser />
       <SportsBanner />
@@ -26,6 +29,7 @@ export default function HomePage() {
       <ComingSoonWidget />
       <ChannelShowcase />
       <Features />
+      <DashboardExplainer />
       <PricingPreview />
       <Testimonials />
     </>
