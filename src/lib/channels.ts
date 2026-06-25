@@ -82,10 +82,13 @@ export function getChannelById(id: string): Channel | undefined {
   return channels.find((c) => c.id === id);
 }
 
-// Rounded down to the nearest 5 so the marketing copy stays truthful as
-// channels are added/removed, instead of drifting from the real catalog size.
-export const CHANNEL_COUNT = channels.length;
-export const CHANNEL_COUNT_LABEL = `${Math.floor(CHANNEL_COUNT / 5) * 5}+`;
+// Real Eagle 4K Premium catalog size (the underlying panel this site resells),
+// not the length of the curated sample list above, which only exists for the
+// EPG/browse UI demo.
+export const CHANNEL_COUNT = 35000;
+export const CHANNEL_COUNT_LABEL = "35,000+";
+export const VOD_COUNT_LABEL = "200,000+";
+export const SERIES_COUNT_LABEL = "35,000+";
 
 export const channelCategories = [
   "All",
