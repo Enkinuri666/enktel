@@ -3,12 +3,8 @@ import { PLAN_PRICE_EUR } from "./plans";
 const API_BASE = "http://api.elg-26.com/api/dev_api.php";
 const API_KEY = process.env.RESELLER_API_KEY || "";
 
-// Set once the real package_id for the panel's 24-hour trial line
-// (EAGLE_4k__24H_TEST) is confirmed — there is deliberately no default here
-// so an unverified guess can never silently provision against the wrong package.
-const TRIAL_PACKAGE_ID = process.env.RESELLER_TRIAL_PACKAGE_ID
-  ? Number(process.env.RESELLER_TRIAL_PACKAGE_ID)
-  : null;
+// Confirmed panel package_id for the 24-hour trial line (EAGLE_4K_24H_TEST).
+const TRIAL_PACKAGE_ID = 143;
 
 export const TRIAL_DURATION_HOURS = 24;
 
@@ -194,11 +190,7 @@ export async function provisionSubscription(
 
   const isTrial = plan === "trial";
 
-  if (isTrial && !TRIAL_PACKAGE_ID) {
-    return { ok: false, error: "Free trials aren't available right now — please contact support." };
-  }
-
-  const packageId = isTrial ? (TRIAL_PACKAGE_ID as number) : PLAN_PACKAGE[plan] ?? 149;
+  const packageId = isTrial ? TRIAL_PACKAGE_ID : PLAN_PACKAGE[plan] ?? 149;
   const durationMs = isTrial
     ? TRIAL_DURATION_HOURS * 60 * 60 * 1000
     : (PLAN_DURATION_DAYS[plan] ?? 30) * 24 * 60 * 60 * 1000;
