@@ -51,8 +51,10 @@ async function createLine(
     api_key: API_KEY,
   });
 
+  const url = `${API_BASE}?${params.toString()}`;
+
   try {
-    const res = await fetch(`${API_BASE}?${params.toString()}`, {
+    const res = await fetch(url, {
       method: "GET",
       headers: { "User-Agent": "EnktelIPTV/1.0" },
       signal: AbortSignal.timeout(12000),
@@ -60,14 +62,24 @@ async function createLine(
 
     const text = await res.text();
 
-    if (!res.ok) return { ok: false, error: `Panel HTTP ${res.status}` };
-    if (!text || text.trim() === "") return { ok: false, error: "Empty response from panel" };
+    if (!res.ok) {
+      console.error(`[reseller] Panel HTTP ${res.status} for package ${packageId}: ${text.slice(0, 500)}`);
+      return { ok: false, error: `Panel HTTP ${res.status}` };
+    }
+    if (!text || text.trim() === "") {
+      console.error(`[reseller] Empty response from panel for package ${packageId}`);
+      return { ok: false, error: "Empty response from panel" };
+    }
 
     const json: PanelLineResult = JSON.parse(text);
-    if (!json.status) return { ok: false, error: json.message || "Panel returned status=false" };
+    if (!json.status) {
+      console.error(`[reseller] Panel rejected request for package ${packageId}: ${JSON.stringify(json)}`);
+      return { ok: false, error: json.message || "Panel returned status=false" };
+    }
 
     return { ok: true, data: json };
   } catch (err) {
+    console.error(`[reseller] Network error for package ${packageId}:`, err);
     return { ok: false, error: err instanceof Error ? err.message : "Network error" };
   }
 }

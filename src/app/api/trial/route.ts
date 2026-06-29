@@ -14,7 +14,11 @@ export async function POST(req: NextRequest) {
 
   const result = await provisionSubscription("trial", email);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
+    console.error(`[trial] Provisioning failed for ${email}: ${result.error}`);
+    return NextResponse.json(
+      { error: "We're having trouble activating your trial right now. Please try again in a few minutes or contact us on WhatsApp for help." },
+      { status: 502 }
+    );
   }
 
   const subscription = { ...result.subscription, device };
