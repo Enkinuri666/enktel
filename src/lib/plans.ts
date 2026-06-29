@@ -1,5 +1,5 @@
 // Single source of truth for plan pricing - the actual numbers charged via
-// Stripe (src/app/api/checkout-session/route.ts -> src/lib/reseller.ts) and
+// PayPal (src/app/api/checkout-session/route.ts -> src/lib/reseller.ts) and
 // the numbers shown on the pricing/checkout pages must always agree, so
 // every page imports from here instead of hardcoding its own copy.
 export type PlanId = "monthly" | "quarter" | "annual";

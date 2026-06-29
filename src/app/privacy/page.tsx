@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h2>2. Information We Collect</h2>
         <ul>
           <li>Account details: email address, username, and password (stored securely hashed).</li>
-          <li>Payment information: processed directly by Stripe — we never store your full card details.</li>
+          <li>Payment information: processed directly by PayPal — we never store your full card details.</li>
           <li>Usage data: device type, app version, and IP address for fraud prevention and troubleshooting.</li>
           <li>Communications: messages you send us via WhatsApp, email, or contact forms.</li>
         </ul>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
       <section>
         <h2>4. Sharing of Information</h2>
         <p>
-          We share data only with the service providers needed to run Enktel: our payment processor (Stripe)
+          We share data only with the service providers needed to run Enktel: our payment processor (PayPal)
           and our streaming/reseller infrastructure partner. We do not sell your personal information to
           third parties.
         </p>

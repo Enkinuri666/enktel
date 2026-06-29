@@ -1,48 +1,20 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Check, AlertTriangle } from "lucide-react";
-import Spinner from "@/components/ui/Spinner";
-import { StoredSubscription, saveSubscription } from "@/lib/subscriptionStorage";
+import { StoredSubscription, loadSubscription } from "@/lib/subscriptionStorage";
 
-interface SubscriptionResult extends StoredSubscription {
-  panelSync: boolean;
-}
-
-function SuccessContent() {
-  const searchParams = useSearchParams();
-  const sessionId = searchParams.get("session_id");
-
-  const [subscription, setSubscription] = useState<SubscriptionResult | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+export default function CheckoutSuccessPage() {
+  const [subscription, setSubscription] = useState<StoredSubscription | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!sessionId) {
-      setError("Missing checkout session.");
-      setLoading(false);
-      return;
+    const sub = loadSubscription();
+    if (sub && sub.status === "active" && !sub.isTrial) {
+      setSubscription(sub);
+    } else {
+      setError(true);
     }
-
-    fetch(`/api/checkout-session?session_id=${encodeURIComponent(sessionId)}`)
-      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.error || "Could not confirm payment");
-        setSubscription(data.subscription);
-        saveSubscription(data.subscription);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Something went wrong"))
-      .finally(() => setLoading(false));
-  }, [sessionId]);
-
-  if (loading) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <Spinner className="py-12" />
-        <p className="text-brand-muted mt-4">Confirming your payment and activating your subscription...</p>
-      </div>
-    );
-  }
+  }, []);
 
   if (error || !subscription) {
     return (
@@ -51,7 +23,10 @@ function SuccessContent() {
           <AlertTriangle className="w-10 h-10 text-red-400" />
         </div>
         <h1 className="text-3xl font-bold text-white mb-3">Something Went Wrong</h1>
-        <p className="text-brand-muted">{error || "We couldn't confirm your subscription."}</p>
+        <p className="text-brand-muted">
+          We couldn&apos;t find your subscription details. Please check your email or{" "}
+          <a href="/dashboard" className="text-brand-primary hover:underline">visit your dashboard</a>.
+        </p>
       </div>
     );
   }
@@ -95,13 +70,5 @@ function SuccessContent() {
         to manage your subscription and access setup guides.
       </p>
     </div>
-  );
-}
-
-export default function CheckoutSuccessPage() {
-  return (
-    <Suspense fallback={<Spinner className="py-20" />}>
-      <SuccessContent />
-    </Suspense>
   );
 }

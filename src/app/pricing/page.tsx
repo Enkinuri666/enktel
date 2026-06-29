@@ -128,7 +128,7 @@ const faqs = [
   },
   {
     q: "What payment methods do you accept?",
-    a: "We accept all major credit/debit cards via Stripe, as well as PayPal and cryptocurrency.",
+    a: "We accept PayPal and all major credit/debit cards. Cryptocurrency is available on request.",
   },
 ];
 
