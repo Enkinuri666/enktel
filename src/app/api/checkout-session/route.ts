@@ -40,8 +40,9 @@ export async function POST(req: NextRequest) {
 
       const result = await provisionSubscription(plan, email);
       if (!result.ok) {
+        console.error(`[checkout] Provisioning failed for ${email} (order ${orderId}): ${result.error}`);
         return NextResponse.json(
-          { error: `Payment succeeded but activation failed: ${result.error}. Contact support with your order ID: ${orderId}` },
+          { error: `Payment succeeded but activation failed. Please contact us on WhatsApp with your order ID: ${orderId} and we'll activate your account manually.` },
           { status: 502 }
         );
       }
