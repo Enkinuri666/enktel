@@ -1,13 +1,38 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, MessageCircle, ShieldCheck, Clock } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Loader2, MessageCircle, ShieldCheck, Clock, Tv } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { DEVICE_GUIDES } from "@/lib/deviceGuides";
-import { saveSubscription } from "@/lib/subscriptionStorage";
+import { saveSubscription, loadSubscription } from "@/lib/subscriptionStorage";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
+const TRIAL_USED_KEY = "enktel_trial_used";
+
+function getBrowserFingerprint(): string {
+  try {
+    const parts = [
+      screen.width,
+      screen.height,
+      screen.colorDepth,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.language,
+      navigator.hardwareConcurrency || 0,
+      navigator.maxTouchPoints || 0,
+      new Date().getTimezoneOffset(),
+    ];
+    const raw = parts.join("|");
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) {
+      hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash).toString(36);
+  } catch {
+    return "";
+  }
+}
 
 export default function TrialPage() {
   const router = useRouter();
@@ -15,6 +40,18 @@ export default function TrialPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [alreadyUsed, setAlreadyUsed] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem(TRIAL_USED_KEY)) {
+      setAlreadyUsed(true);
+    }
+    if (loadSubscription()?.isTrial) {
+      setAlreadyUsed(true);
+    }
+    setChecked(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,19 +59,60 @@ export default function TrialPage() {
     setError("");
     setSubmitted(true);
     try {
+      const fp = getBrowserFingerprint();
       const res = await fetch("/api/trial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, fp }),
       });
       const data = await res.json();
       if (!res.ok || !data.subscription) throw new Error(data.error || "Something went wrong");
+      localStorage.setItem(TRIAL_USED_KEY, Date.now().toString());
       saveSubscription(data.subscription);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
     }
+  }
+
+  if (!checked) return null;
+
+  if (alreadyUsed) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div className="bg-brand-card border border-brand-border rounded-xl p-10 text-center">
+          <Tv className="w-10 h-10 text-brand-muted mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-white mb-2">You&apos;ve already used your free trial</h1>
+          <p className="text-brand-muted text-sm mb-6 max-w-md mx-auto">
+            Each customer gets one 24-hour trial. If you already have credentials, log in to your dashboard.
+            Ready for full access? Check out our plans.
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link href="/dashboard">
+              <Button>Go to Dashboard</Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="outline">Log In</Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="outline">View Plans</Button>
+            </Link>
+          </div>
+          {whatsappNumber && (
+            <a
+              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi, I'd like to discuss upgrading from my trial.")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm font-semibold"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat with us on WhatsApp
+            </a>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
