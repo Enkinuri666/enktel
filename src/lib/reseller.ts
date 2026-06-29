@@ -43,11 +43,10 @@ async function createLine(
   packageId: number
 ): Promise<{ ok: true; data: PanelLineResult } | { ok: false; error: string }> {
   const params = new URLSearchParams({
-    action: "user",
+    action: "code",
     type: "create",
     package_id: String(packageId),
     note: note,
-    country: "GB",
     api_key: API_KEY,
   });
 
@@ -62,19 +61,22 @@ async function createLine(
 
     const text = await res.text();
 
-    if (!res.ok) {
-      console.error(`[reseller] Panel HTTP ${res.status} for package ${packageId}: ${text.slice(0, 500)}`);
-      return { ok: false, error: `Panel HTTP ${res.status}` };
-    }
     if (!text || text.trim() === "") {
-      console.error(`[reseller] Empty response from panel for package ${packageId}`);
-      return { ok: false, error: "Empty response from panel" };
+      console.error(`[reseller] Empty response from panel (HTTP ${res.status}) for package ${packageId}`);
+      return { ok: false, error: `Panel HTTP ${res.status} (empty body)` };
     }
 
-    const json: PanelLineResult = JSON.parse(text);
+    let json: PanelLineResult;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      console.error(`[reseller] Non-JSON response from panel (HTTP ${res.status}) for package ${packageId}: ${text.slice(0, 500)}`);
+      return { ok: false, error: `Panel HTTP ${res.status}` };
+    }
+
     if (!json.status) {
-      console.error(`[reseller] Panel rejected request for package ${packageId}: ${JSON.stringify(json)}`);
-      return { ok: false, error: json.message || "Panel returned status=false" };
+      console.error(`[reseller] Panel rejected (HTTP ${res.status}) for package ${packageId}: ${JSON.stringify(json)}`);
+      return { ok: false, error: json.message || `Panel rejected request (HTTP ${res.status})` };
     }
 
     return { ok: true, data: json };
