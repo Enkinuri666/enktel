@@ -30,18 +30,26 @@ export const PLAN_NAME: Record<string, string> = {
   trial: "24-Hour Free Trial",
 };
 
-interface PanelLineResult {
+// The panel response shape varies by action. We accept any combination of
+// credential fields and normalize in provisionSubscription().
+interface PanelResponse {
   status: boolean;
   message?: string;
-  username: string;
-  password: string;
-  url: string;
+  username?: string;
+  password?: string;
+  url?: string;
+  // action=code may return these instead
+  code?: string;
+  server_url?: string;
+  portal_url?: string;
+  // catch-all for any other fields
+  [key: string]: unknown;
 }
 
 async function createLine(
   note: string,
   packageId: number
-): Promise<{ ok: true; data: PanelLineResult } | { ok: false; error: string }> {
+): Promise<{ ok: true; data: PanelResponse } | { ok: false; error: string }> {
   const params = new URLSearchParams({
     action: "code",
     type: "create",
@@ -66,13 +74,15 @@ async function createLine(
       return { ok: false, error: `Panel HTTP ${res.status} (empty body)` };
     }
 
-    let json: PanelLineResult;
+    let json: PanelResponse;
     try {
       json = JSON.parse(text);
     } catch {
       console.error(`[reseller] Non-JSON response from panel (HTTP ${res.status}) for package ${packageId}: ${text.slice(0, 500)}`);
       return { ok: false, error: `Panel HTTP ${res.status}` };
     }
+
+    console.log(`[reseller] Panel response (HTTP ${res.status}) for package ${packageId}: ${JSON.stringify(json)}`);
 
     if (!json.status) {
       console.error(`[reseller] Panel rejected (HTTP ${res.status}) for package ${packageId}: ${JSON.stringify(json)}`);
@@ -213,8 +223,20 @@ export async function provisionSubscription(
   const result = await createLine(`${email}|${plan}`, packageId);
   if (!result.ok) return { ok: false, error: result.error };
 
-  const primary = result.data;
-  const serverUrl = primary.url || "http://api.elg-26.com";
+  const d = result.data;
+
+  // Normalize: the panel may return credentials as username/password directly,
+  // or as a code that IS the username (with a separate password field), or
+  // various other field names depending on the API action used.
+  const username = String(d.username || d.code || "");
+  const password = String(d.password || "");
+  const serverUrl = String(d.url || d.server_url || d.portal_url || "http://api.elg-26.com");
+
+  if (!username) {
+    console.error(`[reseller] Panel returned success but no credentials found in response: ${JSON.stringify(d)}`);
+    return { ok: false, error: "Panel returned success but no credentials" };
+  }
+
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMs);
 
@@ -226,10 +248,10 @@ export async function provisionSubscription(
       status: "active",
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      username: primary.username,
-      password: primary.password,
-      m3uUrl: buildM3U(serverUrl, primary.username, primary.password),
-      epgUrl: buildEPG(serverUrl, primary.username, primary.password),
+      username,
+      password,
+      m3uUrl: buildM3U(serverUrl, username, password),
+      epgUrl: buildEPG(serverUrl, username, password),
       panelSync: true,
       isTrial,
     },
