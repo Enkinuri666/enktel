@@ -15,11 +15,11 @@ const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
 const TOUR_DISMISSED_KEY = "enktel_dashboard_tour_dismissed";
 const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
 
-function CopyableUrl({ label, url }: { label: string; url: string }) {
+function CopyableField({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    await navigator.clipboard.writeText(url).catch(() => {});
+    await navigator.clipboard.writeText(value).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -28,7 +28,7 @@ function CopyableUrl({ label, url }: { label: string; url: string }) {
     <div>
       <p className="text-brand-muted text-xs mb-2">{label}</p>
       <div className="flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5">
-        <span className="text-brand-primary text-xs font-mono truncate flex-1">{url}</span>
+        <span className={`text-brand-primary text-xs truncate flex-1 ${mono ? "font-mono" : ""}`}>{value}</span>
         <button
           onClick={copy}
           className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors text-brand-muted hover:text-white"
@@ -360,9 +360,28 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="space-y-3">
-            <CopyableUrl label="M3U Playlist URL" url={sub.m3uUrl} />
-            <CopyableUrl label="EPG URL (XMLTV)" url={sub.epgUrl} />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                Login Credentials
+                <span className="text-brand-muted text-xs font-normal">(for IPTV Smarters, TiviMate, etc.)</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <CopyableField label="Server URL" value={sub.m3uUrl.split("/get.php")[0] || "http://api.elg-26.com"} />
+                <CopyableField label="Username" value={sub.username} />
+                <CopyableField label="Password" value={sub.password} />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                Playlist URLs
+                <span className="text-brand-muted text-xs font-normal">(for apps that use M3U links)</span>
+              </h3>
+              <div className="space-y-3">
+                <CopyableField label="M3U Playlist URL" value={sub.m3uUrl} />
+                <CopyableField label="EPG URL (XMLTV)" value={sub.epgUrl} />
+              </div>
+            </div>
           </div>
         </motion.div>
 
