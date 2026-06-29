@@ -14,11 +14,13 @@ export default function TrialPage() {
   const [form, setForm] = useState({ name: "", email: "", device: DEVICE_GUIDES[0].id as string });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSubmitted(true);
     try {
       const res = await fetch("/api/trial", {
         method: "POST",
@@ -96,17 +98,30 @@ export default function TrialPage() {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
-            {error}
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm space-y-2">
+            <p className="text-red-400">{error}</p>
+            {whatsappNumber && (
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi, I just tried to sign up for a free trial but got an error. My email is: " + form.email)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-green-400 hover:text-green-300 font-semibold"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                Get help on WhatsApp
+              </a>
+            )}
           </div>
         )}
 
-        <Button type="submit" size="lg" fullWidth loading={loading}>
+        <Button type="submit" size="lg" fullWidth loading={loading} disabled={loading || (submitted && !!error)}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Setting up your trial...
             </>
+          ) : submitted && error ? (
+            "Check your email or contact WhatsApp"
           ) : (
             "Start My Free Trial"
           )}
