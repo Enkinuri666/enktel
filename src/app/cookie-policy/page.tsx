@@ -31,8 +31,8 @@ export default function CookiePolicyPage() {
       <section>
         <h2>4. Third-Party Cookies</h2>
         <p>
-          Our payment processor (Stripe) may set its own cookies during checkout for fraud prevention. These
-          are governed by Stripe&apos;s own privacy policy.
+          Our payment processor (PayPal) may set its own cookies during checkout for fraud prevention. These
+          are governed by PayPal&apos;s own privacy policy.
         </p>
       </section>
     </LegalLayout>

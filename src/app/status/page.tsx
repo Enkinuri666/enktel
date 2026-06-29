@@ -9,7 +9,7 @@ const services = [
   { name: "Streaming Servers", uptime: "99.97%" },
   { name: "EPG / Program Guide", uptime: "99.95%" },
   { name: "Website & Dashboard", uptime: "99.99%" },
-  { name: "Payments (Stripe)", uptime: "100%" },
+  { name: "Payments (PayPal)", uptime: "100%" },
   { name: "VOD Library", uptime: "99.92%" },
 ];
 

@@ -25,7 +25,7 @@ const categories = [
     faqs: [
       {
         q: "What payment methods do you accept?",
-        a: "All major credit/debit cards via Stripe, plus PayPal and cryptocurrency on request.",
+        a: "PayPal and all major credit/debit cards. Cryptocurrency available on request.",
       },
       {
         q: "Do monthly plans auto-renew?",
