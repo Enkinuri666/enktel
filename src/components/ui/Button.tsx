@@ -23,15 +23,15 @@ export default function Button({
 
   const variants = {
     primary:
-      "bg-brand-primary text-white hover:bg-purple-600 focus:ring-brand-primary shadow-lg shadow-brand-primary/25 hover:shadow-brand-primary/40",
+      "bg-brand-primary text-white hover:bg-purple-600 focus:ring-brand-primary shadow-lg shadow-brand-primary/30 hover:shadow-xl hover:shadow-brand-primary/50",
     secondary:
-      "bg-brand-secondary text-brand-bg hover:bg-cyan-400 focus:ring-brand-secondary shadow-lg shadow-brand-secondary/25",
+      "bg-brand-secondary text-brand-bg hover:bg-cyan-400 focus:ring-brand-secondary shadow-lg shadow-brand-secondary/30 hover:shadow-xl hover:shadow-brand-secondary/50",
     outline:
-      "border border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white focus:ring-brand-primary",
+      "backdrop-blur-md bg-white/5 border border-brand-primary/60 text-brand-primary hover:bg-brand-primary hover:text-white hover:shadow-lg hover:shadow-brand-primary/30 focus:ring-brand-primary",
     ghost:
-      "text-brand-muted hover:text-white hover:bg-white/10 focus:ring-white/20",
+      "backdrop-blur-md text-brand-muted hover:text-white hover:bg-white/10 focus:ring-white/20",
     danger:
-      "bg-brand-accent text-white hover:bg-red-600 focus:ring-brand-accent shadow-lg shadow-brand-accent/25",
+      "bg-brand-accent text-white hover:bg-red-600 focus:ring-brand-accent shadow-lg shadow-brand-accent/30 hover:shadow-xl hover:shadow-brand-accent/50",
   };
 
   const sizes = {
