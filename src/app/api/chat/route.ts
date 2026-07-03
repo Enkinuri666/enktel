@@ -27,7 +27,12 @@ Keep replies short and conversational (2-4 sentences in most cases) — this is 
 // OpenRouter is OpenAI-API-compatible — same SDK, same request/response
 // shape, just a different base URL, key, and a provider-prefixed model slug.
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const MODEL = "openai/gpt-5.5";
+// Must stay one of the free models allowlisted by the account's workspace
+// guardrail (openrouter.ai/settings/privacy) — gpt-5.5 isn't served by any
+// provider that satisfies that policy, which surfaced as a 404 "no endpoints
+// available" error. gpt-oss-20b supports the same tool-calling flow used
+// here and was already verified end-to-end against this exact route.
+const MODEL = "openai/gpt-oss-20b:free";
 // Kept low on purpose: each iteration costs at least one 20-second rate-limit
 // wait (see src/lib/rateLimiter.ts), so this bounds a single reply to roughly
 // one tool-call round plus a final answer before the 20s spacing dominates.
