@@ -17,8 +17,12 @@ You cannot access a specific customer's account, process payments, issue refunds
 
 Keep replies short and conversational (2-4 sentences in most cases) — this is a live chat widget, not an email. Plain text only, no markdown headers or tables.`;
 
-const MODEL = "gpt-5.5";
+// OpenRouter is OpenAI-API-compatible — same SDK, same request/response
+// shape, just a different base URL, key, and a provider-prefixed model slug.
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const MODEL = "openai/gpt-5.5";
 const MAX_TOOL_ITERATIONS = 4;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://enktel.tv";
 
 interface ChatMessageInput {
   role: "user" | "assistant";
@@ -26,7 +30,7 @@ interface ChatMessageInput {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
       { error: "The AI assistant isn't configured yet. Please use Live Chat or WhatsApp instead." },
@@ -49,7 +53,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing messages" }, { status: 400 });
   }
 
-  const client = new OpenAI({ apiKey });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: OPENROUTER_BASE_URL,
+    defaultHeaders: {
+      "HTTP-Referer": SITE_URL,
+      "X-Title": "Enktel Assistant",
+    },
+  });
 
   let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -62,7 +73,7 @@ export async function POST(request: Request) {
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       const response = await client.chat.completions.create({
         model: MODEL,
-        max_completion_tokens: 2048,
+        max_tokens: 2048,
         tools: CHAT_TOOLS,
         messages,
       });
