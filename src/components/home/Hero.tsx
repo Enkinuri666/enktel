@@ -60,8 +60,8 @@ export default function Hero() {
           <div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2.5 mb-8 rounded-full px-4 py-2 text-sm font-semibold border bg-white/[0.04] border-white/10">
-              <span className="text-xl leading-none">🇭🇷</span>
-              <span className="text-white/90">Croatia&apos;s #1 IPTV Service</span>
+              <span className="text-xl leading-none">🌍</span>
+              <span className="text-white/90">Trusted by 50,000+ Streamers</span>
               <span className="w-px h-4 bg-white/20" />
               <span className="text-brand-secondary">50+ Countries</span>
             </motion.div>
