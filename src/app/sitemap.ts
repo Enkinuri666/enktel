@@ -4,6 +4,7 @@ const routes = [
   "",
   "/blog",
   "/epg",
+  "/web-player",
   "/whats-new",
   "/world-cup-2026",
   "/search",

@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/blog", label: "Blog" },
   { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
+  { href: "/web-player", label: "Web Player" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },

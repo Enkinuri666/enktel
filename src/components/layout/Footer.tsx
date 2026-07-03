@@ -8,6 +8,7 @@ const quickLinks = [
   { href: "/", label: "Home" },
   { href: "/blog", label: "Blog" },
   { href: "/epg", label: "EPG Guide" },
+  { href: "/web-player", label: "Web Player" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },
