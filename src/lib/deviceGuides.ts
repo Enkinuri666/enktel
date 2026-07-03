@@ -1,7 +1,8 @@
-import { Tv, Smartphone, Monitor, Wifi, Box } from "lucide-react";
+import { Tv, Smartphone, Monitor, Wifi, Box, Globe2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { WEB_PLAYER_URL } from "@/lib/webplayer";
 
-export type DeviceId = "firestick" | "smart-tv" | "mag" | "mobile" | "pc" | "router";
+export type DeviceId = "firestick" | "smart-tv" | "mag" | "mobile" | "pc" | "router" | "web-player";
 
 export interface DeviceGuideStep {
   step: number;
@@ -18,6 +19,18 @@ export interface DeviceGuide {
 }
 
 export const DEVICE_GUIDES: DeviceGuide[] = [
+  {
+    id: "web-player",
+    label: "Web Browser (Web Player)",
+    icon: Globe2,
+    app: "None needed — built-in, free with every subscription",
+    steps: [
+      { step: 1, title: `Go to ${WEB_PLAYER_URL}`, description: "Open any modern browser — on a laptop, desktop, or tablet — and visit the Enktel Web Player. Nothing to download or install." },
+      { step: 2, title: "Log in with your Enktel details", description: "Enter the same username and password from your Enktel IPTV subscription — the one already used on a Smart TV, Firestick, or MAG box." },
+      { step: 3, title: "Browse the Live TV Guide", description: "Check what's on now and next, filter channels by category, or search for a specific channel using the built-in guide." },
+      { step: 4, title: "Click to start watching", description: "Select any channel or guide entry and it streams immediately in the browser, at no extra cost — no separate IPTV player app to buy or configure." },
+    ],
+  },
   {
     id: "firestick",
     label: "Firestick",
