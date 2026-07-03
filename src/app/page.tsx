@@ -10,6 +10,7 @@ import UpcomingEventsWidget from "@/components/home/UpcomingEventsWidget";
 import LatestReleases from "@/components/home/LatestReleases";
 import ComingSoonWidget from "@/components/home/ComingSoonWidget";
 import ChannelShowcase from "@/components/home/ChannelShowcase";
+import PlatformsCarousel from "@/components/home/PlatformsCarousel";
 import Features from "@/components/home/Features";
 import DashboardExplainer from "@/components/home/DashboardExplainer";
 import PricingPreview from "@/components/home/PricingPreview";
@@ -30,6 +31,7 @@ export default function HomePage() {
       <LatestReleases />
       <ComingSoonWidget />
       <ChannelShowcase />
+      <PlatformsCarousel />
       <Features />
       <DashboardExplainer />
       <PricingPreview />
