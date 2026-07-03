@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { CHAT_TOOLS, runChatTool } from "@/lib/chatTools";
+import { throttle } from "@/lib/rateLimiter";
 
 export const dynamic = "force-dynamic";
+// The shared OpenRouter key is capped at one request every 20 seconds, and a
+// single turn can make several requests (one per tool-call round). Give the
+// function enough headroom to sit through that spacing instead of timing out
+// mid-conversation. Raise this further (subject to your Vercel plan's limit)
+// if MAX_TOOL_ITERATIONS grows.
+export const maxDuration = 90;
 
 const SYSTEM_PROMPT = `You are the Enktel Assistant, a friendly and concise AI chat helper embedded on enktel.tv, a premium IPTV & streaming subscription service (live TV, sports, movies, and VOD).
 
@@ -21,7 +28,10 @@ Keep replies short and conversational (2-4 sentences in most cases) — this is 
 // shape, just a different base URL, key, and a provider-prefixed model slug.
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const MODEL = "openai/gpt-5.5";
-const MAX_TOOL_ITERATIONS = 4;
+// Kept low on purpose: each iteration costs at least one 20-second rate-limit
+// wait (see src/lib/rateLimiter.ts), so this bounds a single reply to roughly
+// one tool-call round plus a final answer before the 20s spacing dominates.
+const MAX_TOOL_ITERATIONS = 3;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://enktel.tv";
 
 interface ChatMessageInput {
@@ -71,12 +81,14 @@ export async function POST(request: Request) {
     let finalText = "";
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-      const response = await client.chat.completions.create({
-        model: MODEL,
-        max_tokens: 2048,
-        tools: CHAT_TOOLS,
-        messages,
-      });
+      const response = await throttle(() =>
+        client.chat.completions.create({
+          model: MODEL,
+          max_tokens: 2048,
+          tools: CHAT_TOOLS,
+          messages,
+        })
+      );
 
       const message = response.choices[0]?.message;
       finalText = message?.content?.trim() || "";

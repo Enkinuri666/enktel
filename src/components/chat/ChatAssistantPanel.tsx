@@ -16,15 +16,36 @@ const SUGGESTIONS = [
   "Any big matches on this week?",
 ];
 
+// The shared API key backing this assistant is rate-limited to one request
+// every 20 seconds (see src/lib/rateLimiter.ts) — replies can take a while,
+// especially if the assistant needs a tool-call round first, or if another
+// visitor's message is queued ahead of this one. Keep the wait from reading
+// as "broken" by upgrading the status copy the longer it takes.
+const THINKING_MESSAGES = [
+  { afterMs: 0, text: "Thinking…" },
+  { afterMs: 6000, text: "Still thinking — checking live data…" },
+  { afterMs: 15000, text: "Almost there — replies can take up to 30–40s…" },
+];
+
 export default function ChatAssistantPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [thinkingText, setThinkingText] = useState(THINKING_MESSAGES[0].text);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading) return;
+    setThinkingText(THINKING_MESSAGES[0].text);
+    const timers = THINKING_MESSAGES.slice(1).map(({ afterMs, text }) =>
+      setTimeout(() => setThinkingText(text), afterMs)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [loading]);
 
   async function sendMessage(text: string) {
     const trimmed = text.trim();
@@ -86,7 +107,8 @@ export default function ChatAssistantPanel({ onClose }: { onClose: () => void })
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="text-left text-xs text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 transition-colors"
+                  disabled={loading}
+                  className="text-left text-xs text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {s}
                 </button>
@@ -115,7 +137,7 @@ export default function ChatAssistantPanel({ onClose }: { onClose: () => void })
           <div className="flex justify-start">
             <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 text-brand-secondary animate-spin" />
-              <span className="text-brand-muted text-xs">Thinking…</span>
+              <span className="text-brand-muted text-xs">{thinkingText}</span>
             </div>
           </div>
         )}
@@ -131,8 +153,9 @@ export default function ChatAssistantPanel({ onClose }: { onClose: () => void })
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question…"
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/50"
+          placeholder={loading ? "Waiting for a reply…" : "Ask a question…"}
+          disabled={loading}
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-brand-muted focus:outline-none focus:border-brand-primary/50 disabled:opacity-60"
         />
         <button
           type="submit"
