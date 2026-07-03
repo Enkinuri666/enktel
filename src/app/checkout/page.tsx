@@ -137,10 +137,10 @@ function CheckoutContent() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
       {plan.isPromo && (
-        <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e] to-[#0d5c2b] border border-green-700/40 rounded-xl px-5 py-3 mb-8">
-          <Trophy className="w-5 h-5 text-yellow-400 shrink-0" />
-          <p className="text-green-200 text-sm">
-            <strong className="text-yellow-400">FIFA World Cup 2026 Offer</strong> — You&apos;re getting our promotional price. Watch every match live in 4K.
+        <div className="flex items-center gap-3 bg-gradient-to-r from-[#080B16] to-[#0D1F3C] border border-blue-900/40 rounded-xl px-5 py-3 mb-8">
+          <Trophy className="w-5 h-5 text-brand-accent shrink-0" />
+          <p className="text-blue-100/80 text-sm">
+            <strong className="text-brand-accent">FIFA World Cup 2026 Offer</strong> — You&apos;re getting our promotional price. Watch every match live in 4K.
           </p>
         </div>
       )}
@@ -259,9 +259,9 @@ function CheckoutContent() {
             <h2 className="text-white font-semibold mb-5">Order Summary</h2>
 
             {plan.isPromo && (
-              <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-2 mb-4">
-                <Trophy className="w-4 h-4 text-yellow-400 shrink-0" />
-                <span className="text-yellow-400 text-xs font-bold">World Cup 2026 Promo Price</span>
+              <div className="flex items-center gap-2 bg-brand-accent/10 border border-brand-accent/20 rounded-lg px-3 py-2 mb-4">
+                <Trophy className="w-4 h-4 text-brand-accent shrink-0" />
+                <span className="text-brand-accent text-xs font-bold">World Cup 2026 Promo Price</span>
               </div>
             )}
 

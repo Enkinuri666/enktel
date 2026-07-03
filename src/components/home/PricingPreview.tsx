@@ -54,11 +54,11 @@ export default function PricingPreview() {
         >
           <Link
             href="/world-cup-2026"
-            className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e]/80 to-[#0d5c2b]/80 border border-green-700/40 rounded-full px-6 py-3 hover:border-green-500/60 transition-colors"
+            className="flex items-center gap-3 bg-gradient-to-r from-[#080B16]/90 to-[#0D1F3C]/90 border border-blue-900/40 rounded-full px-6 py-3 hover:border-blue-700/60 transition-colors"
           >
             <span className="text-2xl">🏆</span>
-            <span className="text-green-300 text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
-            <span className="bg-yellow-400 text-black text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
+            <span className="text-white text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
+            <span className="bg-brand-accent text-white text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
           </Link>
         </motion.div>
 
@@ -87,18 +87,21 @@ export default function PricingPreview() {
               transition={{ delay: i * 0.1 }}
             >
               {plan.highlighted ? (
-                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-brand-accent/80 via-white/40 to-blue-500/60 shadow-2xl shadow-brand-primary/20">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <Badge variant="gold" className="px-4 py-1.5 shadow-lg">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-black text-white shadow-lg"
+                      style={{ background: "linear-gradient(90deg, #FF4757, #3B82F6)" }}
+                    >
                       <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
-                    </Badge>
+                    </span>
                   </div>
                   <div className="bg-brand-card rounded-[14px] p-6 pt-8">
                     <PlanCardContent plan={plan} />
                   </div>
                 </div>
               ) : (
-                <div className={`rounded-2xl border p-6 ${plan.badge ? "border-green-700/40 bg-gradient-to-b from-green-950/20 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+                <div className={`rounded-2xl border p-6 ${plan.badge ? "border-blue-900/40 bg-gradient-to-b from-[#0D1F3C]/30 to-brand-card" : "border-brand-border bg-brand-card"}`}>
                   <PlanCardContent plan={plan} />
                 </div>
               )}
@@ -123,7 +126,7 @@ function PlanCardContent({ plan }: { plan: typeof plans[0] }) {
     <>
       {plan.badge && (
         <div className="mb-3">
-          <Badge variant="warning" size="md">
+          <Badge variant={plan.badge === "WORLD CUP 2026" ? "accent" : "warning"} size="md">
             {plan.badge === "WORLD CUP 2026" ? <Trophy className="w-3 h-3" /> : <Flame className="w-3 h-3" />}
             {plan.badge === "WORLD CUP 2026" ? "WORLD CUP 2026" : "MOST POPULAR"}
           </Badge>
