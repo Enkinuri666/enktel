@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 :root {
   --bg: #060910;
   --primary: #6C63FF;
@@ -26,7 +24,7 @@ html { scroll-behavior: smooth; }
 body {
   background-color: var(--bg);
   color: #ffffff;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -159,11 +157,11 @@ body::after {
 
 /* Card hover lift */
 .card-hover {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 48px rgba(108,99,255, 0.18);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(108,99,255, 0.15), 0 0 0 1px rgba(108,99,255, 0.08);
 }
 
 /* Aurora section background */

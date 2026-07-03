@@ -31,7 +31,7 @@ export default function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-brand-card border border-brand-border rounded-xl p-6 hover:border-brand-primary/30 transition-all duration-300"
+              className="bg-brand-card border border-brand-border rounded-2xl p-6 hover:border-brand-primary/40 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-primary/10 transition-all duration-300"
             >
               {/* Stars */}
               <div className="flex items-center gap-1 mb-4">
