@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import HeroVideoBackdrop from "./HeroVideoBackdrop";
+import HeroBroadcastAnimation from "./HeroBroadcastAnimation";
 
 const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
@@ -22,36 +22,14 @@ export default function Hero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
 
-        {/* Centerpiece animated logo */}
+        {/* Centerpiece broadcast animation */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="flex justify-center mb-10"
         >
-          <motion.div
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="relative"
-          >
-            <div
-              className="absolute inset-0 -z-10 rounded-full orb blur-[28px]"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(0,212,255,0.5) 0%, rgba(108,99,255,0.35) 45%, transparent 75%)",
-              }}
-            />
-            <div className="absolute -inset-5 rounded-full border border-white/15 spin-slow" />
-            <div className="absolute -inset-9 rounded-full border border-dashed border-white/[0.08]" />
-            <Image
-              src="/logo-icon.png"
-              alt="Enktel"
-              width={160}
-              height={160}
-              priority
-              className="relative w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 drop-shadow-[0_0_50px_rgba(0,212,255,0.6)]"
-            />
-          </motion.div>
+          <HeroBroadcastAnimation />
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[70vh]">
@@ -60,10 +38,11 @@ export default function Hero() {
           <div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2.5 mb-8 rounded-full px-4 py-2 text-sm font-semibold border bg-white/[0.04] border-white/10">
-              <span className="text-xl leading-none">🌍</span>
-              <span className="text-white/90">Trusted by 50,000+ Streamers</span>
-              <span className="w-px h-4 bg-white/20" />
-              <span className="text-brand-secondary">50+ Countries</span>
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+              </span>
+              <span className="text-white/90">Live TV · Sports · Movies · VOD</span>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">

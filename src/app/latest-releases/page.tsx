@@ -6,6 +6,8 @@ import { Movie, TVShow } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import MediaPoster from "@/components/ui/MediaPoster";
 import Badge from "@/components/ui/Badge";
+import MagazineNav from "@/components/magazine/MagazineNav";
+import MagazineCrossLinks from "@/components/magazine/MagazineCrossLinks";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -104,19 +106,21 @@ export default function LatestReleasesPage() {
   const paginatedItems = sortedItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-          Latest{" "}
-          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-            Releases
-          </span>
-        </h1>
-        <p className="text-brand-muted text-lg">
-          The newest movies and TV shows available on Enktel IPTV.
-        </p>
-      </div>
-
+    <>
+      <MagazineNav
+        active="latest-releases"
+        kicker="Freshly Added"
+        title={
+          <>
+            Latest{" "}
+            <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+              Releases
+            </span>
+          </>
+        }
+        description="The newest movies and TV shows available on Enktel IPTV."
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
       {/* Spotlight: not sure what to watch? */}
       {!isLoading && spotlightItems.length > 0 && (
         <div className="mb-10">
@@ -301,6 +305,8 @@ export default function LatestReleasesPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+      <MagazineCrossLinks active="latest-releases" />
+    </>
   );
 }

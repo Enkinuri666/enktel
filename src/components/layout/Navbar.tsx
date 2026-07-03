@@ -11,6 +11,7 @@ import { loadSubscription, clearSubscription, SUBSCRIPTION_CHANGED_EVENT } from 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/blog", label: "Blog" },
+  { href: "/updates", label: "Enktel Wire" },
   { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
   { href: "/web-player", label: "Web Player" },

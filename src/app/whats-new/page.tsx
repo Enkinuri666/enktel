@@ -1,9 +1,11 @@
 "use client";
 import useSWR from "swr";
 import Link from "next/link";
-import { Film, Radio, Ticket, Sparkles } from "lucide-react";
+import { Film, Radio, Ticket } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 import MediaPoster from "@/components/ui/MediaPoster";
+import MagazineNav from "@/components/magazine/MagazineNav";
+import MagazineCrossLinks from "@/components/magazine/MagazineCrossLinks";
 import { Movie, TVShow, UpcomingEvent } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -41,24 +43,21 @@ export default function WhatsNewPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-10">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-5 h-5 text-brand-secondary" />
-          <span className="text-brand-secondary text-sm font-bold uppercase tracking-wide">Auto-Updating</span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-          What&apos;s New on{" "}
-          <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
-            Enktel IPTV
-          </span>
-        </h1>
-        <p className="text-brand-muted text-lg max-w-2xl">
-          Everything new this week — latest movies and series, live channel highlights, and upcoming sports &amp; PPV events.
-          Each item tells you exactly where to find it on your activated Enktel device.
-        </p>
-      </div>
-
+    <>
+      <MagazineNav
+        active="whats-new"
+        kicker="Auto-Updating"
+        title={
+          <>
+            What&apos;s New on{" "}
+            <span className="bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+              Enktel IPTV
+            </span>
+          </>
+        }
+        description="Everything new this week — latest movies and series, live channel highlights, and upcoming sports & PPV events."
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
       {isLoading ? (
         <Spinner className="py-20" />
       ) : (
@@ -160,6 +159,8 @@ export default function WhatsNewPage() {
 
         </div>
       )}
-    </div>
+      </div>
+      <MagazineCrossLinks active="whats-new" />
+    </>
   );
 }

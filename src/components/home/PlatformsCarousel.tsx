@@ -42,7 +42,7 @@ function MarqueeRow({ items, reverse = false, dotColor }: { items: string[]; rev
 
 export default function PlatformsCarousel() {
   return (
-    <section className="py-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
+    <section id="platforms" className="py-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-brand-secondary text-sm font-bold uppercase tracking-widest mb-3">
