@@ -20,7 +20,7 @@ function MatchChip({ match }: { match: WorldCupMatch }) {
         </span>
       )}
       {match.group && (
-        <span className="text-yellow-400/80 text-[10px] font-bold uppercase shrink-0">Grp {match.group}</span>
+        <span className="text-brand-accent/90 text-[10px] font-bold uppercase shrink-0">Grp {match.group}</span>
       )}
       {match.homeTeamBadge && (
         <Image src={match.homeTeamBadge} alt="" width={16} height={16} className="w-4 h-4 object-contain shrink-0" unoptimized />
@@ -56,11 +56,11 @@ export default function WorldCupTicker() {
   const display = [...finished, ...upcoming];
 
   return (
-    <section className="bg-gradient-to-r from-[#0a3a1e] via-[#0d5c2b] to-[#0a3a1e] border-y border-green-700/40 py-3">
+    <section className="bg-gradient-to-r from-[#080B16] via-[#0D1F3C] to-[#080B16] border-y border-blue-900/40 py-3">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
         <Link
           href="/world-cup-2026"
-          className="flex items-center gap-2 shrink-0 text-yellow-400 font-black text-sm uppercase tracking-wide"
+          className="flex items-center gap-2 shrink-0 text-brand-accent font-black text-sm uppercase tracking-wide"
         >
           <Trophy className="w-4 h-4" /> World Cup 2026
         </Link>

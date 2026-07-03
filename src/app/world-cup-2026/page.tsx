@@ -45,7 +45,7 @@ function MatchCard({ match }: { match: WorldCupMatch }) {
       {(match.group || match.round) && (
         <div className="flex items-center gap-2 mb-2">
           {match.group && (
-            <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wide bg-yellow-400/10 px-2 py-0.5 rounded-full">
+            <span className="text-brand-accent text-[10px] font-bold uppercase tracking-wide bg-brand-accent/10 px-2 py-0.5 rounded-full">
               Group {match.group}
             </span>
           )}
@@ -94,10 +94,12 @@ export default function WorldCup2026Page() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center gap-3 bg-gradient-to-r from-[#0a3a1e] to-[#0d5c2b] border border-green-700/40 rounded-xl px-5 py-4 mb-8">
-        <Trophy className="w-8 h-8 text-yellow-400 shrink-0" />
+      <div className="flex items-center gap-3 bg-gradient-to-r from-[#080B16] to-[#0D1F3C] border border-blue-900/40 rounded-xl px-5 py-4 mb-8">
+        <Trophy className="w-8 h-8 text-brand-accent shrink-0" />
         <div>
-          <p className="text-yellow-400 text-xs font-black uppercase tracking-widest">2026</p>
+          <p className="text-brand-accent text-xs font-black uppercase tracking-widest flex items-center gap-1.5">
+            2026 <span className="text-white/40">·</span> Hosted in the USA
+          </p>
           <h1 className="text-2xl sm:text-3xl font-black text-white">FIFA World Cup on Enktel IPTV</h1>
         </div>
       </div>

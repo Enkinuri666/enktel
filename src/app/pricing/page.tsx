@@ -142,23 +142,23 @@ export default function PricingPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl mb-12 bg-gradient-to-r from-[#0a3a1e] via-[#0d5c2b] to-[#0a3a1e] border border-green-700/40"
+        className="relative overflow-hidden rounded-2xl mb-12 bg-gradient-to-r from-[#080B16] via-[#0D1F3C] to-[#080B16] border border-blue-900/40"
       >
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #22c55e 0%, transparent 50%), radial-gradient(circle at 80% 50%, #fbbf24 0%, transparent 50%)" }} />
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #3B82F6 0%, transparent 50%), radial-gradient(circle at 80% 50%, #FF4757 0%, transparent 50%)" }} />
         <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 px-6 py-5">
           <div className="flex items-center gap-3 shrink-0">
             <span className="text-4xl">🏆</span>
             <div>
-              <p className="text-yellow-400 font-black text-sm uppercase tracking-widest">FIFA World Cup 2026</p>
+              <p className="text-brand-accent font-black text-sm uppercase tracking-widest">FIFA World Cup 2026 · Hosted in the USA</p>
               <p className="text-white font-bold text-lg">Limited Time Promotional Pricing</p>
             </div>
           </div>
-          <div className="h-px sm:h-10 w-full sm:w-px bg-green-700/50 shrink-0" />
-          <p className="text-green-200 text-sm text-center sm:text-left">
+          <div className="h-px sm:h-10 w-full sm:w-px bg-blue-900/50 shrink-0" />
+          <p className="text-blue-100/80 text-sm text-center sm:text-left">
             Celebrate the World Cup with our biggest ever discount. Watch every match live in 4K — plus {CHANNEL_COUNT_LABEL} channels all year round.
           </p>
           <div className="shrink-0">
-            <span className="bg-yellow-400 text-black text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
+            <span className="bg-brand-accent text-white text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
               Save up to €90
             </span>
           </div>
@@ -211,18 +211,21 @@ export default function PricingPage() {
             transition={{ delay: i * 0.1 }}
           >
             {plan.highlighted ? (
-              <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-yellow-400/80 via-brand-primary/60 to-brand-secondary/60 shadow-2xl shadow-brand-primary/20">
+              <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-b from-brand-accent/80 via-white/40 to-blue-500/60 shadow-2xl shadow-brand-primary/20">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <Badge variant="gold" className="px-5 py-1.5 shadow-lg shadow-yellow-400/30">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-black text-white shadow-lg"
+                    style={{ background: "linear-gradient(90deg, #FF4757, #3B82F6)" }}
+                  >
                     <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
-                  </Badge>
+                  </span>
                 </div>
                 <div className="bg-brand-card rounded-[14px] p-7">
                   <PlanCard plan={plan} />
                 </div>
               </div>
             ) : (
-              <div className={`relative rounded-2xl border p-7 ${plan.promo ? "border-green-700/50 bg-gradient-to-b from-green-950/30 to-brand-card" : "border-brand-border bg-brand-card"}`}>
+              <div className={`relative rounded-2xl border p-7 ${plan.promo ? "border-blue-900/50 bg-gradient-to-b from-[#0D1F3C]/40 to-brand-card" : "border-brand-border bg-brand-card"}`}>
                 <PlanCard plan={plan} />
               </div>
             )}
@@ -240,7 +243,7 @@ export default function PricingPage() {
             {plan.id === "monthly" ? (
               <Badge variant="default" size="sm">No World Cup</Badge>
             ) : (
-              <Badge variant="warning" size="sm">
+              <Badge variant="accent" size="sm">
                 <Trophy className="w-3 h-3" /> World Cup
               </Badge>
             )}
@@ -304,7 +307,7 @@ function PlanCard({ plan }: { plan: typeof plans[0] }) {
       {/* Badge row */}
       <div className="flex items-center gap-2 mb-3 min-h-[28px]">
         {plan.badge === "WORLD CUP 2026" && (
-          <Badge variant="warning" size="md">
+          <Badge variant="accent" size="md">
             <Trophy className="w-3 h-3" /> WORLD CUP 2026
           </Badge>
         )}
