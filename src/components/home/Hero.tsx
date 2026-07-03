@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Play, ArrowRight, Check, Wifi } from "lucide-react";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import HeroVideoBackdrop from "./HeroVideoBackdrop";
-import HeroBroadcastAnimation from "./HeroBroadcastAnimation";
+import HeroWolfAnimation from "./HeroWolfAnimation";
 
 const trustBadges = ["No Contract", "No Auto-Renewal", "Instant Activation", "4K Ultra HD"];
 
@@ -29,7 +29,7 @@ export default function Hero() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="flex justify-center mb-10"
         >
-          <HeroBroadcastAnimation />
+          <HeroWolfAnimation />
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-20 items-center min-h-[70vh]">
