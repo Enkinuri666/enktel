@@ -9,7 +9,7 @@ import { withFallback } from "@/lib/dataSource";
 export const dynamic = "force-dynamic";
 
 // A representative spread of channels to surface as "Live Channel Highlights".
-const HIGHLIGHT_CHANNEL_IDS = ["sky-sports-main", "sky-cinema-comedy", "bbc-news", "cbbc", "discovery", "mtv"];
+const HIGHLIGHT_CHANNEL_IDS = ["sky-sports-main", "sky-cinema-comedy", "bbc-news", "cbbc", "discoverychannel.us", "mtv.us"];
 
 export async function GET() {
   const { data: vod, source } = await withFallback(

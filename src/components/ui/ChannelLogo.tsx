@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import { clsx } from "clsx";
 
 // Curated gradient pairs — picked deterministically per channel so the
@@ -53,11 +55,41 @@ const sizes = {
 interface ChannelLogoProps {
   name: string;
   id?: string;
+  logoUrl?: string;
   size?: keyof typeof sizes;
   className?: string;
 }
 
-export default function ChannelLogo({ name, id, size = "md", className }: ChannelLogoProps) {
+// Real channel logos come from many different third-party hosts (varying
+// per EPG data update), so a plain <img> is used here rather than
+// next/image, which would require every host pre-registered in
+// next.config.js. Falls back to the generated gradient badge below if
+// there's no logo, or if the real one fails to load.
+export default function ChannelLogo({ name, id, logoUrl, size = "md", className }: ChannelLogoProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (logoUrl && !imageFailed) {
+    return (
+      <div
+        className={clsx(
+          "flex items-center justify-center shrink-0 overflow-hidden bg-white/5 border border-white/10 p-1",
+          sizes[size],
+          className
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt={name}
+          title={name}
+          className="w-full h-full object-contain"
+          onError={() => setImageFailed(true)}
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
   const [from, to] = palettes[hash(id || name) % palettes.length];
   return (
     <div

@@ -53,7 +53,7 @@ export default function WhatsOnWidget() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <ChannelLogo name={item.channel.name} id={item.channel.id} size="sm" />
+                    <ChannelLogo name={item.channel.name} id={item.channel.id} logoUrl={item.channel.logoUrl} size="sm" />
                     <div className="min-w-0">
                       <span className="text-white text-xs font-semibold truncate block">
                         {item.channel.name}
