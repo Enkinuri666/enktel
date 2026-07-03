@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { CHAT_TOOLS, runChatTool } from "@/lib/chatTools";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ You cannot access a specific customer's account, process payments, issue refunds
 
 Keep replies short and conversational (2-4 sentences in most cases) — this is a live chat widget, not an email. Plain text only, no markdown headers or tables.`;
 
-const MODEL = "claude-opus-4-8";
+const MODEL = "gpt-5.5";
 const MAX_TOOL_ITERATIONS = 4;
 
 interface ChatMessageInput {
@@ -26,7 +26,7 @@ interface ChatMessageInput {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
       { error: "The AI assistant isn't configured yet. Please use Live Chat or WhatsApp instead." },
@@ -41,55 +41,57 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing messages" }, { status: 400 });
   }
 
-  const messages: Anthropic.MessageParam[] = (incoming as ChatMessageInput[])
+  const history = (incoming as ChatMessageInput[])
     .slice(-20)
-    .filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m?.content === "string")
-    .map((m) => ({ role: m.role, content: m.content }));
+    .filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m?.content === "string");
 
-  if (messages.length === 0) {
+  if (history.length === 0) {
     return NextResponse.json({ error: "Missing messages" }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new OpenAI({ apiKey });
+
+  let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...history.map((m) => ({ role: m.role, content: m.content } as OpenAI.Chat.Completions.ChatCompletionMessageParam)),
+  ];
 
   try {
-    let loopMessages = messages;
     let finalText = "";
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-      const response = await client.messages.create({
+      const response = await client.chat.completions.create({
         model: MODEL,
-        max_tokens: 2048,
-        system: SYSTEM_PROMPT,
-        thinking: { type: "adaptive" },
+        max_completion_tokens: 2048,
         tools: CHAT_TOOLS,
-        messages: loopMessages,
+        messages,
       });
 
-      const textBlocks = response.content.filter(
-        (b): b is Anthropic.TextBlock => b.type === "text"
-      );
-      finalText = textBlocks.map((b) => b.text).join("\n").trim();
+      const message = response.choices[0]?.message;
+      finalText = message?.content?.trim() || "";
 
-      const toolUses = response.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-      );
+      const toolCalls = message?.tool_calls?.filter((tc) => tc.type === "function") ?? [];
 
-      if (response.stop_reason !== "tool_use" || toolUses.length === 0) {
+      if (toolCalls.length === 0) {
         break;
       }
 
-      loopMessages = [...loopMessages, { role: "assistant", content: response.content }];
+      messages = [...messages, message as OpenAI.Chat.Completions.ChatCompletionMessageParam];
 
-      const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-        toolUses.map(async (tu) => ({
-          type: "tool_result" as const,
-          tool_use_id: tu.id,
-          content: await runChatTool(tu.name, tu.input as Record<string, unknown>),
-        }))
+      const toolResults: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = await Promise.all(
+        toolCalls.map(async (tc) => {
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(tc.function.arguments || "{}");
+          } catch {
+            args = {};
+          }
+          const result = await runChatTool(tc.function.name, args);
+          return { role: "tool", tool_call_id: tc.id, content: result };
+        })
       );
 
-      loopMessages = [...loopMessages, { role: "user", content: toolResults }];
+      messages = [...messages, ...toolResults];
     }
 
     return NextResponse.json({

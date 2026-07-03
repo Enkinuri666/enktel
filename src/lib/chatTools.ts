@@ -1,4 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { OpenAI } from "openai";
 import { channels, channelCategories, CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import { fetchEPGData } from "@/lib/epg";
 import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
@@ -8,68 +8,86 @@ import { getMockUpcomingEvents } from "@/lib/mock-data";
 import { getRealUpcomingEvents } from "@/lib/sportsApi";
 import { withFallback } from "@/lib/dataSource";
 
-// Tool schemas passed to the Claude API (Anthropic Messages API tool-use
+// Tool schemas passed to the OpenAI API (Chat Completions function-calling
 // format). Keep names/descriptions specific — the model leans on the
 // description to decide *when* to call each tool, not just what it returns.
-export const CHAT_TOOLS: Anthropic.Tool[] = [
+export const CHAT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
-    name: "search_channels",
-    description:
-      "Search the Enktel channel lineup by name or category. Use this when the customer asks whether a specific channel is included, or wants a list of channels in a category (e.g. Sports, Croatian & Balkan, Movies).",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Channel name or partial name to search for, e.g. 'HRT' or 'Sky Sports'." },
-        category: { type: "string", enum: channelCategories as unknown as string[], description: "Filter to a specific category. Use 'All' for no filter." },
+    type: "function",
+    function: {
+      name: "search_channels",
+      description:
+        "Search the Enktel channel lineup by name or category. Use this when the customer asks whether a specific channel is included, or wants a list of channels in a category (e.g. Sports, Croatian & Balkan, Movies).",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Channel name or partial name to search for, e.g. 'HRT' or 'Sky Sports'." },
+          category: { type: "string", enum: channelCategories as unknown as string[], description: "Filter to a specific category. Use 'All' for no filter." },
+        },
       },
     },
   },
   {
-    name: "whats_on_channel",
-    description:
-      "Look up what's currently playing (and what's on next) on a specific live TV channel. Use this whenever the customer asks what's on now, what's playing, or for a channel's current programme.",
-    input_schema: {
-      type: "object",
-      properties: {
-        channelName: { type: "string", description: "The channel name, e.g. 'HRT 1', 'Nova TV', 'Sky Sports Main Event'." },
+    type: "function",
+    function: {
+      name: "whats_on_channel",
+      description:
+        "Look up what's currently playing (and what's on next) on a specific live TV channel. Use this whenever the customer asks what's on now, what's playing, or for a channel's current programme.",
+      parameters: {
+        type: "object",
+        properties: {
+          channelName: { type: "string", description: "The channel name, e.g. 'HRT 1', 'Nova TV', 'Sky Sports Main Event'." },
+        },
+        required: ["channelName"],
       },
-      required: ["channelName"],
     },
   },
   {
-    name: "get_pricing_plans",
-    description: "Get the current Enktel IPTV subscription plans, durations, and prices in EUR. Use this for any pricing or plan-length question.",
-    input_schema: { type: "object", properties: {} },
-  },
-  {
-    name: "get_setup_guide",
-    description:
-      "Get step-by-step setup instructions for a specific device (Firestick, Smart TV, MAG box, phone/tablet, PC, or router). Use this whenever the customer asks how to install or configure Enktel on a device.",
-    input_schema: {
-      type: "object",
-      properties: {
-        device: { type: "string", description: "The device name, e.g. 'firestick', 'smart tv', 'iphone', 'android', 'mag box', 'pc', 'router'." },
-      },
-      required: ["device"],
+    type: "function",
+    function: {
+      name: "get_pricing_plans",
+      description: "Get the current Enktel IPTV subscription plans, durations, and prices in EUR. Use this for any pricing or plan-length question.",
+      parameters: { type: "object", properties: {} },
     },
   },
   {
-    name: "search_faqs",
-    description:
-      "Search Enktel's frequently asked questions (billing, refunds, buffering, playlist issues, device limits, etc.). Use this for account policy or troubleshooting questions before answering from general knowledge.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Keywords describing the customer's question." },
+    type: "function",
+    function: {
+      name: "get_setup_guide",
+      description:
+        "Get step-by-step setup instructions for a specific device (Firestick, Smart TV, MAG box, phone/tablet, PC, or router). Use this whenever the customer asks how to install or configure Enktel on a device.",
+      parameters: {
+        type: "object",
+        properties: {
+          device: { type: "string", description: "The device name, e.g. 'firestick', 'smart tv', 'iphone', 'android', 'mag box', 'pc', 'router'." },
+        },
+        required: ["device"],
       },
-      required: ["query"],
     },
   },
   {
-    name: "get_upcoming_events",
-    description:
-      "Get the list of upcoming live sports fixtures and pay-per-view events (football, UFC, F1, etc.) with channel and kickoff time. Use this for 'what's on later' or 'any big matches coming up' style questions.",
-    input_schema: { type: "object", properties: {} },
+    type: "function",
+    function: {
+      name: "search_faqs",
+      description:
+        "Search Enktel's frequently asked questions (billing, refunds, buffering, playlist issues, device limits, etc.). Use this for account policy or troubleshooting questions before answering from general knowledge.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Keywords describing the customer's question." },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_upcoming_events",
+      description:
+        "Get the list of upcoming live sports fixtures and pay-per-view events (football, UFC, F1, etc.) with channel and kickoff time. Use this for 'what's on later' or 'any big matches coming up' style questions.",
+      parameters: { type: "object", properties: {} },
+    },
   },
 ];
 
