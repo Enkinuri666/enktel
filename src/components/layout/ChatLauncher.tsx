@@ -72,6 +72,16 @@ export default function ChatLauncher() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [panel]);
 
+  useEffect(() => {
+    // Lets CTAs on other pages (e.g. the /updates story about the AI
+    // assistant) open the same in-page chat panel instead of duplicating it.
+    function onOpenAiAssistant() {
+      setPanel("ai");
+    }
+    window.addEventListener("enktel:open-ai-assistant", onOpenAiAssistant);
+    return () => window.removeEventListener("enktel:open-ai-assistant", onOpenAiAssistant);
+  }, []);
+
   function openLiveChat() {
     setPanel("closed");
     const tawk = window.Tawk_API;

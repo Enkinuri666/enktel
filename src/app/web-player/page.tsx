@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import MagazineNav from "@/components/magazine/MagazineNav";
+import MagazineCrossLinks from "@/components/magazine/MagazineCrossLinks";
 import WebPlayerHero from "@/components/webplayer/WebPlayerHero";
 import WebPlayerEcosystem from "@/components/webplayer/WebPlayerEcosystem";
 import WebPlayerFeatures from "@/components/webplayer/WebPlayerFeatures";
@@ -15,12 +17,19 @@ export const metadata: Metadata = {
 export default function WebPlayerPage() {
   return (
     <>
+      <MagazineNav
+        active="web-player"
+        kicker="Feature Story"
+        title="The Enktel Web Player is here"
+        description="Live channels and the full program guide, streaming straight in your browser — no app, no extra device, no extra charge."
+      />
       <WebPlayerHero />
       <WebPlayerEcosystem />
       <WebPlayerFeatures />
       <WebPlayerScreenshots />
       <WebPlayerHowTo />
       <WebPlayerCTA />
+      <MagazineCrossLinks active="web-player" />
     </>
   );
 }
