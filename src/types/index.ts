@@ -17,7 +17,9 @@ export type ChannelCategory =
   | "Entertainment"
   | "Kids"
   | "Documentary"
-  | "Music";
+  | "Music"
+  | "USA"
+  | "Australia";
 
 export interface EPGProgram {
   id: string;

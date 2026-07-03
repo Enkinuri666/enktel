@@ -20,7 +20,7 @@ export default function EPGRow({ channel, programs, startTime, endTime, pixelsPe
     <div className="flex h-14 border-b border-brand-border/50">
       {/* Channel name - sticky */}
       <div className="w-40 shrink-0 sticky left-0 z-20 bg-brand-bg border-r border-brand-border flex items-center gap-2 px-3">
-        <ChannelLogo name={channel.name} id={channel.id} size="sm" />
+        <ChannelLogo name={channel.name} id={channel.id} logoUrl={channel.logoUrl} size="sm" />
         <span className="text-white text-xs font-medium line-clamp-2 leading-tight">{channel.name}</span>
       </div>
 

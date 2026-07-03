@@ -7,6 +7,7 @@ import { searchFaqs } from "@/lib/faqs";
 import { getMockUpcomingEvents } from "@/lib/mock-data";
 import { getRealUpcomingEvents } from "@/lib/sportsApi";
 import { withFallback } from "@/lib/dataSource";
+import { PLATFORM_FEATURES } from "@/lib/platformFeatures";
 
 // Tool schemas passed to the OpenAI API (Chat Completions function-calling
 // format). Keep names/descriptions specific — the model leans on the
@@ -55,11 +56,11 @@ export const CHAT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "get_setup_guide",
       description:
-        "Get step-by-step setup instructions for a specific device (Firestick, Smart TV, MAG box, phone/tablet, PC, or router). Use this whenever the customer asks how to install or configure Enktel on a device.",
+        "Get step-by-step setup instructions for a specific device (Firestick, Smart TV, MAG box, phone/tablet, PC, router) or for the Web Player (watch.enktel.tv, works in any browser with no app to install). Use this whenever the customer asks how to install or configure Enktel on a device, or how to watch without downloading a separate IPTV player app.",
       parameters: {
         type: "object",
         properties: {
-          device: { type: "string", description: "The device name, e.g. 'firestick', 'smart tv', 'iphone', 'android', 'mag box', 'pc', 'router'." },
+          device: { type: "string", description: "The device name, e.g. 'firestick', 'smart tv', 'iphone', 'android', 'mag box', 'pc', 'router', or 'web player' / 'browser'." },
         },
         required: ["device"],
       },
@@ -86,6 +87,15 @@ export const CHAT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       name: "get_upcoming_events",
       description:
         "Get the list of upcoming live sports fixtures and pay-per-view events (football, UFC, F1, etc.) with channel and kickoff time. Use this for 'what's on later' or 'any big matches coming up' style questions.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_platform_features",
+      description:
+        "Get the list of Enktel's own website/platform features and where to find them — including the Web Player (watch.enktel.tv, a free browser player that's an alternative to downloading and paying for a separate IPTV player app), Latest Releases, What's New, the Enktel Wire hub, the EPG guide, and the dashboard. Use this whenever the customer asks what Enktel offers beyond live TV, how to watch without a third-party app, or where to find new movies/shows/updates.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -122,6 +132,12 @@ function fuzzyFindDevice(name: string) {
     computer: "pc",
     vlc: "pc",
     router: "router",
+    "web player": "web-player",
+    webplayer: "web-player",
+    browser: "web-player",
+    "watch.enktel.tv": "web-player",
+    "no app": "web-player",
+    "without an app": "web-player",
   };
   for (const [alias, id] of Object.entries(aliases)) {
     if (needle.includes(alias)) return DEVICE_GUIDES.find((d) => d.id === id);
@@ -218,6 +234,10 @@ export async function runChatTool(name: string, input: Record<string, unknown>):
           isPPV: e.isPPV,
         })),
       });
+    }
+
+    case "get_platform_features": {
+      return JSON.stringify({ features: PLATFORM_FEATURES });
     }
 
     default:

@@ -71,7 +71,7 @@ function SearchPageInner() {
                     href={`/epg?channel=${encodeURIComponent(c.id)}`}
                     className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-xl p-3 hover:border-brand-primary/40 transition-colors"
                   >
-                    <ChannelLogo name={c.name} id={c.id} size="sm" />
+                    <ChannelLogo name={c.name} id={c.id} logoUrl={c.logoUrl} size="sm" />
                     <div>
                       <p className="text-white text-sm font-medium">{c.name}</p>
                       <p className="text-brand-muted text-xs">{c.category}</p>

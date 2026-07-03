@@ -14,11 +14,15 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     faqs: [
       {
         q: "What devices does Enktel IPTV support?",
-        a: "Smart TVs (Samsung, LG, Sony), Amazon Firestick, Android/iOS phones and tablets, MAG boxes, and Windows/Mac computers. Any device that supports IPTV players like TiviMate, IPTV Smarters, or VLC works with Enktel.",
+        a: "Smart TVs (Samsung, LG, Sony), Amazon Firestick, Android/iOS phones and tablets, MAG boxes, and Windows/Mac computers. Any device that supports IPTV players like TiviMate, IPTV Smarters, or VLC works with Enktel — or skip installing a player entirely and watch straight in a browser with the free Web Player at watch.enktel.tv.",
+      },
+      {
+        q: "Do I need to download and pay for a separate IPTV player app?",
+        a: "No — the Web Player at watch.enktel.tv is included free with every Enktel subscription and works in any modern browser on a laptop, desktop, or tablet. Just log in with the same details used elsewhere; no app download, install, or extra purchase needed. Third-party apps like TiviMate or IPTV Smarters are still supported if preferred, but they're optional.",
       },
       {
         q: "How do I get set up after subscribing?",
-        a: "You'll receive your M3U playlist URL, EPG URL, username, and password immediately after checkout. Visit our Setup Guides page for step-by-step instructions for your device.",
+        a: "You'll receive your M3U playlist URL, EPG URL, username, and password immediately after checkout. Visit our Setup Guides page for step-by-step instructions for your device, or just log in at watch.enktel.tv to start watching immediately with no setup at all.",
       },
       {
         q: "Can I try before I buy?",

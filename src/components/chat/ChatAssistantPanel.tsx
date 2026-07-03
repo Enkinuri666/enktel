@@ -11,7 +11,7 @@ interface ChatMessage {
 
 const SUGGESTIONS = [
   "What's on HRT 1 right now?",
-  "How do I set up Enktel on Firestick?",
+  "Can I watch without installing an app?",
   "What are your pricing plans?",
   "Any big matches on this week?",
 ];

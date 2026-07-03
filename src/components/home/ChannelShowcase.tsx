@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Trophy, Film, Newspaper, Star, Baby, BookOpen, Music, Globe } from "lucide-react";
+import { Trophy, Film, Newspaper, Star, Baby, BookOpen, Music, Globe, Flag, Compass } from "lucide-react";
 import { channels, CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const categories = [
@@ -13,6 +13,8 @@ const categories = [
   { name: "Kids", icon: Baby, color: "#00D4FF", description: "Safe, fun content for children" },
   { name: "Documentary", icon: BookOpen, color: "#FF4757", description: "Nature, history, science and more" },
   { name: "Music", icon: Music, color: "#6C63FF", description: "Music videos, live concerts, radio" },
+  { name: "USA", icon: Flag, color: "#00D4FF", description: "AMC, BET, Comedy Central, CBS and more" },
+  { name: "Australia", icon: Compass, color: "#FF4757", description: "ABC, Channel 9, Fox Sports AU and more" },
 ];
 
 export default function ChannelShowcase() {
