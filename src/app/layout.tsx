@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -57,27 +56,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ChatLauncher />
         <Analytics />
         <SpeedInsights />
-        <Script id="tawk-to" strategy="afterInteractive">
-          {`
-            var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-            Tawk_API.onLoad = function(){
-              // Enktel's own branded launcher (bottom-right) drives the widget
-              // instead of Tawk's default bubble, so only one chat icon ever
-              // shows on screen.
-              Tawk_API.hideWidget();
-            };
-            Tawk_API.onChatMinimized = function(){ Tawk_API.hideWidget(); };
-            Tawk_API.onChatHidden = function(){ Tawk_API.hideWidget(); };
-            (function(){
-            var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-            s1.async=true;
-            s1.src='https://embed.tawk.to/6a147b54b418e81c3672f7a8/default';
-            s1.charset='UTF-8';
-            s1.setAttribute('crossorigin','*');
-            s0.parentNode.insertBefore(s1,s0);
-            })();
-          `}
-        </Script>
       </body>
     </html>
   );

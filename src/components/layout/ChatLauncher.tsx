@@ -17,17 +17,47 @@ declare global {
       onChatHidden?: () => void;
       onLoad?: () => void;
     };
+    Tawk_LoadStart?: Date;
   }
 }
 
 type PanelState = "closed" | "menu" | "ai";
 
+// Loaded lazily (see loadTawkWidget) rather than on every page load, so
+// Tawk's own floating bubble never gets a chance to render — it used to
+// flash briefly in the same corner as this launcher before its onLoad hook
+// hid it.
+let tawkScriptRequested = false;
+
+function loadTawkWidget(onReady: () => void) {
+  window.Tawk_API = window.Tawk_API || {};
+  window.Tawk_API.onLoad = () => {
+    // Tawk's own launcher bubble is unwanted — this component is the only
+    // chat icon that should ever be visible — so hide it the instant the
+    // widget finishes initializing, then reveal the chat window itself.
+    window.Tawk_API?.hideWidget?.();
+    onReady();
+  };
+  window.Tawk_API.onChatMinimized = () => window.Tawk_API?.hideWidget?.();
+  window.Tawk_API.onChatHidden = () => window.Tawk_API?.hideWidget?.();
+
+  if (tawkScriptRequested) return;
+  tawkScriptRequested = true;
+  window.Tawk_LoadStart = new Date();
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://embed.tawk.to/6a147b54b418e81c3672f7a8/default";
+  script.charset = "UTF-8";
+  script.setAttribute("crossorigin", "*");
+  document.head.appendChild(script);
+}
+
 // A single branded launcher replaces the separate Tawk.to bubble and WhatsApp
 // icon, which used to stack on top of each other in the same corner with no
-// indication of which one to use for what. Tawk's own launcher bubble is
-// hidden (see layout.tsx's onLoad hook) and driven entirely from here, so the
-// live chat panel still opens inline on the page — never a new tab. The AI
-// assistant is a third option in the same menu, rendered in-page as well.
+// indication of which one to use for what. Tawk's script (and its own
+// launcher bubble) now only loads once someone actually picks Live Chat, so
+// the live chat panel still opens inline on the page — never a new tab. The
+// AI assistant is a third option in the same menu, rendered in-page as well.
 export default function ChatLauncher() {
   const [panel, setPanel] = useState<PanelState>("closed");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -48,6 +78,11 @@ export default function ChatLauncher() {
     if (tawk?.showWidget && tawk?.maximize) {
       tawk.showWidget();
       tawk.maximize();
+    } else {
+      loadTawkWidget(() => {
+        window.Tawk_API?.showWidget?.();
+        window.Tawk_API?.maximize?.();
+      });
     }
   }
 
