@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import WebPlayerHero from "@/components/webplayer/WebPlayerHero";
+import WebPlayerEcosystem from "@/components/webplayer/WebPlayerEcosystem";
 import WebPlayerFeatures from "@/components/webplayer/WebPlayerFeatures";
 import WebPlayerScreenshots from "@/components/webplayer/WebPlayerScreenshots";
 import WebPlayerHowTo from "@/components/webplayer/WebPlayerHowTo";
@@ -15,6 +16,7 @@ export default function WebPlayerPage() {
   return (
     <>
       <WebPlayerHero />
+      <WebPlayerEcosystem />
       <WebPlayerFeatures />
       <WebPlayerScreenshots />
       <WebPlayerHowTo />
