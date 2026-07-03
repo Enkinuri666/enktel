@@ -8,6 +8,7 @@ const quickLinks = [
   { href: "/", label: "Home" },
   { href: "/blog", label: "Blog" },
   { href: "/epg", label: "EPG Guide" },
+  { href: "/web-player", label: "Web Player" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },
@@ -33,7 +34,7 @@ const legalLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-brand-card border-t border-brand-border mt-20">
+    <footer className="bg-brand-bg/70 backdrop-blur-2xl border-t border-white/10 shadow-[0_-1px_0_rgba(0,212,255,0.15)] mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer */}
         <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">

@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/blog", label: "Blog" },
   { href: "/whats-new", label: "What's New" },
   { href: "/epg", label: "EPG Guide" },
+  { href: "/web-player", label: "Web Player" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
   { href: "/pricing", label: "Pricing" },
@@ -57,7 +58,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="border-b border-brand-border/50 bg-brand-bg/80 backdrop-blur-xl">
+    <nav className="border-b border-white/10 bg-brand-bg/55 backdrop-blur-2xl shadow-[0_1px_0_rgba(108,99,255,0.35),0_8px_30px_rgba(0,0,0,0.35)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -142,7 +143,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-brand-border/50 bg-brand-bg/95 backdrop-blur-xl">
+        <div className="lg:hidden border-t border-white/10 bg-brand-bg/80 backdrop-blur-2xl">
           <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
             <form
               onSubmit={(e) => { handleSearchSubmit(e); setMobileOpen(false); }}

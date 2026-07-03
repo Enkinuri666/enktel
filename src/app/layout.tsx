@@ -7,7 +7,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import TopTicker from "@/components/layout/TopTicker";
 import Footer from "@/components/layout/Footer";
-import WhatsAppButton from "@/components/layout/WhatsAppButton";
+import ChatLauncher from "@/components/layout/ChatLauncher";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const inter = Inter({
@@ -54,12 +54,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <main className="pt-24 min-h-screen">{children}</main>
         <Footer />
-        <WhatsAppButton />
+        <ChatLauncher />
         <Analytics />
         <SpeedInsights />
         <Script id="tawk-to" strategy="afterInteractive">
           {`
             var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+            Tawk_API.onLoad = function(){
+              // Enktel's own branded launcher (bottom-right) drives the widget
+              // instead of Tawk's default bubble, so only one chat icon ever
+              // shows on screen.
+              Tawk_API.hideWidget();
+            };
+            Tawk_API.onChatMinimized = function(){ Tawk_API.hideWidget(); };
+            Tawk_API.onChatHidden = function(){ Tawk_API.hideWidget(); };
             (function(){
             var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
             s1.async=true;
