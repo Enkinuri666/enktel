@@ -1,0 +1,18 @@
+{
+  "name": "Enktel IPTV",
+  "short_name": "Enktel",
+  "description": "Premium IPTV — live TV, sports, and movies. Stream Beyond Limits.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060910",
+  "theme_color": "#060910",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
