@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   },
   description:
     `Premium IPTV service with ${CHANNEL_COUNT_LABEL} channels, 4K Ultra HD quality, 99.9% uptime, and UK & international content. Stream live TV, sports, movies, and more.`,
+  manifest: "/manifest.json",
   keywords: [
     "IPTV", "live TV", "stream", "channels", "EPG", "4K", "sports", "movies",
     "Sky Sports", "Premier League", "IPTV subscription", "UK IPTV",

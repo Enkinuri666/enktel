@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MonitorPlay, ArrowRight } from "lucide-react";
@@ -30,13 +31,21 @@ export default function WebPlayerCTA() {
             <p className="text-white/85 text-lg mb-8">
               Your web player access is already active — just log in with your existing details and start watching.
             </p>
-            <a href={WEB_PLAYER_URL} target="_blank" rel="noopener noreferrer">
-              <button className="group inline-flex items-center gap-3 bg-white text-brand-primary font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20">
-                <MonitorPlay className="w-4 h-4" />
-                Go to watch.enktel.tv
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </a>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a href={WEB_PLAYER_URL} target="_blank" rel="noopener noreferrer">
+                <button className="group inline-flex items-center gap-3 bg-white text-brand-primary font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20">
+                  <MonitorPlay className="w-4 h-4" />
+                  Go to watch.enktel.tv
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </a>
+              <Link
+                href="/player"
+                className="inline-flex items-center gap-2 text-white font-semibold px-6 py-4 rounded-xl border border-white/30 hover:bg-white/10 transition-colors"
+              >
+                Not a member yet? Try the interactive preview
+              </Link>
+            </div>
           </div>
         </motion.div>
       </div>
