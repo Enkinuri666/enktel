@@ -1,0 +1,199 @@
+package tv.enktel.app.player
+
+import android.content.Context
+import androidx.media3.common.C
+import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.util.EventLogger
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import okhttp3.OkHttpClient
+
+data class TrackChoice(val name: String, val groupIndex: Int, val trackIndex: Int, val selected: Boolean)
+
+data class StreamStats(
+    val width: Int = 0,
+    val height: Int = 0,
+    val frameRate: Float = 0f,
+    val videoCodec: String = "",
+    val audioCodec: String = "",
+    val videoBitrate: Int = 0,
+    val bandwidthEstimate: Long = 0,
+    val droppedFrames: Int = 0,
+    val bufferAheadMs: Long = 0,
+    val decoder: String = "",
+)
+
+/**
+ * Owns a tuned ExoPlayer instance. Buffer profiles trade zap speed vs. resilience;
+ * playback errors trigger bounded auto-retry so flaky IPTV feeds recover on their own.
+ */
+@UnstableApi
+class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) {
+
+    private val bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(context)
+    val trackSelector = DefaultTrackSelector(context)
+
+    val stats = MutableStateFlow(StreamStats())
+    val error = MutableStateFlow<String?>(null)
+    private var dropped = 0
+    private var retries = 0
+    private var lastUrl: String? = null
+
+    val player: ExoPlayer
+
+    init {
+        val (minBuf, maxBuf, playBuf) = when (bufferProfile) {
+            "low" -> Triple(5_000, 20_000, 1_000)
+            "large" -> Triple(30_000, 120_000, 3_500)
+            else -> Triple(15_000, 60_000, 2_000)
+        }
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(minBuf, maxBuf, playBuf, playBuf * 2)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+        val httpFactory = OkHttpDataSource.Factory(http).setUserAgent("EnktelTV/1.0")
+        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
+
+        val renderers = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .setEnableDecoderFallback(true)
+
+        player = ExoPlayer.Builder(context, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setLoadControl(loadControl)
+            .setTrackSelector(trackSelector)
+            .setBandwidthMeter(bandwidthMeter)
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(30_000)
+            .build()
+
+        player.addAnalyticsListener(EventLogger())
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+                dropped += droppedFrames
+                push()
+            }
+
+            override fun onVideoDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime,
+                decoderName: String,
+                initializedTimestampMs: Long,
+                initializationDurationMs: Long,
+            ) {
+                stats.value = stats.value.copy(decoder = decoderName)
+            }
+
+            override fun onVideoInputFormatChanged(
+                eventTime: AnalyticsListener.EventTime,
+                format: Format,
+                decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+            ) {
+                stats.value = stats.value.copy(
+                    width = format.width.coerceAtLeast(0),
+                    height = format.height.coerceAtLeast(0),
+                    frameRate = if (format.frameRate > 0) format.frameRate else stats.value.frameRate,
+                    videoCodec = format.sampleMimeType.orEmpty().substringAfterLast('/'),
+                    videoBitrate = format.bitrate.coerceAtLeast(0),
+                )
+            }
+
+            override fun onAudioInputFormatChanged(
+                eventTime: AnalyticsListener.EventTime,
+                format: Format,
+                decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+            ) {
+                stats.value = stats.value.copy(audioCodec = format.sampleMimeType.orEmpty().substringAfterLast('/'))
+            }
+        })
+
+        player.addListener(object : Player.Listener {
+            override fun onPlayerError(err: PlaybackException) {
+                if (retries < 4 && lastUrl != null) {
+                    retries++
+                    player.seekToDefaultPosition()
+                    player.prepare()
+                    player.play()
+                } else {
+                    error.value = err.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ')
+                }
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) { retries = 0; error.value = null }
+                push()
+            }
+        })
+    }
+
+    fun push() {
+        stats.value = stats.value.copy(
+            bandwidthEstimate = bandwidthMeter.bitrateEstimate,
+            droppedFrames = dropped,
+            bufferAheadMs = (player.totalBufferedDuration).coerceAtLeast(0),
+        )
+    }
+
+    fun play(url: String, live: Boolean, startPositionMs: Long = 0) {
+        lastUrl = url
+        retries = 0
+        dropped = 0
+        error.value = null
+        val item = MediaItem.Builder().setUri(url).apply {
+            if (live) setLiveConfiguration(
+                MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.03f).build()
+            )
+        }.build()
+        player.setMediaItem(item, if (startPositionMs > 0) startPositionMs else C.TIME_UNSET)
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    fun tracksOf(type: Int): List<TrackChoice> {
+        val out = ArrayList<TrackChoice>()
+        player.currentTracks.groups.forEachIndexed { gi, group ->
+            if (group.type != type) return@forEachIndexed
+            for (ti in 0 until group.length) {
+                if (!group.isTrackSupported(ti)) continue
+                val f = group.getTrackFormat(ti)
+                val name = buildString {
+                    val lang = f.language?.takeIf { it.isNotBlank() && it != "und" }
+                    append(f.label ?: lang ?: "Track ${out.size + 1}")
+                    if (type == C.TRACK_TYPE_VIDEO && f.height > 0) append(" · ${f.height}p")
+                    if (type == C.TRACK_TYPE_AUDIO && f.channelCount > 0) append(" · ${f.channelCount}ch")
+                }
+                out += TrackChoice(name, gi, ti, group.isTrackSelected(ti))
+            }
+        }
+        return out
+    }
+
+    fun selectTrack(type: Int, choice: TrackChoice?) {
+        val params = player.trackSelectionParameters.buildUpon()
+        if (choice == null) {
+            params.setTrackTypeDisabled(type, true)
+        } else {
+            val group: Tracks.Group = player.currentTracks.groups[choice.groupIndex]
+            params.setTrackTypeDisabled(type, false)
+            params.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, choice.trackIndex))
+        }
+        player.trackSelectionParameters = params.build()
+    }
+
+    fun release() = player.release()
+}
