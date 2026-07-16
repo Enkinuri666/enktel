@@ -19,11 +19,27 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // Release signing comes from the environment so no credentials live in the repo:
+    //   ENKTEL_KEYSTORE (path), ENKTEL_KEYSTORE_PASS, optional ENKTEL_KEY_ALIAS (default "enktel")
+    val envKeystore = System.getenv("ENKTEL_KEYSTORE")
+    val envKeystorePass = System.getenv("ENKTEL_KEYSTORE_PASS")
+    if (!envKeystore.isNullOrBlank() && !envKeystorePass.isNullOrBlank()) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(envKeystore)
+                storePassword = envKeystorePass
+                keyAlias = System.getenv("ENKTEL_KEY_ALIAS") ?: "enktel"
+                keyPassword = envKeystorePass
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfig
         }
     }
     compileOptions {
