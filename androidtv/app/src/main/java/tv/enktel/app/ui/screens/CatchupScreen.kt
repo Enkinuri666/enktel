@@ -36,6 +36,7 @@ import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.xtream.XtreamClient
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -66,13 +67,14 @@ fun CatchupScreen(graph: AppGraph, nav: NavHostController, channelKey: String) {
             programs!!.isEmpty() -> CenterMessage("No EPG archive data for this channel. Refresh the EPG in Settings.")
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(programs!!, key = { it.id }) { prog ->
+                    val playArchive = {
+                        val mins = (prog.endMs - prog.startMs) / 60000
+                        val url = XtreamClient.timeshiftUrl(p, ch.streamId, prog.startMs, mins)
+                        nav.navigate(vodPlayerRoute(url, "${ch.name} · ${prog.title}"))
+                    }
                     Surface(
-                        onClick = {
-                            val mins = (prog.endMs - prog.startMs) / 60000
-                            val url = XtreamClient.timeshiftUrl(p, ch.streamId, prog.startMs, mins)
-                            nav.navigate(vodPlayerRoute(url, "${ch.name} · ${prog.title}"))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        onClick = playArchive,
+                        modifier = Modifier.fillMaxWidth().tapClick(playArchive),
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = EnktelSurfaceHigh.copy(0.5f),

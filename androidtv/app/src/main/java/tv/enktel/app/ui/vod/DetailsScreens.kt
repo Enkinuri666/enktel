@@ -52,6 +52,7 @@ import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.KeyValue
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -188,13 +189,14 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(seasons[season].orEmpty(), key = { it.id }) { ep ->
+                val playEpisode = {
+                    val url = XtreamClient.episodeUrl(p, ep.id, ep.ext)
+                    val pk = "${p.id}:episode:${ep.id}"
+                    nav.navigate(vodPlayerRoute(url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk))
+                }
                 androidx.tv.material3.Surface(
-                    onClick = {
-                        val url = XtreamClient.episodeUrl(p, ep.id, ep.ext)
-                        val pk = "${p.id}:episode:${ep.id}"
-                        nav.navigate(vodPlayerRoute(url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = playEpisode,
+                    modifier = Modifier.fillMaxWidth().tapClick(playEpisode),
                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = EnktelSurfaceHigh.copy(0.5f),
                         focusedContainerColor = tv.enktel.app.ui.theme.EnktelBlue,

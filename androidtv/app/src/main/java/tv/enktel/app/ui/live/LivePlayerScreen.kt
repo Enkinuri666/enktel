@@ -66,9 +66,12 @@ import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.player.StreamStats
 import tv.enktel.app.player.TrackChoice
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -203,6 +206,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             .background(Color.Black)
             .focusRequester(rootFocus)
             .focusable()
+            // Touchscreen support: tap shows the info bar, long-press opens the channel list.
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { showInfo = true; infoTick++ },
+                    onLongPress = { showChannels = true },
+                )
+            }
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown || anyOverlay) return@onPreviewKeyEvent false
                 when (ev.key.nativeKeyCode) {
@@ -489,13 +499,13 @@ private fun ChannelPanel(
 private fun PanelRow(text: String, selected: Boolean, onClick: () -> Unit) {
     androidx.tv.material3.Surface(
         onClick = onClick,
+        modifier = Modifier.fillMaxWidth().tapClick(onClick),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue.copy(0.25f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,
             focusedContentColor = Color.White,
             contentColor = if (selected) Color.White else EnktelTextDim,
         ),
-        modifier = Modifier.fillMaxWidth(),
     ) {
         Text(text, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp))
     }
@@ -515,7 +525,7 @@ private fun ChannelRow(ch: Channel, active: Boolean, graph: AppGraph, profileId:
             focusedContentColor = Color.White,
             contentColor = Color.White,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().tapClick(onClick),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 7.dp),

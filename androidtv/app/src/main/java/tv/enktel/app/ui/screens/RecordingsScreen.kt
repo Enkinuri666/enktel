@@ -36,6 +36,7 @@ import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -86,7 +87,7 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
 private fun RecordingRow(rec: Recording, onPlay: () -> Unit, onStopOrCancel: () -> Unit, onDelete: () -> Unit) {
     Surface(
         onClick = onPlay,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().tapClick(onPlay),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurfaceHigh.copy(0.5f),

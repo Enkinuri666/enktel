@@ -54,10 +54,20 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.ClickableSurfaceDefaults
 import coil.compose.AsyncImage
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+
+/**
+ * TV-material surfaces only react to DPAD select; on touchscreens (phones, tablets,
+ * touch-enabled boxes) taps land nowhere. Attach this alongside Surface(onClick) so
+ * both input methods work.
+ */
+fun Modifier.tapClick(onClick: () -> Unit): Modifier =
+    pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
 
 @Composable
 fun FocusButton(
@@ -68,7 +78,7 @@ fun FocusButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.tapClick(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (accent) EnktelBlue.copy(alpha = 0.25f) else EnktelSurfaceHigh,
@@ -149,7 +159,7 @@ fun PosterCard(
     val h = if (wide) 135.dp else 190.dp
     Surface(
         onClick = onClick,
-        modifier = modifier.width(w),
+        modifier = modifier.width(w).tapClick(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
