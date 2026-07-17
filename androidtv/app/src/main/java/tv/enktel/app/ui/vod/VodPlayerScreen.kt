@@ -27,8 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -148,6 +150,10 @@ fun VodPlayerScreen(
             .background(Color.Black)
             .focusRequester(rootFocus)
             .focusable()
+            // Touchscreen support: tap toggles the control bar.
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { showControls = true; controlsTick++ })
+            }
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown || trackMenu.isNotEmpty() || showControls) return@onPreviewKeyEvent false
                 when (ev.key.nativeKeyCode) {

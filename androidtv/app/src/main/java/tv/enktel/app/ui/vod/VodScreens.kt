@@ -38,6 +38,7 @@ import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelTextDim
 
@@ -68,7 +69,7 @@ private fun CategorySidebar(
 private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().tapClick(onClick),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue.copy(0.22f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,

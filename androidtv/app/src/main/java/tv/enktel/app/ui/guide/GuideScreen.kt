@@ -51,6 +51,7 @@ import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -146,7 +147,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().height(56.dp).padding(vertical = 2.dp)) {
                     Surface(
                         onClick = { nav.navigate("live?ch=${ch.key}") },
-                        modifier = Modifier.width(210.dp).fillMaxSize(),
+                        modifier = Modifier.width(210.dp).fillMaxSize().tapClick { nav.navigate("live?ch=${ch.key}") },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = EnktelSurface,
@@ -188,7 +189,8 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 val isNow = prog.startMs <= now && prog.endMs > now
                                 Surface(
                                     onClick = { selected = ch to prog },
-                                    modifier = Modifier.width(w - 2.dp).fillMaxSize().padding(end = 2.dp),
+                                    modifier = Modifier.width(w - 2.dp).fillMaxSize().padding(end = 2.dp)
+                                        .tapClick { selected = ch to prog },
                                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                                     colors = ClickableSurfaceDefaults.colors(
                                         containerColor = if (isNow) EnktelBlue.copy(0.28f) else EnktelSurfaceHigh,
