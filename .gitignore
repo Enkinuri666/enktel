@@ -34,3 +34,13 @@ androidtv/app/build/
 androidtv/local.properties
 androidtv/.idea/
 *.apk
+*.aab
+
+# Signing secrets - never commit real keystores or credentials
+*.jks
+*.keystore
+key.properties
+enktel-release.jks
+
+# Gradle wrapper distribution cache (wrapper jar/properties/scripts ARE committed)
+androidtv/.gradle/wrapper/dists/
