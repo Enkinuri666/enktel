@@ -136,7 +136,10 @@ if (canSign) {
             storePassword = envKeystorePass
             keyAlias = envKeyAlias
             keyPassword = envKeyPass
-            enableV1Signing = false
+            // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
+            // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
+            // v1 MUST stay enabled or the APK is uninstallable on those devices.
+            enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
         }
@@ -157,6 +160,16 @@ buildTypes {
 ```
 
 ---
+
+## 4.1 Lint errors that blocked the first real release build
+
+Running the workflow for the first time surfaced 10 genuine `lintRelease` errors that fail the build (the CI lint step is intentionally strict — this is by design, not a regression). All are now fixed on `androidtv/`:
+
+1. **`ContentRepository.kt` (2 errors)** — `HashMap#putIfAbsent` requires API 24, but `minSdk = 21`. Replaced with an API-21-safe `if (!groups.containsKey(k)) groups[k] = v` pattern.
+2. **`MainActivity.kt` (2 errors)** — `LivePlayerScreen`/`VodPlayerScreen` are annotated `@UnstableApi` (Media3), and the call sites in `MainActivity.onCreate` weren't opted in. Added `@OptIn(UnstableApi::class)` on `onCreate`.
+3. **`CatchupScreen.kt` / `DetailsScreens.kt` (6 errors)** — `ProduceStateDoesNotAssignValue` false-positives: the lint detector doesn't recognize the `produceState(initialValue, key1, key2, ...)` vararg-keys overload even though every producer lambda does assign `value` correctly. This is a [documented lint limitation](https://googlesamples.github.io/android-custom-lint-rules/checks/ProduceStateDoesNotAssignValue.md.html) with an official suppression path. Added `@Suppress("ProduceStateDoesNotAssignValue")` on the four affected composables (`CatchupScreen`, `MovieDetailsScreen`, `SeriesDetailsScreen`).
+
+**A signing regression caught during verification:** the first working build passed lint and produced a release APK, but `apksigner verify` failed with "Missing META-INF/MANIFEST.MF" — because `enableV1Signing = false` (recommended in the original signing-fix draft) disables JAR signing entirely. Devices on API 21–23 (Android 5.0/5.1/6.0, including some Fire TV Stick 2nd-gen units on Fire OS 5) can **only** verify v1 signatures — v2 verification requires API 24+. With `minSdk = 21`, v1 must stay enabled or the APK is uninstallable on those devices. Fixed by setting `enableV1Signing = true` alongside v2/v3 (§4's snippet above reflects the corrected version). Verified locally: `apksigner verify` now reports v1, v2, and v3 all `true`.
 
 ## 5. Dependency & Fire TV / Xtream audit
 

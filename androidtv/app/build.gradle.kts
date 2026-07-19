@@ -38,7 +38,10 @@ android {
                 storePassword = envKeystorePass
                 keyAlias = envKeyAlias
                 keyPassword = envKeyPass
-                enableV1Signing = false
+                // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
+                // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
+                // v1 MUST stay enabled or the APK is uninstallable on those devices.
+                enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
             }
