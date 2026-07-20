@@ -66,7 +66,7 @@ class MatchReminderWorker(context: Context, params: WorkerParameters) : Coroutin
             it.dropLast(1).joinToString(":") to it.last()
         }
         val notif = NotificationCompat.Builder(applicationContext, EnktelApp.DVR_CHANNEL)
-            .setSmallIcon(R.drawable.tv_banner)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Sports starting soon")
             .setContentText("Tap to open the channel")
             .setAutoCancel(true)

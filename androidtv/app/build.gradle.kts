@@ -14,9 +14,26 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.2.0"
+        versionCode = 7
+        versionName = "1.3.0"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // Two product flavors so users can install the mobile and TV builds side-by-side.
+    // Shared code lives in src/main; each flavor supplies its own manifest + branding.
+    flavorDimensions += "form"
+    productFlavors {
+        create("tv") {
+            dimension = "form"
+            // No applicationIdSuffix: TV keeps the original package for OTA continuity.
+            resValue("string", "app_name_flavor", "EnkTel IPTV")
+        }
+        create("mobile") {
+            dimension = "form"
+            applicationIdSuffix = ".mobile"
+            versionNameSuffix = "-mobile"
+            resValue("string", "app_name_flavor", "EnkTel IPTV Mobile")
+        }
     }
 
     // Release signing comes from the environment so no credentials live in the repo:
@@ -71,7 +88,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true // used to switch TV vs mobile navigation shells at runtime
+    }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
