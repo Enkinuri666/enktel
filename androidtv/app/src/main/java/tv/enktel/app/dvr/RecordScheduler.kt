@@ -1,6 +1,7 @@
 package tv.enktel.app.dvr
 
 import android.content.Context
+import android.os.StatFs
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
@@ -8,12 +9,21 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import tv.enktel.app.data.db.Recording
 import tv.enktel.app.EnktelApp
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object RecordScheduler {
 
     /** Start recording right now; endMs of 0 = record until manually stopped. */
-    suspend fun recordNow(context: Context, profileId: Long, title: String, channelName: String, streamUrl: String, durationMinutes: Long = 0): Long {
+    suspend fun recordNow(
+        context: Context,
+        profileId: Long,
+        title: String,
+        channelName: String,
+        streamUrl: String,
+        durationMinutes: Long = 0,
+        channelLogo: String = "",
+    ): Long {
         val app = context.applicationContext as EnktelApp
         val now = System.currentTimeMillis()
         val id = app.graph.db.recordingDao().insert(
@@ -22,6 +32,7 @@ object RecordScheduler {
                 streamUrl = streamUrl, status = "RECORDING",
                 startMs = now,
                 endMs = if (durationMinutes > 0) now + TimeUnit.MINUTES.toMillis(durationMinutes) else 0,
+                channelLogo = channelLogo,
             )
         )
         RecordingService.start(context, id)
@@ -29,12 +40,22 @@ object RecordScheduler {
     }
 
     /** Schedule a future recording (from the TV guide). */
-    suspend fun schedule(context: Context, profileId: Long, title: String, channelName: String, streamUrl: String, startMs: Long, endMs: Long): Long {
+    suspend fun schedule(
+        context: Context,
+        profileId: Long,
+        title: String,
+        channelName: String,
+        streamUrl: String,
+        startMs: Long,
+        endMs: Long,
+        channelLogo: String = "",
+    ): Long {
         val app = context.applicationContext as EnktelApp
         val id = app.graph.db.recordingDao().insert(
             Recording(
                 profileId = profileId, title = title, channelName = channelName,
                 streamUrl = streamUrl, status = "SCHEDULED", startMs = startMs, endMs = endMs,
+                channelLogo = channelLogo,
             )
         )
         val delay = (startMs - System.currentTimeMillis()).coerceAtLeast(0)
@@ -44,6 +65,12 @@ object RecordScheduler {
             .build()
         WorkManager.getInstance(context).enqueue(work)
         return id
+    }
+
+    /** Bytes free on the volume backing the recordings directory. */
+    fun freeStorageBytes(context: Context): Long {
+        val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "recordings").apply { mkdirs() }
+        return StatFs(dir.path).availableBytes
     }
 
     suspend fun cancel(context: Context, recordingId: Long) {
