@@ -104,6 +104,43 @@ interface UserDao {
 }
 
 @Dao
+interface WatchlistDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun add(w: WatchlistItem)
+    @Query("DELETE FROM watchlist WHERE key = :key") suspend fun remove(key: String)
+    @Query("SELECT EXISTS(SELECT 1 FROM watchlist WHERE key = :key)") suspend fun isSaved(key: String): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM watchlist WHERE key = :key)") fun isSavedFlow(key: String): Flow<Boolean>
+    @Query("SELECT * FROM watchlist WHERE profileId = :profileId ORDER BY addedAt DESC") fun all(profileId: Long): Flow<List<WatchlistItem>>
+    @Query("SELECT * FROM watchlist WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") fun ofKind(profileId: Long, kind: String): Flow<List<WatchlistItem>>
+}
+
+@Dao
+interface SearchDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun push(item: SearchHistoryItem)
+    @Query("SELECT * FROM search_history ORDER BY usedAt DESC LIMIT :n") fun recent(n: Int = 20): Flow<List<SearchHistoryItem>>
+    @Query("DELETE FROM search_history WHERE query = :query") suspend fun forget(query: String)
+    @Query("DELETE FROM search_history") suspend fun clear()
+
+    @Query("SELECT * FROM movies WHERE profileId = :profileId AND (name LIKE '%' || :q || '%' OR `cast` LIKE '%' || :q || '%' OR director LIKE '%' || :q || '%' OR genre LIKE '%' || :q || '%') ORDER BY name LIMIT 60")
+    suspend fun searchMoviesDeep(profileId: Long, q: String): List<Movie>
+
+    @Query("SELECT * FROM series WHERE profileId = :profileId AND (name LIKE '%' || :q || '%' OR `cast` LIKE '%' || :q || '%' OR director LIKE '%' || :q || '%' OR genre LIKE '%' || :q || '%' OR plot LIKE '%' || :q || '%') ORDER BY name LIMIT 60")
+    suspend fun searchSeriesDeep(profileId: Long, q: String): List<Series>
+}
+
+@Dao
+interface SportsDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun follow(team: FollowedTeam)
+    @Query("DELETE FROM followed_teams WHERE name = :name") suspend fun unfollow(name: String)
+    @Query("SELECT * FROM followed_teams ORDER BY displayName") fun followed(): Flow<List<FollowedTeam>>
+    @Query("SELECT * FROM followed_teams") suspend fun followedNow(): List<FollowedTeam>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun addReminder(r: MatchReminder)
+    @Query("DELETE FROM match_reminders WHERE key = :key") suspend fun cancelReminder(key: String)
+    @Query("SELECT EXISTS(SELECT 1 FROM match_reminders WHERE key = :key)") suspend fun hasReminder(key: String): Boolean
+    @Query("SELECT * FROM match_reminders WHERE startMs > :now ORDER BY startMs") fun upcomingReminders(now: Long): Flow<List<MatchReminder>>
+}
+
+@Dao
 interface RecordingDao {
     @Insert suspend fun insert(r: Recording): Long
     @Update suspend fun update(r: Recording)

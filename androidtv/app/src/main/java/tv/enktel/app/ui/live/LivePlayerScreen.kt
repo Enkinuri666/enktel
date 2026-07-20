@@ -443,6 +443,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     nav.navigate("catchup/${current!!.key}")
                 },
                 onGuide = { showQuickMenu = false; nav.navigate("guide") },
+                onPip = {
+                    showQuickMenu = false
+                    val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
+                    if (!ok) toaster.info("Picture-in-Picture not supported here")
+                },
+                onMultiView = {
+                    showQuickMenu = false
+                    nav.navigate("multi?left=${current?.key.orEmpty()}&right=")
+                },
                 onClose = { showQuickMenu = false },
             )
         }
@@ -687,6 +696,8 @@ private fun QuickMenu(
     onRecord: () -> Unit,
     onCatchup: () -> Unit,
     onGuide: () -> Unit,
+    onPip: () -> Unit,
+    onMultiView: () -> Unit,
     onClose: () -> Unit,
 ) {
     val sleepLabel = if (sleepUntil <= 0) "Sleep timer: off"
@@ -718,6 +729,8 @@ private fun QuickMenu(
             FocusButton("Subtitles", onClick = onSubs, modifier = Modifier.fillMaxWidth())
             FocusButton("Aspect ratio", onClick = onAspect, modifier = Modifier.fillMaxWidth())
             FocusButton(if (showStats) "Hide stream stats" else "Stream stats", onClick = onStats, modifier = Modifier.fillMaxWidth())
+            FocusButton("⧉ Picture-in-Picture", onClick = onPip, modifier = Modifier.fillMaxWidth())
+            FocusButton("▤▤ Multi-view", onClick = onMultiView, modifier = Modifier.fillMaxWidth())
             FocusButton("TV Guide", onClick = onGuide, modifier = Modifier.fillMaxWidth())
             FocusButton("Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
         }

@@ -85,6 +85,14 @@ fun VodPlayerScreen(
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     val engine = remember { PlayerEngine(context, graph.http, bufferProfile) }
     val playError by engine.error.collectAsStateWithLifecycle()
+    val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
+    val loudnessOn by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
+    val autoplayNextEp by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
+    val skipIntroSec by graph.settings.skipIntroSec.collectAsStateWithLifecycle(initialValue = 0)
+    val subScalePct by graph.settings.subScalePct.collectAsStateWithLifecycle(initialValue = 100)
+    val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
+    val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
+    val subBgAlpha by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
 
     var showControls by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
@@ -97,8 +105,12 @@ fun VodPlayerScreen(
 
     LaunchedEffect(url) {
         val resume = if (progressKey.isNotBlank()) graph.content.progress(progressKey)?.positionMs ?: 0L else 0L
-        engine.play(url, live = isLive, startPositionMs = if (!isLive) resume else 0)
+        // If the user has set an intro-skip length, honour it on the first play (not on resumes).
+        val start = if (!isLive && resume <= 0 && skipIntroSec > 0) skipIntroSec * 1000L else resume
+        engine.play(url, live = isLive, startPositionMs = if (!isLive) start else 0, externalSubUrl = extSubUrl)
+        engine.setLoudnessOn(loudnessOn)
     }
+    LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
     DisposableEffect(Unit) { onDispose { engine.release() } }
 
     // Position ticker + periodic progress persistence
@@ -192,6 +204,9 @@ fun VodPlayerScreen(
             update = { view ->
                 view.player = engine.player
                 view.resizeMode = resizeMode
+                view.subtitleView?.let { sv ->
+                    tv.enktel.app.player.Subtitles.apply(sv, subScalePct, subColor, subEdge, subBgAlpha)
+                }
             },
             modifier = Modifier.fillMaxSize(),
         )

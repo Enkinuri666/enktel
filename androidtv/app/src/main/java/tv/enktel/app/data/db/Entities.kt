@@ -66,6 +66,8 @@ data class Movie(
     val url: String = "",
     val genre: String = "",
     val year: Int = 0,
+    val cast: String = "",
+    val director: String = "",
 )
 
 @Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId")])
@@ -81,6 +83,48 @@ data class Series(
     val plot: String = "",
     val genre: String = "",
     val year: Int = 0,
+    val cast: String = "",
+    val director: String = "",
+)
+
+@Entity(tableName = "watchlist")
+data class WatchlistItem(
+    /** "$profileId:$kind:$refId" */
+    @PrimaryKey val key: String,
+    val profileId: Long,
+    /** "vod" | "series" */
+    val kind: String,
+    val refId: Long,
+    val name: String,
+    val poster: String = "",
+    val addedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "search_history")
+data class SearchHistoryItem(
+    @PrimaryKey val query: String,
+    val usedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "followed_teams")
+data class FollowedTeam(
+    /** lowercased team name (or league) */
+    @PrimaryKey val name: String,
+    val displayName: String,
+    val kind: String = "team", // team | league
+    val addedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "match_reminders")
+data class MatchReminder(
+    /** "$channelKey:$startMs" */
+    @PrimaryKey val key: String,
+    val channelKey: String,
+    val channelName: String,
+    val title: String,
+    val startMs: Long,
+    val endMs: Long,
+    val scheduledAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "epg", indices = [Index("profileId", "epgId", "startMs")])

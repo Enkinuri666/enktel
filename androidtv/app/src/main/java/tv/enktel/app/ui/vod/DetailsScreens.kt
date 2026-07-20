@@ -115,6 +115,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                         })
                     }
                     FavButton(graph, p.id, "vod", m.streamId)
+                    WatchlistButton(graph, p.id, "vod", m.streamId, m.name, m.poster)
                 }
                 Spacer(Modifier.height(18.dp))
                 if (details?.plot?.isNotBlank() == true) {
@@ -129,6 +130,15 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             }
         }
     }
+}
+
+@Composable
+fun WatchlistButton(graph: AppGraph, profileId: Long, kind: String, refId: Long, name: String, poster: String) {
+    val saved by graph.watchlist.isSavedFlow(profileId, kind, refId).collectAsStateWithLifecycle(initialValue = false)
+    val scope = rememberCoroutineScope()
+    FocusButton(if (saved) "✓ In Watchlist" else "＋ Watchlist", onClick = {
+        scope.launch { graph.watchlist.toggle(profileId, kind, refId, name, poster) }
+    })
 }
 
 @Composable
@@ -177,7 +187,10 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     Text(plot, color = Color.White.copy(0.85f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.height(8.dp))
-                FavButton(graph, p.id, "series", s.seriesId)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FavButton(graph, p.id, "series", s.seriesId)
+                    WatchlistButton(graph, p.id, "series", s.seriesId, s.name, s.poster)
+                }
             }
         }
         Spacer(Modifier.height(20.dp))
