@@ -51,6 +51,12 @@ class SettingsStore(private val context: Context) {
     private val SCORES_ENABLED = booleanPreferencesKey("scores_enabled")
     private val HIDDEN_ITEMS = stringSetPreferencesKey("hidden_items")
 
+    // v1.4.0 additions
+    private val THEME = stringPreferencesKey("theme")
+    private val UI_OPACITY_PCT = intPreferencesKey("ui_opacity_pct") // 60-100
+    private val TEXT_SCALE_PCT = intPreferencesKey("text_scale_pct") // 85-140
+    private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+
     val activeProfileId: Flow<Long> = context.dataStore.data.map { it[ACTIVE_PROFILE] ?: 0L }
     val streamFormat: Flow<String> = context.dataStore.data.map { it[STREAM_FORMAT] ?: "hls" }
     val bufferProfile: Flow<String> = context.dataStore.data.map { it[BUFFER_PROFILE] ?: "balanced" }
@@ -84,6 +90,11 @@ class SettingsStore(private val context: Context) {
     val firstRunDone: Flow<Boolean> = context.dataStore.data.map { it[FIRST_RUN_DONE] ?: false }
     val scoresEnabled: Flow<Boolean> = context.dataStore.data.map { it[SCORES_ENABLED] ?: false }
     val hiddenItems: Flow<Set<String>> = context.dataStore.data.map { it[HIDDEN_ITEMS] ?: emptySet() }
+
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "enktel_blue" }
+    val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
+    val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
+    val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
 
     suspend fun activeProfileIdNow(): Long = activeProfileId.first()
     suspend fun setActiveProfile(id: Long) = context.dataStore.edit { it[ACTIVE_PROFILE] = id }
@@ -123,4 +134,10 @@ class SettingsStore(private val context: Context) {
     suspend fun setFirstRunDone(v: Boolean) = context.dataStore.edit { it[FIRST_RUN_DONE] = v }
     suspend fun setScoresEnabled(v: Boolean) = context.dataStore.edit { it[SCORES_ENABLED] = v }
     suspend fun setHiddenItems(set: Set<String>) = context.dataStore.edit { it[HIDDEN_ITEMS] = set }
+
+    suspend fun setTheme(v: String) = context.dataStore.edit { it[THEME] = v }
+    suspend fun setUiOpacityPct(v: Int) = context.dataStore.edit { it[UI_OPACITY_PCT] = v.coerceIn(60, 100) }
+    suspend fun setTextScalePct(v: Int) = context.dataStore.edit { it[TEXT_SCALE_PCT] = v.coerceIn(85, 140) }
+    suspend fun setStartOnBoot(v: Boolean) = context.dataStore.edit { it[START_ON_BOOT] = v }
+    suspend fun startOnBootNow(): Boolean = startOnBoot.first()
 }

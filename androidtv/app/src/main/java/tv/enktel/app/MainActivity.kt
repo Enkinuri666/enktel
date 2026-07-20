@@ -61,7 +61,14 @@ class MainActivity : ComponentActivity() {
         val graph = (application as EnktelApp).graph
 
         setContent {
-            EnktelTheme {
+            val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
+            val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
+            val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
+            EnktelTheme(
+                themeId = themeId,
+                overlayOpacity = opacityPct / 100f,
+                textScalePct = textPct,
+            ) {
                 ToastHost {
                     ScreensaverHost(graph, isPlaying = { false }) {
                         MainNav(graph, initialChannelKey = intent?.getStringExtra("channel_key"))

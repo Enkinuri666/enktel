@@ -33,13 +33,15 @@ import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 
+enum class ToastLevel { INFO, SUCCESS, ERROR }
+
 class Toaster {
-    var message by mutableStateOf<Pair<String, Color>?>(null)
+    var message by mutableStateOf<Pair<String, ToastLevel>?>(null)
         private set
 
-    fun info(text: String) { message = text to EnktelBlue }
-    fun success(text: String) { message = text to EnktelOk }
-    fun error(text: String) { message = text to EnktelLive }
+    fun info(text: String) { message = text to ToastLevel.INFO }
+    fun success(text: String) { message = text to ToastLevel.SUCCESS }
+    fun error(text: String) { message = text to ToastLevel.ERROR }
     fun clear() { message = null }
 }
 
@@ -59,6 +61,11 @@ fun ToastHost(content: @Composable () -> Unit) {
             ) {
                 val msg = toaster.message
                 if (msg != null) {
+                    val dot = when (msg.second) {
+                        ToastLevel.SUCCESS -> EnktelOk
+                        ToastLevel.ERROR -> EnktelLive
+                        ToastLevel.INFO -> EnktelBlue
+                    }
                     Row(
                         Modifier
                             .background(Color.Black.copy(0.85f), RoundedCornerShape(24.dp))
@@ -66,7 +73,7 @@ fun ToastHost(content: @Composable () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.background(msg.second, RoundedCornerShape(50)).padding(6.dp))
+                        Box(Modifier.background(dot, RoundedCornerShape(50)).padding(6.dp))
                         Text(msg.first, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
