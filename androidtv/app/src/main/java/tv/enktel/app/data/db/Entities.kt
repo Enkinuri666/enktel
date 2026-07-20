@@ -131,4 +131,5 @@ data class Recording(
     val startMs: Long,
     val endMs: Long,
     val sizeBytes: Long = 0,
+    val channelLogo: String = "",
 )

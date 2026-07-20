@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase
         Profile::class, Channel::class, Category::class, Movie::class, Series::class,
         EpgProgram::class, Favorite::class, WatchProgress::class, Recording::class,
     ],
-    version = 1,
+    version = 2, // recordings.channelLogo added for the DVR manager redesign
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
