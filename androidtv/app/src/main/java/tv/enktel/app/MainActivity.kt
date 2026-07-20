@@ -44,12 +44,22 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EnktelTheme {
-                val nav = rememberNavController()
-                val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = -1L)
-                val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = null)
+                tv.enktel.app.ui.components.ToastHost {
+                MainNav(graph)
+                }
+            }
+        }
+    }
+}
 
-                if (profiles == null || activeId < 0) return@EnktelTheme
-                val start = if (profiles!!.isEmpty()) "onboarding" else "home"
+@androidx.compose.runtime.Composable
+private fun MainNav(graph: AppGraph) {
+    val nav = rememberNavController()
+    val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = -1L)
+    val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = null)
+
+    if (profiles == null || activeId < 0) return
+    val start = if (profiles!!.isEmpty()) "onboarding" else "home"
 
                 NavHost(
                     navController = nav,
@@ -88,9 +98,6 @@ class MainActivity : ComponentActivity() {
                         CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
                     }
                 }
-            }
-        }
-    }
 }
 
 fun vodPlayerRoute(url: String, title: String, progressKey: String = "", live: Boolean = false): String =

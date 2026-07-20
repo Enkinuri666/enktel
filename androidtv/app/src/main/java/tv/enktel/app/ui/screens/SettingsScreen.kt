@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -98,6 +99,74 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("Max stability", accent = bufferProfile == "large", onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
         }
         Text("Buffer changes apply the next time a player opens.", color = EnktelTextDim, fontSize = 11.sp)
+
+        Spacer(Modifier.height(10.dp))
+        Text("DVR RECORDING PADDING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val recPrefix by graph.settings.recPrefixMin.collectAsStateWithLifecycle(initialValue = 2)
+        val recSuffix by graph.settings.recSuffixMin.collectAsStateWithLifecycle(initialValue = 5)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton("Start ${recPrefix}m early", onClick = {
+                scope.launch { graph.settings.setRecPrefixMin(when (recPrefix) { 0 -> 2; 2 -> 5; 5 -> 10; else -> 0 }) }
+            })
+            FocusButton("End ${recSuffix}m late", onClick = {
+                scope.launch { graph.settings.setRecSuffixMin(when (recSuffix) { 0 -> 5; 5 -> 10; 10 -> 15; else -> 0 }) }
+            })
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
+        val lockedCats by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
+        var newPin by remember { mutableStateOf("") }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Box(Modifier.width(180.dp)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    newPin, { newPin = it.filter(Char::isDigit).take(8) },
+                    if (pinHash.isBlank()) "Set PIN (digits)" else "Change PIN", password = true,
+                )
+            }
+            FocusButton("Save PIN", onClick = {
+                if (newPin.length >= 4) scope.launch {
+                    graph.settings.setParentalPin(tv.enktel.app.util.Pin.hash(newPin))
+                    newPin = ""
+                    status = "Parental PIN saved"
+                } else status = "PIN must be at least 4 digits"
+            })
+            if (pinHash.isNotBlank()) {
+                FocusButton("Remove PIN", onClick = {
+                    scope.launch {
+                        graph.settings.setParentalPin("")
+                        graph.settings.setLockedCategories(emptySet())
+                        status = "Parental controls disabled"
+                    }
+                })
+            }
+        }
+        if (pinHash.isNotBlank()) {
+            Text("Tap a category to lock/unlock it (🔒 = PIN required):", color = EnktelTextDim, fontSize = 11.sp)
+            val liveCats by graph.content.categories(activeId, "live").collectAsStateWithLifecycle(initialValue = emptyList())
+            val vodCats by graph.content.categories(activeId, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
+            val seriesCats by graph.content.categories(activeId, "series").collectAsStateWithLifecycle(initialValue = emptyList())
+            (liveCats + vodCats + seriesCats).chunked(3).forEach { rowCats ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowCats.forEach { cat ->
+                        val lockKey = "${cat.kind}:${cat.categoryId}"
+                        val locked = lockKey in lockedCats
+                        FocusButton(
+                            (if (locked) "🔒 " else "") + "[${cat.kind}] ${cat.name}",
+                            accent = locked,
+                            onClick = {
+                                scope.launch {
+                                    graph.settings.setLockedCategories(
+                                        if (locked) lockedCats - lockKey else lockedCats + lockKey
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(Modifier.height(10.dp))
         Text("ABOUT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)

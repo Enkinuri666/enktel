@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -42,11 +43,53 @@ import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelTextDim
 
+/** Shared PIN gate for locked VOD/series categories. */
+class ParentalGateState {
+    var isLockedImpl: (String) -> Boolean = { false }
+    var pinHash: String = ""
+    var prompting by androidx.compose.runtime.mutableStateOf(false)
+    val isLocked: (String) -> Boolean get() = isLockedImpl
+    val prompt: (String) -> Unit = { prompting = true }
+
+    @Composable
+    fun Dialog() {
+        if (!prompting) return
+        val toaster = tv.enktel.app.ui.components.LocalToaster.current
+        tv.enktel.app.ui.components.PinDialog(
+            title = "Locked category — enter PIN",
+            onSubmit = { pin ->
+                if (tv.enktel.app.util.Pin.matches(pin, pinHash)) {
+                    tv.enktel.app.util.UnlockSession.unlocked = true
+                    prompting = false
+                    toaster.success("Unlocked")
+                } else {
+                    toaster.error("Wrong PIN")
+                }
+            },
+            onDismiss = { prompting = false },
+        )
+    }
+}
+
+@Composable
+fun rememberParentalGate(graph: AppGraph, kind: String): ParentalGateState {
+    val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
+    val locked by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
+    val state = remember { ParentalGateState() }
+    state.pinHash = pinHash
+    state.isLockedImpl = { catId ->
+        pinHash.isNotBlank() && !tv.enktel.app.util.UnlockSession.unlocked && "$kind:$catId" in locked
+    }
+    return state
+}
+
 @Composable
 private fun CategorySidebar(
     title: String,
     categories: List<Pair<String, String>>, // id to name
     selected: String?,
+    isLocked: (String) -> Boolean = { false },
+    onLocked: (String) -> Unit = {},
     onSelect: (String?) -> Unit,
 ) {
     Column(
@@ -59,7 +102,10 @@ private fun CategorySidebar(
                 SidebarRow("All", selected == null) { onSelect(null) }
             }
             items(categories) { (id, name) ->
-                SidebarRow(name, selected == id) { onSelect(id) }
+                val locked = isLocked(id)
+                SidebarRow((if (locked) "🔒 " else "") + name, selected == id) {
+                    if (locked) onLocked(id) else onSelect(id)
+                }
             }
         }
     }
@@ -91,32 +137,61 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
     var cat by remember { mutableStateOf<String?>(null) }
     val categories by graph.content.categories(p.id, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
-    val movies by (if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!))
+    val raw by (if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "name")
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val movies = remember(raw, sort) {
+        when (sort) {
+            "rating" -> raw.sortedByDescending { it.rating }
+            "added" -> raw.sortedByDescending { it.addedAt }
+            else -> raw.sortedBy { it.name.lowercase() }
+        }
+    }
+    val gate = rememberParentalGate(graph, "vod")
 
     Row(Modifier.fillMaxSize()) {
-        CategorySidebar("Movies", categories.map { it.categoryId to it.name }, cat) { cat = it }
-        if (movies.isEmpty()) {
-            CenterMessage("No movies in this category.")
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(140.dp),
-                contentPadding = PaddingValues(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.fillMaxSize(),
+        CategorySidebar(
+            "Movies",
+            categories.map { it.categoryId to it.name },
+            cat,
+            isLocked = gate.isLocked,
+            onLocked = gate.prompt,
+        ) { cat = it }
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.padding(start = 24.dp, top = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(movies, key = { it.key }) { m ->
-                    PosterCard(
-                        title = m.name,
-                        imageUrl = m.poster,
-                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") },
-                    )
+                listOf("name" to "A–Z", "rating" to "Top rated", "added" to "Recently added").forEach { (id, label) ->
+                    tv.enktel.app.ui.components.FocusButton(label, accent = sort == id, onClick = {
+                        scope.launch { graph.settings.setVodSort(id) }
+                    })
+                }
+            }
+            if (movies.isEmpty()) {
+                CenterMessage("No movies in this category.")
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(140.dp),
+                    contentPadding = PaddingValues(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(movies, key = { it.key }) { m ->
+                        PosterCard(
+                            title = m.name,
+                            imageUrl = m.poster,
+                            subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                            onClick = { nav.navigate("movie/${m.key}") },
+                        )
+                    }
                 }
             }
         }
     }
+    gate.Dialog()
 }
 
 @Composable
@@ -127,9 +202,16 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val categories by graph.content.categories(p.id, "series").collectAsStateWithLifecycle(initialValue = emptyList())
     val series by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val gate = rememberParentalGate(graph, "series")
 
     Row(Modifier.fillMaxSize()) {
-        CategorySidebar("Series", categories.map { it.categoryId to it.name }, cat) { cat = it }
+        CategorySidebar(
+            "Series",
+            categories.map { it.categoryId to it.name },
+            cat,
+            isLocked = gate.isLocked,
+            onLocked = gate.prompt,
+        ) { cat = it }
         if (series.isEmpty()) {
             CenterMessage("No series in this category.")
         } else {
@@ -151,4 +233,5 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
     }
+    gate.Dialog()
 }

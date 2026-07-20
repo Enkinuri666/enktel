@@ -62,11 +62,16 @@ import tv.enktel.app.data.db.Category
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.NowNext
+import tv.enktel.app.data.xtream.XtreamClient
+import tv.enktel.app.util.Pin
+import tv.enktel.app.util.UnlockSession
 import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.player.StreamStats
 import tv.enktel.app.player.TrackChoice
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
@@ -117,19 +122,43 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     var recordingId by remember { mutableStateOf(0L) }
     var isFav by remember { mutableStateOf(false) }
     var infoTick by remember { mutableIntStateOf(0) }
+    // Time-shift: 0 = watching live, otherwise the archive timestamp playback started from.
+    var shiftedFrom by remember { mutableStateOf(0L) }
+    var sleepUntil by remember { mutableStateOf(0L) }
+    var pinPrompt by remember { mutableStateOf(false) }
+    var pendingCategory by remember { mutableStateOf<String?>(null) }
+    val toaster = tv.enktel.app.ui.components.LocalToaster.current
+    val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
+    val lockedCats by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
 
-    val anyOverlay = showChannels || showQuickMenu || trackMenu.isNotEmpty()
+    val anyOverlay = showChannels || showQuickMenu || trackMenu.isNotEmpty() || pinPrompt
 
     fun tune(ch: Channel) {
         current = ch
         showChannels = false
         showInfo = true
         infoTick++
+        shiftedFrom = 0L
         engine.play(graph.content.liveUrl(p, ch, streamFormat), live = true)
         scope.launch {
             graph.settings.setLastChannel(ch.key)
+            graph.settings.pushRecentChannel(ch.key)
             nowNext = graph.epg.nowNext(p.id, ch.epgId)
         }
+    }
+
+    /** Jump into the channel's archive at [startMs] (restart programme / rewind live TV). */
+    fun playShifted(startMs: Long) {
+        val ch = current ?: return
+        if (p.kind != "xtream" || !ch.hasArchive) {
+            toaster.error("This channel has no catch-up archive")
+            return
+        }
+        val durMin = ((System.currentTimeMillis() - startMs) / 60_000 + 180).coerceAtLeast(30)
+        engine.play(XtreamClient.timeshiftUrl(p, ch.streamId, startMs, durMin), live = false)
+        shiftedFrom = startMs
+        showInfo = true; infoTick++
+        toaster.info("Time-shift · ${hhmm(startMs)}")
     }
 
     fun zap(delta: Int) {
@@ -173,6 +202,16 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 nowNext = graph.epg.nowNext(p.id, ch.epgId)
             }
             delay(1000)
+        }
+    }
+
+    // Sleep timer
+    LaunchedEffect(sleepUntil) {
+        if (sleepUntil <= 0) return@LaunchedEffect
+        delay((sleepUntil - System.currentTimeMillis()).coerceAtLeast(0))
+        if (sleepUntil > 0) {
+            engine.player.pause()
+            nav.popBackStack()
         }
     }
 
@@ -226,6 +265,16 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MENU -> { showQuickMenu = true; true }
                     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                         if (engine.player.isPlaying) engine.player.pause() else engine.player.play(); true
+                    }
+                    AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
+                        // Rewind on live = jump into the archive 5 minutes back (if supported).
+                        if (shiftedFrom > 0) engine.player.seekBack()
+                        else playShifted(System.currentTimeMillis() - 5 * 60_000)
+                        true
+                    }
+                    AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                        if (shiftedFrom > 0) engine.player.seekForward()
+                        true
                     }
                     in AndroidKeyEvent.KEYCODE_0..AndroidKeyEvent.KEYCODE_9 -> {
                         numberBuffer += ('0' + (ev.key.nativeKeyCode - AndroidKeyEvent.KEYCODE_0))
@@ -287,6 +336,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 nowNext = nowNext,
                 stats = stats,
                 recording = recordingId != 0L,
+                shiftedFrom = shiftedFrom,
+                sleepUntil = sleepUntil,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -298,8 +349,28 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 currentKey = current?.key,
                 graph = graph,
                 profileId = p.id,
+                isCategoryLocked = { catId ->
+                    pinHash.isNotBlank() && !UnlockSession.unlocked && "live:$catId" in lockedCats
+                },
+                onLockedCategory = { catId -> pendingCategory = catId; pinPrompt = true },
                 onPick = { tune(it) },
                 onClose = { showChannels = false },
+            )
+        }
+
+        if (pinPrompt) {
+            tv.enktel.app.ui.components.PinDialog(
+                title = "Locked category — enter PIN",
+                onSubmit = { pin ->
+                    if (Pin.matches(pin, pinHash)) {
+                        UnlockSession.unlocked = true
+                        pinPrompt = false
+                        toaster.success("Unlocked")
+                    } else {
+                        toaster.error("Wrong PIN")
+                    }
+                },
+                onDismiss = { pinPrompt = false; pendingCategory = null },
             )
         }
 
@@ -309,6 +380,32 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 isFav = isFav,
                 recording = recordingId != 0L,
                 showStats = showStats,
+                shifted = shiftedFrom > 0,
+                canShift = p.kind == "xtream" && current!!.hasArchive,
+                sleepUntil = sleepUntil,
+                onRestartProgram = {
+                    val start = nowNext.now?.startMs
+                    if (start != null) { showQuickMenu = false; playShifted(start) }
+                    else toaster.error("No EPG data for this programme")
+                },
+                onRewindLive = {
+                    showQuickMenu = false
+                    playShifted(if (shiftedFrom > 0) shiftedFrom - 5 * 60_000 else System.currentTimeMillis() - 5 * 60_000)
+                },
+                onBackToLive = { showQuickMenu = false; current?.let { tune(it) } },
+                onSleep = {
+                    sleepUntil = when {
+                        sleepUntil <= 0 -> System.currentTimeMillis() + 30 * 60_000
+                        sleepUntil - System.currentTimeMillis() < 35 * 60_000 -> System.currentTimeMillis() + 60 * 60_000
+                        sleepUntil - System.currentTimeMillis() < 65 * 60_000 -> System.currentTimeMillis() + 90 * 60_000
+                        sleepUntil - System.currentTimeMillis() < 95 * 60_000 -> System.currentTimeMillis() + 120 * 60_000
+                        else -> 0L
+                    }
+                    toaster.info(
+                        if (sleepUntil <= 0) "Sleep timer off"
+                        else "Sleep in ${(sleepUntil - System.currentTimeMillis()) / 60_000} min"
+                    )
+                },
                 onAudio = { trackMenu = "audio"; showQuickMenu = false },
                 onSubs = { trackMenu = "subs"; showQuickMenu = false },
                 onAspect = {
@@ -333,9 +430,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                                 streamUrl = graph.content.liveUrl(p, ch, "ts"),
                                 channelLogo = ch.logo,
                             )
+                            toaster.success("Recording ${ch.name}")
                         } else {
                             RecordScheduler.cancel(context, recordingId)
                             recordingId = 0L
+                            toaster.info("Recording stopped")
                         }
                     }
                 },
@@ -362,7 +461,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 }
 
 @Composable
-private fun InfoBar(channel: Channel, nowNext: NowNext, stats: StreamStats, recording: Boolean, modifier: Modifier) {
+private fun InfoBar(
+    channel: Channel,
+    nowNext: NowNext,
+    stats: StreamStats,
+    recording: Boolean,
+    shiftedFrom: Long = 0,
+    sleepUntil: Long = 0,
+    modifier: Modifier,
+) {
     val now = nowNext.now
     val next = nowNext.next
     Column(
@@ -389,6 +496,8 @@ private fun InfoBar(channel: Channel, nowNext: NowNext, stats: StreamStats, reco
                     Text(channel.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     if (channel.hasArchive) Badge("CATCH-UP", EnktelOk)
                     if (recording) Badge("● REC", EnktelLive)
+                    if (shiftedFrom > 0) Badge("⏪ TIMESHIFT ${hhmm(shiftedFrom)}", EnktelLive)
+                    if (sleepUntil > 0) Badge("☾ ${((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)}m")
                     if (stats.height > 0) Badge("${stats.height}p")
                 }
                 Spacer(Modifier.height(6.dp))
@@ -446,6 +555,8 @@ private fun ChannelPanel(
     currentKey: String?,
     graph: AppGraph,
     profileId: Long,
+    isCategoryLocked: (String) -> Boolean = { false },
+    onLockedCategory: (String) -> Unit = {},
     onPick: (Channel) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -474,7 +585,13 @@ private fun ChannelPanel(
                     PanelRow("All channels (${channels.size})", selected = selectedCat == null) { selectedCat = null }
                 }
                 items(categories, key = { it.key }) { cat ->
-                    PanelRow(cat.name, selected = selectedCat == cat.categoryId) { selectedCat = cat.categoryId }
+                    val locked = isCategoryLocked(cat.categoryId)
+                    PanelRow(
+                        (if (locked) "🔒 " else "") + cat.name,
+                        selected = selectedCat == cat.categoryId,
+                    ) {
+                        if (locked) onLockedCategory(cat.categoryId) else selectedCat = cat.categoryId
+                    }
                 }
             }
         }
@@ -555,6 +672,13 @@ private fun QuickMenu(
     isFav: Boolean,
     recording: Boolean,
     showStats: Boolean,
+    shifted: Boolean,
+    canShift: Boolean,
+    sleepUntil: Long,
+    onRestartProgram: () -> Unit,
+    onRewindLive: () -> Unit,
+    onBackToLive: () -> Unit,
+    onSleep: () -> Unit,
     onAudio: () -> Unit,
     onSubs: () -> Unit,
     onAspect: () -> Unit,
@@ -565,6 +689,9 @@ private fun QuickMenu(
     onGuide: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val sleepLabel = if (sleepUntil <= 0) "Sleep timer: off"
+    else "Sleep in ${((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)} min"
+    val menuScroll = rememberScrollState()
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -572,14 +699,21 @@ private fun QuickMenu(
                 .width(280.dp)
                 .fillMaxHeight()
                 .background(Color.Black.copy(0.92f))
-                .padding(20.dp),
+                .padding(20.dp)
+                .verticalScroll(menuScroll),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(channel.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Spacer(Modifier.height(4.dp))
+            if (shifted) FocusButton("🔴 Back to LIVE", accent = true, onClick = onBackToLive, modifier = Modifier.fillMaxWidth())
+            if (canShift) {
+                FocusButton("⏮ Restart programme", onClick = onRestartProgram, modifier = Modifier.fillMaxWidth())
+                FocusButton("⏪ Back 5 minutes", onClick = onRewindLive, modifier = Modifier.fillMaxWidth())
+            }
             FocusButton(if (isFav) "★ Remove favorite" else "☆ Add favorite", onClick = onFavorite, modifier = Modifier.fillMaxWidth())
             FocusButton(if (recording) "■ Stop recording" else "● Record now (DVR)", onClick = onRecord, modifier = Modifier.fillMaxWidth())
-            if (channel.hasArchive) FocusButton("⏪ Catch-up TV", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
+            if (channel.hasArchive) FocusButton("🗂 Catch-up archive", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
+            FocusButton(sleepLabel, onClick = onSleep, modifier = Modifier.fillMaxWidth())
             FocusButton("Audio track", onClick = onAudio, modifier = Modifier.fillMaxWidth())
             FocusButton("Subtitles", onClick = onSubs, modifier = Modifier.fillMaxWidth())
             FocusButton("Aspect ratio", onClick = onAspect, modifier = Modifier.fillMaxWidth())
