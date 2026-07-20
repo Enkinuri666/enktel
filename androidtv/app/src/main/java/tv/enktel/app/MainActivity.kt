@@ -97,6 +97,7 @@ private fun MainNav(graph: AppGraph) {
                     composable("catchup/{ch}") { back ->
                         CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
                     }
+                    composable("sports") { tv.enktel.app.ui.sports.SportsHubScreen(graph, nav) }
                 }
 }
 

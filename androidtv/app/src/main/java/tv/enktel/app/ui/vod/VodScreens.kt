@@ -141,12 +141,31 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "name")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val movies = remember(raw, sort) {
-        when (sort) {
-            "rating" -> raw.sortedByDescending { it.rating }
-            "added" -> raw.sortedByDescending { it.addedAt }
-            else -> raw.sortedBy { it.name.lowercase() }
-        }
+    var genreFilter by remember { mutableStateOf<String?>(null) }
+    var decadeFilter by remember { mutableStateOf<Int?>(null) }
+    val genres = remember(raw) {
+        raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
+            .groupingBy { it }.eachCount().entries
+            .sortedByDescending { it.value }.take(18).map { it.key }
+    }
+    val movies = remember(raw, sort, genreFilter, decadeFilter) {
+        raw.asSequence()
+            .filter { m -> genreFilter == null || m.genre.contains(genreFilter!!, ignoreCase = true) }
+            .filter { m ->
+                when (decadeFilter) {
+                    null -> true
+                    -1 -> m.year in 1900..1989
+                    else -> m.year in decadeFilter!!..(decadeFilter!! + 9)
+                }
+            }
+            .let { seq ->
+                when (sort) {
+                    "rating" -> seq.sortedByDescending { it.rating }
+                    "added" -> seq.sortedByDescending { it.addedAt }
+                    "year" -> seq.sortedByDescending { it.year }
+                    else -> seq.sortedBy { it.name.lowercase() }
+                }
+            }.toList()
     }
     val gate = rememberParentalGate(graph, "vod")
 
@@ -159,16 +178,16 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
             onLocked = gate.prompt,
         ) { cat = it }
         Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.padding(start = 24.dp, top = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf("name" to "A–Z", "rating" to "Top rated", "added" to "Recently added").forEach { (id, label) ->
-                    tv.enktel.app.ui.components.FocusButton(label, accent = sort == id, onClick = {
-                        scope.launch { graph.settings.setVodSort(id) }
-                    })
-                }
-            }
+            FilterBar(
+                sort = sort,
+                sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "added" to "Recently added", "year" to "Newest"),
+                onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                genres = genres,
+                genreFilter = genreFilter,
+                onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter,
+                onDecade = { decadeFilter = it },
+            )
             if (movies.isEmpty()) {
                 CenterMessage("No movies in this category.")
             } else {
@@ -200,9 +219,36 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
     var cat by remember { mutableStateOf<String?>(null) }
     val categories by graph.content.categories(p.id, "series").collectAsStateWithLifecycle(initialValue = emptyList())
-    val series by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
+    val raw by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val gate = rememberParentalGate(graph, "series")
+    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "name")
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var genreFilter by remember { mutableStateOf<String?>(null) }
+    var decadeFilter by remember { mutableStateOf<Int?>(null) }
+    val genres = remember(raw) {
+        raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
+            .groupingBy { it }.eachCount().entries
+            .sortedByDescending { it.value }.take(18).map { it.key }
+    }
+    val series = remember(raw, sort, genreFilter, decadeFilter) {
+        raw.asSequence()
+            .filter { s -> genreFilter == null || s.genre.contains(genreFilter!!, ignoreCase = true) }
+            .filter { s ->
+                when (decadeFilter) {
+                    null -> true
+                    -1 -> s.year in 1900..1989
+                    else -> s.year in decadeFilter!!..(decadeFilter!! + 9)
+                }
+            }
+            .let { seq ->
+                when (sort) {
+                    "rating" -> seq.sortedByDescending { it.rating }
+                    "year", "added" -> seq.sortedByDescending { it.year }
+                    else -> seq.sortedBy { it.name.lowercase() }
+                }
+            }.toList()
+    }
 
     Row(Modifier.fillMaxSize()) {
         CategorySidebar(
@@ -212,26 +258,91 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             isLocked = gate.isLocked,
             onLocked = gate.prompt,
         ) { cat = it }
-        if (series.isEmpty()) {
-            CenterMessage("No series in this category.")
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(140.dp),
-                contentPadding = PaddingValues(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(series, key = { it.key }) { s ->
-                    PosterCard(
-                        title = s.name,
-                        imageUrl = s.poster,
-                        subtitle = if (s.rating > 0) "★ ${"%.1f".format(s.rating)}" else "",
-                        onClick = { nav.navigate("seriesDetails/${s.key}") },
-                    )
+        Column(Modifier.fillMaxSize()) {
+            FilterBar(
+                sort = sort,
+                sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "year" to "Newest"),
+                onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                genres = genres,
+                genreFilter = genreFilter,
+                onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter,
+                onDecade = { decadeFilter = it },
+            )
+            if (series.isEmpty()) {
+                CenterMessage("No series match these filters.")
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(140.dp),
+                    contentPadding = PaddingValues(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(series, key = { it.key }) { s ->
+                        PosterCard(
+                            title = s.name,
+                            imageUrl = s.poster,
+                            subtitle = buildString {
+                                if (s.year > 0) append(s.year)
+                                if (s.rating > 0) { if (isNotEmpty()) append(" · "); append("★ ${"%.1f".format(s.rating)}") }
+                            },
+                            onClick = { nav.navigate("seriesDetails/${s.key}") },
+                        )
+                    }
                 }
             }
         }
     }
     gate.Dialog()
+}
+
+/** Shared sort + genre + decade filter chips for the VOD browsers. */
+@Composable
+private fun FilterBar(
+    sort: String,
+    sortOptions: List<Pair<String, String>>,
+    onSort: (String) -> Unit,
+    genres: List<String>,
+    genreFilter: String?,
+    onGenre: (String?) -> Unit,
+    decadeFilter: Int?,
+    onDecade: (Int?) -> Unit,
+) {
+    Column(Modifier.padding(start = 24.dp, top = 16.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(sortOptions) { (id, label) ->
+                tv.enktel.app.ui.components.FocusButton(label, accent = sort == id, onClick = { onSort(id) })
+            }
+        }
+        if (genres.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    tv.enktel.app.ui.components.FocusButton("All genres", accent = genreFilter == null, onClick = { onGenre(null) })
+                }
+                items(genres) { g ->
+                    tv.enktel.app.ui.components.FocusButton(g, accent = genreFilter == g, onClick = {
+                        onGenre(if (genreFilter == g) null else g)
+                    })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                tv.enktel.app.ui.components.FocusButton("Any year", accent = decadeFilter == null, onClick = { onDecade(null) })
+            }
+            items(listOf(2020, 2010, 2000, 1990)) { d ->
+                tv.enktel.app.ui.components.FocusButton("${d}s", accent = decadeFilter == d, onClick = {
+                    onDecade(if (decadeFilter == d) null else d)
+                })
+            }
+            item {
+                tv.enktel.app.ui.components.FocusButton("Older", accent = decadeFilter == -1, onClick = {
+                    onDecade(if (decadeFilter == -1) null else -1)
+                })
+            }
+        }
+    }
 }

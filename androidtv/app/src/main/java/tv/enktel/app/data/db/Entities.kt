@@ -64,6 +64,8 @@ data class Movie(
     val ext: String = "mp4",
     val addedAt: Long = 0,
     val url: String = "",
+    val genre: String = "",
+    val year: Int = 0,
 )
 
 @Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId")])
@@ -78,6 +80,7 @@ data class Series(
     val rating: Double = 0.0,
     val plot: String = "",
     val genre: String = "",
+    val year: Int = 0,
 )
 
 @Entity(tableName = "epg", indices = [Index("profileId", "epgId", "startMs")])

@@ -146,6 +146,8 @@ class ContentRepository(
                 rating = e.double("rating") ?: 0.0,
                 ext = e.str("container_extension") ?: "mp4",
                 addedAt = e.long("added") ?: 0,
+                genre = e.str("genre").orEmpty(),
+                year = extractYear(e.str("year") ?: e.str("releasedate") ?: e.str("release_date"), e.str("name")),
             )
         }
 
@@ -159,6 +161,7 @@ class ContentRepository(
                 rating = e.double("rating") ?: 0.0,
                 plot = e.str("plot").orEmpty(),
                 genre = e.str("genre").orEmpty(),
+                year = extractYear(e.str("year") ?: e.str("releaseDate") ?: e.str("release_date"), e.str("name")),
             )
         }
 
@@ -272,6 +275,23 @@ class ContentRepository(
             backdrop = info.get("backdrop_path").arr()?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty(),
             trailer = info.str("youtube_trailer").orEmpty(),
         )
+    }
+
+    companion object {
+        private val YEAR_IN_NAME = Regex("""\((\d{4})\)""")
+
+        /** Pull a release year out of panel fields, or a "(2021)" suffix in the title. */
+        fun extractYear(raw: String?, name: String?): Int {
+            raw?.take(4)?.toIntOrNull()?.let { if (it in 1900..2100) return it }
+            name?.let { n -> YEAR_IN_NAME.find(n)?.groupValues?.get(1)?.toIntOrNull()?.let { if (it in 1900..2100) return it } }
+            return 0
+        }
+
+        /** Normalize a messy panel genre string into clean tags. */
+        fun splitGenres(genre: String): List<String> =
+            genre.split(',', '/', '|', ';')
+                .map { it.trim().replaceFirstChar(Char::uppercase) }
+                .filter { it.length in 2..24 }
     }
 
     /** Resolve the playable URL for a channel with the preferred container. */

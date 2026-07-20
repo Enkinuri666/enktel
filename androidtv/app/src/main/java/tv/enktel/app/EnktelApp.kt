@@ -9,6 +9,7 @@ import tv.enktel.app.data.prefs.SettingsStore
 import tv.enktel.app.data.repo.ContentRepository
 import tv.enktel.app.data.repo.EpgRepository
 import tv.enktel.app.data.repo.PlaylistRepository
+import tv.enktel.app.data.repo.SportsRepository
 import tv.enktel.app.data.xtream.XtreamClient
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -25,6 +26,7 @@ class AppGraph(app: Application) {
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream)
     val content = ContentRepository(app, db, xtream, http)
     val epg = EpgRepository(db, xtream, http)
+    val sports = SportsRepository(content, epg)
 }
 
 class EnktelApp : Application() {
