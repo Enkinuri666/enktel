@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome notification icon (Android status bar strips color). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,5 L21,5 L21,17 L15,17 L15,19 L9,19 L9,17 L3,17 Z M5,7 L5,15 L19,15 L19,7 Z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,9 L15,12 L9,15 Z"/>
+</vector>

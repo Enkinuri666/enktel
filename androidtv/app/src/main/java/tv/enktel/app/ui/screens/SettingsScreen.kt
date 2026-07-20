@@ -26,6 +26,7 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.BuildConfig
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelOk
@@ -262,6 +263,50 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         FocusButton(if (ss == 0) "Screensaver: off" else "Screensaver: ${ss} min", onClick = {
             scope.launch { graph.settings.setScreensaverMin(when (ss) { 0 -> 3; 3 -> 5; 5 -> 10; 10 -> 20; else -> 0 }) }
         })
+
+        Spacer(Modifier.height(10.dp))
+        Text("APPEARANCE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
+        val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
+        val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
+        tv.enktel.app.ui.theme.ALL_PALETTES.chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { pal ->
+                    FocusButton(
+                        (if (themeId == pal.id) "✓ " else "") + pal.label,
+                        accent = themeId == pal.id,
+                        onClick = { scope.launch { graph.settings.setTheme(pal.id) } },
+                    )
+                }
+            }
+        }
+        Text("Overlay opacity: ${opacityPct}%", color = EnktelTextDim, fontSize = 11.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FocusButton("−", onClick = { scope.launch { graph.settings.setUiOpacityPct(opacityPct - 5) } })
+            FocusButton("+", onClick = { scope.launch { graph.settings.setUiOpacityPct(opacityPct + 5) } })
+            FocusButton("Reset", onClick = { scope.launch { graph.settings.setUiOpacityPct(92) } })
+        }
+        Text("Text size: ${textPct}%", color = EnktelTextDim, fontSize = 11.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(85 to "Small", 100 to "Normal", 115 to "Large", 130 to "X-Large").forEach { (v, label) ->
+                FocusButton(label, accent = textPct == v, onClick = { scope.launch { graph.settings.setTextScalePct(v) } })
+            }
+        }
+
+        if (BuildConfig.FLAVOR == "tv") {
+            Spacer(Modifier.height(10.dp))
+            Text("STARTUP", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            val sob by graph.settings.startOnBoot.collectAsStateWithLifecycle(initialValue = false)
+            FocusButton(
+                "Start app on TV boot: ${if (sob) "ON" else "off"}",
+                accent = sob,
+                onClick = { scope.launch { graph.settings.setStartOnBoot(!sob) } },
+            )
+            Text(
+                "When enabled, EnkTel launches automatically after the TV finishes booting. Some Fire TV builds also require enabling 'Allow launch on boot' in device settings.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        }
 
         Spacer(Modifier.height(10.dp))
         Text("ABOUT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)

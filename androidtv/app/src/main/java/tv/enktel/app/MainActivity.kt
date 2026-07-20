@@ -5,8 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,11 +16,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.components.FirstRunTour
@@ -56,7 +61,14 @@ class MainActivity : ComponentActivity() {
         val graph = (application as EnktelApp).graph
 
         setContent {
-            EnktelTheme {
+            val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
+            val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
+            val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
+            EnktelTheme(
+                themeId = themeId,
+                overlayOpacity = opacityPct / 100f,
+                textScalePct = textPct,
+            ) {
                 ToastHost {
                     ScreensaverHost(graph, isPlaying = { false }) {
                         MainNav(graph, initialChannelKey = intent?.getStringExtra("channel_key"))
@@ -92,10 +104,20 @@ private fun MainNav(graph: AppGraph, initialChannelKey: String?) {
         if (!initialChannelKey.isNullOrBlank()) nav.navigate("live?ch=$initialChannelKey")
     }
 
+    // Mobile flavor gets a bottom-tab shell; the TV flavor renders the NavHost bare
+    // and relies on the in-screen navigation you'd steer with a remote.
+    val isMobileShell = BuildConfig.FLAVOR == "mobile" ||
+        (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK) != Configuration.UI_MODE_TYPE_TELEVISION &&
+        BuildConfig.FLAVOR != "tv"
+
+    val entry by nav.currentBackStackEntryAsState()
+    val currentRoute = entry?.destination?.route
+
+    val navHost = @Composable { padding: androidx.compose.foundation.layout.PaddingValues ->
     NavHost(
         navController = nav,
         startDestination = start,
-        modifier = Modifier.fillMaxSize().background(EnktelBg),
+        modifier = Modifier.fillMaxSize().background(EnktelBg).padding(padding),
     ) {
         composable("onboarding") { OnboardingScreen(graph, onDone = { nav.navigate("home") { popUpTo(0) } }) }
         composable("home") { HomeScreen(graph, nav) }
@@ -137,6 +159,15 @@ private fun MainNav(graph: AppGraph, initialChannelKey: String?) {
                 rightKey = back.arguments?.getString("right").orEmpty(),
             )
         }
+    }
+    }
+
+    if (isMobileShell) {
+        tv.enktel.app.ui.mobile.MobileScaffold(nav = nav, currentRoute = currentRoute) { padding ->
+            navHost(padding)
+        }
+    } else {
+        navHost(androidx.compose.foundation.layout.PaddingValues(0.dp))
     }
 
     if (tourVisible) {

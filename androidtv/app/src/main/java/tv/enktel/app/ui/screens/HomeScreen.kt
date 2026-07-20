@@ -83,6 +83,26 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         newThisWeek = graph.recommendations.newThisWeek(p.id)
     }
 
+    // If the profile was created but has never finished its first sync (e.g. onboarding was
+    // interrupted, the panel timed out, or the process died), kick off content + EPG sync in
+    // the background so the user sees channels on Home without diving into Settings.
+    var syncing by remember { mutableStateOf(false) }
+    var syncStatus by remember { mutableStateOf("") }
+    LaunchedEffect(p.id, p.lastSync, allChannels.size) {
+        if (p.lastSync != 0L || allChannels.isNotEmpty() || syncing) return@LaunchedEffect
+        syncing = true
+        syncStatus = "Downloading your playlist…"
+        runCatching { graph.content.refreshAll(p) }
+            .onSuccess { summary -> syncStatus = "Downloading TV guide… ($summary)" }
+            .onFailure { syncStatus = "Sync failed: ${it.message ?: "unknown error"}" }
+        runCatching { graph.epg.refresh(p) }
+            .onSuccess { syncStatus = "Ready" }
+            .onFailure { syncStatus = "EPG failed: ${it.message ?: "unknown"}" }
+        graph.playlists.markSynced(p)
+        kotlinx.coroutines.delay(1200)
+        syncing = false
+    }
+
     val heroItems = remember(favMovies, recentMovies) {
         (favMovies + recentMovies).distinctBy { it.key }.filter { it.poster.isNotBlank() }.take(5)
     }
@@ -114,20 +134,40 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+        if (syncing) {
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp)
+                        .background(
+                            tv.enktel.app.ui.theme.EnktelBlue.copy(alpha = 0.15f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("⟳", color = tv.enktel.app.ui.theme.EnktelBlue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(10.dp))
+                    Text(syncStatus, color = Color.White, fontSize = 13.sp)
+                }
+            }
+        }
         item {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 48.dp),
+            // Horizontal scroll so the row survives narrow portrait screens on phones.
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                FocusButton("▶  Live TV", accent = true, onClick = { nav.navigate("live?ch=") })
-                FocusButton("TV Guide", onClick = { nav.navigate("guide") })
-                FocusButton("Movies", onClick = { nav.navigate("movies") })
-                FocusButton("Series", onClick = { nav.navigate("series") })
-                FocusButton("⚽ Sports", onClick = { nav.navigate("sports") })
-                FocusButton("☆ Watchlist", onClick = { nav.navigate("watchlist") })
-                FocusButton("Search", onClick = { nav.navigate("search") })
-                FocusButton("Recordings", onClick = { nav.navigate("recordings") })
-                FocusButton("Settings", onClick = { nav.navigate("settings") })
+                item { FocusButton("▶  Live TV", accent = true, onClick = { nav.navigate("live?ch=") }) }
+                item { FocusButton("TV Guide", onClick = { nav.navigate("guide") }) }
+                item { FocusButton("Movies", onClick = { nav.navigate("movies") }) }
+                item { FocusButton("Series", onClick = { nav.navigate("series") }) }
+                item { FocusButton("⚽ Sports", onClick = { nav.navigate("sports") }) }
+                item { FocusButton("☆ Watchlist", onClick = { nav.navigate("watchlist") }) }
+                item { FocusButton("Search", onClick = { nav.navigate("search") }) }
+                item { FocusButton("Recordings", onClick = { nav.navigate("recordings") }) }
+                item { FocusButton("Settings", onClick = { nav.navigate("settings") }) }
             }
         }
         if (continueWatching.isNotEmpty()) {

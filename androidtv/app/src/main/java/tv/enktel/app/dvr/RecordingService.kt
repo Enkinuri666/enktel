@@ -107,7 +107,7 @@ class RecordingService : Service() {
 
     private fun buildNotification(text: String): Notification =
         NotificationCompat.Builder(this, EnktelApp.DVR_CHANNEL)
-            .setSmallIcon(R.drawable.tv_banner)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("EnkTel DVR")
             .setContentText(text)
             .setOngoing(true)
