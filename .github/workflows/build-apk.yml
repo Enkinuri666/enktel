@@ -1,0 +1,111 @@
+name: Build & Sign APK/AAB
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'androidtv/**'
+      - '.github/workflows/build-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'androidtv/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Build a signed release APK + AAB (requires keystore secrets)'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: androidtv
+    env:
+      ENKTEL_KEYSTORE: ${{ github.workspace }}/enktel-release.jks
+      ENKTEL_KEYSTORE_PASS: ${{ secrets.ENKTEL_KEYSTORE_PASS }}
+      ENKTEL_KEY_PASS: ${{ secrets.ENKTEL_KEY_PASS }}
+      ENKTEL_KEY_ALIAS: ${{ secrets.ENKTEL_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Lint (release variant)
+        run: ./gradlew :app:lintRelease --no-daemon
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Build debug APK
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: enktel-debug-apk
+          path: androidtv/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
+      # ---- Release-only steps below (workflow_dispatch with release=true) ----
+
+      - name: Set up Android SDK build-tools
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;35.0.0 platforms;android-35'
+
+      - name: Decode release keystore
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        run: |
+          if [ -z "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::ENKTEL_KEYSTORE_BASE64 secret is not set. See ENKTEL_BUILD_AUDIT.md section 2." >&2
+            exit 1
+          fi
+          echo "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" | base64 -d > "$ENKTEL_KEYSTORE"
+          test -s "$ENKTEL_KEYSTORE"
+
+      - name: Build signed release APK + AAB
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
+
+      - name: Verify APK signature
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          [ -x "$APKSIGNER" ] || APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/app-release.apk
+
+      - name: Clean up keystore file
+        if: always()
+        run: rm -f "$ENKTEL_KEYSTORE"
+
+      - name: Upload release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: enktel-release-apk
+          path: androidtv/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload release AAB (Google Play)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: enktel-release-aab
+          path: androidtv/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

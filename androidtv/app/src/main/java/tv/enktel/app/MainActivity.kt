@@ -3,6 +3,8 @@ package tv.enktel.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
@@ -34,6 +36,7 @@ fun encode(s: String): String = URLEncoder.encode(s, "UTF-8")
 fun decode(s: String): String = URLDecoder.decode(s, "UTF-8")
 
 class MainActivity : ComponentActivity() {
+    @OptIn(UnstableApi::class) // LivePlayerScreen/VodPlayerScreen are @UnstableApi (Media3)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
