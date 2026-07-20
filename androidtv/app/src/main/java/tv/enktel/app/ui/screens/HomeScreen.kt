@@ -113,6 +113,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 FocusButton("TV Guide", onClick = { nav.navigate("guide") })
                 FocusButton("Movies", onClick = { nav.navigate("movies") })
                 FocusButton("Series", onClick = { nav.navigate("series") })
+                FocusButton("⚽ Sports", onClick = { nav.navigate("sports") })
                 FocusButton("Search", onClick = { nav.navigate("search") })
                 FocusButton("Recordings", onClick = { nav.navigate("recordings") })
                 FocusButton("Settings", onClick = { nav.navigate("settings") })
