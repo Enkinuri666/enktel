@@ -58,6 +58,9 @@ import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
 
+// Lint false-positive: produceState's vararg-keys overload isn't recognized by the
+// ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
+@Suppress("ProduceStateDoesNotAssignValue")
 @Composable
 fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
@@ -138,6 +141,7 @@ fun FavButton(graph: AppGraph, profileId: Long, kind: String, refId: Long) {
     })
 }
 
+@Suppress("ProduceStateDoesNotAssignValue")
 @Composable
 fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }

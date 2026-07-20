@@ -428,6 +428,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                                 title = nowNext.now?.title ?: ch.name,
                                 channelName = ch.name,
                                 streamUrl = graph.content.liveUrl(p, ch, "ts"),
+                                channelLogo = ch.logo,
                             )
                             toaster.success("Recording ${ch.name}")
                         } else {

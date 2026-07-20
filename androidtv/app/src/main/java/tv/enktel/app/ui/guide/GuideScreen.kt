@@ -230,7 +230,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 selected = null
                 scope.launch {
                     val url = if (p.kind == "m3u") ch.url else XtreamClient.liveUrl(p, ch.streamId, hls = false)
-                    RecordScheduler.schedule(context, p.id, prog.title, ch.name, url, prog.startMs, prog.endMs)
+                    RecordScheduler.schedule(context, p.id, prog.title, ch.name, url, prog.startMs, prog.endMs, channelLogo = ch.logo)
                 }
             },
             onDismiss = { selected = null },

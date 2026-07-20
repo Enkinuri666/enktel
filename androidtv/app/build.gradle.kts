@@ -15,21 +15,35 @@ android {
         minSdk = 21
         targetSdk = 35
         versionCode = 4
-        versionName = "1.0.3"
+        versionName = "1.0.2"
         vectorDrawables { useSupportLibrary = true }
     }
 
     // Release signing comes from the environment so no credentials live in the repo:
-    //   ENKTEL_KEYSTORE (path), ENKTEL_KEYSTORE_PASS, optional ENKTEL_KEY_ALIAS (default "enktel")
+    //   ENKTEL_KEYSTORE (path), ENKTEL_KEYSTORE_PASS, ENKTEL_KEY_PASS, optional ENKTEL_KEY_ALIAS (default "enktel")
+    // Release builds FAIL FAST if these are not set, rather than silently producing an
+    // unsigned/non-store-ready APK. Debug/other build types are unaffected.
     val envKeystore = System.getenv("ENKTEL_KEYSTORE")
     val envKeystorePass = System.getenv("ENKTEL_KEYSTORE_PASS")
-    if (!envKeystore.isNullOrBlank() && !envKeystorePass.isNullOrBlank()) {
+    val envKeyPass = System.getenv("ENKTEL_KEY_PASS")
+    val envKeyAlias = System.getenv("ENKTEL_KEY_ALIAS") ?: "enktel"
+    val canSignRelease = !envKeystore.isNullOrBlank() &&
+        !envKeystorePass.isNullOrBlank() &&
+        !envKeyPass.isNullOrBlank()
+
+    if (canSignRelease) {
         signingConfigs {
             create("release") {
-                storeFile = file(envKeystore)
+                storeFile = file(envKeystore!!)
                 storePassword = envKeystorePass
-                keyAlias = System.getenv("ENKTEL_KEY_ALIAS") ?: "enktel"
-                keyPassword = envKeystorePass
+                keyAlias = envKeyAlias
+                keyPassword = envKeyPass
+                // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
+                // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
+                // v1 MUST stay enabled or the APK is uninstallable on those devices.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
@@ -39,7 +53,17 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("release") ?: signingConfig
+            signingConfig = if (canSignRelease) {
+                signingConfigs.getByName("release")
+            } else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = false) }) {
+                throw GradleException(
+                    "Release build requires ENKTEL_KEYSTORE, ENKTEL_KEYSTORE_PASS and ENKTEL_KEY_PASS " +
+                        "environment variables to be set (see GitHub Secrets). Refusing to produce an " +
+                        "unsigned release artifact."
+                )
+            } else {
+                signingConfig
+            }
         }
     }
     compileOptions {

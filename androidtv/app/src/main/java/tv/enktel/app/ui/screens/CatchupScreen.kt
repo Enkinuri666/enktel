@@ -45,6 +45,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// Lint false-positive: produceState's vararg-keys overload isn't recognized by the
+// ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
+@Suppress("ProduceStateDoesNotAssignValue")
 @Composable
 fun CatchupScreen(graph: AppGraph, nav: NavHostController, channelKey: String) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }

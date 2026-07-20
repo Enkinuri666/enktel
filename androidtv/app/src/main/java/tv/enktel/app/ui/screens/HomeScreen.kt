@@ -1,7 +1,11 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,17 +26,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
+import tv.enktel.app.data.db.Movie
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.ContentRail
 import tv.enktel.app.ui.components.FocusButton
@@ -41,22 +53,28 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// Lint false-positive: produceState's vararg-keys overload isn't recognized by the
+// ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
+@Suppress("ProduceStateDoesNotAssignValue")
 @Composable
 fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) {
         value = graph.playlists.activeProfile()
     }
     val p = profile ?: return
-    val autoplay by graph.settings.autoplayLast.collectAsStateWithLifecycle(initialValue = false)
 
     val continueWatching by graph.content.continueWatching(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val favChannels by graph.content.favoriteChannels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val recentMovies by graph.content.recentMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val favMovies by graph.content.favoriteMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val recentKeys by graph.settings.recentChannels.collectAsStateWithLifecycle(initialValue = emptyList())
-    val recentChannels = remember(recentKeys, allChannels) {
-        recentKeys.mapNotNull { k -> allChannels.firstOrNull { it.key == k } }
+    val recordings by graph.db.recordingDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentRecordings = remember(recordings) {
+        recordings.filter { it.status == "DONE" && it.filePath.isNotBlank() }.sortedByDescending { it.startMs }.take(10)
+    }
+
+    val heroItems = remember(favMovies, recentMovies) {
+        (favMovies + recentMovies).distinctBy { it.key }.filter { it.poster.isNotBlank() }.take(5)
     }
 
     var clock by remember { mutableStateOf("") }
@@ -70,25 +88,25 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     LazyColumn(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(28.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 28.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 28.dp),
     ) {
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 48.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.logo_full),
-                    contentDescription = "EnkTel",
-                    modifier = Modifier.width(190.dp),
-                )
-                Spacer(Modifier.weight(1f))
-                Text(clock, color = EnktelTextDim, fontSize = 14.sp)
+        if (heroItems.isNotEmpty()) {
+            item { HeroBanner(items = heroItems, clock = clock, nav = nav, graph = graph, profile = p) }
+        } else {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Image(painter = painterResource(R.drawable.logo_full), contentDescription = "EnkTel", modifier = Modifier.width(190.dp))
+                    Spacer(Modifier.weight(1f))
+                    Text(clock, color = EnktelTextDim, fontSize = 14.sp)
+                }
             }
         }
         item {
             Row(
-                Modifier.padding(horizontal = 48.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 48.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 FocusButton("▶  Live TV", accent = true, onClick = { nav.navigate("live?ch=") })
@@ -114,15 +132,15 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        if (recentChannels.isNotEmpty()) {
+        if (recentRecordings.isNotEmpty()) {
             item {
-                ContentRail("Recently Watched", recentChannels, key = { it.key }) { ch ->
+                ContentRail("Recent Recordings", recentRecordings, key = { it.id }) { rec ->
                     PosterCard(
-                        title = ch.name,
-                        imageUrl = ch.logo,
-                        subtitle = if (ch.num > 0) "CH ${ch.num}" else "",
+                        title = rec.title,
+                        imageUrl = rec.channelLogo,
+                        subtitle = rec.channelName,
                         wide = true,
-                        onClick = { nav.navigate("live?ch=${ch.key}") },
+                        onClick = { nav.navigate(vodPlayerRoute("file://${rec.filePath}", rec.title)) },
                     )
                 }
             }
@@ -180,6 +198,108 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 48.dp),
             )
+        }
+    }
+}
+
+/**
+ * Full-width rotating hero banner (Netflix-style): large backdrop art with a readability
+ * scrim, title/logo overlay, and Play / More Info actions. Auto-advances through up to
+ * 5 featured titles (favorites first, then latest additions).
+ */
+@Composable
+private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController, graph: AppGraph, profile: Profile) {
+    var index by remember { mutableStateOf(0) }
+    LaunchedEffect(items) {
+        index = 0
+        while (items.size > 1) {
+            delay(7_000)
+            index = (index + 1) % items.size
+        }
+    }
+    val current = items.getOrNull(index.coerceIn(0, items.lastIndex)) ?: return
+
+    Box(Modifier.fillMaxWidth().height(420.dp)) {
+        Crossfade(targetState = current, animationSpec = tween(600), label = "hero") { movie ->
+            AsyncImage(
+                model = movie.poster,
+                contentDescription = movie.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // Left-to-right + bottom scrims so text stays legible over any artwork.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to Color.Black.copy(alpha = 0.92f),
+                    0.45f to Color.Black.copy(alpha = 0.55f),
+                    1f to Color.Transparent,
+                )
+            ),
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.6f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.95f),
+                )
+            ),
+        )
+
+        Row(
+            Modifier.fillMaxWidth().padding(start = 48.dp, end = 48.dp, top = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(painter = painterResource(R.drawable.logo_full), contentDescription = "EnkTel", modifier = Modifier.width(150.dp))
+            Spacer(Modifier.weight(1f))
+            Text(clock, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+        }
+
+        Column(
+            Modifier.align(Alignment.BottomStart).padding(horizontal = 48.dp, vertical = 32.dp).width(560.dp),
+        ) {
+            Text(
+                "FEATURED",
+                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tv.enktel.app.ui.theme.EnktelBlue,
+                letterSpacing = 1.5.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                current.name,
+                fontSize = 34.sp, fontWeight = FontWeight.Black, color = Color.White,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+            if (current.categoryId.isNotBlank() || current.rating > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    listOf(current.categoryId, if (current.rating > 0) "★ ${current.rating}" else "")
+                        .filter { it.isNotBlank() }.joinToString("  ·  "),
+                    fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f),
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FocusButton(
+                    "▶  Play", accent = true,
+                    onClick = { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
+                )
+                FocusButton("More Info", onClick = { nav.navigate("movie/${current.key}") })
+            }
+            if (items.size > 1) {
+                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items.indices.forEach { i ->
+                        Box(
+                            Modifier
+                                .size(if (i == index) 8.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)),
+                        )
+                    }
+                }
+            }
         }
     }
 }

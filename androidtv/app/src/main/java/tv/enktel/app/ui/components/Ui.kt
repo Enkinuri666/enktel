@@ -29,6 +29,7 @@ import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -155,59 +156,144 @@ fun PosterCard(
     subtitle: String = "",
     wide: Boolean = false,
 ) {
-    val w = if (wide) 240.dp else 130.dp
-    val h = if (wide) 135.dp else 190.dp
+    val w = if (wide) 240.dp else 150.dp
+    val h = if (wide) 135.dp else 210.dp
+    var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
-        modifier = modifier.width(w).tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        modifier = modifier.width(w).tapClick(onClick).onFocusChanged { focused = it.isFocused },
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(2.dp, EnktelBlue),
-                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(3.dp, EnktelBlue),
+                shape = RoundedCornerShape(14.dp),
             ),
         ),
     ) {
-        Column {
-            Box(
-                Modifier
-                    .width(w)
-                    .height(h)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(EnktelSurfaceHigh),
-            ) {
-                if (imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+        // Cinematic poster treatment: image fills the card, title/subtitle sit on a
+        // bottom gradient scrim baked into the artwork (Netflix-style caption).
+        Box(
+            Modifier
+                .width(w)
+                .height(h)
+                .clip(RoundedCornerShape(14.dp))
+                .background(EnktelSurfaceHigh)
+                .then(
+                    if (focused) {
+                        Modifier.shadow(elevation = 18.dp, shape = RoundedCornerShape(14.dp), spotColor = EnktelBlue)
+                    } else Modifier
+                ),
+        ) {
+            if (imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.linearGradient(listOf(EnktelBlue.copy(0.3f), EnktelPurple.copy(0.3f)))
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        title.take(2).uppercase(),
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White.copy(0.7f),
                     )
-                } else {
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.linearGradient(listOf(EnktelBlue.copy(0.3f), EnktelPurple.copy(0.3f)))
-                        ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            title.take(2).uppercase(),
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White.copy(0.7f),
-                        )
-                    }
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Text(title, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
-            if (subtitle.isNotBlank()) {
-                Text(subtitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = EnktelTextDim)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.88f),
+                        )
+                    ),
+            )
+            Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
+                Text(
+                    title, fontSize = if (wide) 13.sp else 14.sp, fontWeight = FontWeight.Bold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White,
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        subtitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = Color.White.copy(alpha = 0.75f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Small circular/rounded thumbnail with a text-initial fallback, used for compact list rows (e.g. DVR manager). */
+@Composable
+fun ThumbBox(label: String, imageUrl: String, modifier: Modifier = Modifier, size: androidx.compose.ui.unit.Dp = 56.dp) {
+    Box(
+        modifier
+            .size(size)
+            .clip(RoundedCornerShape(8.dp))
+            .background(EnktelSurfaceHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imageUrl.isNotBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = label,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(4.dp),
+            )
+        } else {
+            Text(
+                label.take(2).uppercase(),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White.copy(0.7f),
+            )
+        }
+    }
+}
+
+/** DPAD/touch-friendly confirmation overlay, consistent with the app's existing full-screen dialog pattern. */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String = "Confirm",
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(0.65f)).tapClick(onDismiss),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            onClick = {},
+            modifier = Modifier.width(420.dp),
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+            colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh, contentColor = Color.White),
+        ) {
+            Column(Modifier.padding(24.dp)) {
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.height(8.dp))
+                Text(message, fontSize = 13.sp, color = EnktelTextDim)
+                Spacer(Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FocusButton(confirmLabel, accent = true, onClick = onConfirm)
+                    FocusButton("Cancel", onClick = onDismiss)
+                }
             }
         }
     }
