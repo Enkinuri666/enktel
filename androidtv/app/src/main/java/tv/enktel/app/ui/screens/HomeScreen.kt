@@ -54,6 +54,10 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val recentMovies by graph.content.recentMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val favMovies by graph.content.favoriteMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentKeys by graph.settings.recentChannels.collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentChannels = remember(recentKeys, allChannels) {
+        recentKeys.mapNotNull { k -> allChannels.firstOrNull { it.key == k } }
+    }
 
     var clock by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -106,6 +110,19 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         subtitle = "Resume$pct",
                         wide = true,
                         onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key)) },
+                    )
+                }
+            }
+        }
+        if (recentChannels.isNotEmpty()) {
+            item {
+                ContentRail("Recently Watched", recentChannels, key = { it.key }) { ch ->
+                    PosterCard(
+                        title = ch.name,
+                        imageUrl = ch.logo,
+                        subtitle = if (ch.num > 0) "CH ${ch.num}" else "",
+                        wide = true,
+                        onClick = { nav.navigate("live?ch=${ch.key}") },
                     )
                 }
             }

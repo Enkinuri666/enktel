@@ -6,6 +6,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.flow.first
 import tv.enktel.app.data.db.Recording
 import tv.enktel.app.EnktelApp
 import java.util.concurrent.TimeUnit
@@ -28,16 +29,20 @@ object RecordScheduler {
         return id
     }
 
-    /** Schedule a future recording (from the TV guide). */
+    /** Schedule a future recording (from the TV guide). Applies the configured start/end padding. */
     suspend fun schedule(context: Context, profileId: Long, title: String, channelName: String, streamUrl: String, startMs: Long, endMs: Long): Long {
         val app = context.applicationContext as EnktelApp
+        val prefix = app.graph.settings.recPrefixMin.first()
+        val suffix = app.graph.settings.recSuffixMin.first()
+        val paddedStart = startMs - TimeUnit.MINUTES.toMillis(prefix.toLong())
+        val paddedEnd = endMs + TimeUnit.MINUTES.toMillis(suffix.toLong())
         val id = app.graph.db.recordingDao().insert(
             Recording(
                 profileId = profileId, title = title, channelName = channelName,
-                streamUrl = streamUrl, status = "SCHEDULED", startMs = startMs, endMs = endMs,
+                streamUrl = streamUrl, status = "SCHEDULED", startMs = paddedStart, endMs = paddedEnd,
             )
         )
-        val delay = (startMs - System.currentTimeMillis()).coerceAtLeast(0)
+        val delay = (paddedStart - System.currentTimeMillis()).coerceAtLeast(0)
         val work = OneTimeWorkRequestBuilder<StartRecordingWorker>()
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .setInputData(Data.Builder().putLong(RecordingService.EXTRA_ID, id).build())

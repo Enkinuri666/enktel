@@ -34,6 +34,7 @@ class EnktelApp : Application() {
     override fun onCreate() {
         super.onCreate()
         graph = AppGraph(this)
+        tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this)
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(

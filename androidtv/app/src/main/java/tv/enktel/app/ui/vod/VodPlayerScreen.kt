@@ -27,10 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement as LayoutArrangement
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight as TextFontWeight
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -169,6 +174,15 @@ fun VodPlayerScreen(
                         if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
                         poke(); true
                     }
+                    in AndroidKeyEvent.KEYCODE_0..AndroidKeyEvent.KEYCODE_9 -> {
+                        // Number keys jump straight to 0–90% of the video.
+                        if (!isLive && durationMs > 0) {
+                            val digit = ev.key.nativeKeyCode - AndroidKeyEvent.KEYCODE_0
+                            engine.player.seekTo(durationMs * digit / 10)
+                            poke()
+                            true
+                        } else false
+                    }
                     else -> false
                 }
             },
@@ -201,11 +215,22 @@ fun VodPlayerScreen(
                 Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(12.dp))
                 if (!isLive && durationMs > 0) {
-                    ProgressBarThin(positionMs.toFloat() / durationMs, Modifier.fillMaxWidth())
+                    SeekBar(
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                        onSeek = { target ->
+                            engine.player.seekTo(target)
+                            positionMs = target
+                            controlsTick++
+                        },
+                        onInteract = { controlsTick++ },
+                    )
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth()) {
                         Text(fmtTime(positionMs), color = Color.White, fontSize = 12.sp)
                         Spacer(Modifier.weight(1f))
+                        Text("-${fmtTime(durationMs - positionMs)}", color = EnktelTextDim, fontSize = 12.sp)
+                        Spacer(Modifier.width(14.dp))
                         Text(fmtTime(durationMs), color = EnktelTextDim, fontSize = 12.sp)
                     }
                     Spacer(Modifier.height(10.dp))
@@ -247,6 +272,94 @@ fun VodPlayerScreen(
                 onPick = { choice -> engine.selectTrack(type, choice); trackMenu = "" },
                 onClose = { trackMenu = "" },
             )
+        }
+    }
+}
+
+/**
+ * Focusable, scrubbable timeline. DPAD left/right nudges a preview position in 15s steps
+ * (OK commits); touch supports tap-to-seek and drag scrubbing with a live time preview.
+ */
+@Composable
+private fun SeekBar(
+    positionMs: Long,
+    durationMs: Long,
+    onSeek: (Long) -> Unit,
+    onInteract: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    var scrubTarget by remember { mutableStateOf<Long?>(null) }
+    val shown = (scrubTarget ?: positionMs).coerceIn(0, durationMs)
+    val frac = shown.toFloat() / durationMs.coerceAtLeast(1)
+
+    Column(Modifier.fillMaxWidth()) {
+        if (scrubTarget != null) {
+            Text(
+                "⇥ ${fmtTime(scrubTarget!!)}",
+                color = Color.White, fontSize = 13.sp, fontWeight = TextFontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(22.dp)
+                .onFocusChanged {
+                    focused = it.isFocused
+                    if (!it.isFocused && scrubTarget != null) { onSeek(scrubTarget!!); scrubTarget = null }
+                }
+                .focusable()
+                .onPreviewKeyEvent { ev ->
+                    if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (ev.key.nativeKeyCode) {
+                        AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                            scrubTarget = ((scrubTarget ?: positionMs) - 15_000).coerceAtLeast(0)
+                            onInteract(); true
+                        }
+                        AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            scrubTarget = ((scrubTarget ?: positionMs) + 15_000).coerceAtMost(durationMs)
+                            onInteract(); true
+                        }
+                        AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
+                            scrubTarget?.let(onSeek); scrubTarget = null; true
+                        }
+                        else -> false
+                    }
+                }
+                .pointerInput(durationMs) {
+                    detectTapGestures { offset ->
+                        onSeek((durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs))
+                    }
+                }
+                .pointerInput(durationMs) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            scrubTarget = (durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                        },
+                        onDragEnd = { scrubTarget?.let(onSeek); scrubTarget = null },
+                        onDragCancel = { scrubTarget = null },
+                    ) { change, _ ->
+                        scrubTarget = (durationMs * change.position.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                        onInteract()
+                    }
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            ProgressBarThin(frac, Modifier.fillMaxWidth())
+            Row(
+                Modifier.fillMaxWidth(if (frac > 0.005f) frac else 0.005f),
+                horizontalArrangement = LayoutArrangement.End,
+            ) {
+                Box(
+                    Modifier
+                        .height(if (focused || scrubTarget != null) 16.dp else 10.dp)
+                        .width(if (focused || scrubTarget != null) 16.dp else 10.dp)
+                        .background(
+                            if (focused || scrubTarget != null) tv.enktel.app.ui.theme.EnktelBlue else Color.White,
+                            CircleShape,
+                        ),
+                )
+            }
         }
     }
 }

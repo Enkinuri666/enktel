@@ -286,6 +286,34 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun PinDialog(
+    title: String,
+    onSubmit: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var pin by remember { mutableStateOf("") }
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .width(340.dp)
+                .background(EnktelSurfaceHigh, RoundedCornerShape(12.dp))
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            TvTextField(pin, { pin = it.filter(Char::isDigit).take(8) }, "PIN", password = true)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FocusButton("Unlock", accent = true, onClick = { onSubmit(pin) })
+                FocusButton("Cancel", onClick = onDismiss)
+            }
+        }
+    }
+}
+
+@Composable
 fun KeyValue(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Text(label, color = EnktelTextDim, fontSize = 12.sp, modifier = Modifier.width(140.dp))
