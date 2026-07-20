@@ -7,10 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -68,10 +73,16 @@ fun MobileScaffold(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
     )
 
-    Box(Modifier.fillMaxSize().background(EnktelBg)) {
+    // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can
+    // sit above it instead of getting overlapped, and how tall the status bar is so screen
+    // headers don't run under the notch/status area.
+    val sysNavPad = WindowInsets.navigationBars.asPaddingValues()
+    val bottomPad = if (showBar) 64.dp + sysNavPad.calculateBottomPadding() else sysNavPad.calculateBottomPadding()
+
+    Box(Modifier.fillMaxSize().background(EnktelBg).statusBarsPadding()) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
-                content(if (showBar) PaddingValues(bottom = 64.dp) else PaddingValues(0.dp))
+                content(PaddingValues(bottom = bottomPad))
             }
         }
 
@@ -86,7 +97,7 @@ fun MobileScaffold(
                         restoreState = true
                     }
                 },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
             )
         }
 
