@@ -169,6 +169,101 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
+        Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
+        val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
+        val subBg by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
+        val extSub by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
+        var newSub by remember { mutableStateOf("") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("white", "yellow", "cyan", "green").forEach { c ->
+                FocusButton("Color: $c", accent = subColor == c, onClick = {
+                    scope.launch { graph.settings.setSubColor(c) }
+                })
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("none", "outline", "shadow", "raised", "depressed").forEach { e ->
+                FocusButton("Edge: $e", accent = subEdge == e, onClick = { scope.launch { graph.settings.setSubEdge(e) } })
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FocusButton("Background: ${if (subBg == 0) "off" else "${subBg * 100 / 255}%"}", onClick = {
+                scope.launch { graph.settings.setSubBgAlpha(when (subBg) { 0 -> 128; 128 -> 200; 200 -> 255; else -> 0 }) }
+            })
+        }
+        if (extSub.isNotBlank()) Text("External subtitle: $extSub", color = EnktelTextDim, fontSize = 11.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Box(Modifier.width(320.dp)) {
+                tv.enktel.app.ui.components.TvTextField(newSub, { newSub = it }, "Load .srt/.vtt/.ass URL")
+            }
+            FocusButton("Apply", onClick = { scope.launch { graph.settings.setExtSubUrl(newSub.trim()) } })
+            FocusButton("Clear", onClick = { scope.launch { graph.settings.setExtSubUrl("") } })
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Text("AUDIO", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val loud by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
+        FocusButton("Loudness normalization: ${if (loud) "ON" else "off"}", accent = loud, onClick = {
+            scope.launch { graph.settings.setLoudnessOn(!loud) }
+        })
+
+        Spacer(Modifier.height(10.dp))
+        Text("PLAYBACK", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val autoplay by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
+        val skipIntro by graph.settings.skipIntroSec.collectAsStateWithLifecycle(initialValue = 0)
+        val pip by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FocusButton("Auto-play next episode: ${if (autoplay) "on" else "off"}", accent = autoplay, onClick = {
+                scope.launch { graph.settings.setAutoplayNextEp(!autoplay) }
+            })
+            FocusButton("Skip intro: ${skipIntro}s", onClick = {
+                scope.launch { graph.settings.setSkipIntroSec(when (skipIntro) { 0 -> 30; 30 -> 60; 60 -> 90; 90 -> 120; else -> 0 }) }
+            })
+            FocusButton("Picture-in-Picture: ${if (pip) "on" else "off"}", accent = pip, onClick = {
+                scope.launch { graph.settings.setPipEnabled(!pip) }
+            })
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Text("SPORTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
+        FocusButton("Live scores (TheSportsDB): ${if (scoresOn) "ON" else "off"}", accent = scoresOn, onClick = {
+            scope.launch { graph.settings.setScoresEnabled(!scoresOn) }
+        })
+        val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+        var newTeam by remember { mutableStateOf("") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Box(Modifier.width(260.dp)) {
+                tv.enktel.app.ui.components.TvTextField(newTeam, { newTeam = it }, "Follow team or league")
+            }
+            FocusButton("Add", onClick = {
+                if (newTeam.isNotBlank()) scope.launch {
+                    graph.db.sportsDao().follow(
+                        tv.enktel.app.data.db.FollowedTeam(name = newTeam.lowercase(), displayName = newTeam.trim())
+                    )
+                    newTeam = ""
+                }
+            })
+        }
+        followed.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { t ->
+                    FocusButton("★ ${t.displayName}  ✕", onClick = {
+                        scope.launch { graph.db.sportsDao().unfollow(t.name) }
+                    })
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Text("SCREENSAVER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val ss by graph.settings.screensaverMin.collectAsStateWithLifecycle(initialValue = 5)
+        FocusButton(if (ss == 0) "Screensaver: off" else "Screensaver: ${ss} min", onClick = {
+            scope.launch { graph.settings.setScreensaverMin(when (ss) { 0 -> 3; 3 -> 5; 5 -> 10; 10 -> 20; else -> 0 }) }
+        })
+
+        Spacer(Modifier.height(10.dp))
         Text("ABOUT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         Text("EnkTel IPTV · Stream Beyond Limits", color = Color.White, fontSize = 13.sp)
         Text("Android TV & Fire TV · Xtream Codes + M3U · EPG · Catch-up · DVR", color = EnktelTextDim, fontSize = 12.sp)

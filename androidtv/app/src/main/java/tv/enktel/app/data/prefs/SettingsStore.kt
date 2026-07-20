@@ -37,6 +37,20 @@ class SettingsStore(private val context: Context) {
     private val RECENT_CHANNELS = stringPreferencesKey("recent_channels")
     private val LIVE_SHIFT_ENABLED = booleanPreferencesKey("live_shift_enabled")
 
+    // v1.2.0 additions
+    private val LOUDNESS_ON = booleanPreferencesKey("loudness_on")
+    private val SUB_COLOR = stringPreferencesKey("sub_color") // white | yellow | cyan | green
+    private val SUB_EDGE = stringPreferencesKey("sub_edge") // none | outline | shadow | depressed | raised
+    private val SUB_BG_ALPHA = intPreferencesKey("sub_bg_alpha")
+    private val EXT_SUB_URL = stringPreferencesKey("ext_sub_url")
+    private val AUTOPLAY_NEXT_EP = booleanPreferencesKey("autoplay_next_ep")
+    private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
+    private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
+    private val SCREENSAVER_MIN = intPreferencesKey("screensaver_min")
+    private val FIRST_RUN_DONE = booleanPreferencesKey("first_run_done")
+    private val SCORES_ENABLED = booleanPreferencesKey("scores_enabled")
+    private val HIDDEN_ITEMS = stringSetPreferencesKey("hidden_items")
+
     val activeProfileId: Flow<Long> = context.dataStore.data.map { it[ACTIVE_PROFILE] ?: 0L }
     val streamFormat: Flow<String> = context.dataStore.data.map { it[STREAM_FORMAT] ?: "hls" }
     val bufferProfile: Flow<String> = context.dataStore.data.map { it[BUFFER_PROFILE] ?: "balanced" }
@@ -57,6 +71,19 @@ class SettingsStore(private val context: Context) {
         it[RECENT_CHANNELS]?.split('|')?.filter(String::isNotBlank) ?: emptyList()
     }
     val liveShiftEnabled: Flow<Boolean> = context.dataStore.data.map { it[LIVE_SHIFT_ENABLED] ?: true }
+
+    val loudnessOn: Flow<Boolean> = context.dataStore.data.map { it[LOUDNESS_ON] ?: false }
+    val subColor: Flow<String> = context.dataStore.data.map { it[SUB_COLOR] ?: "white" }
+    val subEdge: Flow<String> = context.dataStore.data.map { it[SUB_EDGE] ?: "outline" }
+    val subBgAlpha: Flow<Int> = context.dataStore.data.map { it[SUB_BG_ALPHA] ?: 0 }
+    val extSubUrl: Flow<String> = context.dataStore.data.map { it[EXT_SUB_URL] ?: "" }
+    val autoplayNextEp: Flow<Boolean> = context.dataStore.data.map { it[AUTOPLAY_NEXT_EP] ?: true }
+    val skipIntroSec: Flow<Int> = context.dataStore.data.map { it[SKIP_INTRO_SEC] ?: 0 }
+    val pipEnabled: Flow<Boolean> = context.dataStore.data.map { it[PIP_ENABLED] ?: true }
+    val screensaverMin: Flow<Int> = context.dataStore.data.map { it[SCREENSAVER_MIN] ?: 5 }
+    val firstRunDone: Flow<Boolean> = context.dataStore.data.map { it[FIRST_RUN_DONE] ?: false }
+    val scoresEnabled: Flow<Boolean> = context.dataStore.data.map { it[SCORES_ENABLED] ?: false }
+    val hiddenItems: Flow<Set<String>> = context.dataStore.data.map { it[HIDDEN_ITEMS] ?: emptySet() }
 
     suspend fun activeProfileIdNow(): Long = activeProfileId.first()
     suspend fun setActiveProfile(id: Long) = context.dataStore.edit { it[ACTIVE_PROFILE] = id }
@@ -83,4 +110,17 @@ class SettingsStore(private val context: Context) {
         prefs[RECENT_CHANNELS] = merged.joinToString("|")
     }
     suspend fun setLiveShiftEnabled(v: Boolean) = context.dataStore.edit { it[LIVE_SHIFT_ENABLED] = v }
+
+    suspend fun setLoudnessOn(v: Boolean) = context.dataStore.edit { it[LOUDNESS_ON] = v }
+    suspend fun setSubColor(v: String) = context.dataStore.edit { it[SUB_COLOR] = v }
+    suspend fun setSubEdge(v: String) = context.dataStore.edit { it[SUB_EDGE] = v }
+    suspend fun setSubBgAlpha(v: Int) = context.dataStore.edit { it[SUB_BG_ALPHA] = v }
+    suspend fun setExtSubUrl(v: String) = context.dataStore.edit { it[EXT_SUB_URL] = v }
+    suspend fun setAutoplayNextEp(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_NEXT_EP] = v }
+    suspend fun setSkipIntroSec(v: Int) = context.dataStore.edit { it[SKIP_INTRO_SEC] = v }
+    suspend fun setPipEnabled(v: Boolean) = context.dataStore.edit { it[PIP_ENABLED] = v }
+    suspend fun setScreensaverMin(v: Int) = context.dataStore.edit { it[SCREENSAVER_MIN] = v }
+    suspend fun setFirstRunDone(v: Boolean) = context.dataStore.edit { it[FIRST_RUN_DONE] = v }
+    suspend fun setScoresEnabled(v: Boolean) = context.dataStore.edit { it[SCORES_ENABLED] = v }
+    suspend fun setHiddenItems(set: Set<String>) = context.dataStore.edit { it[HIDDEN_ITEMS] = set }
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -74,11 +75,18 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableStateOf(0) }
+    var teamFilterOn by remember { mutableStateOf(false) }
+    val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
+    var liveScores by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
+    val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(refreshTick, sportFilter) {
         loading = true
         events = graph.sports.load(p.id, sportFilter.orEmpty())
         loading = false
+    }
+    LaunchedEffect(scoresEnabled, refreshTick) {
+        liveScores = if (scoresEnabled) graph.scores.live() else emptyList()
     }
     // Live view refreshes itself so LIVE/UPCOMING/FINISHED boundaries stay correct.
     LaunchedEffect(Unit) {
@@ -89,9 +97,11 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val allSports = remember(events) { graph.sports.sportsInSet(events) }
-    val live = events["LIVE"].orEmpty()
-    val upcoming = events["UPCOMING"].orEmpty()
-    val finished = events["FINISHED"].orEmpty()
+    fun matchesTeam(ev: SportsEvent): Boolean =
+        followed.any { it.name in ev.title.lowercase() }
+    val live = events["LIVE"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
+    val upcoming = events["UPCOMING"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
+    val finished = events["FINISHED"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
 
     Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
         Row(
@@ -106,6 +116,14 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             Spacer(Modifier.width(6.dp))
             Badge("${finished.size} REPLAYS", EnktelOk)
             Spacer(Modifier.weight(1f))
+            if (followed.isNotEmpty()) {
+                FocusButton(
+                    if (teamFilterOn) "★ Following only" else "★ My teams",
+                    accent = teamFilterOn,
+                    onClick = { teamFilterOn = !teamFilterOn },
+                )
+                Spacer(Modifier.width(6.dp))
+            }
             FocusButton("Refresh", onClick = { refreshTick++ })
         }
         if (allSports.isNotEmpty()) {
@@ -141,9 +159,20 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             if (live.isNotEmpty()) {
                 item { SectionHeader("🔴 LIVE NOW", EnktelLive) }
                 items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
-                    LiveEventRow(ev, onTap = {
+                    val matchedScore = if (scoresEnabled) graph.scores.matchByTitle(ev.title, liveScores) else null
+                    LiveEventRow(ev, score = matchedScore, onTap = {
                         toaster.info("Tuning to ${ev.channel.name}")
                         nav.navigate("live?ch=${ev.channel.key}")
+                    }, onFollow = { teamName ->
+                        scope.launch {
+                            graph.db.sportsDao().follow(
+                                tv.enktel.app.data.db.FollowedTeam(
+                                    name = teamName.lowercase(),
+                                    displayName = teamName,
+                                )
+                            )
+                            toaster.success("Following $teamName")
+                        }
                     })
                 }
             }
@@ -158,6 +187,14 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                                     else XtreamClient.liveUrl(p, ev.channel.streamId, hls = false)
                                 RecordScheduler.schedule(context, p.id, ev.title, ev.channel.name, url, ev.startMs, ev.endMs)
                                 toaster.success("Recording scheduled: ${ev.title}")
+                            }
+                        },
+                        onRemind = {
+                            scope.launch {
+                                tv.enktel.app.dvr.MatchReminderScheduler.schedule(
+                                    context, ev.channel.key, ev.channel.name, ev.title, ev.startMs, ev.endMs,
+                                )
+                                toaster.success("Reminder set for ${ev.title}")
                             }
                         },
                         onOpen = { nav.navigate("live?ch=${ev.channel.key}") },
@@ -196,7 +233,12 @@ private fun SectionHeader(text: String, color: Color) {
 }
 
 @Composable
-private fun LiveEventRow(ev: SportsEvent, onTap: () -> Unit) {
+private fun LiveEventRow(
+    ev: SportsEvent,
+    score: tv.enktel.app.data.repo.LiveScore? = null,
+    onFollow: (String) -> Unit = {},
+    onTap: () -> Unit,
+) {
     val now = System.currentTimeMillis()
     val frac = ((now - ev.startMs).toFloat() / (ev.endMs - ev.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
     Surface(
@@ -233,6 +275,13 @@ private fun LiveEventRow(ev: SportsEvent, onTap: () -> Unit) {
                     Spacer(Modifier.width(10.dp))
                     Text("· started ${(now - ev.startMs) / 60_000}m ago", color = EnktelTextDim, fontSize = 11.sp)
                 }
+                if (score != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "${score.home} ${score.homeScore} – ${score.awayScore} ${score.away}   ${score.minute}",
+                        color = EnktelOk, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
                 ProgressBarThin(frac, Modifier.fillMaxWidth(0.55f))
             }
@@ -243,7 +292,7 @@ private fun LiveEventRow(ev: SportsEvent, onTap: () -> Unit) {
 }
 
 @Composable
-private fun UpcomingEventRow(ev: SportsEvent, onSchedule: () -> Unit, onOpen: () -> Unit) {
+private fun UpcomingEventRow(ev: SportsEvent, onSchedule: () -> Unit, onRemind: () -> Unit = {}, onOpen: () -> Unit) {
     val inMs = ev.startMs - System.currentTimeMillis()
     val eta = if (inMs < 60 * 60_000) "in ${(inMs / 60_000).coerceAtLeast(0)}m"
         else if (inMs < 24 * 3600_000) "in ${inMs / 3600_000}h ${inMs / 60_000 % 60}m"
@@ -279,6 +328,8 @@ private fun UpcomingEventRow(ev: SportsEvent, onSchedule: () -> Unit, onOpen: ()
                 )
             }
             Spacer(Modifier.width(10.dp))
+            FocusButton("🔔 Remind", onClick = onRemind)
+            Spacer(Modifier.width(6.dp))
             FocusButton("● Record", onClick = onSchedule)
         }
     }

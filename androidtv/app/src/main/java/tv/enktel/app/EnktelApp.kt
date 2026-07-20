@@ -9,7 +9,10 @@ import tv.enktel.app.data.prefs.SettingsStore
 import tv.enktel.app.data.repo.ContentRepository
 import tv.enktel.app.data.repo.EpgRepository
 import tv.enktel.app.data.repo.PlaylistRepository
+import tv.enktel.app.data.repo.RecommendationsRepository
+import tv.enktel.app.data.repo.ScoresRepository
 import tv.enktel.app.data.repo.SportsRepository
+import tv.enktel.app.data.repo.WatchlistRepository
 import tv.enktel.app.data.xtream.XtreamClient
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -27,6 +30,9 @@ class AppGraph(app: Application) {
     val content = ContentRepository(app, db, xtream, http)
     val epg = EpgRepository(db, xtream, http)
     val sports = SportsRepository(content, epg)
+    val watchlist = WatchlistRepository(db.watchlistDao())
+    val recommendations = RecommendationsRepository(content)
+    val scores = ScoresRepository(http)
 }
 
 class EnktelApp : Application() {

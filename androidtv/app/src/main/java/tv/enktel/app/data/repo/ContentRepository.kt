@@ -148,6 +148,8 @@ class ContentRepository(
                 addedAt = e.long("added") ?: 0,
                 genre = e.str("genre").orEmpty(),
                 year = extractYear(e.str("year") ?: e.str("releasedate") ?: e.str("release_date"), e.str("name")),
+                cast = e.str("cast").orEmpty(),
+                director = e.str("director").orEmpty(),
             )
         }
 
@@ -162,6 +164,8 @@ class ContentRepository(
                 plot = e.str("plot").orEmpty(),
                 genre = e.str("genre").orEmpty(),
                 year = extractYear(e.str("year") ?: e.str("releaseDate") ?: e.str("release_date"), e.str("name")),
+                cast = e.str("cast").orEmpty(),
+                director = e.str("director").orEmpty(),
             )
         }
 

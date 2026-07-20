@@ -149,20 +149,46 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         )
     }
 
-    fun play(url: String, live: Boolean, startPositionMs: Long = 0) {
+    fun play(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
         lastUrl = url
         retries = 0
         dropped = 0
         error.value = null
-        val item = MediaItem.Builder().setUri(url).apply {
+        val builder = MediaItem.Builder().setUri(url).apply {
             if (live) setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.03f).build()
             )
-        }.build()
-        player.setMediaItem(item, if (startPositionMs > 0) startPositionMs else C.TIME_UNSET)
+            if (externalSubUrl.isNotBlank()) {
+                val mime = when {
+                    externalSubUrl.endsWith(".vtt", true) -> androidx.media3.common.MimeTypes.TEXT_VTT
+                    externalSubUrl.endsWith(".ass", true) || externalSubUrl.endsWith(".ssa", true) -> androidx.media3.common.MimeTypes.TEXT_SSA
+                    else -> androidx.media3.common.MimeTypes.APPLICATION_SUBRIP
+                }
+                setSubtitleConfigurations(listOf(
+                    MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
+                        .setMimeType(mime)
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .build()
+                ))
+            }
+        }
+        player.setMediaItem(builder.build(), if (startPositionMs > 0) startPositionMs else C.TIME_UNSET)
         player.prepare()
         player.playWhenReady = true
     }
+
+    /** Enable/disable loudness normalization via Android's LoudnessEnhancer. */
+    fun setLoudnessOn(on: Boolean) {
+        loudness?.release(); loudness = null
+        if (!on) return
+        val sessionId = player.audioSessionId
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
+        loudness = try {
+            android.media.audiofx.LoudnessEnhancer(sessionId).apply { setTargetGain(600); enabled = true }
+        } catch (_: Exception) { null }
+    }
+
+    private var loudness: android.media.audiofx.LoudnessEnhancer? = null
 
     fun tracksOf(type: Int): List<TrackChoice> {
         val out = ArrayList<TrackChoice>()
@@ -195,5 +221,8 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         player.trackSelectionParameters = params.build()
     }
 
-    fun release() = player.release()
+    fun release() {
+        loudness?.release(); loudness = null
+        player.release()
+    }
 }

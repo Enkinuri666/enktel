@@ -73,6 +73,16 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         recordings.filter { it.status == "DONE" && it.filePath.isNotBlank() }.sortedByDescending { it.startMs }.take(10)
     }
 
+    val watchlist by graph.watchlist.all(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    var becauseYouWatched by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var trending by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var newThisWeek by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    LaunchedEffect(p.id) {
+        becauseYouWatched = graph.recommendations.becauseYouWatched(p.id)
+        trending = graph.recommendations.trending(p.id)
+        newThisWeek = graph.recommendations.newThisWeek(p.id)
+    }
+
     val heroItems = remember(favMovies, recentMovies) {
         (favMovies + recentMovies).distinctBy { it.key }.filter { it.poster.isNotBlank() }.take(5)
     }
@@ -114,6 +124,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 FocusButton("Movies", onClick = { nav.navigate("movies") })
                 FocusButton("Series", onClick = { nav.navigate("series") })
                 FocusButton("⚽ Sports", onClick = { nav.navigate("sports") })
+                FocusButton("☆ Watchlist", onClick = { nav.navigate("watchlist") })
                 FocusButton("Search", onClick = { nav.navigate("search") })
                 FocusButton("Recordings", onClick = { nav.navigate("recordings") })
                 FocusButton("Settings", onClick = { nav.navigate("settings") })
@@ -130,6 +141,44 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         wide = true,
                         onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key)) },
                     )
+                }
+            }
+        }
+        if (watchlist.isNotEmpty()) {
+            item {
+                ContentRail("My Watchlist", watchlist.take(15), key = { it.key }) { w ->
+                    PosterCard(
+                        title = w.name, imageUrl = w.poster,
+                        subtitle = if (w.kind == "series") "Series" else "Movie",
+                        onClick = {
+                            if (w.kind == "vod") nav.navigate("movie/${w.profileId}:${w.refId}")
+                            else nav.navigate("seriesDetails/${w.profileId}:${w.refId}")
+                        },
+                    )
+                }
+            }
+        }
+        if (becauseYouWatched.isNotEmpty()) {
+            item {
+                ContentRail("Because You Watched", becauseYouWatched, key = { it.key }) { m ->
+                    PosterCard(m.name, m.poster, subtitle = m.genre.take(20),
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (trending.isNotEmpty()) {
+            item {
+                ContentRail("Trending on EnkTel", trending, key = { it.key }) { m ->
+                    PosterCard(m.name, m.poster, subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (newThisWeek.isNotEmpty()) {
+            item {
+                ContentRail("New This Week", newThisWeek, key = { it.key }) { m ->
+                    PosterCard(m.name, m.poster, subtitle = "New",
+                        onClick = { nav.navigate("movie/${m.key}") })
                 }
             }
         }
