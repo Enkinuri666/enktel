@@ -80,13 +80,20 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var liveScores by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
     val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
 
+    var loadError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(refreshTick, sportFilter) {
-        loading = true
-        events = graph.sports.load(p.id, sportFilter.orEmpty())
+        loading = true; loadError = null
+        try {
+            events = graph.sports.load(p.id, sportFilter.orEmpty())
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (e: Exception) {
+            loadError = e.message ?: "Could not load sports events"
+            events = emptyMap()
+        }
         loading = false
     }
     LaunchedEffect(scoresEnabled, refreshTick) {
-        liveScores = if (scoresEnabled) graph.scores.live() else emptyList()
+        liveScores = try { if (scoresEnabled) graph.scores.live() else emptyList() } catch (_: Exception) { emptyList() }
     }
     // Live view refreshes itself so LIVE/UPCOMING/FINISHED boundaries stay correct.
     LaunchedEffect(Unit) {
@@ -103,59 +110,89 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val upcoming = events["UPCOMING"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
     val finished = events["FINISHED"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
 
-    Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
-        Row(
-            Modifier.padding(horizontal = 48.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SectionTitle("Sports Hub")
-            Spacer(Modifier.width(14.dp))
-            Badge("${live.size} LIVE", EnktelLive)
-            Spacer(Modifier.width(6.dp))
-            Badge("${upcoming.size} UPCOMING", EnktelBlue)
-            Spacer(Modifier.width(6.dp))
-            Badge("${finished.size} REPLAYS", EnktelOk)
-            Spacer(Modifier.weight(1f))
-            if (followed.isNotEmpty()) {
-                FocusButton(
-                    if (teamFilterOn) "★ Following only" else "★ My teams",
-                    accent = teamFilterOn,
-                    onClick = { teamFilterOn = !teamFilterOn },
-                )
+    val padHoriz = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 16.dp else 48.dp
+
+    // Single LazyColumn as the root — nesting a LazyColumn inside a plain Column with
+    // fillMaxSize causes intermittent crashes on some devices when items produce zero
+    // height during measurement.
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = padHoriz),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionTitle("Sports Hub")
+                Spacer(Modifier.width(14.dp))
+                Badge("${live.size} LIVE", EnktelLive)
                 Spacer(Modifier.width(6.dp))
+                Badge("${upcoming.size} UP", EnktelBlue)
+                Spacer(Modifier.width(6.dp))
+                Badge("${finished.size} REPLAY", EnktelOk)
+                Spacer(Modifier.weight(1f))
+                if (followed.isNotEmpty()) {
+                    FocusButton(
+                        if (teamFilterOn) "★ mine" else "★",
+                        accent = teamFilterOn,
+                        onClick = { teamFilterOn = !teamFilterOn },
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                FocusButton("↻", onClick = { refreshTick++ })
             }
-            FocusButton("Refresh", onClick = { refreshTick++ })
         }
         if (allSports.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            LazyRow(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                item { FocusButton("All sports", accent = sportFilter == null, onClick = { sportFilter = null }) }
-                items(allSports) { sport ->
-                    FocusButton(sport, accent = sportFilter == sport, onClick = {
-                        sportFilter = if (sportFilter == sport) null else sport
-                    })
+            item {
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = padHoriz),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item { FocusButton("All", accent = sportFilter == null, onClick = { sportFilter = null }) }
+                    items(allSports, key = { it }) { sport ->
+                        FocusButton(sport, accent = sportFilter == sport, onClick = {
+                            sportFilter = if (sportFilter == sport) null else sport
+                        })
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        item { Spacer(Modifier.height(14.dp)) }
 
-        if (loading && events.isEmpty()) {
-            CenterMessage("Scanning EPG for sports events…")
-            return
+        when {
+            loadError != null -> item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = padHoriz)) {
+                    Text("Couldn't load sports: $loadError", color = EnktelLive, fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                    FocusButton("Try again", accent = true, onClick = { refreshTick++ })
+                }
+            }
+            loading && events.isEmpty() -> item {
+                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                    Text("Scanning EPG for sports events…", color = EnktelTextDim, fontSize = 14.sp)
+                }
+            }
+            live.isEmpty() && upcoming.isEmpty() && finished.isEmpty() -> item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = padHoriz, vertical = 20.dp)) {
+                    Text("No sports events found in your EPG yet.", color = EnktelTextDim, fontSize = 14.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text("If you just added the playlist, wait for the EPG download to finish, or refresh manually below.", color = EnktelTextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FocusButton("Refresh EPG", accent = true, onClick = {
+                            scope.launch {
+                                try { graph.epg.refresh(p) } catch (_: Exception) {}
+                                refreshTick++
+                            }
+                        })
+                        FocusButton("Rescan", onClick = { refreshTick++ })
+                    }
+                }
+            }
         }
-        if (live.isEmpty() && upcoming.isEmpty() && finished.isEmpty()) {
-            CenterMessage("No sports events found in your EPG. Try refreshing the EPG in Settings.")
-            return
-        }
-
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
             if (live.isNotEmpty()) {
                 item { SectionHeader("🔴 LIVE NOW", EnktelLive) }
                 items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
@@ -216,7 +253,6 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     )
                 }
             }
-        }
     }
 }
 
