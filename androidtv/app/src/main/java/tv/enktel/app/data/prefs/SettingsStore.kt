@@ -56,6 +56,7 @@ class SettingsStore(private val context: Context) {
     private val UI_OPACITY_PCT = intPreferencesKey("ui_opacity_pct") // 60-100
     private val TEXT_SCALE_PCT = intPreferencesKey("text_scale_pct") // 85-140
     private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+    private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | guide_dock
 
     val activeProfileId: Flow<Long> = context.dataStore.data.map { it[ACTIVE_PROFILE] ?: 0L }
     val streamFormat: Flow<String> = context.dataStore.data.map { it[STREAM_FORMAT] ?: "hls" }
@@ -95,6 +96,7 @@ class SettingsStore(private val context: Context) {
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
+    val backAction: Flow<String> = context.dataStore.data.map { it[BACK_ACTION] ?: "exit" }
 
     suspend fun activeProfileIdNow(): Long = activeProfileId.first()
     suspend fun setActiveProfile(id: Long) = context.dataStore.edit { it[ACTIVE_PROFILE] = id }
@@ -140,4 +142,5 @@ class SettingsStore(private val context: Context) {
     suspend fun setTextScalePct(v: Int) = context.dataStore.edit { it[TEXT_SCALE_PCT] = v.coerceIn(85, 140) }
     suspend fun setStartOnBoot(v: Boolean) = context.dataStore.edit { it[START_ON_BOOT] = v }
     suspend fun startOnBootNow(): Boolean = startOnBoot.first()
+    suspend fun setBackAction(v: String) = context.dataStore.edit { it[BACK_ACTION] = v }
 }

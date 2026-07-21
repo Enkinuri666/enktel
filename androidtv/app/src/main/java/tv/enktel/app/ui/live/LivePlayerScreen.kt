@@ -226,12 +226,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
+    val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
             showQuickMenu -> showQuickMenu = false
             showChannels -> showChannels = false
             showInfo -> showInfo = false
+            backAction == "pip" -> {
+                val entered = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
+                if (!entered) nav.popBackStack()
+            }
+            backAction == "guide_dock" -> {
+                // Docked mini-player over the TV Guide (mini-player itself is a follow-up piece
+                // of work — for now we jump to the guide but keep audio playing thanks to
+                // the shared PlayerEngine surviving until this composable is disposed).
+                nav.navigate("guide")
+            }
             else -> nav.popBackStack()
         }
     }
@@ -331,15 +342,67 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
 
         if (showInfo && current != null) {
-            InfoBar(
-                channel = current!!,
-                nowNext = nowNext,
-                stats = stats,
-                recording = recordingId != 0L,
-                shiftedFrom = shiftedFrom,
-                sleepUntil = sleepUntil,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                InfoBar(
+                    channel = current!!,
+                    nowNext = nowNext,
+                    stats = stats,
+                    recording = recordingId != 0L,
+                    shiftedFrom = shiftedFrom,
+                    sleepUntil = sleepUntil,
+                    modifier = Modifier,
+                )
+                // On-screen action bar so touch users can reach every player control without
+                // needing a remote/MENU button. Also visible on TV but designed to be tap-safe.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FocusButton("☰ Channels", onClick = { showChannels = true })
+                    FocusButton("EPG", onClick = { nav.navigate("guide") })
+                    FocusButton(
+                        if (recordingId != 0L) "■ REC" else "● Record",
+                        accent = recordingId != 0L,
+                        onClick = {
+                            val ch = current!!
+                            scope.launch {
+                                if (recordingId == 0L) {
+                                    recordingId = tv.enktel.app.dvr.RecordScheduler.recordNow(
+                                        context, p.id,
+                                        title = nowNext.now?.title ?: ch.name,
+                                        channelName = ch.name,
+                                        streamUrl = graph.content.liveUrl(p, ch, "ts"),
+                                    )
+                                    toaster.success("Recording ${ch.name}")
+                                } else {
+                                    tv.enktel.app.dvr.RecordScheduler.cancel(context, recordingId); recordingId = 0L
+                                    toaster.info("Recording stopped")
+                                }
+                            }
+                        },
+                    )
+                    FocusButton(if (isFav) "★" else "☆", accent = isFav, onClick = {
+                        scope.launch { graph.content.toggleFavorite(p.id, "live", current!!.streamId) }
+                    })
+                    FocusButton("Audio", onClick = { trackMenu = "audio" })
+                    FocusButton("Subs", onClick = { trackMenu = "subs" })
+                    FocusButton("Aspect", onClick = {
+                        resizeMode = when (resizeMode) {
+                            AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                            AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    })
+                    FocusButton("⧉ PiP", onClick = {
+                        val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
+                        if (!ok) toaster.error("Picture-in-Picture not supported here")
+                    })
+                    FocusButton("⋯ More", onClick = { showQuickMenu = true })
+                }
+            }
         }
 
         if (showChannels) {
@@ -532,7 +595,9 @@ private fun InfoBar(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
+            if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+                "Tap to hide · long-press for channel list"
+            else "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
             color = EnktelTextDim.copy(0.8f), fontSize = 11.sp,
         )
     }
