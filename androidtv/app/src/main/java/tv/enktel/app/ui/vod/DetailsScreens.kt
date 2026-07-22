@@ -198,9 +198,14 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             CenterMessage("Loading episodes…")
             return
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        tv.enktel.app.ui.components.ChipRowLabel("Season")
+        Spacer(Modifier.height(6.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(seasons.keys.toList()) { sn ->
-                FocusButton("Season $sn", accent = sn == season, onClick = { season = sn })
+                tv.enktel.app.ui.components.GlassChip(
+                    "S$sn", selected = sn == season,
+                    onClick = { season = sn },
+                )
             }
         }
         Spacer(Modifier.height(14.dp))

@@ -57,9 +57,11 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 modifier = Modifier.width(360.dp),
             )
             Spacer(Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FocusButton("Xtream Codes", accent = mode == "xtream", onClick = { mode = "xtream" })
-                FocusButton("M3U Playlist", accent = mode == "m3u", onClick = { mode = "m3u" })
+            tv.enktel.app.ui.components.ChipRowLabel("Playlist type")
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.GlassChip("Xtream Codes", selected = mode == "xtream", onClick = { mode = "xtream" })
+                tv.enktel.app.ui.components.GlassChip("M3U Playlist", selected = mode == "m3u", onClick = { mode = "m3u" })
             }
             Spacer(Modifier.height(20.dp))
             TvTextField(name, { name = it }, "Playlist name")
