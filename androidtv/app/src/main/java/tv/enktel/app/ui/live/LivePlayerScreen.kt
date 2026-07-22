@@ -232,6 +232,21 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
+    val pipOn by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val autoPipOnBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
+    val autoPipOnHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
+
+    // Register with the Activity so onUserLeaveHint() can enter PiP when the
+    // user presses Home while a player is on-screen.
+    androidx.compose.runtime.DisposableEffect(pipOn, autoPipOnHome) {
+        tv.enktel.app.player.PictureInPicture.playerActive = true
+        tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = pipOn && autoPipOnHome
+        onDispose {
+            tv.enktel.app.player.PictureInPicture.playerActive = false
+            tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
+        }
+    }
+
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
@@ -239,7 +254,16 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             showChannels -> showChannels = false
             browseMode -> browseMode = false
             showInfo -> showInfo = false
-            else -> nav.popBackStack()
+            else -> {
+                // Top-level Back: if the user has PiP + Auto-PiP-on-back enabled and
+                // the player is playing, hand off to PiP instead of popping the stack.
+                val entered = if (pipOn && autoPipOnBack && engine.player.isPlaying) {
+                    (context as? android.app.Activity)?.let {
+                        tv.enktel.app.player.PictureInPicture.enter(it)
+                    } ?: false
+                } else false
+                if (!entered) nav.popBackStack()
+            }
         }
     }
 

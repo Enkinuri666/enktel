@@ -44,8 +44,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
+    // Mobile builds get less horizontal padding so the content isn't crushed into
+    // the middle of a phone display; TV builds keep the wide 10-foot padding.
+    val isMobile = BuildConfig.FLAVOR == "mobile"
+    val hPad = if (isMobile) 20.dp else 48.dp
+    val vPad = if (isMobile) 18.dp else 28.dp
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 48.dp, vertical = 28.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = hPad, vertical = vPad),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         SectionTitle("Settings")
@@ -214,17 +219,40 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val autoplay by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
         val skipIntro by graph.settings.skipIntroSec.collectAsStateWithLifecycle(initialValue = 0)
         val pip by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FocusButton("Auto-play next episode: ${if (autoplay) "on" else "off"}", accent = autoplay, onClick = {
-                scope.launch { graph.settings.setAutoplayNextEp(!autoplay) }
-            })
-            FocusButton("Skip intro: ${skipIntro}s", onClick = {
-                scope.launch { graph.settings.setSkipIntroSec(when (skipIntro) { 0 -> 30; 30 -> 60; 60 -> 90; 90 -> 120; else -> 0 }) }
-            })
-            FocusButton("Picture-in-Picture: ${if (pip) "on" else "off"}", accent = pip, onClick = {
-                scope.launch { graph.settings.setPipEnabled(!pip) }
-            })
+        val autoPipBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
+        val autoPipHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FocusButton("Auto-play next episode: ${if (autoplay) "on" else "off"}", accent = autoplay, onClick = {
+                    scope.launch { graph.settings.setAutoplayNextEp(!autoplay) }
+                })
+                FocusButton("Skip intro: ${skipIntro}s", onClick = {
+                    scope.launch { graph.settings.setSkipIntroSec(when (skipIntro) { 0 -> 30; 30 -> 60; 60 -> 90; 90 -> 120; else -> 0 }) }
+                })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FocusButton("Picture-in-Picture: ${if (pip) "on" else "off"}", accent = pip, onClick = {
+                    scope.launch { graph.settings.setPipEnabled(!pip) }
+                })
+                FocusButton(
+                    "PiP on back: ${if (autoPipBack) "on" else "off"}",
+                    accent = autoPipBack,
+                    onClick = { scope.launch { graph.settings.setAutoPipOnBack(!autoPipBack) } },
+                )
+                FocusButton(
+                    "PiP on home: ${if (autoPipHome) "on" else "off"}",
+                    accent = autoPipHome,
+                    onClick = { scope.launch { graph.settings.setAutoPipOnHome(!autoPipHome) } },
+                )
+            }
         }
+        Text(
+            "PiP requires Android 8.0+ and the system \"Picture-in-picture\" app permission " +
+                "(Settings → Apps → EnkTel → Advanced → Picture-in-picture). " +
+                "\"On back\" hands off when you press the back button; \"On home\" hands off " +
+                "when you press Home while a player is on-screen.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
 
         Spacer(Modifier.height(10.dp))
         Text("SPORTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)

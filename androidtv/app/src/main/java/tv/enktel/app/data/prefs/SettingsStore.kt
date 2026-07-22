@@ -46,6 +46,8 @@ class SettingsStore(private val context: Context) {
     private val AUTOPLAY_NEXT_EP = booleanPreferencesKey("autoplay_next_ep")
     private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
+    private val AUTO_PIP_ON_BACK = booleanPreferencesKey("auto_pip_on_back")
+    private val AUTO_PIP_ON_HOME = booleanPreferencesKey("auto_pip_on_home")
     private val SCREENSAVER_MIN = intPreferencesKey("screensaver_min")
     private val FIRST_RUN_DONE = booleanPreferencesKey("first_run_done")
     private val SCORES_ENABLED = booleanPreferencesKey("scores_enabled")
@@ -86,6 +88,8 @@ class SettingsStore(private val context: Context) {
     val autoplayNextEp: Flow<Boolean> = context.dataStore.data.map { it[AUTOPLAY_NEXT_EP] ?: true }
     val skipIntroSec: Flow<Int> = context.dataStore.data.map { it[SKIP_INTRO_SEC] ?: 0 }
     val pipEnabled: Flow<Boolean> = context.dataStore.data.map { it[PIP_ENABLED] ?: true }
+    val autoPipOnBack: Flow<Boolean> = context.dataStore.data.map { it[AUTO_PIP_ON_BACK] ?: true }
+    val autoPipOnHome: Flow<Boolean> = context.dataStore.data.map { it[AUTO_PIP_ON_HOME] ?: true }
     val screensaverMin: Flow<Int> = context.dataStore.data.map { it[SCREENSAVER_MIN] ?: 5 }
     val firstRunDone: Flow<Boolean> = context.dataStore.data.map { it[FIRST_RUN_DONE] ?: false }
     val scoresEnabled: Flow<Boolean> = context.dataStore.data.map { it[SCORES_ENABLED] ?: false }
@@ -130,6 +134,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setAutoplayNextEp(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_NEXT_EP] = v }
     suspend fun setSkipIntroSec(v: Int) = context.dataStore.edit { it[SKIP_INTRO_SEC] = v }
     suspend fun setPipEnabled(v: Boolean) = context.dataStore.edit { it[PIP_ENABLED] = v }
+    suspend fun setAutoPipOnBack(v: Boolean) = context.dataStore.edit { it[AUTO_PIP_ON_BACK] = v }
+    suspend fun setAutoPipOnHome(v: Boolean) = context.dataStore.edit { it[AUTO_PIP_ON_HOME] = v }
     suspend fun setScreensaverMin(v: Int) = context.dataStore.edit { it[SCREENSAVER_MIN] = v }
     suspend fun setFirstRunDone(v: Boolean) = context.dataStore.edit { it[FIRST_RUN_DONE] = v }
     suspend fun setScoresEnabled(v: Boolean) = context.dataStore.edit { it[SCORES_ENABLED] = v }

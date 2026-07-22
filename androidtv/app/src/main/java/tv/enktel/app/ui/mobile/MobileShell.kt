@@ -158,39 +158,56 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
             .pointerInput(Unit) { detectTapGestures { onDismiss() } },
         contentAlignment = Alignment.BottomCenter,
     ) {
+        // navigationBarsPadding here keeps the sheet — especially its last row —
+        // out from under the system gesture bar so every entry stays tappable.
         Column(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                 .background(EnktelSurfaceHigh)
-                .padding(16.dp)
-                .pointerInput(Unit) { detectTapGestures { /* absorb */ } },
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .pointerInput(Unit) { detectTapGestures { /* absorb bg taps */ } },
         ) {
-            Text("Menu", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp))
+            // Drag-handle: signals "swipe to close" without needing a Close button.
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 10.dp)
+                    .height(4.dp)
+                    .background(EnktelTextDim, RoundedCornerShape(2.dp))
+                    .padding(horizontal = 20.dp),
+            )
+            Text(
+                "Menu", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
+            )
             listOf(
-                "TV Guide" to "guide",
-                "Series" to "series",
-                "Watchlist" to "watchlist",
-                "Recordings" to "recordings",
-                "Settings" to "settings",
+                "📺  TV Guide" to "guide",
+                "🎞️  Series" to "series",
+                "☆  Watchlist" to "watchlist",
+                "⏺  Recordings" to "recordings",
+                "⚙  Settings" to "settings",
             ).forEach { (label, route) ->
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .pointerInput(route) {
                             detectTapGestures {
                                 onDismiss()
                                 nav.navigate(route)
                             }
                         }
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, color = Color.White, fontSize = 15.sp)
+                    Text(label, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
+            // Small tail spacer so the last row never kisses the sheet edge visually.
+            androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
         }
     }
 }
