@@ -128,18 +128,29 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) EnktelBlue.copy(0.22f) else Color.Transparent,
+            containerColor = if (selected) EnktelBlue.copy(0.18f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,
             focusedContentColor = Color.White,
             contentColor = if (selected) Color.White else EnktelTextDim,
         ),
     ) {
-        Text(
-            text, fontSize = 13.sp, maxLines = 1,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Left accent stripe mirrors the ContentRail / Recordings section headers.
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(if (selected) EnktelBlue else Color.Transparent, RoundedCornerShape(2.dp)),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text, fontSize = 13.sp, maxLines = 1,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.padding(PaddingValues(top = 8.dp, bottom = 8.dp, end = 8.dp)),
+            )
+        }
     }
 }
 
