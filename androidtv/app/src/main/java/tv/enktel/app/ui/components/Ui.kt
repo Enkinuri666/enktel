@@ -98,6 +98,66 @@ fun FocusButton(
     }
 }
 
+/**
+ * Netflix-style pill chip for filter rows. Sits lower than FocusButton visually
+ * (used for tag/genre/decade selection, not primary CTAs) and adds a hairline
+ * border in the selected state so a chosen filter reads at a glance.
+ */
+@Composable
+fun GlassChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = EnktelBlue,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) accent.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f),
+            focusedContainerColor = accent,
+            contentColor = if (selected) Color.White else EnktelTextDim,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (selected) accent.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f),
+                ),
+                shape = RoundedCornerShape(20.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(20.dp),
+            ),
+        ),
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Small uppercase heading used above chip rows. */
+@Composable
+fun ChipRowLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        color = EnktelTextDim,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.5.sp,
+        modifier = modifier,
+    )
+}
+
 @Composable
 fun TvTextField(
     value: String,

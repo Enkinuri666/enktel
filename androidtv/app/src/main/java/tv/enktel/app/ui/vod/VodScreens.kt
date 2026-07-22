@@ -352,40 +352,68 @@ private fun FilterBar(
     onDecade: (Int?) -> Unit,
 ) {
     Column(Modifier.padding(start = 24.dp, top = 16.dp)) {
+        tv.enktel.app.ui.components.ChipRowLabel(
+            "Sort by",
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(sortOptions) { (id, label) ->
-                tv.enktel.app.ui.components.FocusButton(label, accent = sort == id, onClick = { onSort(id) })
+                tv.enktel.app.ui.components.GlassChip(
+                    label, selected = sort == id, accent = EnktelBlue,
+                    onClick = { onSort(id) },
+                )
             }
         }
         if (genres.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+            tv.enktel.app.ui.components.ChipRowLabel(
+                "Genre",
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    tv.enktel.app.ui.components.FocusButton("All genres", accent = genreFilter == null, onClick = { onGenre(null) })
+                    tv.enktel.app.ui.components.GlassChip(
+                        "All", selected = genreFilter == null,
+                        accent = tv.enktel.app.ui.theme.EnktelPurple,
+                        onClick = { onGenre(null) },
+                    )
                 }
                 items(genres) { g ->
-                    tv.enktel.app.ui.components.FocusButton(g, accent = genreFilter == g, onClick = {
-                        onGenre(if (genreFilter == g) null else g)
-                    })
+                    tv.enktel.app.ui.components.GlassChip(
+                        g, selected = genreFilter == g,
+                        accent = tv.enktel.app.ui.theme.EnktelPurple,
+                        onClick = { onGenre(if (genreFilter == g) null else g) },
+                    )
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel(
+            "Year",
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
-                tv.enktel.app.ui.components.FocusButton("Any year", accent = decadeFilter == null, onClick = { onDecade(null) })
+                tv.enktel.app.ui.components.GlassChip(
+                    "Any", selected = decadeFilter == null,
+                    accent = EnktelOk,
+                    onClick = { onDecade(null) },
+                )
             }
             items(listOf(2026, 2025, 2020, 2010, 2000, 1990)) { d ->
-                tv.enktel.app.ui.components.FocusButton(
+                tv.enktel.app.ui.components.GlassChip(
                     if (d >= 2025) "$d+" else "${d}s",
-                    accent = decadeFilter == d, onClick = {
-                    onDecade(if (decadeFilter == d) null else d)
-                })
+                    selected = decadeFilter == d,
+                    accent = EnktelOk,
+                    onClick = { onDecade(if (decadeFilter == d) null else d) },
+                )
             }
             item {
-                tv.enktel.app.ui.components.FocusButton("Older", accent = decadeFilter == -1, onClick = {
-                    onDecade(if (decadeFilter == -1) null else -1)
-                })
+                tv.enktel.app.ui.components.GlassChip(
+                    "Older", selected = decadeFilter == -1,
+                    accent = EnktelOk,
+                    onClick = { onDecade(if (decadeFilter == -1) null else -1) },
+                )
             }
         }
     }
