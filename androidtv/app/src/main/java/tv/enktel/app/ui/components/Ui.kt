@@ -305,17 +305,44 @@ fun <T> ContentRail(
     items: List<T>,
     key: (T) -> Any,
     modifier: Modifier = Modifier,
+    accent: Color = EnktelBlue,
+    subtitle: String = "",
     itemContent: @Composable (T) -> Unit,
 ) {
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {
-        Text(
-            title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
-        )
+        // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp),
+        ) {
+            Box(
+                Modifier
+                    .height(20.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.55f)))),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                title,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                letterSpacing = 0.3.sp,
+            )
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.width(10.dp))
+                Text(subtitle, fontSize = 12.sp, color = EnktelTextDim, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                "${items.size}",
+                fontSize = 12.sp,
+                color = EnktelTextDim,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),

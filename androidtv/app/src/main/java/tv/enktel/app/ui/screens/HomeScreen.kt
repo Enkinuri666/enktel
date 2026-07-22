@@ -184,7 +184,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (continueWatching.isNotEmpty()) {
             item {
-                ContentRail("Continue Watching", continueWatching, key = { it.key }) { cw ->
+                ContentRail(
+                    "Continue Watching", continueWatching,
+                    accent = tv.enktel.app.ui.theme.EnktelLive,
+                    subtitle = "pick up where you left off",
+                    key = { it.key },
+                ) { cw ->
                     val pct = if (cw.durationMs > 0) " · ${(cw.positionMs * 100 / cw.durationMs)}%" else ""
                     PosterCard(
                         title = cw.name,
@@ -198,7 +203,11 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (watchlist.isNotEmpty()) {
             item {
-                ContentRail("My Watchlist", watchlist.take(15), key = { it.key }) { w ->
+                ContentRail(
+                    "My Watchlist", watchlist.take(15),
+                    accent = tv.enktel.app.ui.theme.EnktelPurple,
+                    key = { it.key },
+                ) { w ->
                     PosterCard(
                         title = w.name, imageUrl = w.poster,
                         subtitle = if (w.kind == "series") "Series" else "Movie",
@@ -212,7 +221,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (latestReleases.isNotEmpty()) {
             item {
-                ContentRail("🆕  Latest Releases", latestReleases, key = { it.key }) { m ->
+                ContentRail(
+                    "🆕  Latest Releases", latestReleases,
+                    accent = tv.enktel.app.ui.theme.EnktelOk,
+                    subtitle = "fresh on EnkTel",
+                    key = { it.key },
+                ) { m ->
                     val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
                     val sub = when {
                         ageDays <= 1 -> "Just added"
@@ -225,7 +239,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (comingSoon.isNotEmpty()) {
             item {
-                ContentRail("🎬  Coming Soon", comingSoon, key = { it.key }) { m ->
+                ContentRail(
+                    "🎬  Coming Soon", comingSoon,
+                    accent = tv.enktel.app.ui.theme.EnktelPurple,
+                    subtitle = "counting down",
+                    key = { it.key },
+                ) { m ->
                     val target = java.util.Calendar.getInstance().apply {
                         set(java.util.Calendar.YEAR, m.year.coerceAtLeast(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)))
                         set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
@@ -256,7 +275,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (trending.isNotEmpty()) {
             item {
-                ContentRail("Trending on EnkTel", trending, key = { it.key }) { m ->
+                ContentRail(
+                    "Trending on EnkTel", trending,
+                    accent = tv.enktel.app.ui.theme.EnktelLive,
+                    subtitle = "everyone's watching",
+                    key = { it.key },
+                ) { m ->
                     PosterCard(m.name, m.poster, subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
                         onClick = { nav.navigate("movie/${m.key}") })
                 }
@@ -272,7 +296,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (recentRecordings.isNotEmpty()) {
             item {
-                ContentRail("Recent Recordings", recentRecordings, key = { it.id }) { rec ->
+                ContentRail(
+                    "Recent Recordings", recentRecordings,
+                    accent = tv.enktel.app.ui.theme.EnktelLive,
+                    subtitle = "saved to your library",
+                    key = { it.id },
+                ) { rec ->
                     PosterCard(
                         title = rec.title,
                         imageUrl = rec.channelLogo,
