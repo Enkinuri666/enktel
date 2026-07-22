@@ -33,11 +33,16 @@ import tv.enktel.app.data.db.Movie
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.db.SearchHistoryItem
 import tv.enktel.app.data.db.Series
+import tv.enktel.app.ui.components.ChipRowLabel
 import tv.enktel.app.ui.components.ContentRail
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.TvTextField
+import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 @Suppress("ProduceStateDoesNotAssignValue")
@@ -84,17 +89,26 @@ fun SearchScreen(graph: AppGraph, nav: NavHostController) {
         if (query.isBlank() && history.isNotEmpty()) {
             item {
                 Column(Modifier.padding(horizontal = 48.dp)) {
-                    Row {
-                        Text("Recent searches", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        ChipRowLabel("Recent searches")
                         Spacer(Modifier.weight(1f))
                         FocusButton("Clear", onClick = { scope.launch { graph.db.searchDao().clear() } })
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         history.take(8).forEach { h ->
-                            FocusButton(h.query, onClick = { query = h.query })
+                            GlassChip(h.query, selected = false, onClick = { query = h.query })
                         }
                     }
+                }
+            }
+        }
+        if (query.length >= 2 && channels.isEmpty() && movies.isEmpty() && series.isEmpty()) {
+            item {
+                Column(Modifier.padding(horizontal = 48.dp, vertical = 24.dp)) {
+                    Text("No matches for \"$query\"", color = androidx.compose.ui.graphics.Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Try a shorter query, an actor's name, or a genre.", color = EnktelTextDim, fontSize = 12.sp)
                 }
             }
         }
@@ -105,25 +119,31 @@ fun SearchScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        item {
-            ContentRail("Channels (${channels.size})", channels, key = { it.key }) { ch ->
-                PosterCard(ch.name, ch.logo, wide = true, subtitle = ch.categoryName,
-                    onClick = { nav.navigate("live?ch=${ch.key}") })
+        if (channels.isNotEmpty()) {
+            item {
+                ContentRail("Channels", channels, accent = EnktelBlue, key = { it.key }) { ch ->
+                    PosterCard(ch.name, ch.logo, wide = true, subtitle = ch.categoryName,
+                        onClick = { nav.navigate("live?ch=${ch.key}") })
+                }
             }
         }
-        item {
-            ContentRail("Movies (${movies.size})", movies, key = { it.key }) { m ->
-                PosterCard(
-                    m.name, m.poster,
-                    subtitle = if (m.year > 0) "${m.year}" else m.genre.take(20),
-                    onClick = { nav.navigate("movie/${m.key}") },
-                )
+        if (movies.isNotEmpty()) {
+            item {
+                ContentRail("Movies", movies, accent = EnktelOk, key = { it.key }) { m ->
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = if (m.year > 0) "${m.year}" else m.genre.take(20),
+                        onClick = { nav.navigate("movie/${m.key}") },
+                    )
+                }
             }
         }
-        item {
-            ContentRail("Series (${series.size})", series, key = { it.key }) { s ->
-                PosterCard(s.name, s.poster, subtitle = if (s.year > 0) "${s.year}" else "",
-                    onClick = { nav.navigate("seriesDetails/${s.key}") })
+        if (series.isNotEmpty()) {
+            item {
+                ContentRail("Series", series, accent = EnktelPurple, key = { it.key }) { s ->
+                    PosterCard(s.name, s.poster, subtitle = if (s.year > 0) "${s.year}" else "",
+                        onClick = { nav.navigate("seriesDetails/${s.key}") })
+                }
             }
         }
     }
