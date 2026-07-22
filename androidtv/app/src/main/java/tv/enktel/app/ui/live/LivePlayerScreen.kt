@@ -511,17 +511,30 @@ private fun InfoBar(
                 }
                 Spacer(Modifier.height(6.dp))
                 if (now != null) {
+                    // Bigger, prominent programme title on its own line.
                     Text(
-                        "${hhmm(now.startMs)}–${hhmm(now.endMs)}  ${now.title}",
-                        color = Color.White, fontSize = 14.sp, maxLines = 1,
+                        now.title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
+                    Text(
+                        "${hhmm(now.startMs)}–${hhmm(now.endMs)}",
+                        color = Color.White.copy(0.75f), fontSize = 12.sp,
+                    )
+                    if (now.desc.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            now.desc, color = Color.White.copy(0.75f), fontSize = 12.sp,
+                            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            lineHeight = 16.sp,
+                        )
+                    }
                     Spacer(Modifier.height(6.dp))
                     val frac = ((System.currentTimeMillis() - now.startMs).toFloat() /
                         (now.endMs - now.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
                     ProgressBarThin(frac, Modifier.fillMaxWidth(0.6f))
                     if (next != null) {
                         Spacer(Modifier.height(6.dp))
-                        Text("Next: ${hhmm(next.startMs)}  ${next.title}", color = EnktelTextDim, fontSize = 12.sp, maxLines = 1)
+                        Text("Up next · ${hhmm(next.startMs)}  ${next.title}", color = EnktelTextDim, fontSize = 12.sp, maxLines = 1)
                     }
                 } else {
                     Text("No guide data — open Settings ▸ Refresh EPG", color = EnktelTextDim, fontSize = 13.sp)

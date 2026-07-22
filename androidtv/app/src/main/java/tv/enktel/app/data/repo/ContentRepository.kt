@@ -179,10 +179,15 @@ class ContentRepository(
     }
 
     private suspend fun refreshM3u(p: Profile): String {
-        val req = Request.Builder().url(p.m3uUrl).build()
+        val req = Request.Builder().url(p.m3uUrl)
+            // Ask upstream for gzip; also handle URLs ending in .gz manually below.
+            .header("Accept-Encoding", "gzip")
+            .build()
         val playlist = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
-            resp.body!!.charStream().buffered().use { M3uParser.parse(it) }
+            val raw = resp.body!!.byteStream()
+            val stream = maybeGunzipStream(raw, p.m3uUrl, resp.header("Content-Encoding"))
+            stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
         }
 
         val groups = LinkedHashMap<String, String>() // name -> kind
@@ -279,6 +284,20 @@ class ContentRepository(
             backdrop = info.get("backdrop_path").arr()?.firstOrNull()?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty(),
             trailer = info.str("youtube_trailer").orEmpty(),
         )
+    }
+
+    /** Sniff first two bytes for gzip magic number; supports .m3u.gz / gzipped M3Us that
+     *  don't declare Content-Encoding. OkHttp transparently ungzips only when it sees the
+     *  Accept-Encoding request header + Content-Encoding response header, so we cover the
+     *  edge cases here. */
+    private fun maybeGunzipStream(input: java.io.InputStream, url: String, encoding: String?): java.io.InputStream {
+        val buffered = input.buffered(64 * 1024)
+        if (encoding?.contains("gzip", true) == true) return buffered
+        buffered.mark(2)
+        val b1 = buffered.read(); val b2 = buffered.read()
+        buffered.reset()
+        val looksGz = b1 == 0x1f && b2 == 0x8b
+        return if (looksGz || url.lowercase().endsWith(".gz")) java.util.zip.GZIPInputStream(buffered) else buffered
     }
 
     companion object {

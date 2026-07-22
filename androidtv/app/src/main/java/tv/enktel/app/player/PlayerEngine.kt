@@ -73,14 +73,34 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         val renderers = DefaultRenderersFactory(context)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
+            // Route higher-tier audio (AC-3 / E-AC-3 / TrueHD / DTS) untouched to the receiver
+            // where supported, so home-theatre pass-through works instead of software decode.
+            .setEnableAudioFloatOutput(true)
+
+        // Tunneled HW decoding on Android TV — feeds compressed samples straight to the SoC's
+        // hardware decoder for lower latency + fewer dropped frames on 4K panels.
+        val isTv = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+            android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        trackSelector.parameters = trackSelector.buildUponParameters()
+            .setTunnelingEnabled(isTv)
+            .setPreferredAudioMimeTypes(
+                androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC,
+                androidx.media3.common.MimeTypes.AUDIO_E_AC3,
+                androidx.media3.common.MimeTypes.AUDIO_AC3,
+                androidx.media3.common.MimeTypes.AUDIO_AAC,
+            )
+            .build()
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
         player = ExoPlayer.Builder(context, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .setBandwidthMeter(bandwidthMeter)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(30_000)
+            .setUsePlatformDiagnostics(false) // trims one Google Play Services dep on Fire TV
             .build()
 
         player.addAnalyticsListener(EventLogger())
