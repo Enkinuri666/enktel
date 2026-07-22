@@ -77,10 +77,19 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     var becauseYouWatched by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var trending by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var newThisWeek by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    LaunchedEffect(p.id) {
-        becauseYouWatched = graph.recommendations.becauseYouWatched(p.id)
-        trending = graph.recommendations.trending(p.id)
-        newThisWeek = graph.recommendations.newThisWeek(p.id)
+    var latestReleases by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var comingSoon by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    // Key on both p.id and the calendar day so the rails auto-refresh at midnight without
+    // needing WorkManager. If the app is open past midnight, this LaunchedEffect re-runs.
+    val today = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
+    LaunchedEffect(p.id, today) {
+        try {
+            becauseYouWatched = graph.recommendations.becauseYouWatched(p.id)
+            trending = graph.recommendations.trending(p.id)
+            newThisWeek = graph.recommendations.newThisWeek(p.id)
+            latestReleases = graph.recommendations.latestReleases(p.id)
+            comingSoon = graph.recommendations.comingSoon(p.id)
+        } catch (_: Throwable) {}
     }
 
     // If the profile was created but has never finished its first sync (e.g. onboarding was
@@ -194,6 +203,42 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                             if (w.kind == "vod") nav.navigate("movie/${w.profileId}:${w.refId}")
                             else nav.navigate("seriesDetails/${w.profileId}:${w.refId}")
                         },
+                    )
+                }
+            }
+        }
+        if (latestReleases.isNotEmpty()) {
+            item {
+                ContentRail("🆕  Latest Releases", latestReleases, key = { it.key }) { m ->
+                    val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
+                    val sub = when {
+                        ageDays <= 1 -> "Just added"
+                        ageDays < 7 -> "${ageDays}d ago"
+                        else -> if (m.year > 0) "${m.year}" else ""
+                    }
+                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (comingSoon.isNotEmpty()) {
+            item {
+                ContentRail("🎬  Coming Soon", comingSoon, key = { it.key }) { m ->
+                    val target = java.util.Calendar.getInstance().apply {
+                        set(java.util.Calendar.YEAR, m.year.coerceAtLeast(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)))
+                        set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
+                        set(java.util.Calendar.DAY_OF_MONTH, 1)
+                        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+                    }.timeInMillis
+                    val delta = target - System.currentTimeMillis()
+                    val countdown = when {
+                        delta <= 0 -> if (m.year > 0) "${m.year} · available" else "Available"
+                        delta < 86_400_000L -> "in ${delta / 3600_000L}h"
+                        else -> "in ${delta / 86_400_000L}d"
+                    }
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = countdown,
+                        onClick = { nav.navigate("movie/${m.key}") },
                     )
                 }
             }

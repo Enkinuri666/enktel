@@ -65,39 +65,35 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         "final", "tournament", "cup", "league", "grand prix", "derby", "classico",
     )
 
-    /** Load sports events grouped by phase, applying [filter] if not blank. */
+    /** Load sports events grouped by phase, applying [filter] if not blank.
+     *  Bounded: only scans EPG for sports-category channels (up to 80) with a hard cap on
+     *  results so huge providers can't ANR the mobile UI. */
     suspend fun load(profileId: Long, filter: String = ""): Map<String, List<SportsEvent>> =
         withContext(Dispatchers.Default) {
             val now = System.currentTimeMillis()
             val from = now - PAST_WINDOW
             val to = now + FUTURE_WINDOW
+            val HITS_CAP = 400
 
             val channels = content.channels(profileId).first()
-
-            // Preferred sports channels: category name / channel name hits any known token.
-            val (sportsChannels, otherChannels) = channels.partition { ch ->
+            val sportsChannels = channels.filter { ch ->
                 SPORTS_CATEGORY_TOKENS.any { t ->
                     ch.categoryName.contains(t, true) || ch.name.contains(t, true)
                 }
-            }
+            }.take(80) // bound
+            if (sportsChannels.isEmpty()) return@withContext emptyPhases()
 
-            // EPG lookup — sports channels get the full window, other channels only when they
-            // have EPG data at all (avoids hammering the DB on huge providers).
-            val allProgrammes = coroutineScope {
-                val a = async { epg.window(profileId, sportsChannels.map { it.epgId }.filter { it.isNotBlank() }, from, to) }
-                val b = async { epg.window(profileId, otherChannels.map { it.epgId }.filter { it.isNotBlank() }, from, to) }
-                a.await() to b.await()
-            }
-            val channelById = channels.associateBy { it.epgId }
+            val ids = sportsChannels.map { it.epgId }.filter { it.isNotBlank() }.distinct()
+            if (ids.isEmpty()) return@withContext emptyPhases()
 
-            val hits = ArrayList<SportsEvent>()
-            for ((epgId, list) in allProgrammes.first + allProgrammes.second) {
+            val allProgrammes = epg.window(profileId, ids, from, to)
+            val channelById = sportsChannels.associateBy { it.epgId }
+
+            val hits = ArrayList<SportsEvent>(minOf(1000, allProgrammes.values.sumOf { it.size }))
+            outer@ for ((epgId, list) in allProgrammes) {
                 val ch = channelById[epgId] ?: continue
-                val chIsSports = SPORTS_CATEGORY_TOKENS.any { t ->
-                    ch.categoryName.contains(t, true) || ch.name.contains(t, true)
-                }
                 for (prog in list) {
-                    val sport = classify(prog, chIsSports) ?: continue
+                    val sport = classify(prog, true) ?: continue
                     if (filter.isNotBlank() && sport != filter) continue
                     val phase = when {
                         prog.endMs <= now -> "FINISHED"
@@ -105,6 +101,7 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
                         else -> "UPCOMING"
                     }
                     hits += SportsEvent(prog, ch, sport, phase)
+                    if (hits.size >= HITS_CAP) break@outer
                 }
             }
 
@@ -130,4 +127,7 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     /** All distinct sport names present across the loaded event set. */
     fun sportsInSet(events: Map<String, List<SportsEvent>>): List<String> =
         events.values.flatten().map { it.sport }.distinct().sorted()
+
+    private fun emptyPhases(): Map<String, List<SportsEvent>> =
+        mapOf("LIVE" to emptyList(), "UPCOMING" to emptyList(), "FINISHED" to emptyList())
 }

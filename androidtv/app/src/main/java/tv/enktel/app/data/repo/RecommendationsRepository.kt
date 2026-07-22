@@ -57,4 +57,25 @@ class RecommendationsRepository(private val content: ContentRepository) {
             .take(n)
             .toList()
     }
+
+    /** Latest Releases — freshest additions to the catalogue, refreshed daily by ContentRefreshWorker. */
+    suspend fun latestReleases(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
+        content.movies(profileId).first().asSequence()
+            .filter { it.poster.isNotBlank() }
+            .sortedByDescending { it.addedAt }
+            .take(n)
+            .toList()
+    }
+
+    /** Coming Soon — movies whose release year is the current year or later, sorted by year desc.
+     *  Xtream/Eagle-style panels don't expose a dedicated "coming-soon" endpoint, so we surface
+     *  the newest year-labelled titles as upcoming/premiere content. */
+    suspend fun comingSoon(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        content.movies(profileId).first().asSequence()
+            .filter { it.poster.isNotBlank() && it.year >= currentYear }
+            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
+            .take(n)
+            .toList()
+    }
 }

@@ -333,8 +333,10 @@ private fun FilterBar(
             item {
                 tv.enktel.app.ui.components.FocusButton("Any year", accent = decadeFilter == null, onClick = { onDecade(null) })
             }
-            items(listOf(2020, 2010, 2000, 1990)) { d ->
-                tv.enktel.app.ui.components.FocusButton("${d}s", accent = decadeFilter == d, onClick = {
+            items(listOf(2026, 2025, 2020, 2010, 2000, 1990)) { d ->
+                tv.enktel.app.ui.components.FocusButton(
+                    if (d >= 2025) "$d+" else "${d}s",
+                    accent = decadeFilter == d, onClick = {
                     onDecade(if (decadeFilter == d) null else d)
                 })
             }
