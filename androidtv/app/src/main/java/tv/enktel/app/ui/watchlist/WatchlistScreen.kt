@@ -24,9 +24,11 @@ import androidx.navigation.NavHostController
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.CenterMessage
-import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.ChipRowLabel
+import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.theme.EnktelPurple
 
 @Suppress("ProduceStateDoesNotAssignValue")
 @Composable
@@ -48,13 +50,17 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
             SectionTitle("My Watchlist")
             Spacer(Modifier.height(10.dp))
         }
+        ChipRowLabel(
+            "Filter",
+            modifier = Modifier.padding(start = 48.dp, top = 6.dp, bottom = 6.dp),
+        )
         Row(
-            Modifier.padding(horizontal = 48.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 48.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FocusButton("All (${items.size})", accent = kind == "all", onClick = { kind = "all" })
-            FocusButton("Movies", accent = kind == "vod", onClick = { kind = "vod" })
-            FocusButton("Series", accent = kind == "series", onClick = { kind = "series" })
+            GlassChip("All (${items.size})", selected = kind == "all", accent = EnktelPurple, onClick = { kind = "all" })
+            GlassChip("Movies", selected = kind == "vod", accent = EnktelPurple, onClick = { kind = "vod" })
+            GlassChip("Series", selected = kind == "series", accent = EnktelPurple, onClick = { kind = "series" })
         }
         if (items.isEmpty()) {
             CenterMessage("Nothing saved yet. Press ☆ on a movie or series to add it here.")

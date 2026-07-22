@@ -86,18 +86,18 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
 
         Spacer(Modifier.height(10.dp))
-        Text("LIVE STREAM FORMAT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusButton("HLS (m3u8)", accent = streamFormat == "hls", onClick = { scope.launch { graph.settings.setStreamFormat("hls") } })
-            FocusButton("MPEG-TS", accent = streamFormat == "ts", onClick = { scope.launch { graph.settings.setStreamFormat("ts") } })
+        tv.enktel.app.ui.components.ChipRowLabel("Live stream format")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("HLS (m3u8)", selected = streamFormat == "hls", onClick = { scope.launch { graph.settings.setStreamFormat("hls") } })
+            tv.enktel.app.ui.components.GlassChip("MPEG-TS", selected = streamFormat == "ts", onClick = { scope.launch { graph.settings.setStreamFormat("ts") } })
         }
         Text("MPEG-TS starts faster on some panels; HLS adapts quality automatically.", color = EnktelTextDim, fontSize = 11.sp)
 
-        Text("PLAYER BUFFER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusButton("Fast zap", accent = bufferProfile == "low", onClick = { scope.launch { graph.settings.setBufferProfile("low") } })
-            FocusButton("Balanced", accent = bufferProfile == "balanced", onClick = { scope.launch { graph.settings.setBufferProfile("balanced") } })
-            FocusButton("Max stability", accent = bufferProfile == "large", onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
+        tv.enktel.app.ui.components.ChipRowLabel("Player buffer")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Fast zap", selected = bufferProfile == "low", onClick = { scope.launch { graph.settings.setBufferProfile("low") } })
+            tv.enktel.app.ui.components.GlassChip("Balanced", selected = bufferProfile == "balanced", onClick = { scope.launch { graph.settings.setBufferProfile("balanced") } })
+            tv.enktel.app.ui.components.GlassChip("Max stability", selected = bufferProfile == "large", onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
         }
         Text("Buffer changes apply the next time a player opens.", color = EnktelTextDim, fontSize = 11.sp)
 
