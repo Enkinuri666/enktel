@@ -2,6 +2,7 @@ package tv.enktel.app.ui.live
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -169,6 +171,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tune(next)
     }
 
+    // Docked-browse state: when true the video shrinks to the top half of the screen and
+    // a rich category / channel / guide browser fills the remaining space.
+    var browseMode by remember { mutableStateOf(false) }
+
     // Initial tune
     LaunchedEffect(channels, p.id) {
         if (current != null || channels.isEmpty()) return@LaunchedEffect
@@ -231,6 +237,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             trackMenu.isNotEmpty() -> trackMenu = ""
             showQuickMenu -> showQuickMenu = false
             showChannels -> showChannels = false
+            browseMode -> browseMode = false
             showInfo -> showInfo = false
             else -> nav.popBackStack()
         }
@@ -285,19 +292,38 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 }
             },
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    useController = false
-                    setKeepContentOnPlayerReset(true)
-                }
-            },
-            update = { view ->
-                view.player = engine.player
-                view.resizeMode = resizeMode
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (browseMode) {
+            // Docked layout: video pane on top, browser panel below. Uses Column so both
+            // panels get proportional space and DPAD focus travels naturally between them.
+            Column(Modifier.fillMaxSize().background(Color.Black)) {
+                AndroidView(
+                    factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
+                    update = { view -> view.player = engine.player; view.resizeMode = resizeMode },
+                    modifier = Modifier.fillMaxWidth().weight(0.55f),
+                )
+                BrowseDock(
+                    graph = graph, profileId = p.id, currentChannel = current,
+                    onTune = { tune(it) },
+                    onOpenGuide = { nav.navigate("guide") },
+                    onClose = { browseMode = false },
+                    modifier = Modifier.fillMaxWidth().weight(0.45f),
+                )
+            }
+        } else {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        useController = false
+                        setKeepContentOnPlayerReset(true)
+                    }
+                },
+                update = { view ->
+                    view.player = engine.player
+                    view.resizeMode = resizeMode
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         if (playError != null) {
             Box(Modifier.align(Alignment.Center)) {
@@ -326,11 +352,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             )
         }
 
-        if (showStats) {
+        if (showStats && !browseMode) {
             StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
         }
 
-        if (showInfo && current != null) {
+        if (showInfo && current != null && !browseMode) {
             InfoBar(
                 channel = current!!,
                 nowNext = nowNext,
@@ -340,6 +366,21 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 sleepUntil = sleepUntil,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
+        }
+
+        // Floating ▤ Browse toggle over the video — surfaces the docked browser without
+        // needing the remote MENU button. Hidden while browsing (BACK closes it instead).
+        if (!browseMode) {
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 20.dp, end = 20.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                    .pointerInput(Unit) { detectTapGestures { browseMode = true } }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text("▤  Browse", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
 
         if (showChannels) {
@@ -777,6 +818,166 @@ fun TrackPicker(
                 )
             }
             FocusButton("Cancel", onClick = onClose, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Docked-player browser: sits under the shrunken video and lets the user pick a category,
+ *  scroll categorised channels, and preview the current channel's upcoming programmes —
+ *  all without leaving playback. */
+@Composable
+private fun BrowseDock(
+    graph: AppGraph,
+    profileId: Long,
+    currentChannel: Channel?,
+    onTune: (Channel) -> Unit,
+    onOpenGuide: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val categories by graph.content.categories(profileId, "live").collectAsStateWithLifecycle(initialValue = emptyList())
+    val allChannels by graph.content.channels(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
+    var selectedCat by remember { mutableStateOf<String?>(currentChannel?.categoryId) }
+    val channels = remember(allChannels, selectedCat) {
+        if (selectedCat == null) allChannels else allChannels.filter { it.categoryId == selectedCat }
+    }
+    var upcoming by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
+    LaunchedEffect(currentChannel?.key) {
+        upcoming = try { graph.epg.upcoming(profileId, currentChannel?.epgId.orEmpty(), 6) } catch (_: Throwable) { emptyList() }
+    }
+    Column(
+        modifier
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = 0.95f), tv.enktel.app.ui.theme.EnktelBg),
+                ),
+            )
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+            ),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("▤  Browse", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                "${channels.size} channels" + if (selectedCat != null) " · ${categories.firstOrNull { it.categoryId == selectedCat }?.name ?: ""}" else "",
+                color = EnktelTextDim, fontSize = 12.sp,
+            )
+            Spacer(Modifier.width(0.dp))
+            Box(Modifier.weight(1f))
+            FocusButton("Full TV Guide", onClick = onOpenGuide)
+            Spacer(Modifier.width(6.dp))
+            FocusButton("✕ Close", onClick = onClose)
+        }
+        LazyRow(
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item { FocusButton("All", accent = selectedCat == null, onClick = { selectedCat = null }) }
+            items(categories, key = { it.key }) { c ->
+                FocusButton(c.name, accent = selectedCat == c.categoryId, onClick = {
+                    selectedCat = if (selectedCat == c.categoryId) null else c.categoryId
+                })
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                Modifier.weight(0.62f).fillMaxHeight(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(channels, key = { it.key }) { ch ->
+                    BrowseChannelRow(channel = ch, active = ch.key == currentChannel?.key, onClick = { onTune(ch) })
+                }
+            }
+            Box(Modifier.width(1.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.08f)))
+            Column(
+                Modifier.weight(0.38f).fillMaxHeight().padding(horizontal = 20.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    if (currentChannel != null) "GUIDE · ${currentChannel.name}" else "GUIDE",
+                    color = EnktelTextDim, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
+                )
+                Spacer(Modifier.height(6.dp))
+                if (upcoming.isEmpty()) {
+                    Text("No guide data for this channel.", color = EnktelTextDim, fontSize = 12.sp)
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(upcoming) { prog ->
+                            val now = System.currentTimeMillis()
+                            val isNow = prog.startMs <= now && prog.endMs > now
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    hhmm(prog.startMs),
+                                    color = if (isNow) EnktelBlue else EnktelTextDim,
+                                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        prog.title, color = Color.White, fontSize = 12.sp,
+                                        fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                    if (isNow && prog.desc.isNotBlank()) {
+                                        Text(
+                                            prog.desc, color = Color.White.copy(0.65f), fontSize = 10.sp,
+                                            maxLines = 2,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseChannelRow(channel: Channel, active: Boolean, onClick: () -> Unit) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = if (active) EnktelBlue.copy(0.22f) else Color.Transparent,
+            focusedContainerColor = EnktelBlue,
+            focusedContentColor = Color.White,
+            contentColor = Color.White,
+        ),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (channel.num > 0) "${channel.num}" else "·",
+                color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(30.dp),
+            )
+            Box(
+                Modifier.size(28.dp).clip(RoundedCornerShape(4.dp))
+                    .background(tv.enktel.app.ui.theme.EnktelSurfaceHigh),
+            ) {
+                if (channel.logo.isNotBlank()) {
+                    AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                channel.name, fontSize = 12.sp, maxLines = 1,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
     }
 }
