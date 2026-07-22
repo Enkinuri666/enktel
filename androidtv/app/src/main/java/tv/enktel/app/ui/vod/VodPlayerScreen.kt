@@ -250,30 +250,41 @@ fun VodPlayerScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FocusButton("-10s", onClick = { engine.player.seekBack(); controlsTick++ })
-                    FocusButton(if (playing) "⏸ Pause" else "▶ Play", accent = true, onClick = {
-                        if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
-                        controlsTick++
-                    })
-                    FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ })
-                    FocusButton("Audio", onClick = { trackMenu = "audio" })
-                    FocusButton("Subs", onClick = { trackMenu = "subs" })
-                    if (!isLive) {
-                        FocusButton("Speed ${speed}x", onClick = {
-                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; else -> 1f }
-                            engine.player.setPlaybackSpeed(speed)
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
+                            if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
                             controlsTick++
                         })
                     }
-                    FocusButton("Aspect", onClick = {
-                        resizeMode = when (resizeMode) {
-                            AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                            AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    item { FocusButton("−10s", onClick = { engine.player.seekBack(); controlsTick++ }) }
+                    item { FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ }) }
+                    item { FocusButton("Audio", onClick = { trackMenu = "audio" }) }
+                    item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
+                    if (!isLive) {
+                        item {
+                            FocusButton("Speed ${speed}x", onClick = {
+                                speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; else -> 1f }
+                                engine.player.setPlaybackSpeed(speed)
+                                controlsTick++
+                            })
                         }
-                        controlsTick++
-                    })
+                    }
+                    item {
+                        FocusButton("Aspect", onClick = {
+                            resizeMode = when (resizeMode) {
+                                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            }
+                            controlsTick++
+                        })
+                    }
+                    item {
+                        FocusButton("⧉ PiP", onClick = {
+                            (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) }
+                        })
+                    }
                 }
             }
         }
