@@ -148,15 +148,29 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (allSports.isNotEmpty()) {
             item {
+                tv.enktel.app.ui.components.ChipRowLabel(
+                    "Sport",
+                    modifier = Modifier.padding(start = padHoriz, bottom = 4.dp),
+                )
+            }
+            item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item { FocusButton("All", accent = sportFilter == null, onClick = { sportFilter = null }) }
+                    item {
+                        tv.enktel.app.ui.components.GlassChip(
+                            "All", selected = sportFilter == null,
+                            accent = EnktelBlue,
+                            onClick = { sportFilter = null },
+                        )
+                    }
                     items(allSports, key = { it }) { sport ->
-                        FocusButton(sport, accent = sportFilter == sport, onClick = {
-                            sportFilter = if (sportFilter == sport) null else sport
-                        })
+                        tv.enktel.app.ui.components.GlassChip(
+                            sport, selected = sportFilter == sport,
+                            accent = EnktelBlue,
+                            onClick = { sportFilter = if (sportFilter == sport) null else sport },
+                        )
                     }
                 }
             }
