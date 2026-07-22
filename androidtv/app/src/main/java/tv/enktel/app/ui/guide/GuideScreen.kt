@@ -118,6 +118,26 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             )
             FocusButton("Next day ▶", onClick = { dayOffset++ })
         }
+        Spacer(Modifier.height(10.dp))
+        // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
+        // a single click instead of six D-pad presses.
+        androidx.compose.foundation.lazy.LazyRow(
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                tv.enktel.app.ui.components.GlassChip(
+                    "Today", selected = dayOffset == 0, onClick = { dayOffset = 0 },
+                )
+            }
+            items((1..6).toList()) { d ->
+                val label = SimpleDateFormat("EEE d", Locale.getDefault())
+                    .format(Date(System.currentTimeMillis() + d * 86_400_000L))
+                tv.enktel.app.ui.components.GlassChip(
+                    label, selected = dayOffset == d, onClick = { dayOffset = d },
+                )
+            }
+        }
         Spacer(Modifier.height(14.dp))
 
         if (channels.isEmpty()) {
