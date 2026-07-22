@@ -636,11 +636,14 @@ private fun InfoBar(
 ) {
     val now = nowNext.now
     val next = nowNext.next
+    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+    val hPad = if (isMobile) 18.dp else 48.dp
+    val vPad = if (isMobile) 18.dp else 26.dp
     Column(
         modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.92f))))
-            .padding(horizontal = 48.dp, vertical = 26.dp),
+            .padding(horizontal = hPad, vertical = vPad),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -1083,6 +1086,15 @@ private fun BrowseChannelRow(channel: Channel, active: Boolean, onClick: () -> U
             Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Left accent stripe (visible when active) — reinforces the selection.
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (active) EnktelBlue else Color.Transparent),
+            )
+            Spacer(Modifier.width(8.dp))
             Text(
                 if (channel.num > 0) "${channel.num}" else "·",
                 color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold,
@@ -1101,7 +1113,19 @@ private fun BrowseChannelRow(channel: Channel, active: Boolean, onClick: () -> U
                 channel.name, fontSize = 12.sp, maxLines = 1,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
+            // Live-now dot pulses on the currently-playing row so the user's eye locks on it
+            // instantly when the list is long.
+            if (active) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier
+                        .size(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(EnktelLive),
+                )
+            }
         }
     }
 }

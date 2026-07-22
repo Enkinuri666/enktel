@@ -240,12 +240,17 @@ fun VodPlayerScreen(
         }
 
         if (showControls) {
+            // Mobile gets tighter side padding so the seek bar reaches closer to the
+            // screen edges on a phone, which is where the thumb naturally goes.
+            val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+            val hPad = if (isMobile) 20.dp else 48.dp
+            val vPad = if (isMobile) 18.dp else 24.dp
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.95f))))
-                    .padding(horizontal = 48.dp, vertical = 24.dp),
+                    .padding(horizontal = hPad, vertical = vPad),
             ) {
                 Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(12.dp))
