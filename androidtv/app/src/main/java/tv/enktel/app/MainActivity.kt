@@ -78,12 +78,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Auto-enter PiP when the user presses Home while a video is playing. */
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        try { tv.enktel.app.player.PictureInPicture.enter(this) } catch (_: Throwable) {}
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent) // let composable pick up new channel_key from notification taps
