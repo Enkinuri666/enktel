@@ -357,15 +357,66 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
 
         if (showInfo && current != null && !browseMode) {
-            InfoBar(
-                channel = current!!,
-                nowNext = nowNext,
-                stats = stats,
-                recording = recordingId != 0L,
-                shiftedFrom = shiftedFrom,
-                sleepUntil = sleepUntil,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                InfoBar(
+                    channel = current!!,
+                    nowNext = nowNext,
+                    stats = stats,
+                    recording = recordingId != 0L,
+                    shiftedFrom = shiftedFrom,
+                    sleepUntil = sleepUntil,
+                    modifier = Modifier,
+                )
+                // Inline action strip — every core control one tap away, no MENU dive.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.72f))
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FocusButton("▤ Browse", accent = true, onClick = { browseMode = true })
+                    FocusButton("Guide", onClick = { nav.navigate("guide") })
+                    FocusButton(
+                        if (recordingId != 0L) "■ REC" else "● Rec",
+                        accent = recordingId != 0L,
+                        onClick = {
+                            val ch = current!!
+                            scope.launch {
+                                if (recordingId == 0L) {
+                                    recordingId = tv.enktel.app.dvr.RecordScheduler.recordNow(
+                                        context, p.id,
+                                        title = nowNext.now?.title ?: ch.name,
+                                        channelName = ch.name,
+                                        streamUrl = graph.content.liveUrl(p, ch, "ts"),
+                                    )
+                                    toaster.success("Recording ${ch.name}")
+                                } else {
+                                    tv.enktel.app.dvr.RecordScheduler.cancel(context, recordingId); recordingId = 0L
+                                    toaster.info("Recording stopped")
+                                }
+                            }
+                        },
+                    )
+                    FocusButton(if (isFav) "★" else "☆", accent = isFav, onClick = {
+                        scope.launch { graph.content.toggleFavorite(p.id, "live", current!!.streamId) }
+                    })
+                    FocusButton("Audio", onClick = { trackMenu = "audio" })
+                    FocusButton("Subs", onClick = { trackMenu = "subs" })
+                    FocusButton("Aspect", onClick = {
+                        resizeMode = when (resizeMode) {
+                            AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                            AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    })
+                    FocusButton("⧉ PiP", onClick = {
+                        val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
+                        if (!ok) toaster.error("Picture-in-Picture not supported here")
+                    })
+                    FocusButton("⋯", onClick = { showQuickMenu = true })
+                }
+            }
         }
 
         // Floating ▤ Browse toggle over the video — surfaces the docked browser without
