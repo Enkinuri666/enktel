@@ -232,21 +232,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
-    val pipOn by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
-    val autoPipOnBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
-    val autoPipOnHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
-
-    // Register with the Activity so onUserLeaveHint() can enter PiP when the
-    // user presses Home while a player is on-screen.
-    androidx.compose.runtime.DisposableEffect(pipOn, autoPipOnHome) {
-        tv.enktel.app.player.PictureInPicture.playerActive = true
-        tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = pipOn && autoPipOnHome
-        onDispose {
-            tv.enktel.app.player.PictureInPicture.playerActive = false
-            tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
-        }
-    }
-
+    val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
@@ -254,16 +240,17 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             showChannels -> showChannels = false
             browseMode -> browseMode = false
             showInfo -> showInfo = false
-            else -> {
-                // Top-level Back: if the user has PiP + Auto-PiP-on-back enabled and
-                // the player is playing, hand off to PiP instead of popping the stack.
-                val entered = if (pipOn && autoPipOnBack && engine.player.isPlaying) {
-                    (context as? android.app.Activity)?.let {
-                        tv.enktel.app.player.PictureInPicture.enter(it)
-                    } ?: false
-                } else false
+            backAction == "pip" -> {
+                val entered = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
                 if (!entered) nav.popBackStack()
             }
+            backAction == "guide_dock" -> {
+                // Docked mini-player over the TV Guide (mini-player itself is a follow-up piece
+                // of work — for now we jump to the guide but keep audio playing thanks to
+                // the shared PlayerEngine surviving until this composable is disposed).
+                nav.navigate("guide")
+            }
+            else -> nav.popBackStack()
         }
     }
 
@@ -380,7 +367,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
         }
 
-        if (showInfo && current != null && !browseMode) {
+        if (showInfo && current != null) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 InfoBar(
                     channel = current!!,
@@ -391,18 +378,19 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     sleepUntil = sleepUntil,
                     modifier = Modifier,
                 )
-                // Inline action strip — every core control one tap away, no MENU dive.
+                // On-screen action bar so touch users can reach every player control without
+                // needing a remote/MENU button. Also visible on TV but designed to be tap-safe.
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.72f))
+                        .background(Color.Black.copy(alpha = 0.75f))
                         .padding(horizontal = 20.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    FocusButton("▤ Browse", accent = true, onClick = { browseMode = true })
-                    FocusButton("Guide", onClick = { nav.navigate("guide") })
+                    FocusButton("☰ Channels", onClick = { showChannels = true })
+                    FocusButton("EPG", onClick = { nav.navigate("guide") })
                     FocusButton(
-                        if (recordingId != 0L) "■ REC" else "● Rec",
+                        if (recordingId != 0L) "■ REC" else "● Record",
                         accent = recordingId != 0L,
                         onClick = {
                             val ch = current!!
@@ -438,23 +426,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
                         if (!ok) toaster.error("Picture-in-Picture not supported here")
                     })
-                    FocusButton("⋯", onClick = { showQuickMenu = true })
+                    FocusButton("⋯ More", onClick = { showQuickMenu = true })
                 }
-            }
-        }
-
-        // Floating ▤ Browse toggle over the video — surfaces the docked browser without
-        // needing the remote MENU button. Hidden while browsing (BACK closes it instead).
-        if (!browseMode) {
-            androidx.compose.foundation.layout.Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 20.dp, end = 20.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
-                    .pointerInput(Unit) { detectTapGestures { browseMode = true } }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text("▤  Browse", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -661,7 +634,9 @@ private fun InfoBar(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
+            if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+                "Tap to hide · long-press for channel list"
+            else "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
             color = EnktelTextDim.copy(0.8f), fontSize = 11.sp,
         )
     }

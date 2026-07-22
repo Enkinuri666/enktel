@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.runtime.Composable
@@ -52,8 +53,8 @@ val MOBILE_TABS = listOf(
     MobileTab("Home", Icons.Filled.Home, "home"),
     MobileTab("Live TV", Icons.Filled.LiveTv, "live?ch="),
     MobileTab("Movies", Icons.Filled.Movie, "movies"),
+    MobileTab("Series", Icons.Filled.PlaylistPlay, "series"),
     MobileTab("Sports", Icons.Filled.SportsSoccer, "sports"),
-    MobileTab("Search", Icons.Filled.Search, "search"),
     MobileTab("More", Icons.Filled.Menu, "__more"),
 )
 
@@ -99,6 +100,27 @@ fun MobileScaffold(
                 },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
             )
+        }
+
+        // Netflix-style top-right search icon on top-level browsing screens.
+        val showSearchIcon = currentRoute in setOf("home", "movies", "series", "sports", "watchlist")
+        if (showSearchIcon) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 12.dp)
+                    .statusBarsPadding()
+                    .background(Color.Black.copy(0.35f), androidx.compose.foundation.shape.CircleShape)
+                    .padding(8.dp)
+                    .pointerInput(Unit) { detectTapGestures { nav.navigate("search") } },
+            ) {
+                androidx.compose.foundation.Image(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+                    modifier = Modifier.height(24.dp),
+                )
+            }
         }
 
         if (showMore) MoreSheet(

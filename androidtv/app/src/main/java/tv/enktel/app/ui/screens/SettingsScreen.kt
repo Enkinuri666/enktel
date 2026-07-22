@@ -286,6 +286,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
+        Text("BACK BUTTON IN PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FocusButton("Exit player", accent = backAction == "exit",
+                onClick = { scope.launch { graph.settings.setBackAction("exit") } })
+            FocusButton("⧉ Standard PiP", accent = backAction == "pip",
+                onClick = { scope.launch { graph.settings.setBackAction("pip") } })
+            FocusButton("▤ TV Guide (docked)", accent = backAction == "guide_dock",
+                onClick = { scope.launch { graph.settings.setBackAction("guide_dock") } })
+        }
+        Text(
+            "Pressing HOME on your remote / device always tries Picture-in-Picture regardless of this setting.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
         Text("SCREENSAVER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val ss by graph.settings.screensaverMin.collectAsStateWithLifecycle(initialValue = 5)
         FocusButton(if (ss == 0) "Screensaver: off" else "Screensaver: ${ss} min", onClick = {

@@ -95,24 +95,33 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         } catch (_: Throwable) {}
     }
 
-    // If the profile was created but has never finished its first sync (e.g. onboarding was
-    // interrupted, the panel timed out, or the process died), kick off content + EPG sync in
-    // the background so the user sees channels on Home without diving into Settings.
-    var syncing by remember { mutableStateOf(false) }
-    var syncStatus by remember { mutableStateOf("") }
-    LaunchedEffect(p.id, p.lastSync, allChannels.size) {
-        if (p.lastSync != 0L || allChannels.isNotEmpty() || syncing) return@LaunchedEffect
+    // If the profile has never finished its first sync (e.g. onboarding was interrupted),
+    // kick off content + EPG sync in the background. Only key on p.id — depending on
+    // allChannels.size caused the LaunchedEffect to restart mid-sync, which cancelled the
+    // EPG download and (because runCatching also swallows CancellationException) left an
+    // "EPG failed: The coroutine scope left the composition" banner stuck on-screen forever.
+    var syncing by remember(p.id) { mutableStateOf(false) }
+    var syncStatus by remember(p.id) { mutableStateOf("") }
+    var syncTriggered by remember(p.id) { mutableStateOf(false) }
+    LaunchedEffect(p.id) {
+        if (syncTriggered || p.lastSync != 0L) return@LaunchedEffect
+        syncTriggered = true
         syncing = true
         syncStatus = "Downloading your playlist…"
-        runCatching { graph.content.refreshAll(p) }
-            .onSuccess { summary -> syncStatus = "Downloading TV guide… ($summary)" }
-            .onFailure { syncStatus = "Sync failed: ${it.message ?: "unknown error"}" }
-        runCatching { graph.epg.refresh(p) }
-            .onSuccess { syncStatus = "Ready" }
-            .onFailure { syncStatus = "EPG failed: ${it.message ?: "unknown"}" }
-        graph.playlists.markSynced(p)
-        kotlinx.coroutines.delay(1200)
+        try {
+            val summary = graph.content.refreshAll(p)
+            syncStatus = "Downloading TV guide… ($summary)"
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (e: Exception) { syncStatus = "Sync failed: ${e.message ?: "unknown"}" }
+        try {
+            graph.epg.refresh(p)
+            syncStatus = "Ready"
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (e: Exception) { syncStatus = "EPG failed: ${e.message ?: "unknown"}" }
+        runCatching { graph.playlists.markSynced(p) }
+        kotlinx.coroutines.delay(1600)
         syncing = false
+        syncStatus = ""
     }
 
     val heroItems = remember(favMovies, recentMovies) {
