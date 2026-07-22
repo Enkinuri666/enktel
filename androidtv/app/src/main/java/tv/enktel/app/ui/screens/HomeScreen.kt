@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +49,7 @@ import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.ContentRail
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.PosterCard
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
 import java.text.SimpleDateFormat
@@ -354,8 +357,10 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
     }
     val current = items.getOrNull(index.coerceIn(0, items.lastIndex)) ?: return
 
-    Box(Modifier.fillMaxWidth().height(420.dp)) {
-        Crossfade(targetState = current, animationSpec = tween(600), label = "hero") { movie ->
+    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+    val heroHeight = if (isMobile) 500.dp else 480.dp
+    Box(Modifier.fillMaxWidth().height(heroHeight)) {
+        Crossfade(targetState = current, animationSpec = tween(700), label = "hero") { movie ->
             AsyncImage(
                 model = movie.poster,
                 contentDescription = movie.name,
@@ -363,22 +368,23 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        // Left-to-right + bottom scrims so text stays legible over any artwork.
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to Color.Black.copy(alpha = 0.92f),
-                    0.45f to Color.Black.copy(alpha = 0.55f),
-                    1f to Color.Transparent,
-                )
-            ),
-        )
+        // Netflix-style stacked scrims: darker top/bottom + subtle left readability strip.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    0.6f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.95f),
+                    0f to Color.Black.copy(alpha = 0.75f),
+                    0.25f to Color.Transparent,
+                    0.55f to Color.Transparent,
+                    1f to tv.enktel.app.ui.theme.EnktelBg,
+                )
+            ),
+        )
+        val scrimStop = if (isMobile) 0.7f else 0.5f
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to Color.Black.copy(alpha = 0.85f),
+                    scrimStop to Color.Transparent,
                 )
             ),
         )
@@ -392,44 +398,115 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
             Text(clock, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
         }
 
+        val heroPad = if (isMobile) 20.dp else 48.dp
+        val contentWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(620.dp)
         Column(
-            Modifier.align(Alignment.BottomStart).padding(horizontal = 48.dp, vertical = 32.dp).width(560.dp),
+            Modifier.align(Alignment.BottomStart).padding(horizontal = heroPad, vertical = 32.dp).then(contentWidth),
         ) {
-            Text(
-                "FEATURED",
-                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = tv.enktel.app.ui.theme.EnktelBlue,
-                letterSpacing = 1.5.sp,
-            )
-            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "▶  FEATURED",
+                    fontSize = 11.sp, fontWeight = FontWeight.Black, color = tv.enktel.app.ui.theme.EnktelBlue,
+                    letterSpacing = 2.sp,
+                )
+                if (index < 3) {
+                    Box(
+                        Modifier.background(tv.enktel.app.ui.theme.EnktelLive, RoundedCornerShape(3.dp))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                    ) {
+                        Text("#${index + 1} TOP 10", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
                 current.name,
-                fontSize = 34.sp, fontWeight = FontWeight.Black, color = Color.White,
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                fontSize = if (isMobile) 28.sp else 38.sp, fontWeight = FontWeight.Black, color = Color.White,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = if (isMobile) 32.sp else 42.sp,
             )
-            if (current.categoryId.isNotBlank() || current.rating > 0) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    listOf(current.categoryId, if (current.rating > 0) "★ ${current.rating}" else "")
-                        .filter { it.isNotBlank() }.joinToString("  ·  "),
-                    fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f),
-                )
+            if (current.year > 0 || current.categoryId.isNotBlank() || current.rating > 0) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (current.rating > 0) {
+                        Box(
+                            Modifier.background(tv.enktel.app.ui.theme.EnktelOk.copy(0.85f), RoundedCornerShape(3.dp))
+                                .padding(horizontal = 5.dp, vertical = 1.dp),
+                        ) {
+                            Text("★ ${"%.1f".format(current.rating)}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    if (current.year > 0) Text("${current.year}", color = Color.White.copy(0.85f), fontSize = 13.sp)
+                    if (current.categoryId.isNotBlank()) Text(current.categoryId, color = Color.White.copy(0.7f), fontSize = 13.sp)
+                    if (current.genre.isNotBlank()) Text("· ${current.genre.take(28)}", color = Color.White.copy(0.7f), fontSize = 13.sp, maxLines = 1)
+                }
             }
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FocusButton(
-                    "▶  Play", accent = true,
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Big Netflix-style Play button
+                androidx.tv.material3.Surface(
                     onClick = { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
-                )
-                FocusButton("More Info", onClick = { nav.navigate("movie/${current.key}") })
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                        containerColor = Color.White,
+                        focusedContainerColor = Color.White.copy(0.85f),
+                        contentColor = Color.Black,
+                        focusedContentColor = Color.Black,
+                    ),
+                    scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+                    modifier = Modifier.tapClick { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
+                ) {
+                    Text(
+                        "▶  Play",
+                        color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+                    )
+                }
+                // Glassmorphism My List (Watchlist) toggle
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                androidx.tv.material3.Surface(
+                    onClick = { scope.launch { graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster) } },
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                        containerColor = Color.White.copy(alpha = 0.18f),
+                        focusedContainerColor = Color.White.copy(alpha = 0.32f),
+                        contentColor = Color.White,
+                        focusedContentColor = Color.White,
+                    ),
+                    modifier = Modifier.tapClick { scope.launch { graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster) } },
+                ) {
+                    Text(
+                        "＋  My List",
+                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    )
+                }
+                androidx.tv.material3.Surface(
+                    onClick = { nav.navigate("movie/${current.key}") },
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                        containerColor = Color.White.copy(alpha = 0.18f),
+                        focusedContainerColor = Color.White.copy(alpha = 0.32f),
+                        contentColor = Color.White,
+                        focusedContentColor = Color.White,
+                    ),
+                    modifier = Modifier.tapClick { nav.navigate("movie/${current.key}") },
+                ) {
+                    Text(
+                        "ⓘ  Info",
+                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    )
+                }
             }
             if (items.size > 1) {
                 Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items.indices.forEach { i ->
                         Box(
                             Modifier
-                                .size(if (i == index) 8.dp else 6.dp)
-                                .clip(CircleShape)
+                                .height(3.dp)
+                                .width(if (i == index) 28.dp else 14.dp)
+                                .clip(RoundedCornerShape(2.dp))
                                 .background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)),
                         )
                     }
