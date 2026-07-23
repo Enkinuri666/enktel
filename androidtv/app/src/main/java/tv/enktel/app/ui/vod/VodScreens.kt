@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -23,8 +26,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +49,10 @@ import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.tapClick
+import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /** Shared PIN gate for locked VOD/series categories. */
@@ -116,18 +128,29 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) EnktelBlue.copy(0.22f) else Color.Transparent,
+            containerColor = if (selected) EnktelBlue.copy(0.18f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,
             focusedContentColor = Color.White,
             contentColor = if (selected) Color.White else EnktelTextDim,
         ),
     ) {
-        Text(
-            text, fontSize = 13.sp, maxLines = 1,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Left accent stripe mirrors the ContentRail / Recordings section headers.
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(if (selected) EnktelBlue else Color.Transparent, RoundedCornerShape(2.dp)),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text, fontSize = 13.sp, maxLines = 1,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.padding(PaddingValues(top = 8.dp, bottom = 8.dp, end = 8.dp)),
+            )
+        }
     }
 }
 
@@ -198,11 +221,26 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
+                        ?: movies.firstOrNull { it.poster.isNotBlank() }
+                    if (hero != null) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            CategoryHero(
+                                title = hero.name,
+                                poster = hero.poster,
+                                rating = hero.rating,
+                                year = hero.year,
+                                genre = hero.genre,
+                                subtitle = if (cat != null) categories.firstOrNull { it.categoryId == cat }?.name ?: "Featured" else "Top pick",
+                                onOpen = { nav.navigate("movie/${hero.key}") },
+                            )
+                        }
+                    }
                     items(movies, key = { it.key }) { m ->
                         PosterCard(
                             title = m.name,
                             imageUrl = m.poster,
-                            subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                            subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else if (m.year > 0) "${m.year}" else "",
                             onClick = { nav.navigate("movie/${m.key}") },
                         )
                     }
@@ -279,6 +317,21 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
+                        ?: series.firstOrNull { it.poster.isNotBlank() }
+                    if (hero != null) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            CategoryHero(
+                                title = hero.name,
+                                poster = hero.poster,
+                                rating = hero.rating,
+                                year = hero.year,
+                                genre = hero.genre,
+                                subtitle = if (cat != null) categories.firstOrNull { it.categoryId == cat }?.name ?: "Featured" else "Top pick",
+                                onOpen = { nav.navigate("seriesDetails/${hero.key}") },
+                            )
+                        }
+                    }
                     items(series, key = { it.key }) { s ->
                         PosterCard(
                             title = s.name,
@@ -310,39 +363,131 @@ private fun FilterBar(
     onDecade: (Int?) -> Unit,
 ) {
     Column(Modifier.padding(start = 24.dp, top = 16.dp)) {
+        tv.enktel.app.ui.components.ChipRowLabel(
+            "Sort by",
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(sortOptions) { (id, label) ->
-                tv.enktel.app.ui.components.FocusButton(label, accent = sort == id, onClick = { onSort(id) })
+                tv.enktel.app.ui.components.GlassChip(
+                    label, selected = sort == id, accent = EnktelBlue,
+                    onClick = { onSort(id) },
+                )
             }
         }
         if (genres.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+            tv.enktel.app.ui.components.ChipRowLabel(
+                "Genre",
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    tv.enktel.app.ui.components.FocusButton("All genres", accent = genreFilter == null, onClick = { onGenre(null) })
+                    tv.enktel.app.ui.components.GlassChip(
+                        "All", selected = genreFilter == null,
+                        accent = tv.enktel.app.ui.theme.EnktelPurple,
+                        onClick = { onGenre(null) },
+                    )
                 }
                 items(genres) { g ->
-                    tv.enktel.app.ui.components.FocusButton(g, accent = genreFilter == g, onClick = {
-                        onGenre(if (genreFilter == g) null else g)
-                    })
+                    tv.enktel.app.ui.components.GlassChip(
+                        g, selected = genreFilter == g,
+                        accent = tv.enktel.app.ui.theme.EnktelPurple,
+                        onClick = { onGenre(if (genreFilter == g) null else g) },
+                    )
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel(
+            "Year",
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
-                tv.enktel.app.ui.components.FocusButton("Any year", accent = decadeFilter == null, onClick = { onDecade(null) })
+                tv.enktel.app.ui.components.GlassChip(
+                    "Any", selected = decadeFilter == null,
+                    accent = EnktelOk,
+                    onClick = { onDecade(null) },
+                )
             }
-            items(listOf(2020, 2010, 2000, 1990)) { d ->
-                tv.enktel.app.ui.components.FocusButton("${d}s", accent = decadeFilter == d, onClick = {
-                    onDecade(if (decadeFilter == d) null else d)
-                })
+            items(listOf(2026, 2025, 2020, 2010, 2000, 1990)) { d ->
+                tv.enktel.app.ui.components.GlassChip(
+                    if (d >= 2025) "$d+" else "${d}s",
+                    selected = decadeFilter == d,
+                    accent = EnktelOk,
+                    onClick = { onDecade(if (decadeFilter == d) null else d) },
+                )
             }
             item {
-                tv.enktel.app.ui.components.FocusButton("Older", accent = decadeFilter == -1, onClick = {
-                    onDecade(if (decadeFilter == -1) null else -1)
-                })
+                tv.enktel.app.ui.components.GlassChip(
+                    "Older", selected = decadeFilter == -1,
+                    accent = EnktelOk,
+                    onClick = { onDecade(if (decadeFilter == -1) null else -1) },
+                )
             }
+        }
+    }
+}
+
+/** Full-width Netflix-style spotlight card shown at the top of the Movies/Series grid. */
+@Composable
+private fun CategoryHero(
+    title: String,
+    poster: String,
+    rating: Double,
+    year: Int,
+    genre: String,
+    subtitle: String,
+    onOpen: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(EnktelSurfaceHigh)
+            .tapClick(onOpen),
+    ) {
+        if (poster.isNotBlank()) {
+            AsyncImage(
+                model = poster, contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    listOf(Color.Black.copy(alpha = 0.88f), Color.Transparent),
+                ),
+            ),
+        )
+        Column(
+            Modifier.align(Alignment.CenterStart).padding(24.dp).width(500.dp),
+        ) {
+            Text(
+                subtitle.uppercase(),
+                color = EnktelBlue, fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                title, color = Color.White,
+                fontSize = 26.sp, fontWeight = FontWeight.Black,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                Modifier.padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (rating > 0) Text("★ ${"%.1f".format(rating)}", color = EnktelOk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (year > 0) Text("$year", color = Color.White.copy(0.8f), fontSize = 13.sp)
+                if (genre.isNotBlank()) Text("· ${genre.take(30)}", color = Color.White.copy(0.65f), fontSize = 13.sp, maxLines = 1)
+            }
+            Spacer(Modifier.height(14.dp))
+            FocusButton("▶  View", accent = true, onClick = onOpen)
         }
     }
 }

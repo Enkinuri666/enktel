@@ -147,11 +147,31 @@ fun VodPlayerScreen(
         }
     }
 
+    val pipOn by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val autoPipOnBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
+    val autoPipOnHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
+
+    DisposableEffect(pipOn, autoPipOnHome) {
+        tv.enktel.app.player.PictureInPicture.playerActive = true
+        tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = pipOn && autoPipOnHome
+        onDispose {
+            tv.enktel.app.player.PictureInPicture.playerActive = false
+            tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
+        }
+    }
+
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
             showControls -> showControls = false
-            else -> nav.popBackStack()
+            else -> {
+                val entered = if (pipOn && autoPipOnBack && engine.player.isPlaying) {
+                    (context as? android.app.Activity)?.let {
+                        tv.enktel.app.player.PictureInPicture.enter(it)
+                    } ?: false
+                } else false
+                if (!entered) nav.popBackStack()
+            }
         }
     }
 
@@ -220,12 +240,17 @@ fun VodPlayerScreen(
         }
 
         if (showControls) {
+            // Mobile gets tighter side padding so the seek bar reaches closer to the
+            // screen edges on a phone, which is where the thumb naturally goes.
+            val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+            val hPad = if (isMobile) 20.dp else 48.dp
+            val vPad = if (isMobile) 18.dp else 24.dp
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.95f))))
-                    .padding(horizontal = 48.dp, vertical = 24.dp),
+                    .padding(horizontal = hPad, vertical = vPad),
             ) {
                 Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(12.dp))
@@ -250,30 +275,41 @@ fun VodPlayerScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FocusButton("-10s", onClick = { engine.player.seekBack(); controlsTick++ })
-                    FocusButton(if (playing) "⏸ Pause" else "▶ Play", accent = true, onClick = {
-                        if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
-                        controlsTick++
-                    })
-                    FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ })
-                    FocusButton("Audio", onClick = { trackMenu = "audio" })
-                    FocusButton("Subs", onClick = { trackMenu = "subs" })
-                    if (!isLive) {
-                        FocusButton("Speed ${speed}x", onClick = {
-                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; else -> 1f }
-                            engine.player.setPlaybackSpeed(speed)
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
+                            if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
                             controlsTick++
                         })
                     }
-                    FocusButton("Aspect", onClick = {
-                        resizeMode = when (resizeMode) {
-                            AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                            AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    item { FocusButton("−10s", onClick = { engine.player.seekBack(); controlsTick++ }) }
+                    item { FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ }) }
+                    item { FocusButton("Audio", onClick = { trackMenu = "audio" }) }
+                    item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
+                    if (!isLive) {
+                        item {
+                            FocusButton("Speed ${speed}x", onClick = {
+                                speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; else -> 1f }
+                                engine.player.setPlaybackSpeed(speed)
+                                controlsTick++
+                            })
                         }
-                        controlsTick++
-                    })
+                    }
+                    item {
+                        FocusButton("Aspect", onClick = {
+                            resizeMode = when (resizeMode) {
+                                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            }
+                            controlsTick++
+                        })
+                    }
+                    item {
+                        FocusButton("⧉ PiP", onClick = {
+                            (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) }
+                        })
+                    }
                 }
             }
         }

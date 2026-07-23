@@ -98,6 +98,66 @@ fun FocusButton(
     }
 }
 
+/**
+ * Netflix-style pill chip for filter rows. Sits lower than FocusButton visually
+ * (used for tag/genre/decade selection, not primary CTAs) and adds a hairline
+ * border in the selected state so a chosen filter reads at a glance.
+ */
+@Composable
+fun GlassChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = EnktelBlue,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) accent.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f),
+            focusedContainerColor = accent,
+            contentColor = if (selected) Color.White else EnktelTextDim,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (selected) accent.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f),
+                ),
+                shape = RoundedCornerShape(20.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(20.dp),
+            ),
+        ),
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Small uppercase heading used above chip rows. */
+@Composable
+fun ChipRowLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        color = EnktelTextDim,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.5.sp,
+        modifier = modifier,
+    )
+}
+
 @Composable
 fun TvTextField(
     value: String,
@@ -305,17 +365,44 @@ fun <T> ContentRail(
     items: List<T>,
     key: (T) -> Any,
     modifier: Modifier = Modifier,
+    accent: Color = EnktelBlue,
+    subtitle: String = "",
     itemContent: @Composable (T) -> Unit,
 ) {
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {
-        Text(
-            title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(start = 48.dp, bottom = 10.dp),
-        )
+        // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp),
+        ) {
+            Box(
+                Modifier
+                    .height(20.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.55f)))),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                title,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                letterSpacing = 0.3.sp,
+            )
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.width(10.dp))
+                Text(subtitle, fontSize = 12.sp, color = EnktelTextDim, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                "${items.size}",
+                fontSize = 12.sp,
+                color = EnktelTextDim,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),

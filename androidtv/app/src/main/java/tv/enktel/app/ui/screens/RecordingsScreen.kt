@@ -1,6 +1,7 @@
 package tv.enktel.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +76,11 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
 
     val usedBytes = remember(completed) { completed.sumOf { it.sizeBytes } }
     val freeBytes = remember(recordings.size) { RecordScheduler.freeStorageBytes(context) }
+    // Palette colours are @Composable-getter values; snap them here so lazy-scope
+    // extension calls (recordingSection) can take Color arguments.
+    val liveAccent = EnktelLive
+    val blueAccent = EnktelBlue
+    val okAccent = EnktelOk
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -91,7 +98,7 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             return@LazyColumn
         }
 
-        recordingSection(title = "Recording Now", items = recordingNow) { rec ->
+        recordingSection(title = "Recording Now", accent = liveAccent, items = recordingNow) { rec ->
             RecordingRow(
                 rec = rec,
                 onPlay = null,
@@ -100,7 +107,7 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
 
-        recordingSection(title = "Scheduled", items = scheduled) { rec ->
+        recordingSection(title = "Scheduled", accent = blueAccent, items = scheduled) { rec ->
             RecordingRow(
                 rec = rec,
                 onPlay = null,
@@ -109,7 +116,7 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
 
-        recordingSection(title = "Completed", items = completed) { rec ->
+        recordingSection(title = "Completed", accent = okAccent, items = completed) { rec ->
             RecordingRow(
                 rec = rec,
                 onPlay = {
@@ -122,7 +129,7 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
 
-        recordingSection(title = "Failed & Cancelled", items = inactive) { rec ->
+        recordingSection(title = "Failed & Cancelled", accent = liveAccent, items = inactive) { rec ->
             RecordingRow(rec = rec, onPlay = null, onStopOrCancel = null, onDelete = { pendingDelete = rec })
         }
     }
@@ -147,14 +154,24 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
 
 private fun androidx.compose.foundation.lazy.LazyListScope.recordingSection(
     title: String,
+    accent: Color,
     items: List<Recording>,
     row: @Composable (Recording) -> Unit,
 ) {
     if (items.isEmpty()) return
     item {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Badge(items.size.toString(), if (title == "Recording Now") EnktelLive else EnktelBlue)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .height(18.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 0.3.sp)
+            Spacer(Modifier.width(10.dp))
+            Badge(items.size.toString(), accent)
         }
     }
     items(items, key = { it.id }) { rec ->

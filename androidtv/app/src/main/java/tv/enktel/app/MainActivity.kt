@@ -78,15 +78,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Auto-enter PiP when the user presses Home while a video is playing. */
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        try { tv.enktel.app.player.PictureInPicture.enter(this) } catch (_: Throwable) {}
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent) // let composable pick up new channel_key from notification taps
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // If the user hits Home while a player is on-screen and they've opted into
+        // Auto-PiP-on-home in Settings, hand off to Picture-in-Picture instead of
+        // just backgrounding — so playback keeps going in a floating window.
+        val pip = tv.enktel.app.player.PictureInPicture
+        if (pip.playerActive && pip.userWantsPipOnBack) {
+            pip.enter(this)
+        }
     }
 }
 
