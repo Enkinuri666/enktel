@@ -351,90 +351,101 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             },
     ) {
         if (browseMode) {
-            // Docked layout: video pane on top (aspect-locked so it never gets crushed on
-            // portrait phones), browser panel underneath filling the rest. Uses Column so
-            // DPAD focus travels naturally between the two panels.
-            Column(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
-                // Video pane in a rounded, subtle glass frame with an overlay ribbon showing
-                // the currently-playing channel + programme so the user always knows what
-                // they're browsing while previewing. Tapping the video returns to fullscreen,
-                // TiVi Mate style.
+            // Docked layout picks Column (portrait — video top, dock bottom) or Row
+            // (landscape — video left, dock right). The old aspect-locked-16:9 video
+            // pane consumed the whole viewport in landscape which is why the Browse
+            // button looked inert; landscape branch swaps the shape for weight-based
+            // sizing so the dock always has room.
+            val config = androidx.compose.ui.platform.LocalConfiguration.current
+            val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+            val videoContent: @androidx.compose.runtime.Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
+                AndroidView(
+                    factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
+                    update = { view -> view.player = engine.player; view.resizeMode = resizeMode },
+                    modifier = Modifier.fillMaxSize(),
+                )
                 Box(
                     Modifier
-                        .fillMaxWidth()
-                        .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color.Black)
-                        .aspectRatio(16f / 9f)
-                        .tapClick { browseMode = false },
-                ) {
-                    AndroidView(
-                        factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
-                        update = { view -> view.player = engine.player; view.resizeMode = resizeMode },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    // Fullscreen return button, top-right corner. Big enough to hit with a
-                    // thumb on a phone and reachable with a single DPAD-UP on a remote.
-                    Box(
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(0.55f))
+                        .tapClick { browseMode = false }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) { Text("⛶ Fullscreen", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                current?.let { ch ->
+                    Column(
                         Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.Black.copy(0.55f))
-                            .tapClick { browseMode = false }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.75f))))
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
                     ) {
-                        Text("⛶ Fullscreen", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    // Compact bottom ribbon over the video: channel + now-playing + progress
-                    current?.let { ch ->
-                        Column(
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, Color.Black.copy(0.75f)),
-                                    ),
-                                )
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(
-                                    Modifier.background(EnktelLive, RoundedCornerShape(2.dp))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp),
-                                ) { Text("● LIVE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black) }
-                                if (ch.num > 0) Text("${ch.num}", color = EnktelBlue, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                                Text(
-                                    ch.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                                nowNext.now?.let { np ->
-                                    Text("·", color = Color.White.copy(0.6f), fontSize = 12.sp)
-                                    Text(
-                                        np.title, color = Color.White.copy(0.9f), fontSize = 12.sp,
-                                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false),
-                                    )
-                                }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(Modifier.background(EnktelLive, RoundedCornerShape(2.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) {
+                                Text("● LIVE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
                             }
+                            if (ch.num > 0) Text("${ch.num}", color = EnktelBlue, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                            Text(ch.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                 modifier = Modifier.weight(1f, fill = false))
                             nowNext.now?.let { np ->
-                                Spacer(Modifier.height(4.dp))
-                                val frac = ((System.currentTimeMillis() - np.startMs).toFloat() /
-                                    (np.endMs - np.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                                ProgressBarThin(frac, Modifier.fillMaxWidth(0.85f))
+                                Text("·", color = Color.White.copy(0.6f), fontSize = 12.sp)
+                                Text(np.title, color = Color.White.copy(0.9f), fontSize = 12.sp,
+                                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                     modifier = Modifier.weight(1f, fill = false))
                             }
+                        }
+                        nowNext.now?.let { np ->
+                            Spacer(Modifier.height(4.dp))
+                            val f = ((System.currentTimeMillis() - np.startMs).toFloat() /
+                                (np.endMs - np.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                            ProgressBarThin(f, Modifier.fillMaxWidth(0.85f))
                         }
                     }
                 }
-                BrowseDock(
-                    graph = graph, profileId = p.id, currentChannel = current,
-                    onTune = { tune(it) },
-                    onOpenGuide = { nav.navigate("guide") },
-                    onClose = { browseMode = false },
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                )
+            }
+
+            if (isLandscape) {
+                Row(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight().weight(0.6f)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black)
+                            .tapClick { browseMode = false },
+                        content = videoContent,
+                    )
+                    BrowseDock(
+                        graph = graph, profileId = p.id, currentChannel = current,
+                        onTune = { tune(it) },
+                        onOpenGuide = { nav.navigate("guide") },
+                        onClose = { browseMode = false },
+                        modifier = Modifier.fillMaxHeight().weight(0.4f),
+                    )
+                }
+            } else {
+                Column(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black)
+                            .aspectRatio(16f / 9f)
+                            .tapClick { browseMode = false },
+                        content = videoContent,
+                    )
+                    BrowseDock(
+                        graph = graph, profileId = p.id, currentChannel = current,
+                        onTune = { tune(it) },
+                        onOpenGuide = { nav.navigate("guide") },
+                        onClose = { browseMode = false },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                }
             }
         } else {
             AndroidView(
@@ -460,9 +471,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 ) {
                     Text("Playback error: $playError", color = EnktelLive, fontSize = 14.sp)
                     Spacer(Modifier.height(10.dp))
-                    Text("Press OK for channel list · UP/DOWN to zap", color = EnktelTextDim, fontSize = 12.sp)
+                    Text(
+                        if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+                            "Tap ☰ Channels to pick another · long-press video to zap"
+                        else "Press OK for channel list · UP/DOWN to zap",
+                        color = EnktelTextDim, fontSize = 12.sp,
+                    )
                 }
             }
+        }
+
+        // Branded animated buffering overlay — shows while ExoPlayer is BUFFERING.
+        val isBuffering by engine.buffering.collectAsStateWithLifecycle()
+        if (isBuffering && playError == null) {
+            tv.enktel.app.ui.components.BufferingLoader(
+                modifier = Modifier.align(Alignment.Center),
+                label = "Buffering",
+            )
         }
 
         if (numberBuffer.isNotEmpty()) {

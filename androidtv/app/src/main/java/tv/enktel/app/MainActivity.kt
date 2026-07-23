@@ -409,6 +409,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         }
         composable("search") { SearchScreen(graph, nav) }
         composable("settings") { SettingsScreen(graph, nav) }
+        composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())

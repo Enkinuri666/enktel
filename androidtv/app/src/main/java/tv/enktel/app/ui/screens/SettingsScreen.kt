@@ -88,7 +88,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
         }
-        FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
+            FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
+        }
 
         Spacer(Modifier.height(10.dp))
         tv.enktel.app.ui.components.ChipRowLabel("Live stream format")

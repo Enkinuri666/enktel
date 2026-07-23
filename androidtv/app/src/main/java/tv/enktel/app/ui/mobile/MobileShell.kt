@@ -91,11 +91,23 @@ fun MobileScaffold(
             BottomTabBar(
                 current = currentRoute.orEmpty(),
                 onTab = { tab ->
-                    if (tab.route == "__more") showMore = true
-                    else nav.navigate(tab.route) {
-                        popUpTo("home") { inclusive = false; saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    when {
+                        tab.route == "__more" -> showMore = true
+                        // Home tap: pop everything back to the start destination so it
+                        // works from any depth (previous popUpTo(home)+saveState combo
+                        // could look inert when a channel had been opened via an intent).
+                        tab.route == "home" -> {
+                            nav.popBackStack("home", inclusive = false)
+                            if (currentRoute != "home") nav.navigate("home") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        else -> nav.navigate(tab.route) {
+                            popUpTo("home") { inclusive = false; saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
