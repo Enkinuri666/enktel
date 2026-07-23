@@ -490,7 +490,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 ) {
                     Text("Playback error: $playError", color = EnktelLive, fontSize = 14.sp)
                     Spacer(Modifier.height(10.dp))
-                    Text("Press OK for channel list · UP/DOWN to zap", color = EnktelTextDim, fontSize = 12.sp)
+                    Text(
+                        if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+                            "Tap ☰ Channels to pick another · long-press video to zap"
+                        else "Press OK for channel list · UP/DOWN to zap",
+                        color = EnktelTextDim, fontSize = 12.sp,
+                    )
                 }
             }
         }

@@ -31,7 +31,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 
 private data class TourStep(val title: String, val body: String)
 
-private val TOUR = listOf(
+private val TOUR_TV = listOf(
     TourStep("Welcome to EnkTel IPTV", "Stream beyond limits. Let's walk you through the basics — takes 20 seconds."),
     TourStep("Remote control", "◀▶▲▼ to move · OK to select · BACK to leave · MENU for player options."),
     TourStep("Live TV", "Number keys 0–9 jump to that channel. Press OK on the player to open the channel list."),
@@ -40,6 +40,21 @@ private val TOUR = listOf(
     TourStep("Watchlist & recommendations", "Press ☆ on any movie or series to save it. Home shows Because-You-Watched suggestions as you use the app."),
     TourStep("You're set", "Change any of this in Settings. Enjoy!"),
 )
+
+private val TOUR_MOBILE = listOf(
+    TourStep("Welcome to EnkTel IPTV", "Stream beyond limits. Let's walk you through the basics — takes 20 seconds."),
+    TourStep("Bottom tabs", "Home, Live TV, Movies, Sports, Search and More live in the bottom bar."),
+    TourStep("Live TV", "Tap channels or long-press to zap. Swipe up/down on the video for volume + brightness."),
+    TourStep("Time-shift & catch-up", "On channels with catch-up you can restart the current programme or jump back 5 minutes at any time."),
+    TourStep("Sports Hub", "Tap a live match to jump straight to its channel. Follow teams to get reminders before they play."),
+    TourStep("Watchlist & recommendations", "Tap ☆ on any movie or series to save it. Home shows Because-You-Watched suggestions as you use the app."),
+    TourStep("Voice", "Bottom-right mic — try \"turn to Nine HD\", \"latest movies\", \"what live sports is on\"."),
+    TourStep("You're set", "Change any of this in Settings. Enjoy!"),
+)
+
+private val TOUR: List<TourStep>
+    @androidx.compose.runtime.Composable
+    get() = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") TOUR_MOBILE else TOUR_TV
 
 @Composable
 fun FirstRunTour(onFinish: () -> Unit) {
