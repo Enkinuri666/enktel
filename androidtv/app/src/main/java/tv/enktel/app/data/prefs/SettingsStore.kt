@@ -60,6 +60,16 @@ class SettingsStore(private val context: Context) {
     private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
     private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | guide_dock
 
+    // v1.11.0: content organisation. Each kind holds:
+    //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
+    //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
+    private val LIVE_CAT_ORDER = stringPreferencesKey("live_cat_order")
+    private val LIVE_HIDDEN_CATS = stringSetPreferencesKey("live_hidden_cats")
+    private val VOD_CAT_ORDER = stringPreferencesKey("vod_cat_order")
+    private val VOD_HIDDEN_CATS = stringSetPreferencesKey("vod_hidden_cats")
+    private val SERIES_CAT_ORDER = stringPreferencesKey("series_cat_order")
+    private val SERIES_HIDDEN_CATS = stringSetPreferencesKey("series_hidden_cats")
+
     val activeProfileId: Flow<Long> = context.dataStore.data.map { it[ACTIVE_PROFILE] ?: 0L }
     val streamFormat: Flow<String> = context.dataStore.data.map { it[STREAM_FORMAT] ?: "hls" }
     val bufferProfile: Flow<String> = context.dataStore.data.map { it[BUFFER_PROFILE] ?: "balanced" }
@@ -101,6 +111,23 @@ class SettingsStore(private val context: Context) {
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
     val backAction: Flow<String> = context.dataStore.data.map { it[BACK_ACTION] ?: "exit" }
+
+    fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
+        val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
+        prefs[key]?.split('|')?.filter(String::isNotBlank).orEmpty()
+    }
+    fun hiddenCategories(kind: String): Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        val key = when (kind) { "vod" -> VOD_HIDDEN_CATS; "series" -> SERIES_HIDDEN_CATS; else -> LIVE_HIDDEN_CATS }
+        prefs[key].orEmpty()
+    }
+    suspend fun setCategoryOrder(kind: String, order: List<String>) = context.dataStore.edit { prefs ->
+        val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
+        prefs[key] = order.joinToString("|")
+    }
+    suspend fun setHiddenCategories(kind: String, set: Set<String>) = context.dataStore.edit { prefs ->
+        val key = when (kind) { "vod" -> VOD_HIDDEN_CATS; "series" -> SERIES_HIDDEN_CATS; else -> LIVE_HIDDEN_CATS }
+        prefs[key] = set
+    }
 
     suspend fun activeProfileIdNow(): Long = activeProfileId.first()
     suspend fun setActiveProfile(id: Long) = context.dataStore.edit { it[ACTIVE_PROFILE] = id }

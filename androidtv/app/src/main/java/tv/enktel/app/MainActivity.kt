@@ -71,10 +71,12 @@ class MainActivity : ComponentActivity() {
                 textScalePct = textPct,
             ) {
                 val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
-                ToastHost {
-                    ScreensaverHost(graph, isPlaying = { false }) {
-                        tv.enktel.app.voice.VoiceHost(voiceBus) {
-                            MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
+                tv.enktel.app.ui.components.EnktelSplash {
+                    ToastHost {
+                        ScreensaverHost(graph, isPlaying = { false }) {
+                            tv.enktel.app.voice.VoiceHost(voiceBus) {
+                                MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
+                            }
                         }
                     }
                 }
@@ -409,6 +411,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         }
         composable("search") { SearchScreen(graph, nav) }
         composable("settings") { SettingsScreen(graph, nav) }
+        composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())

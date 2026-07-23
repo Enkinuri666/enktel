@@ -50,6 +50,9 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
 
     val stats = MutableStateFlow(StreamStats())
     val error = MutableStateFlow<String?>(null)
+    /** true while ExoPlayer is in BUFFERING state — surfaced so the UI can show
+     *  the branded animated loader over the video pane. */
+    val buffering = MutableStateFlow(false)
     private var dropped = 0
     private var retries = 0
     private var lastUrl: String? = null
@@ -156,6 +159,7 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
 
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) { retries = 0; error.value = null }
+                buffering.value = state == Player.STATE_BUFFERING
                 push()
             }
         })

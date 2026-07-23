@@ -495,6 +495,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             }
         }
 
+        // Branded animated buffering overlay — shows while ExoPlayer is BUFFERING.
+        val isBuffering by engine.buffering.collectAsStateWithLifecycle()
+        if (isBuffering && playError == null) {
+            tv.enktel.app.ui.components.BufferingLoader(
+                modifier = Modifier.align(Alignment.Center),
+                label = "Buffering",
+            )
+        }
+
         if (numberBuffer.isNotEmpty()) {
             Text(
                 numberBuffer,

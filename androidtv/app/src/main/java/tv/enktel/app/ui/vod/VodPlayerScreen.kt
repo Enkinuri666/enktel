@@ -296,6 +296,14 @@ fun VodPlayerScreen(
             )
         }
 
+        val isBuffering by engine.buffering.collectAsStateWithLifecycle()
+        if (isBuffering && playError == null) {
+            tv.enktel.app.ui.components.BufferingLoader(
+                modifier = Modifier.align(Alignment.Center),
+                label = "Buffering",
+            )
+        }
+
         gestureLevel?.let { (label, frac, isBright) ->
             Column(
                 Modifier
