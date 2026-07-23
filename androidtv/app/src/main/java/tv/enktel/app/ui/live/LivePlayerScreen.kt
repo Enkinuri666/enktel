@@ -105,7 +105,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
-    DisposableEffect(engine) { onDispose { engine.release() } }
+    DisposableEffect(engine) {
+        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
+        onDispose {
+            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
+                tv.enktel.app.voice.ActivePlayerRef.player = null
+            }
+            engine.release()
+        }
+    }
 
     val channels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val categories by graph.content.categories(p.id, "live").collectAsStateWithLifecycle(initialValue = emptyList())

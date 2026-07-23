@@ -114,7 +114,15 @@ fun VodPlayerScreen(
         engine.setLoudnessOn(loudnessOn)
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
-    DisposableEffect(Unit) { onDispose { engine.release() } }
+    DisposableEffect(Unit) {
+        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
+        onDispose {
+            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
+                tv.enktel.app.voice.ActivePlayerRef.player = null
+            }
+            engine.release()
+        }
+    }
 
     // Position ticker + periodic progress persistence
     LaunchedEffect(Unit) {

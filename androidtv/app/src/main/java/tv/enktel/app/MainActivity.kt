@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.components.FirstRunTour
 import tv.enktel.app.ui.components.ToastHost
@@ -69,9 +70,12 @@ class MainActivity : ComponentActivity() {
                 overlayOpacity = opacityPct / 100f,
                 textScalePct = textPct,
             ) {
+                val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
                 ToastHost {
                     ScreensaverHost(graph, isPlaying = { false }) {
-                        MainNav(graph, initialChannelKey = intent?.getStringExtra("channel_key"))
+                        tv.enktel.app.voice.VoiceHost(voiceBus) {
+                            MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
+                        }
                     }
                 }
             }
@@ -97,7 +101,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun MainNav(graph: AppGraph, initialChannelKey: String?) {
+private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandBus, initialChannelKey: String?) {
     val nav = rememberNavController()
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = -1L)
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = null)
@@ -113,6 +117,77 @@ private fun MainNav(graph: AppGraph, initialChannelKey: String?) {
     }
     LaunchedEffect(initialChannelKey) {
         if (!initialChannelKey.isNullOrBlank()) nav.navigate("live?ch=$initialChannelKey")
+    }
+
+    val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
+
+    // Voice-command navigation handler. Player-scoped commands (Pause/Resume/etc)
+    // are consumed by whichever player screen is currently mounted; we take the
+    // ones that navigate.
+    LaunchedEffect(voiceBus) {
+        voiceBus.intents.collect { intent ->
+            when (intent) {
+                is tv.enktel.app.voice.VoiceIntent.OpenHome -> nav.navigate("home")
+                is tv.enktel.app.voice.VoiceIntent.OpenGuide -> nav.navigate("guide")
+                is tv.enktel.app.voice.VoiceIntent.OpenMovies -> nav.navigate("movies")
+                is tv.enktel.app.voice.VoiceIntent.OpenSeries -> nav.navigate("series")
+                is tv.enktel.app.voice.VoiceIntent.OpenWatchlist -> nav.navigate("watchlist")
+                is tv.enktel.app.voice.VoiceIntent.OpenRecordings -> nav.navigate("recordings")
+                is tv.enktel.app.voice.VoiceIntent.OpenSettings -> nav.navigate("settings")
+                is tv.enktel.app.voice.VoiceIntent.FindSports -> nav.navigate("sports")
+                is tv.enktel.app.voice.VoiceIntent.Search -> {
+                    nav.navigate("search")
+                    // Search field takes a moment to mount; publishing the query is a
+                    // future-work follow-up (screen currently reads its query from
+                    // local state).
+                }
+                is tv.enktel.app.voice.VoiceIntent.TuneChannel -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val match = try {
+                        val all = graph.content.channels(p.id).first()
+                        val q = intent.query.lowercase()
+                        all.firstOrNull { it.name.equals(intent.query, ignoreCase = true) }
+                            ?: all.firstOrNull { q in it.name.lowercase() }
+                            ?: intent.query.toIntOrNull()?.let { num ->
+                                all.firstOrNull { it.num == num }
+                            }
+                    } catch (_: Throwable) { null }
+                    if (match != null) nav.navigate("live?ch=${match.key}")
+                }
+                is tv.enktel.app.voice.VoiceIntent.Suggest -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val pick = try {
+                        graph.recommendations.trending(p.id).firstOrNull()
+                            ?: graph.recommendations.newThisWeek(p.id).firstOrNull()
+                            ?: graph.recommendations.latestReleases(p.id).firstOrNull()
+                    } catch (_: Throwable) { null }
+                    if (pick != null) nav.navigate("movie/${pick.key}")
+                    else nav.navigate("home")
+                }
+                is tv.enktel.app.voice.VoiceIntent.Pause -> tv.enktel.app.voice.ActivePlayerRef.pause()
+                is tv.enktel.app.voice.VoiceIntent.Resume -> tv.enktel.app.voice.ActivePlayerRef.resume()
+                is tv.enktel.app.voice.VoiceIntent.SetVolume -> {
+                    val am = appCtx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                    am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, (intent.fraction * max).toInt().coerceIn(0, max), 0)
+                }
+                is tv.enktel.app.voice.VoiceIntent.VolumeUp -> {
+                    val am = appCtx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_RAISE, 0)
+                }
+                is tv.enktel.app.voice.VoiceIntent.VolumeDown -> {
+                    val am = appCtx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_LOWER, 0)
+                }
+                is tv.enktel.app.voice.VoiceIntent.Mute -> {
+                    val am = appCtx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 0, 0)
+                }
+                is tv.enktel.app.voice.VoiceIntent.RecordNow, is tv.enktel.app.voice.VoiceIntent.ChannelUp,
+                is tv.enktel.app.voice.VoiceIntent.ChannelDown, is tv.enktel.app.voice.VoiceIntent.Fullscreen,
+                is tv.enktel.app.voice.VoiceIntent.Unknown -> Unit
+            }
+        }
     }
 
     // Mobile flavor gets a bottom-tab shell; the TV flavor renders the NavHost bare
