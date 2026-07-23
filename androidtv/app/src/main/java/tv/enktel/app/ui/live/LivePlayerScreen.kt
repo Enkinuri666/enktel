@@ -73,6 +73,7 @@ import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.player.StreamStats
 import tv.enktel.app.player.TrackChoice
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -104,7 +105,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
-    DisposableEffect(engine) { onDispose { engine.release() } }
+    DisposableEffect(engine) {
+        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
+        onDispose {
+            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
+                tv.enktel.app.voice.ActivePlayerRef.player = null
+            }
+            engine.release()
+        }
+    }
 
     val channels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val categories by graph.content.categories(p.id, "live").collectAsStateWithLifecycle(initialValue = emptyList())
@@ -258,10 +267,47 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(anyOverlay) { if (!anyOverlay) rootFocus.requestFocus() }
 
+    // Vertical-swipe volume + brightness state. Left half of the screen tunes
+    // brightness, right half tunes volume — the standard modern-player convention
+    // (YouTube, VLC, MX Player). The little `gestureLevel` triple carries the
+    // label, the 0-1 fraction, and whether it's brightness so the on-screen
+    // indicator can render either flavour from the same slot.
+    var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
+    LaunchedEffect(gestureLevel) {
+        if (gestureLevel != null) { delay(900); gestureLevel = null }
+    }
+    var dragBrightness by remember { mutableStateOf(true) }
+    var boxWidthPx by remember { mutableStateOf(1f) }
+    var boxHeightPx by remember { mutableStateOf(1f) }
+
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(browseMode) {
+                if (browseMode) return@pointerInput
+                detectVerticalDragGestures(
+                    onDragStart = { off ->
+                        boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
+                        boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
+                        dragBrightness = off.x < boxWidthPx / 2f
+                    },
+                    onVerticalDrag = { _, dy ->
+                        val delta = -dy / boxHeightPx
+                        if (dragBrightness) {
+                            (context as? android.app.Activity)?.let { act ->
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
+                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
+                                )
+                                gestureLevel = Triple("☀ Brightness", next, true)
+                            }
+                        } else {
+                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
+                            gestureLevel = Triple("🔊 Volume", next, false)
+                        }
+                    },
+                )
+            }
             .focusRequester(rootFocus)
             .focusable()
             // Touchscreen support: tap shows the info bar, long-press opens the channel list.
@@ -435,6 +481,39 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
         if (showStats && !browseMode) {
             StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
+        }
+
+        // Volume / brightness on-screen indicator (auto-hides after 900ms).
+        gestureLevel?.let { (label, frac, isBright) ->
+            Column(
+                Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.72f))
+                    .padding(horizontal = 22.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(label, color = Color.White.copy(0.9f), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier
+                        .height(90.dp)
+                        .width(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color.White.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height((90f * frac.coerceIn(0f, 1f)).dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (isBright) EnktelOk else EnktelBlue),
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            }
         }
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
