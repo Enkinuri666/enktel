@@ -2,6 +2,8 @@ package tv.enktel.app.ui.sports
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.widthIn
+import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -215,6 +217,41 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+        // Live-scores ticker: shows every match currently in progress across all channels,
+        // even ones our EPG scan missed. Tap → jump straight to whichever channel is
+        // carrying that match if we recognise the team names in a live channel title.
+        if (scoresEnabled && liveScores.isNotEmpty()) {
+            item { SectionHeader("⚡ LIVE SCORES", EnktelOk, padHoriz) }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = padHoriz),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(liveScores, key = { "${it.home}-${it.away}-${it.league}" }) { s ->
+                        LiveScoreChip(
+                            score = s,
+                            onTap = {
+                                // Fuzzy channel match by team names appearing in channel titles.
+                                scope.launch {
+                                    val matchChannel = try {
+                                        graph.content.channels(p.id).first().firstOrNull { ch ->
+                                            val title = ch.name.lowercase()
+                                            s.home.lowercase() in title || s.away.lowercase() in title
+                                        }
+                                    } catch (_: Throwable) { null }
+                                    if (matchChannel != null) {
+                                        toaster.info("Tuning to ${matchChannel.name}")
+                                        nav.navigate("live?ch=${matchChannel.key}")
+                                    } else {
+                                        toaster.info("No live channel matched for that match")
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
         if (live.isNotEmpty()) {
             item { SectionHeader("🔴 LIVE NOW", EnktelLive, padHoriz) }
             items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
@@ -254,9 +291,31 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
         }
-        if (finished.isNotEmpty()) {
-            item { SectionHeader("✓ RESULTS & REPLAYS", EnktelOk, padHoriz) }
-            items(finished, key = { "F-${it.channel.key}-${it.program.id}" }) { ev ->
+        // Split "finished" into fresh Highlights (last 6h — likely still trending) and
+        // older Replays (>6h ago). Same tap behaviour: pull from catch-up if the channel
+        // supports it.
+        val nowMs = System.currentTimeMillis()
+        val highlightWindow = 6 * 60 * 60_000L
+        val highlights = finished.filter { nowMs - it.endMs <= highlightWindow }
+        val olderReplays = finished.filter { nowMs - it.endMs > highlightWindow }
+        if (highlights.isNotEmpty()) {
+            item { SectionHeader("🎬 HIGHLIGHTS — LAST 6 HOURS", EnktelOk, padHoriz) }
+            items(highlights, key = { "H-${it.channel.key}-${it.program.id}" }) { ev ->
+                FinishedEventCard(
+                    ev, padHoriz = padHoriz,
+                    onReplay = {
+                        if (ev.channel.hasArchive && p.kind == "xtream") {
+                            val mins = (ev.endMs - ev.startMs) / 60_000
+                            val url = XtreamClient.timeshiftUrl(p, ev.channel.streamId, ev.startMs, mins)
+                            nav.navigate(vodPlayerRoute(url, "${ev.channel.name} · ${ev.title}"))
+                        } else toaster.error("No catch-up archive")
+                    },
+                )
+            }
+        }
+        if (olderReplays.isNotEmpty()) {
+            item { SectionHeader("📼 REPLAYS", EnktelBlue, padHoriz) }
+            items(olderReplays, key = { "F-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
                     onReplay = {
@@ -432,6 +491,50 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
                 color = if (ev.channel.hasArchive) EnktelOk else EnktelTextDim,
                 fontSize = 22.sp, fontWeight = FontWeight.Bold,
             )
+        }
+    }
+}
+
+/** Compact live-score chip for the top-of-Sports ticker: HOME 2 - 1 AWAY · 78'. */
+@Composable
+private fun LiveScoreChip(score: tv.enktel.app.data.repo.LiveScore, onTap: () -> Unit) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(EnktelSurface.copy(0.7f))
+            .border(1.dp, EnktelOk.copy(0.5f), RoundedCornerShape(20.dp))
+            .tapClick(onTap)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Pulsing live dot so the eye finds live scores instantly in the strip.
+        Box(
+            Modifier
+                .size(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(EnktelLive),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            score.home, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 90.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${score.homeScore}", color = EnktelOk, fontSize = 15.sp, fontWeight = FontWeight.Black,
+        )
+        Text(" – ", color = EnktelTextDim, fontSize = 12.sp)
+        Text(
+            "${score.awayScore}", color = EnktelOk, fontSize = 15.sp, fontWeight = FontWeight.Black,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            score.away, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 90.dp),
+        )
+        if (score.minute.isNotBlank()) {
+            Spacer(Modifier.width(10.dp))
+            Text(score.minute, color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

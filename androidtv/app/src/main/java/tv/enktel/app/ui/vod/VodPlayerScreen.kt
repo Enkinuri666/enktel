@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +31,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement as LayoutArrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.focus.onFocusChanged
@@ -181,6 +184,12 @@ fun VodPlayerScreen(
     LaunchedEffect(trackMenu, showControls) { if (trackMenu.isEmpty() && !showControls) rootFocus.requestFocus() }
     LaunchedEffect(Unit) { rootFocus.requestFocus() }
 
+    var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
+    LaunchedEffect(gestureLevel) { if (gestureLevel != null) { delay(900); gestureLevel = null } }
+    var dragBrightness by remember { mutableStateOf(true) }
+    var boxWidthPx by remember { mutableStateOf(1f) }
+    var boxHeightPx by remember { mutableStateOf(1f) }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -190,6 +199,30 @@ fun VodPlayerScreen(
             // Touchscreen support: tap toggles the control bar.
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { showControls = true; controlsTick++ })
+            }
+            // Left half of the screen tunes brightness, right half tunes volume.
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { off ->
+                        boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
+                        boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
+                        dragBrightness = off.x < boxWidthPx / 2f
+                    },
+                    onVerticalDrag = { _, dy ->
+                        val delta = -dy / boxHeightPx
+                        if (dragBrightness) {
+                            (context as? android.app.Activity)?.let { act ->
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
+                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
+                                )
+                                gestureLevel = Triple("☀ Brightness", next, true)
+                            }
+                        } else {
+                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
+                            gestureLevel = Triple("🔊 Volume", next, false)
+                        }
+                    },
+                )
             }
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown || trackMenu.isNotEmpty() || showControls) return@onPreviewKeyEvent false
@@ -237,6 +270,35 @@ fun VodPlayerScreen(
                 color = EnktelLive,
                 modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(0.7f)).padding(16.dp),
             )
+        }
+
+        gestureLevel?.let { (label, frac, isBright) ->
+            Column(
+                Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.72f))
+                    .padding(horizontal = 22.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(label, color = Color.White.copy(0.9f), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier.height(90.dp).width(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color.White.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .height((90f * frac.coerceIn(0f, 1f)).dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (isBright) tv.enktel.app.ui.theme.EnktelOk else tv.enktel.app.ui.theme.EnktelBlue),
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            }
         }
 
         if (showControls) {
