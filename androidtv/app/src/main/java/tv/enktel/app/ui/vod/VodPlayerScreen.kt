@@ -193,15 +193,10 @@ fun VodPlayerScreen(
     LaunchedEffect(Unit) { rootFocus.requestFocus() }
 
     var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
-    var gestureTick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(gestureTick, gestureLevel == null) {
-        if (gestureLevel != null) { delay(900); gestureLevel = null }
-    }
+    LaunchedEffect(gestureLevel) { if (gestureLevel != null) { delay(900); gestureLevel = null } }
     var dragBrightness by remember { mutableStateOf(true) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var boxHeightPx by remember { mutableStateOf(1f) }
-    var dragStartFrac by remember { mutableStateOf(0f) }
-    var dragTotalDy by remember { mutableStateOf(0f) }
 
     Box(
         Modifier
@@ -220,31 +215,20 @@ fun VodPlayerScreen(
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         dragBrightness = off.x < boxWidthPx / 2f
-                        dragTotalDy = 0f
-                        dragStartFrac = if (dragBrightness) {
-                            (context as? android.app.Activity)?.let {
-                                tv.enktel.app.player.PlayerGestures.currentBrightness(it)
-                            } ?: 0.5f
-                        } else {
-                            tv.enktel.app.player.PlayerGestures.currentVolumeFraction(context)
-                        }
                     },
-                    onDragEnd = { gestureTick++ },
-                    onDragCancel = { gestureTick++ },
                     onVerticalDrag = { _, dy ->
-                        dragTotalDy += dy
-                        val fracFromStart = (-dragTotalDy / boxHeightPx).coerceIn(-1f, 1f)
-                        val target = (dragStartFrac + fracFromStart).coerceIn(0f, 1f)
+                        val delta = -dy / boxHeightPx
                         if (dragBrightness) {
                             (context as? android.app.Activity)?.let { act ->
-                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(act, target)
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
+                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
+                                )
                                 gestureLevel = Triple("☀ Brightness", next, true)
                             }
                         } else {
-                            val next = tv.enktel.app.player.PlayerGestures.setVolume(context, target)
+                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
                             gestureLevel = Triple("🔊 Volume", next, false)
                         }
-                        gestureTick++
                     },
                 )
             }
@@ -293,14 +277,6 @@ fun VodPlayerScreen(
                 "Playback error: $playError",
                 color = EnktelLive,
                 modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(0.7f)).padding(16.dp),
-            )
-        }
-
-        val isBuffering by engine.buffering.collectAsStateWithLifecycle()
-        if (isBuffering && playError == null) {
-            tv.enktel.app.ui.components.BufferingLoader(
-                modifier = Modifier.align(Alignment.Center),
-                label = "Buffering",
             )
         }
 

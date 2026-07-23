@@ -31,17 +31,6 @@ object PlayerGestures {
         return (target.toFloat() / max).coerceIn(0f, 1f)
     }
 
-    /** Set the volume directly from a 0..1 target fraction.  Rounding-safe:
-     *  fractional [target] snaps to the nearest discrete stream step, and the
-     *  fraction reported back is the actual new volume so the UI is honest. */
-    fun setVolume(context: Context, target: Float): Float {
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val step = (target.coerceIn(0f, 1f) * max).let { kotlin.math.round(it).toInt() }.coerceIn(0, max)
-        am.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0)
-        return (step.toFloat() / max).coerceIn(0f, 1f)
-    }
-
     /** Read the player Activity's window brightness. If the window is set to
      *  BRIGHTNESS_OVERRIDE_NONE (–1) we fall back to the system-wide value so the first
      *  swipe doesn't jump to 0. */

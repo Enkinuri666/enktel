@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -163,28 +162,16 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         content()
-        // Mic FAB sits bottom-right, above the mobile bottom-nav on phones and
-        // above the system gesture bar everywhere. That corner is empty on every
-        // screen — the previous top-right position clashed with the Home clock
-        // and the Search icon on the mobile hero.
-        val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-        val bottomOffset = if (isMobile) 90.dp else 24.dp
         MicFab(
             listening = listening,
             onTap = { toggleListening() },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 16.dp, bottom = bottomOffset),
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
         )
         if (listening) {
             ListeningOverlay(
                 partial = partial,
                 onCancel = { recognizer.stop(); listening = false },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = bottomOffset + 60.dp),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 68.dp),
             )
         }
         lastIntentLabel?.let { label ->

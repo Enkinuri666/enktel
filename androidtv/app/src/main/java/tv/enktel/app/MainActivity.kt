@@ -71,12 +71,10 @@ class MainActivity : ComponentActivity() {
                 textScalePct = textPct,
             ) {
                 val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
-                tv.enktel.app.ui.components.EnktelSplash {
-                    ToastHost {
-                        ScreensaverHost(graph, isPlaying = { false }) {
-                            tv.enktel.app.voice.VoiceHost(voiceBus) {
-                                MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
-                            }
+                ToastHost {
+                    ScreensaverHost(graph, isPlaying = { false }) {
+                        tv.enktel.app.voice.VoiceHost(voiceBus) {
+                            MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
                         }
                     }
                 }

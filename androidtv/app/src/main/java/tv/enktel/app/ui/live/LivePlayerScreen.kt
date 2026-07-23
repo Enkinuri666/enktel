@@ -273,20 +273,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // label, the 0-1 fraction, and whether it's brightness so the on-screen
     // indicator can render either flavour from the same slot.
     var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
-    // Bumped on every drag update; the panel-dismiss LaunchedEffect keys on this
-    // AND on drag end so the panel actually clears once the finger lifts.
-    var gestureTick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(gestureTick, gestureLevel == null) {
+    LaunchedEffect(gestureLevel) {
         if (gestureLevel != null) { delay(900); gestureLevel = null }
     }
     var dragBrightness by remember { mutableStateOf(true) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var boxHeightPx by remember { mutableStateOf(1f) }
-    // For each drag, track where we started + how far we've moved. Applying delta
-    // frame-by-frame rounds to 0 volume steps on every 15-step MUSIC stream, so
-    // instead we anchor once and set target = start + running-delta each frame.
-    var dragStartFrac by remember { mutableStateOf(0f) }
-    var dragTotalDy by remember { mutableStateOf(0f) }
 
     Box(
         Modifier
@@ -299,31 +291,20 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         dragBrightness = off.x < boxWidthPx / 2f
-                        dragTotalDy = 0f
-                        dragStartFrac = if (dragBrightness) {
-                            (context as? android.app.Activity)?.let {
-                                tv.enktel.app.player.PlayerGestures.currentBrightness(it)
-                            } ?: 0.5f
-                        } else {
-                            tv.enktel.app.player.PlayerGestures.currentVolumeFraction(context)
-                        }
                     },
-                    onDragEnd = { gestureTick++ },
-                    onDragCancel = { gestureTick++ },
                     onVerticalDrag = { _, dy ->
-                        dragTotalDy += dy
-                        val fracFromStart = (-dragTotalDy / boxHeightPx).coerceIn(-1f, 1f)
-                        val target = (dragStartFrac + fracFromStart).coerceIn(0f, 1f)
+                        val delta = -dy / boxHeightPx
                         if (dragBrightness) {
                             (context as? android.app.Activity)?.let { act ->
-                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(act, target)
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
+                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
+                                )
                                 gestureLevel = Triple("☀ Brightness", next, true)
                             }
                         } else {
-                            val next = tv.enktel.app.player.PlayerGestures.setVolume(context, target)
+                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
                             gestureLevel = Triple("🔊 Volume", next, false)
                         }
-                        gestureTick++
                     },
                 )
             }
