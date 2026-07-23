@@ -93,14 +93,21 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val hScroll = rememberScrollState()
-    val now = System.currentTimeMillis()
-    LaunchedEffect(dayOffset, channels.isEmpty()) {
-        if (dayOffset == 0) {
-            val px = ((now - dayStart).toFloat() / HOUR * 220f).toInt() - 300
-            hScroll.scrollTo(px.coerceAtLeast(0))
-        } else {
-            hScroll.scrollTo(0)
+    // Live clock — updates once a minute so the NOW marker on the timeline stays
+    // accurate without spinning up a per-second recomposition.
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(60_000)
         }
+    }
+    suspend fun scrollToNow() {
+        val px = ((now - dayStart).toFloat() / HOUR * 220f).toInt() - 300
+        hScroll.scrollTo(px.coerceAtLeast(0))
+    }
+    LaunchedEffect(dayOffset, channels.isEmpty()) {
+        if (dayOffset == 0) scrollToNow() else hScroll.scrollTo(0)
     }
 
     Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
@@ -111,12 +118,20 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         ) {
             SectionTitle("TV Guide")
             Spacer(Modifier.weight(1f))
-            FocusButton("◀ Prev day", onClick = { dayOffset-- })
+            FocusButton("◀", onClick = { dayOffset-- })
             Text(
                 SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(Date(dayStart)),
                 color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
             )
-            FocusButton("Next day ▶", onClick = { dayOffset++ })
+            FocusButton("▶", onClick = { dayOffset++ })
+            Spacer(Modifier.width(6.dp))
+            // Snap-back to right now. If you're on a different day it jumps you back
+            // to today first. Coloured accent so it's the "safe home" like on an STB.
+            FocusButton(
+                "⏱  NOW",
+                accent = true,
+                onClick = { dayOffset = 0; scope.launch { scrollToNow() } },
+            )
         }
         Spacer(Modifier.height(10.dp))
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
@@ -145,16 +160,38 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             return
         }
 
-        // Timeline header
+        // Timeline header with a live NOW marker: red vertical line at current time
+        // if we're viewing today. Scrolls with hScroll so it always aligns.
+        val nowOffsetDp = if (dayOffset == 0 && now in dayStart..dayEnd) {
+            (DP_PER_HOUR.value * ((now - dayStart).toFloat() / HOUR)).dp
+        } else null
         Row(Modifier.fillMaxWidth()) {
             Spacer(Modifier.width(216.dp))
-            Row(Modifier.horizontalScroll(hScroll, enabled = false)) {
-                repeat(24) { h ->
-                    Box(Modifier.width(DP_PER_HOUR).height(24.dp)) {
-                        Text(
-                            String.format(Locale.US, "%02d:00", h),
-                            color = EnktelTextDim, fontSize = 11.sp,
-                            modifier = Modifier.padding(start = 4.dp),
+            Box {
+                Row(Modifier.horizontalScroll(hScroll, enabled = false)) {
+                    repeat(24) { h ->
+                        Box(Modifier.width(DP_PER_HOUR).height(24.dp)) {
+                            Text(
+                                String.format(Locale.US, "%02d:00", h),
+                                color = EnktelTextDim, fontSize = 11.sp,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        }
+                    }
+                }
+                nowOffsetDp?.let { off ->
+                    Box(
+                        Modifier
+                            .horizontalScroll(hScroll, enabled = false)
+                            .width(off + 8.dp)
+                            .height(24.dp),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        Box(
+                            Modifier
+                                .width(3.dp)
+                                .height(20.dp)
+                                .background(EnktelLive, RoundedCornerShape(2.dp)),
                         )
                     }
                 }
