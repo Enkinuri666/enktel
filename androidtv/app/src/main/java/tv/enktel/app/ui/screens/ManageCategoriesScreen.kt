@@ -121,6 +121,7 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
                 ) {
                     Text("${idx + 1}", color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Black,
                          modifier = Modifier.width(28.dp))
+                    tv.enktel.app.ui.components.PlatformBadgeFor(cat.name)
                     Text(
                         cat.name,
                         color = if (isHidden) EnktelTextDim else Color.White,
