@@ -186,6 +186,183 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                 is tv.enktel.app.voice.VoiceIntent.RecordNow, is tv.enktel.app.voice.VoiceIntent.ChannelUp,
                 is tv.enktel.app.voice.VoiceIntent.ChannelDown, is tv.enktel.app.voice.VoiceIntent.Fullscreen,
                 is tv.enktel.app.voice.VoiceIntent.Unknown -> Unit
+
+                // ---- Query intents: answer back with a card + TTS ---------------
+                is tv.enktel.app.voice.VoiceIntent.WhatSportsIsOn -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val events = try { graph.sports.load(p.id) } catch (_: Throwable) { emptyMap() }
+                    val live = events["LIVE"].orEmpty()
+                    val lines = live.take(6).map { ev ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = ev.title,
+                            subtitle = "${ev.sport} · ${ev.channel.name}",
+                            route = "live?ch=${ev.channel.key}",
+                        )
+                    }
+                    val summary = when {
+                        live.isEmpty() -> "No live sports on your channels right now."
+                        live.size == 1 -> "One live match: ${live[0].title} on ${live[0].channel.name}."
+                        else -> "${live.size} live matches right now. Top pick: ${live[0].title} on ${live[0].channel.name}."
+                    }
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "🔴 Live sports right now",
+                            heading = if (live.isEmpty()) "Nothing live" else "${live.size} match${if (live.size == 1) "" else "es"} on",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.LatestMovies -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val list = try { graph.recommendations.latestReleases(p.id, 8) } catch (_: Throwable) { emptyList() }
+                    val lines = list.take(6).map { m ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = m.name,
+                            subtitle = listOfNotNull(
+                                if (m.year > 0) "${m.year}" else null,
+                                m.genre.takeIf { it.isNotBlank() }?.take(28),
+                                if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else null,
+                            ).joinToString(" · "),
+                            route = "movie/${m.key}",
+                        )
+                    }
+                    val summary = if (list.isEmpty())
+                        "No new movies in your library yet."
+                    else "Fresh in: ${list.take(3).joinToString(", ") { it.name }}."
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "🆕 Latest movies",
+                            heading = "Just added to EnkTel",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.UpcomingMovies -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val list = try { graph.recommendations.comingSoon(p.id, 8) } catch (_: Throwable) { emptyList() }
+                    val lines = list.take(6).map { m ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = m.name,
+                            subtitle = if (m.year > 0) "${m.year}" else m.genre.take(28),
+                            route = "movie/${m.key}",
+                        )
+                    }
+                    val summary = if (list.isEmpty())
+                        "Nothing marked as coming soon yet."
+                    else "Coming soon: ${list.take(3).joinToString(", ") { it.name }}."
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "🎬 Coming soon",
+                            heading = "Upcoming titles",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.LatestSeries -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    // Latest N series by addedAt from the DAO.
+                    val list = try {
+                        graph.db.searchDao().searchSeriesDeep(p.id, "").take(8)
+                    } catch (_: Throwable) { emptyList() }
+                    val sortedList = list.sortedByDescending { it.year }.take(6)
+                    val lines = sortedList.map { s ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = s.name,
+                            subtitle = if (s.year > 0) "${s.year}" else s.genre.take(28),
+                            route = "seriesDetails/${s.key}",
+                        )
+                    }
+                    val summary = if (lines.isEmpty())
+                        "No series in your library yet."
+                    else "Recent series: ${sortedList.take(3).joinToString(", ") { it.name }}."
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "📺 Latest series",
+                            heading = "Recent TV shows",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.WhatsOnNow -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val favs = try { graph.content.favoriteChannels(p.id).first() } catch (_: Throwable) { emptyList() }
+                    val pool = if (favs.isNotEmpty()) favs
+                    else try { graph.content.channels(p.id).first().take(30) } catch (_: Throwable) { emptyList() }
+                    val entries = pool.take(8).mapNotNull { ch ->
+                        val nn = try { graph.epg.nowNext(p.id, ch.epgId) } catch (_: Throwable) { null }
+                        nn?.now?.let { prog -> ch to prog }
+                    }
+                    val lines = entries.map { (ch, prog) ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = prog.title,
+                            subtitle = ch.name,
+                            route = "live?ch=${ch.key}",
+                        )
+                    }
+                    val summary = when {
+                        entries.isEmpty() -> "No EPG data for your favourites right now."
+                        entries.size == 1 -> "On now: ${entries[0].second.title} on ${entries[0].first.name}."
+                        else -> "On your favourites now: ${entries.take(3).joinToString(", ") { it.second.title }}."
+                    }
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "📡 On now",
+                            heading = if (favs.isNotEmpty()) "Your favourite channels" else "Popular channels",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.WhatsOnChannel -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val all = try { graph.content.channels(p.id).first() } catch (_: Throwable) { emptyList() }
+                    val q = intent.channel.lowercase()
+                    val ch = all.firstOrNull { it.name.equals(intent.channel, ignoreCase = true) }
+                        ?: all.firstOrNull { q in it.name.lowercase() }
+                        ?: intent.channel.toIntOrNull()?.let { num -> all.firstOrNull { it.num == num } }
+                    if (ch == null) {
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "❓ Not found",
+                                heading = "No channel named \"${intent.channel}\"",
+                                lines = emptyList(),
+                                spoken = "I couldn't find a channel called ${intent.channel}.",
+                            )
+                        )
+                        return@collect
+                    }
+                    val upcoming = try { graph.epg.upcoming(p.id, ch.epgId, 6) } catch (_: Throwable) { emptyList() }
+                    val now = System.currentTimeMillis()
+                    val lines = upcoming.map { prog ->
+                        val isNow = prog.startMs <= now && prog.endMs > now
+                        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(prog.startMs))
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = (if (isNow) "🔴  " else "$time  ") + prog.title,
+                            subtitle = if (isNow) "Now" else "",
+                            route = "live?ch=${ch.key}",
+                        )
+                    }
+                    val nowShow = upcoming.firstOrNull { it.startMs <= now && it.endMs > now }
+                    val summary = if (nowShow != null) "On ${ch.name} now: ${nowShow.title}."
+                        else if (upcoming.isNotEmpty()) "Next on ${ch.name}: ${upcoming[0].title}."
+                        else "No guide data for ${ch.name}."
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "📡 ${ch.name}",
+                            heading = "What's on next",
+                            lines = lines, spoken = summary,
+                        )
+                    )
+                }
+
+                is tv.enktel.app.voice.VoiceIntent.TellMeAbout -> {
+                    // Route to search for now; deeper metadata is a future add.
+                    nav.navigate("search")
+                }
             }
         }
     }

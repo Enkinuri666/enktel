@@ -50,8 +50,20 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * it once at the MainActivity root and let any downstream player screen
  * collect from [intents].
  */
+/** Structured voice answer that the "personal content guide" query intents produce. */
+data class VoiceAnswerLine(val title: String, val subtitle: String = "", val route: String? = null)
+data class VoiceAnswer(
+    val eyebrow: String,
+    val heading: String,
+    val lines: List<VoiceAnswerLine>,
+    /** Short sentence for TTS. Kept < ~140 chars so it doesn't drone. */
+    val spoken: String,
+)
+
 class VoiceCommandBus {
     val intents = MutableSharedFlow<VoiceIntent>(extraBufferCapacity = 8)
+    /** Emissions here are rendered by VoiceHost as an on-screen answer card + TTS. */
+    val answers = MutableSharedFlow<VoiceAnswer>(extraBufferCapacity = 4)
 }
 
 /**
@@ -79,6 +91,16 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
     var lastIntentLabel by remember { mutableStateOf<String?>(null) }
+    var currentAnswer by remember { mutableStateOf<VoiceAnswer?>(null) }
+
+    // Structured answer cards come from the "personal guide" query intents that
+    // MainNav resolves. We render + speak them here so the plumbing stays local.
+    androidx.compose.runtime.LaunchedEffect(bus) {
+        bus.answers.collect { answer ->
+            currentAnswer = answer
+            speaker.speak(answer.spoken)
+        }
+    }
 
     fun handleTranscription(text: String) {
         val intent = VoiceIntentParser.parse(text)
@@ -157,6 +179,82 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
                 label = label,
                 onDismiss = { lastIntentLabel = null },
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp),
+            )
+        }
+        currentAnswer?.let { ans ->
+            AnswerCard(
+                answer = ans,
+                onDismiss = { currentAnswer = null },
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Modifier) {
+    // Auto-hide after ~8 s; taps outside dismiss immediately.
+    androidx.compose.runtime.LaunchedEffect(answer) {
+        kotlinx.coroutines.delay(8500)
+        onDismiss()
+    }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier
+                .width(420.dp)
+                .background(EnktelSurfaceHigh, RoundedCornerShape(16.dp))
+                .border(
+                    1.dp, EnktelBlue.copy(alpha = 0.5f),
+                    RoundedCornerShape(16.dp),
+                )
+                .padding(horizontal = 22.dp, vertical = 20.dp)
+                .pointerInput(Unit) { detectTapGestures { /* absorb */ } },
+        ) {
+            Text(answer.eyebrow.uppercase(), color = EnktelBlue, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                answer.heading, color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 18.sp, fontWeight = FontWeight.Black,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (answer.lines.isEmpty()) {
+                Text(
+                    "No results right now.", color = EnktelTextDim, fontSize = 12.sp,
+                )
+            } else {
+                answer.lines.take(6).forEach { line ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.width(3.dp).height(24.dp)
+                                .background(EnktelBlue, RoundedCornerShape(2.dp)),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                line.title, color = androidx.compose.ui.graphics.Color.White,
+                                fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            )
+                            if (line.subtitle.isNotBlank()) {
+                                Text(line.subtitle, color = EnktelTextDim, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "(tap outside to dismiss)", color = EnktelTextDim, fontSize = 9.sp,
             )
         }
     }
@@ -247,6 +345,13 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
     VoiceIntent.ChannelDown -> "Channel down"
     VoiceIntent.Suggest -> "Suggest something"
     VoiceIntent.Fullscreen -> "Fullscreen"
+    VoiceIntent.WhatSportsIsOn -> "What sports is on"
+    VoiceIntent.LatestMovies -> "Latest movies"
+    VoiceIntent.UpcomingMovies -> "Upcoming movies"
+    VoiceIntent.LatestSeries -> "Latest series"
+    VoiceIntent.WhatsOnNow -> "What's on now"
+    is VoiceIntent.WhatsOnChannel -> "What's on ${intent.channel}"
+    is VoiceIntent.TellMeAbout -> "Tell me about ${intent.query}"
     is VoiceIntent.Unknown -> "Didn't catch that"
 }
 
@@ -272,6 +377,9 @@ private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     VoiceIntent.ChannelDown -> "Previous channel"
     VoiceIntent.Suggest -> "Here's something I think you'll like"
     VoiceIntent.Fullscreen -> ""
+    VoiceIntent.WhatSportsIsOn, VoiceIntent.LatestMovies, VoiceIntent.UpcomingMovies,
+    VoiceIntent.LatestSeries, VoiceIntent.WhatsOnNow,
+    is VoiceIntent.WhatsOnChannel, is VoiceIntent.TellMeAbout -> "" // handler speaks the actual answer
     is VoiceIntent.Unknown -> "Sorry, I didn't catch that"
 }
 

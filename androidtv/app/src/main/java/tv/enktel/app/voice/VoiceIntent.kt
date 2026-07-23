@@ -27,6 +27,14 @@ sealed class VoiceIntent {
     data object ChannelDown : VoiceIntent()
     data object Suggest : VoiceIntent()
     data object Fullscreen : VoiceIntent()
+    // ---- Question intents: EnkTel answers back with a spoken summary + card ----
+    data object WhatSportsIsOn : VoiceIntent()
+    data object LatestMovies : VoiceIntent()
+    data object UpcomingMovies : VoiceIntent()
+    data object LatestSeries : VoiceIntent()
+    data object WhatsOnNow : VoiceIntent()
+    data class WhatsOnChannel(val channel: String) : VoiceIntent()
+    data class TellMeAbout(val query: String) : VoiceIntent()
     data class Unknown(val heard: String) : VoiceIntent()
 }
 
@@ -131,6 +139,65 @@ object VoiceIntentParser {
                 "what's good", "what is good", "what's on", "what is on",
                 "pick something for me",
             )) return VoiceIntent.Suggest
+
+        // ---- Question intents (must go BEFORE the generic search fallback so
+        //      "find me some live sports" and "what movies are new" don't get
+        //      caught by the wide "find … / show me …" regex above) -------------
+
+        if (text.matchesAny(
+                "what live sports is on", "what sports is on",
+                "what sports are on", "what sports are currently on",
+                "what live sports are on", "any live sports on right now",
+                "any sports on right now", "live sports right now",
+                "what is on in sports", "what's on in sports",
+            )) return VoiceIntent.WhatSportsIsOn
+
+        if (text.matchesAny(
+                "what are the latest movies", "what's new in movies",
+                "what is new in movies", "what movies are new",
+                "any new movies", "any new films", "latest movies",
+                "latest films", "what movies just came out",
+                "new movies", "newest movies",
+            )) return VoiceIntent.LatestMovies
+
+        if (text.matchesAny(
+                "what movies are coming soon", "coming soon movies",
+                "what's coming soon", "what is coming soon",
+                "upcoming movies", "upcoming films",
+                "movies coming out soon", "what movies are coming out",
+            )) return VoiceIntent.UpcomingMovies
+
+        if (text.matchesAny(
+                "what are the latest series", "what's new in series",
+                "what is new in series", "latest series", "latest shows",
+                "any new shows", "any new series", "newest series",
+                "new shows", "newest shows", "what tv shows are new",
+            )) return VoiceIntent.LatestSeries
+
+        // "What is on channel X" / "what's on ESPN" / "what's on Nine HD right now"
+        Regex("(?:what(?:'s| is)?|whats) on (?:channel )?(.+?)(?: (?:right )?now)?$")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim()
+                    .removeSuffix(" right now").removeSuffix(" now").trim()
+                if (q.isNotBlank() &&
+                    !q.matchesAny("tv", "the tv", "guide", "the guide", "sports")) {
+                    return VoiceIntent.WhatsOnChannel(q)
+                }
+            }
+
+        if (text.matchesAny(
+                "what's on now", "what is on now", "what's on tv",
+                "what is on tv", "what's on tv right now", "what's on right now",
+                "what is playing", "what's playing", "what's playing right now",
+            )) return VoiceIntent.WhatsOnNow
+
+        // "Tell me about X" / "who is in X" — free-form info requests. Best effort:
+        // treat as a search so the user can drill in.
+        Regex("(?:tell me about|what is|who is (?:in|starring in)) (.+)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+                if (q.isNotBlank()) return VoiceIntent.TellMeAbout(q)
+            }
 
         // ---- Search -------------------------------------------------------------
         Regex("(?:search|find|look up|look for|show me|do you have) (?:for |me )?(?:the |a |any )?(.+)")

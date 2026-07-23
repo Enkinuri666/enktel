@@ -14,8 +14,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 34
-        versionName = "1.10.0"
+        versionCode = 35
+        versionName = "1.10.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
