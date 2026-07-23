@@ -193,10 +193,15 @@ fun VodPlayerScreen(
     LaunchedEffect(Unit) { rootFocus.requestFocus() }
 
     var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
-    LaunchedEffect(gestureLevel) { if (gestureLevel != null) { delay(900); gestureLevel = null } }
+    var gestureTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(gestureTick, gestureLevel == null) {
+        if (gestureLevel != null) { delay(900); gestureLevel = null }
+    }
     var dragBrightness by remember { mutableStateOf(true) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var boxHeightPx by remember { mutableStateOf(1f) }
+    var dragStartFrac by remember { mutableStateOf(0f) }
+    var dragTotalDy by remember { mutableStateOf(0f) }
 
     Box(
         Modifier
@@ -215,20 +220,31 @@ fun VodPlayerScreen(
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         dragBrightness = off.x < boxWidthPx / 2f
+                        dragTotalDy = 0f
+                        dragStartFrac = if (dragBrightness) {
+                            (context as? android.app.Activity)?.let {
+                                tv.enktel.app.player.PlayerGestures.currentBrightness(it)
+                            } ?: 0.5f
+                        } else {
+                            tv.enktel.app.player.PlayerGestures.currentVolumeFraction(context)
+                        }
                     },
+                    onDragEnd = { gestureTick++ },
+                    onDragCancel = { gestureTick++ },
                     onVerticalDrag = { _, dy ->
-                        val delta = -dy / boxHeightPx
+                        dragTotalDy += dy
+                        val fracFromStart = (-dragTotalDy / boxHeightPx).coerceIn(-1f, 1f)
+                        val target = (dragStartFrac + fracFromStart).coerceIn(0f, 1f)
                         if (dragBrightness) {
                             (context as? android.app.Activity)?.let { act ->
-                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
-                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
-                                )
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(act, target)
                                 gestureLevel = Triple("☀ Brightness", next, true)
                             }
                         } else {
-                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
+                            val next = tv.enktel.app.player.PlayerGestures.setVolume(context, target)
                             gestureLevel = Triple("🔊 Volume", next, false)
                         }
+                        gestureTick++
                     },
                 )
             }
