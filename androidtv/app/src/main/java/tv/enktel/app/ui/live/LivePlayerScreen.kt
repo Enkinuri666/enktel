@@ -311,20 +311,35 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             Column(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
                 // Video pane in a rounded, subtle glass frame with an overlay ribbon showing
                 // the currently-playing channel + programme so the user always knows what
-                // they're browsing while previewing.
+                // they're browsing while previewing. Tapping the video returns to fullscreen,
+                // TiVi Mate style.
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color.Black)
-                        .aspectRatio(16f / 9f),
+                        .aspectRatio(16f / 9f)
+                        .tapClick { browseMode = false },
                 ) {
                     AndroidView(
                         factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
                         update = { view -> view.player = engine.player; view.resizeMode = resizeMode },
                         modifier = Modifier.fillMaxSize(),
                     )
+                    // Fullscreen return button, top-right corner. Big enough to hit with a
+                    // thumb on a phone and reachable with a single DPAD-UP on a remote.
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(0.55f))
+                            .tapClick { browseMode = false }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text("⛶ Fullscreen", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                     // Compact bottom ribbon over the video: channel + now-playing + progress
                     current?.let { ch ->
                         Column(
@@ -422,7 +437,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
         }
 
-        if (showInfo && current != null) {
+        // InfoBar + action strip are for fullscreen playback only. When the user opens
+        // the docked Browse mode we hide them so the BrowseDock isn't overlapped from
+        // below — the docked-video ribbon and the dock itself already give the user all
+        // the info + actions they need in that mode.
+        if (showInfo && current != null && !browseMode) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 InfoBar(
                     channel = current!!,
@@ -978,20 +997,29 @@ private fun BrowseDock(
             ),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("▤  Browse", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Column {
+                Text("BROWSE", color = EnktelTextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Text(
+                    if (selectedCat != null) categories.firstOrNull { it.categoryId == selectedCat }?.name ?: "All Channels"
+                    else "All Channels",
+                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1,
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Text(
-                "${channels.size} channels" + if (selectedCat != null) " · ${categories.firstOrNull { it.categoryId == selectedCat }?.name ?: ""}" else "",
-                color = EnktelTextDim, fontSize = 12.sp,
+                "${channels.size}",
+                color = EnktelBlue, fontSize = 20.sp, fontWeight = FontWeight.Black,
             )
-            Spacer(Modifier.width(0.dp))
+            Text(" channels", color = EnktelTextDim, fontSize = 11.sp)
             Box(Modifier.weight(1f))
-            FocusButton("Full TV Guide", onClick = onOpenGuide)
+            // TiVi Mate style colour-remote-button row: quick actions the user's eye
+            // learns as coloured shortcuts (red = full guide, grey = close).
+            FocusButton("📅 Full Guide", accent = true, onClick = onOpenGuide)
             Spacer(Modifier.width(6.dp))
-            FocusButton("✕ Close", onClick = onClose)
+            FocusButton("✕", onClick = onClose)
         }
         LazyRow(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
