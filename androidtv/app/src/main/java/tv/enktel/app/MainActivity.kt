@@ -130,8 +130,22 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             when (intent) {
                 is tv.enktel.app.voice.VoiceIntent.OpenHome -> nav.navigate("home")
                 is tv.enktel.app.voice.VoiceIntent.OpenGuide -> nav.navigate("guide")
+                is tv.enktel.app.voice.VoiceIntent.OpenLiveTv -> nav.navigate("live?ch=")
                 is tv.enktel.app.voice.VoiceIntent.OpenMovies -> nav.navigate("movies")
                 is tv.enktel.app.voice.VoiceIntent.OpenSeries -> nav.navigate("series")
+                is tv.enktel.app.voice.VoiceIntent.SearchMovies -> {
+                    // Route through the global search screen — it renders
+                    // Movies and Series results in separate rails, so the
+                    // scope is visible without needing a bespoke filter UI.
+                    nav.navigate("search")
+                    kotlinx.coroutines.delay(150)
+                    voiceBus.searchQueries.emit(intent.query)
+                }
+                is tv.enktel.app.voice.VoiceIntent.SearchSeries -> {
+                    nav.navigate("search")
+                    kotlinx.coroutines.delay(150)
+                    voiceBus.searchQueries.emit(intent.query)
+                }
                 is tv.enktel.app.voice.VoiceIntent.OpenWatchlist -> nav.navigate("watchlist")
                 is tv.enktel.app.voice.VoiceIntent.OpenRecordings -> nav.navigate("recordings")
                 is tv.enktel.app.voice.VoiceIntent.OpenSettings -> nav.navigate("settings")
@@ -431,7 +445,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     }
 
     if (isMobileShell) {
-        tv.enktel.app.ui.mobile.MobileScaffold(nav = nav, currentRoute = currentRoute) { padding ->
+        tv.enktel.app.ui.mobile.MobileScaffold(nav = nav, currentRoute = currentRoute, voiceBus = voiceBus) { padding ->
             navHost(padding)
         }
     } else {

@@ -69,6 +69,9 @@ class VoiceCommandBus {
     /** Search query pushed from a voice "search for X" — SearchScreen collects
      *  this so its input field actually receives the spoken query. */
     val searchQueries = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** External trigger for tap-to-talk — the mobile nav bar's Mic tab emits
+     *  into this, VoiceHost collects and starts listening. */
+    val micActivate = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 }
 
 /**
@@ -117,18 +120,22 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
     DisposableEffect(Unit) {
         onDispose { recognizer.release(); speaker.release(); wakeWord.stop() }
     }
+    val playerActiveForWake by androidx.compose.runtime.remember { ActivePlayerRef.active }
     androidx.compose.runtime.LaunchedEffect(wakeWordEnabled) {
         if (wakeWordEnabled) {
-            // Wake word needs the same RECORD_AUDIO permission the main mic uses;
-            // if it isn't granted, silently no-op — the toggle will re-attempt
-            // next time the pref flips.
             val ok = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.RECORD_AUDIO,
             ) == PackageManager.PERMISSION_GRANTED
-            if (ok) wakeWord.start()
+            if (ok) wakeWord.start() else toaster.info("Grant microphone access to use Hey Enki")
         } else {
             wakeWord.stop()
         }
+    }
+    // Pause the wake-word loop while a player is on-screen — the recognizer
+    // mic conflicts with the playback audio pipeline on some devices, and it's
+    // the biggest source of the "mic keeps flashing on/off" complaint.
+    androidx.compose.runtime.LaunchedEffect(playerActiveForWake, wakeWordEnabled) {
+        wakeWord.applyPause(playerActiveForWake)
     }
 
     // Structured answer cards come from the "personal guide" query intents that
@@ -139,6 +146,7 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
             speaker.speak(answer.spoken)
         }
     }
+
 
     fun handleTranscription(text: String) {
         val intent = VoiceIntentParser.parse(text)
@@ -198,26 +206,28 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
         else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
-    // Player-active → we hide the FAB and use a discrete left-edge peek so the
-    // mic is always reachable but never covers channels / search / titles.
+    // Collect nav-bar Mic-tap trigger. Placed here so `toggleListening` is in scope.
+    androidx.compose.runtime.LaunchedEffect(bus) {
+        bus.micActivate.collect { toggleListening() }
+    }
+
+    // Player-active → left-edge peek only. On mobile builds the standalone FAB
+    // is gone entirely — the mic lives inside the bottom nav bar (see
+    // MobileShell). TV builds still get the peek/pill because they have no
+    // nav bar.
     val playerActive by androidx.compose.runtime.remember { ActivePlayerRef.active }
+    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
 
     Box(Modifier.fillMaxSize()) {
         content()
 
         if (playerActive) {
-            // Player is up: tiny left-edge peek. Expands into the full mic pill
-            // on tap. Sits vertically centred so it never clashes with the
-            // Info Bar or the action strip at the bottom.
             MicEdgePeek(
                 listening = listening,
                 onTap = { toggleListening() },
                 modifier = Modifier.align(Alignment.CenterStart),
             )
-        } else {
-            // No player up: small round mic pill in the bottom-LEFT corner (the
-            // bottom-right is claimed by the mobile More tab; bottom-left is
-            // empty everywhere).
+        } else if (!isMobile) {
             MicFab(
                 listening = listening,
                 onTap = { toggleListening() },
@@ -427,8 +437,11 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
     VoiceIntent.FindSports -> "Open Sports Hub"
     VoiceIntent.OpenHome -> "Home"
     VoiceIntent.OpenGuide -> "TV Guide"
+    VoiceIntent.OpenLiveTv -> "Live TV"
     VoiceIntent.OpenMovies -> "Movies"
     VoiceIntent.OpenSeries -> "Series"
+    is VoiceIntent.SearchMovies -> "Search Movies for \"${intent.query}\""
+    is VoiceIntent.SearchSeries -> "Search Series for \"${intent.query}\""
     VoiceIntent.OpenWatchlist -> "Watchlist"
     VoiceIntent.OpenRecordings -> "Recordings"
     VoiceIntent.OpenSettings -> "Settings"
@@ -459,8 +472,11 @@ private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     VoiceIntent.FindSports -> "Here are the sports"
     VoiceIntent.OpenHome -> ""
     VoiceIntent.OpenGuide -> ""
+    VoiceIntent.OpenLiveTv -> "Opening Live TV"
     VoiceIntent.OpenMovies -> ""
     VoiceIntent.OpenSeries -> ""
+    is VoiceIntent.SearchMovies -> "Searching movies for ${intent.query}"
+    is VoiceIntent.SearchSeries -> "Searching series for ${intent.query}"
     VoiceIntent.OpenWatchlist -> ""
     VoiceIntent.OpenRecordings -> ""
     VoiceIntent.OpenSettings -> ""

@@ -18,8 +18,13 @@ sealed class VoiceIntent {
     data object FindSports : VoiceIntent()
     data object OpenHome : VoiceIntent()
     data object OpenGuide : VoiceIntent()
+    data object OpenLiveTv : VoiceIntent()
     data object OpenMovies : VoiceIntent()
     data object OpenSeries : VoiceIntent()
+    /** Scoped searches — navigate to the given screen and pre-fill the search
+     *  field.  Result set is filtered client-side to that content type. */
+    data class SearchMovies(val query: String) : VoiceIntent()
+    data class SearchSeries(val query: String) : VoiceIntent()
     data object OpenWatchlist : VoiceIntent()
     data object OpenRecordings : VoiceIntent()
     data object OpenSettings : VoiceIntent()
@@ -199,7 +204,41 @@ object VoiceIntentParser {
                 if (q.isNotBlank()) return VoiceIntent.TellMeAbout(q)
             }
 
-        // ---- Search -------------------------------------------------------------
+        // ---- Scoped search: Movies -----------------------------------------------
+        // "search movies for spider-man" / "find me a movie called Dune"
+        // / "look for the movie Inception" / "movie search spider-man"
+        Regex(
+            "(?:search|find|look up|look for|show me|do you have|browse) " +
+                "(?:me |for )?(?:a |the |any |some )?(?:movie|film|movies|films) " +
+                "(?:called |named |about |for |with |on )?(.+)",
+        ).find(text)?.let {
+            val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+            if (q.isNotBlank()) return VoiceIntent.SearchMovies(q)
+        }
+        Regex("(?:movie|film|movies|films) search (?:for |about )?(.+)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+                if (q.isNotBlank()) return VoiceIntent.SearchMovies(q)
+            }
+
+        // ---- Scoped search: Series -----------------------------------------------
+        // "search series for breaking bad" / "find me a show called The Office"
+        // / "look for the series Chernobyl" / "series search Foundation"
+        Regex(
+            "(?:search|find|look up|look for|show me|do you have|browse) " +
+                "(?:me |for )?(?:a |the |any |some )?(?:series|show|shows|tv show|tv shows) " +
+                "(?:called |named |about |for |with |on )?(.+)",
+        ).find(text)?.let {
+            val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+            if (q.isNotBlank()) return VoiceIntent.SearchSeries(q)
+        }
+        Regex("(?:series|show|shows) search (?:for |about )?(.+)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+                if (q.isNotBlank()) return VoiceIntent.SearchSeries(q)
+            }
+
+        // ---- Search (generic — searches both Movies and Series at once) ---------
         Regex("(?:search|find|look up|look for|show me|do you have) (?:for |me )?(?:the |a |any )?(.+)")
             .find(text)?.let {
                 val q = it.groupValues[1].trim()
@@ -217,6 +256,12 @@ object VoiceIntentParser {
                 "open guide", "tv guide", "open tv guide", "show me the guide",
                 "epg", "electronic program guide",
             )) return VoiceIntent.OpenGuide
+        if (text.matchesAny(
+                "open live tv", "live tv", "browse live tv", "show me live tv",
+                "browse channels", "show channels", "channel list", "all channels",
+                "show me the channels", "open channels", "channels", "live channels",
+                "browse live channels",
+            )) return VoiceIntent.OpenLiveTv
         if (text.matchesAny("open movies", "show movies", "movies", "browse movies"))
             return VoiceIntent.OpenMovies
         if (text.matchesAny(

@@ -15,14 +15,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.runtime.Composable
@@ -33,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -41,34 +44,48 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.launch
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.voice.VoiceCommandBus
 
-data class MobileTab(val label: String, val icon: ImageVector, val route: String)
+/** A tab entry.  `special == "mic"` renders as the centered brand FAB and fires the
+ *  voice-command bus instead of navigating; other tabs behave normally. */
+data class MobileTab(
+    val label: String,
+    val icon: ImageVector,
+    val route: String,
+    val special: String? = null,
+)
 
 val MOBILE_TABS = listOf(
     MobileTab("Home", Icons.Filled.Home, "home"),
     MobileTab("Live TV", Icons.Filled.LiveTv, "live?ch="),
-    MobileTab("Movies", Icons.Filled.Movie, "movies"),
-    MobileTab("Series", Icons.Filled.PlaylistPlay, "series"),
+    MobileTab("Search", Icons.Filled.Search, "search"),
+    MobileTab("Enki", Icons.Filled.Mic, "__mic", special = "mic"),
     MobileTab("Sports", Icons.Filled.SportsSoccer, "sports"),
     MobileTab("More", Icons.Filled.Menu, "__more"),
 )
 
 /**
  * Frame around the navigation host on phone/tablet builds: bottom-tab bar with icons + label
- * and a slide-up "More" sheet giving access to Series, Watchlist, Recordings, Guide and Settings.
+ * and a slide-up "More" sheet giving access to Movies, Series, Watchlist, Recordings, Guide,
+ * TV Guide and Settings.  The centered Mic tab activates the voice-command bus rather than
+ * navigating anywhere — one-tap access to voice from every top-level screen.
  */
 @Composable
 fun MobileScaffold(
     nav: NavHostController,
     currentRoute: String?,
+    voiceBus: VoiceCommandBus? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showMore by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding).
     val showBar = currentRoute in setOf(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
@@ -78,7 +95,7 @@ fun MobileScaffold(
     // sit above it instead of getting overlapped, and how tall the status bar is so screen
     // headers don't run under the notch/status area.
     val sysNavPad = WindowInsets.navigationBars.asPaddingValues()
-    val bottomPad = if (showBar) 64.dp + sysNavPad.calculateBottomPadding() else sysNavPad.calculateBottomPadding()
+    val bottomPad = if (showBar) 72.dp + sysNavPad.calculateBottomPadding() else sysNavPad.calculateBottomPadding()
 
     Box(Modifier.fillMaxSize().background(EnktelBg).statusBarsPadding()) {
         Column(Modifier.fillMaxSize()) {
@@ -92,6 +109,11 @@ fun MobileScaffold(
                 current = currentRoute.orEmpty(),
                 onTab = { tab ->
                     when {
+                        tab.special == "mic" -> {
+                            // Fire mic activation on the bus; VoiceHost's collector
+                            // toggles listening.  No navigation.
+                            voiceBus?.let { bus -> scope.launch { bus.micActivate.emit(Unit) } }
+                        }
                         tab.route == "__more" -> showMore = true
                         // Home tap: pop everything back to the start destination so it
                         // works from any depth (previous popUpTo(home)+saveState combo
@@ -114,27 +136,6 @@ fun MobileScaffold(
             )
         }
 
-        // Netflix-style top-right search icon on top-level browsing screens.
-        val showSearchIcon = currentRoute in setOf("home", "movies", "series", "sports", "watchlist")
-        if (showSearchIcon) {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 8.dp, end = 12.dp)
-                    .statusBarsPadding()
-                    .background(Color.Black.copy(0.35f), androidx.compose.foundation.shape.CircleShape)
-                    .padding(8.dp)
-                    .pointerInput(Unit) { detectTapGestures { nav.navigate("search") } },
-            ) {
-                androidx.compose.foundation.Image(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = "Search",
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-                    modifier = Modifier.height(24.dp),
-                )
-            }
-        }
-
         if (showMore) MoreSheet(
             nav = nav,
             onDismiss = { showMore = false },
@@ -147,14 +148,15 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
     Row(
         modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(72.dp)
             .background(EnktelSurface),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         MOBILE_TABS.forEach { tab ->
             val selected = current == tab.route ||
-                (tab.route == "live?ch=" && current?.startsWith("live?ch=") == true)
+                (tab.route == "live?ch=" && current.startsWith("live?ch=")) ||
+                (tab.route == "search" && current == "search")
             Box(
                 Modifier
                     .fillMaxWidth().weight(1f)
@@ -162,21 +164,51 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                     .pointerInput(tab) { detectTapGestures { onTab(tab) } },
                 contentAlignment = Alignment.Center,
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    androidx.compose.foundation.Image(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                            if (selected) EnktelBlue else EnktelTextDim,
-                        ),
-                        modifier = Modifier.padding(bottom = 2.dp).height(22.dp),
-                    )
-                    Text(
-                        tab.label,
-                        fontSize = 10.sp,
-                        color = if (selected) EnktelBlue else EnktelTextDim,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    )
+                if (tab.special == "mic") {
+                    // Centered brand-color mic FAB — bigger, glowing, visually anchors the bar.
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(EnktelBlue, EnktelPurple),
+                                    ),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            androidx.compose.foundation.Image(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+                                modifier = Modifier.height(24.dp),
+                            )
+                        }
+                        Text(
+                            tab.label,
+                            fontSize = 10.sp,
+                            color = EnktelBlue,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.foundation.Image(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                if (selected) EnktelBlue else EnktelTextDim,
+                            ),
+                            modifier = Modifier.padding(bottom = 2.dp).height(22.dp),
+                        )
+                        Text(
+                            tab.label,
+                            fontSize = 10.sp,
+                            color = if (selected) EnktelBlue else EnktelTextDim,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    }
                 }
             }
         }
@@ -217,8 +249,9 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
             )
             listOf(
+                "🎬  Movies" to "movies",
+                "🎮  Series" to "series",
                 "📺  TV Guide" to "guide",
-                "🎞️  Series" to "series",
                 "☆  Watchlist" to "watchlist",
                 "⏺  Recordings" to "recordings",
                 "⚙  Settings" to "settings",

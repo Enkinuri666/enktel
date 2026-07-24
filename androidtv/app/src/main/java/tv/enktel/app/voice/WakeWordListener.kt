@@ -41,7 +41,11 @@ class WakeWordListener(
     private var recognizer: SpeechRecognizer? = null
     private var scope: CoroutineScope? = null
     private var loop: Job? = null
-    private var backoffMs: Long = 400
+    private var backoffMs: Long = 2_500
+    private var emptyRoundCount: Int = 0
+    /** Optional guard — when true, we stop listening. Set by the caller when a
+     *  player is active (mic conflicts with playback audio anyway). */
+    @Volatile var paused: Boolean = false
 
     fun start() {
         if (active.value) return
@@ -58,60 +62,96 @@ class WakeWordListener(
         try { recognizer?.stopListening(); recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
         scope?.cancel(); scope = null
-        backoffMs = 400
+        backoffMs = 2_500
+        emptyRoundCount = 0
+    }
+
+    fun applyPause(p: Boolean) {
+        if (paused == p) return
+        paused = p
+        if (p) {
+            try { recognizer?.stopListening(); recognizer?.destroy() } catch (_: Exception) {}
+            recognizer = null
+        } else if (active.value) {
+            beginNextTurn()
+        }
     }
 
     private fun beginNextTurn() {
-        if (!active.value) return
+        if (!active.value || paused) return
         val s = scope ?: return
+        loop?.cancel()
         loop = s.launch(Dispatchers.Main) {
-            // Small delay so a cancelled Recognizer has time to fully tear down.
-            delay(backoffMs)
-            if (!active.value) return@launch
+            // Aggressive back-off if we've had a run of empty turns: the mic
+            // shouldn't visibly toggle on and off every second when the user's
+            // room is silent.  After 3 empty turns we sit for 8s, after 6 we
+            // wait 20s.
+            val wait = when {
+                emptyRoundCount >= 6 -> 20_000L
+                emptyRoundCount >= 3 -> 8_000L
+                else -> backoffMs
+            }
+            delay(wait)
+            if (!active.value || paused) return@launch
             try { recognizer?.destroy() } catch (_: Exception) {}
             val r = SpeechRecognizer.createSpeechRecognizer(context)
             recognizer = r
+            var got = false
             r.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
-                override fun onBeginningOfSpeech() {}
+                override fun onBeginningOfSpeech() { emptyRoundCount = 0 }
                 override fun onRmsChanged(rmsdB: Float) {
                     hearingMeter.value = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
                 }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
-                    // Back off on network hiccups, retry fast on NO_MATCH / TIMEOUT.
-                    backoffMs = when (error) {
+                    // NO_MATCH / SPEECH_TIMEOUT are the "quiet room" cases — those
+                    // count toward the empty-round backoff.  Everything else
+                    // resets it so we don't punish a network blip.
+                    when (error) {
+                        SpeechRecognizer.ERROR_NO_MATCH,
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> emptyRoundCount++
                         SpeechRecognizer.ERROR_NETWORK,
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> (backoffMs * 2).coerceAtMost(5_000)
-                        else -> 400
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
+                            backoffMs = (backoffMs * 2).coerceAtMost(30_000)
+                        SpeechRecognizer.ERROR_CLIENT,
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
+                            backoffMs = 5_000
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                            // Permission gone — stop entirely; the toggle will restart us.
+                            stop(); return
+                        }
+                        else -> {}
                     }
-                    beginNextTurn()
+                    if (!got) beginNextTurn()
                 }
                 override fun onEvent(eventType: Int, params: Bundle?) {}
                 override fun onPartialResults(partialResults: Bundle?) {
-                    // Check partials so we react as fast as possible; if we spotted
-                    // "hey enki" in a partial we can stop and hand off immediately.
                     val list = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     val text = list?.firstOrNull().orEmpty()
                     val payload = extractPayload(text) ?: return
+                    got = true
                     handleWake(payload)
                 }
                 override fun onResults(results: Bundle?) {
                     val list = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     val text = list?.firstOrNull().orEmpty()
                     val payload = extractPayload(text)
-                    if (payload != null) handleWake(payload)
-                    else beginNextTurn()
+                    if (payload != null) { got = true; handleWake(payload) }
+                    else { emptyRoundCount++; beginNextTurn() }
                 }
             })
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 800L)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 600L)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 300L)
+                // Long silence timeouts so the recognizer stays open for a
+                // meaningful window (~15s) instead of flipping the mic every
+                // second in a quiet room.
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 15_000L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 4_000L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500L)
             }
             try { r.startListening(intent) } catch (_: Exception) { beginNextTurn() }
         }
