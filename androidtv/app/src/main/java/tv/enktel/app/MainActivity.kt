@@ -126,6 +126,8 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     // Voice-command navigation handler. Player-scoped commands (Pause/Resume/etc)
     // are consumed by whichever player screen is currently mounted; we take the
     // ones that navigate.
+    val routeEntry by nav.currentBackStackEntryAsState()
+    val intentRoute = routeEntry?.destination?.route
     LaunchedEffect(voiceBus) {
         voiceBus.intents.collect { intent ->
             when (intent) {
@@ -203,8 +205,38 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                     am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, 0, 0)
                 }
                 is tv.enktel.app.voice.VoiceIntent.RecordNow, is tv.enktel.app.voice.VoiceIntent.ChannelUp,
-                is tv.enktel.app.voice.VoiceIntent.ChannelDown, is tv.enktel.app.voice.VoiceIntent.Fullscreen,
-                is tv.enktel.app.voice.VoiceIntent.Unknown -> Unit
+                is tv.enktel.app.voice.VoiceIntent.ChannelDown, is tv.enktel.app.voice.VoiceIntent.Fullscreen -> Unit
+                is tv.enktel.app.voice.VoiceIntent.Unknown -> {
+                    // Contextual fallback prompt: what would a user probably
+                    // have meant from THIS screen?  Softer than "I didn't
+                    // understand" and gives them a viable retry.
+                    val hint = when {
+                        intentRoute == "movies" ->
+                            "I missed that.  Try \"play random movie\" or \"search for a movie\"."
+                        intentRoute == "series" ->
+                            "I missed that.  Try \"play random series\" or \"more like\" a show name."
+                        intentRoute == "sports" ->
+                            "I missed that.  Try \"what live sports is on\"."
+                        intentRoute == "guide" ->
+                            "I missed that.  Try \"what's on tonight\" or a channel name."
+                        intentRoute == "search" ->
+                            "I missed that.  Try \"search for\" a title."
+                        intentRoute?.startsWith("live?ch") == true ->
+                            "I missed that.  Try \"pause\", \"channel up\", or \"turn to\" a channel."
+                        intentRoute?.startsWith("vodPlayer") == true ->
+                            "I missed that.  Try \"pause\", \"skip forward 30 seconds\", or \"restart\"."
+                        else ->
+                            "I missed that.  Try \"what should I watch\" or \"what's on now\"."
+                    }
+                    voiceBus.answers.emit(
+                        tv.enktel.app.voice.VoiceAnswer(
+                            eyebrow = "Didn't catch that",
+                            heading = intent.heard.ifBlank { "Say again?" },
+                            lines = emptyList(),
+                            spoken = hint,
+                        )
+                    )
+                }
 
                 // ---- Query intents: answer back with a card + TTS ---------------
                 is tv.enktel.app.voice.VoiceIntent.WhatSportsIsOn -> {
@@ -674,6 +706,79 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                     nav.navigate("settings")
                 is tv.enktel.app.voice.VoiceIntent.OpenSports ->
                     nav.navigate("sports")
+
+                // ---- IPTV-specific --------------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.ShowChannelKind -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val chans = try { graph.content.channels(p.id).first() } catch (_: Throwable) { emptyList() }
+                    val kw = intent.keyword.lowercase()
+                    val hit = chans.firstOrNull { kw in it.name.lowercase() }
+                        ?: chans.firstOrNull { kw in it.categoryId.lowercase() }
+                    if (hit != null) nav.navigate("live?ch=${hit.key}") else nav.navigate("live?ch=")
+                }
+                is tv.enktel.app.voice.VoiceIntent.PlayTeamGame -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val team = intent.team.lowercase()
+                    val events = try { graph.sports.load(p.id) } catch (_: Throwable) { emptyMap() }
+                    val all = events.values.flatten()
+                    val hit = all.firstOrNull { team in it.title.lowercase() }
+                    if (hit != null) {
+                        nav.navigate("live?ch=${hit.channel.key}")
+                        voiceBus.answers.emit(voiceCard(
+                            eyebrow = "⚽ ${intent.team}",
+                            heading = hit.title,
+                            spoken = "Tuning to ${hit.channel.name} for ${hit.title}.",
+                        ))
+                    } else {
+                        voiceBus.answers.emit(voiceCard(
+                            eyebrow = "⚽ ${intent.team}",
+                            heading = "No live match found",
+                            spoken = "I couldn't find a live ${intent.team} match on your channels right now.",
+                        ))
+                    }
+                }
+                is tv.enktel.app.voice.VoiceIntent.RemindWhenOn -> {
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "⏰ Reminder", heading = intent.query,
+                        spoken = "Opening the guide — pick a time slot to schedule a reminder.",
+                    ))
+                    nav.navigate("guide")
+                }
+                is tv.enktel.app.voice.VoiceIntent.FilteredMovieSearch -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val g = intent.genre
+                    val yr = intent.year
+                    val dec = intent.decade
+                    val actor = intent.actor
+                    val seed = actor?.lowercase() ?: g?.lowercase() ?: ""
+                    val pool = try { graph.db.searchDao().searchMoviesDeep(p.id, seed) }
+                        catch (_: Throwable) { emptyList() }
+                    val filtered = pool.filter { m ->
+                        (g == null || m.genre.contains(g, ignoreCase = true)) &&
+                        (yr == null || m.year == yr) &&
+                        (dec == null || m.year in dec..(dec + 9)) &&
+                        (actor == null || m.cast.contains(actor, ignoreCase = true))
+                    }.take(12)
+                    val lines = filtered.take(6).map { m ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = m.name,
+                            subtitle = listOfNotNull(
+                                m.year.takeIf { it > 0 }?.toString(),
+                                m.genre.takeIf { it.isNotBlank() }?.take(24),
+                            ).joinToString(" · "),
+                            route = "movie/${m.key}",
+                        )
+                    }
+                    val label = listOfNotNull(
+                        g, yr?.toString(), dec?.let { "${it}s" }, actor,
+                    ).joinToString(" · ")
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "🎬 Filtered movies", heading = label,
+                        lines = lines,
+                        spoken = if (filtered.isEmpty()) "I couldn't find any movies matching $label."
+                        else "Found ${filtered.size} movies. Top pick: ${filtered[0].name}.",
+                    ))
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package tv.enktel.app.voice
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -92,6 +93,7 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
 
     val recognizer = remember { VoiceRecognizer(context) }
     val speaker = remember { VoiceSpeaker(context) }
+    val earcons = remember { VoiceEarcons() }
 
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
@@ -103,22 +105,31 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
     // into the same intent-parse-and-handle path as a mic tap.
     val wakeWord = remember {
         WakeWordListener(context) { payload ->
+            // Barge-in: kill any in-flight TTS the moment the wake phrase
+            // lands so the recogniser can hear the follow-up cleanly.
+            speaker.stop()
+            // Short "I heard you" chime — closes the feedback loop without
+            // waiting for the full TTS reply.
+            earcons.wakeReady()
             if (payload.isNotBlank()) {
-                // Instant hands-free command — parse + dispatch inline.
                 val intent = VoiceIntentParser.parse(payload)
                 lastIntentLabel = "🎙 \"hey enki, $payload\"  →  ${describe(intent, payload)}"
+                if (intent is VoiceIntent.Unknown) {
+                    earcons.error()
+                } else {
+                    earcons.confirm()
+                }
                 speaker.speak(spokenReply(intent))
                 if (intent !is VoiceIntent.Unknown) {
                     scope.launch { bus.intents.emit(intent) }
                 }
             } else {
-                // Bare wake word — pop the listening card so the user can dictate.
                 toaster.info("Listening…")
             }
         }
     }
     DisposableEffect(Unit) {
-        onDispose { recognizer.release(); speaker.release(); wakeWord.stop() }
+        onDispose { recognizer.release(); speaker.release(); wakeWord.stop(); earcons.release() }
     }
     val playerActiveForWake by androidx.compose.runtime.remember { ActivePlayerRef.active }
     androidx.compose.runtime.LaunchedEffect(wakeWordEnabled) {
@@ -131,11 +142,56 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
             wakeWord.stop()
         }
     }
-    // Pause the wake-word loop while a player is on-screen — the recognizer
-    // mic conflicts with the playback audio pipeline on some devices, and it's
-    // the biggest source of the "mic keeps flashing on/off" complaint.
-    androidx.compose.runtime.LaunchedEffect(playerActiveForWake, wakeWordEnabled) {
-        wakeWord.applyPause(playerActiveForWake)
+    // Lifecycle-driven pause: back-off the mic when the app goes to the
+    // background OR the device enters power-save mode.  Screen-off / low
+    // battery still leaves the app resumed on some devices, so we watch
+    // ACTION_POWER_SAVE_MODE_CHANGED and ACTION_BATTERY_LOW too.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var appBackgrounded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var powerConstrained by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> appBackgrounded = true
+                androidx.lifecycle.Lifecycle.Event.ON_START -> appBackgrounded = false
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+        powerConstrained = try { pm.isPowerSaveMode } catch (_: Throwable) { false }
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+                when (i?.action) {
+                    android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED ->
+                        powerConstrained = try { pm.isPowerSaveMode } catch (_: Throwable) { false }
+                    android.content.Intent.ACTION_BATTERY_LOW -> powerConstrained = true
+                    android.content.Intent.ACTION_BATTERY_OKAY -> powerConstrained = false
+                }
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            addAction(android.content.Intent.ACTION_BATTERY_LOW)
+            addAction(android.content.Intent.ACTION_BATTERY_OKAY)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose { try { context.unregisterReceiver(receiver) } catch (_: Throwable) {} }
+    }
+    // Combine every reason we might want the wake-word paused into a
+    // single derived flag.  applyPause() no-ops when the state doesn't
+    // change, so we can emit freely on each recomposition.
+    androidx.compose.runtime.LaunchedEffect(
+        playerActiveForWake, appBackgrounded, powerConstrained, wakeWordEnabled,
+    ) {
+        wakeWord.applyPause(playerActiveForWake || appBackgrounded || powerConstrained)
     }
 
     // Structured answer cards come from the "personal guide" query intents that
@@ -487,6 +543,16 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
     VoiceIntent.RefreshEpg -> "Refresh EPG"
     VoiceIntent.ToggleTheme -> "Toggle theme"
     VoiceIntent.OpenSports -> "Sports Hub"
+    is VoiceIntent.ShowChannelKind -> "${intent.keyword} channels"
+    is VoiceIntent.PlayTeamGame -> "Find ${intent.team} game"
+    is VoiceIntent.RemindWhenOn -> "Remind me: ${intent.query}"
+    is VoiceIntent.FilteredMovieSearch -> buildString {
+        append("Movies")
+        intent.genre?.let { append(" · ").append(it) }
+        intent.year?.let { append(" · ").append(it) }
+        intent.decade?.let { append(" · ").append(it).append("s") }
+        intent.actor?.let { append(" · ").append(it) }
+    }
 }
 
 private fun spokenReply(intent: VoiceIntent): String = when (intent) {
@@ -543,5 +609,9 @@ private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     VoiceIntent.RefreshEpg -> "Refreshing the TV guide"
     VoiceIntent.ToggleTheme -> "Toggling theme"
     VoiceIntent.OpenSports -> ""
+    is VoiceIntent.ShowChannelKind -> "Filtering to ${intent.keyword} channels"
+    is VoiceIntent.PlayTeamGame -> "Looking for the ${intent.team} match"
+    is VoiceIntent.RemindWhenOn -> "" // handler speaks after searching EPG
+    is VoiceIntent.FilteredMovieSearch -> "Filtering movies"
 }
 

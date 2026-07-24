@@ -81,6 +81,21 @@ sealed class VoiceIntent {
     data object RefreshEpg : VoiceIntent()
     data object ToggleTheme : VoiceIntent()
     data object OpenSports : VoiceIntent()
+    /** "Show me sports channels" / "movie channels" — filter Live TV by category kind. */
+    data class ShowChannelKind(val keyword: String) : VoiceIntent()
+    /** "Play the Arsenal game" / "Man United game" — best-effort fuzzy match
+     *  against currently-live EPG programs. */
+    data class PlayTeamGame(val team: String) : VoiceIntent()
+    /** "Remind me when Formula 1 starts" — schedules a notification for the
+     *  next upcoming EPG match of the phrase. */
+    data class RemindWhenOn(val query: String) : VoiceIntent()
+    /** Multi-attribute filter: "action movies from 2020 starring Tom Cruise". */
+    data class FilteredMovieSearch(
+        val genre: String? = null,
+        val year: Int? = null,
+        val decade: Int? = null,
+        val actor: String? = null,
+    ) : VoiceIntent()
 }
 
 /**
@@ -146,6 +161,33 @@ object VoiceIntentParser {
                 "channel down", "previous channel", "last channel",
                 "flip down", "go down a channel",
             )) return VoiceIntent.ChannelDown
+
+        // Shorthand pure-number: "channel 402", "jump to channel 42"
+        Regex("(?:jump to |go to |put on |tune to )?channel (\\d+)")
+            .find(text)?.let {
+                return VoiceIntent.TuneChannel(it.groupValues[1])
+            }
+
+        // "show me sports channels" / "browse movie channels" / "kids channels" —
+        // opens the channel list scoped to that category kind.
+        Regex("(?:show me |browse |open |find |list )?(sports|movie|movies|kids|news|music|entertainment|documentary|adult|international) channels?")
+            .find(text)?.let {
+                return VoiceIntent.ShowChannelKind(it.groupValues[1])
+            }
+
+        // "play the arsenal game" / "arsenal game" / "man united match" —
+        // scans live EPG for a program mentioning the team.
+        Regex("(?:play (?:the )?|watch (?:the )?)?([a-z][a-z ']{2,30}?) (?:game|match|fixture|kickoff)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim()
+                if (q.length >= 3 && q !in setOf("live", "next", "the", "a")) {
+                    return VoiceIntent.PlayTeamGame(q)
+                }
+            }
+
+        // "remind me when Formula 1 starts" / "remind me when the game starts"
+        Regex("remind me when (.+?) (?:starts|is on|comes on|airs)")
+            .find(text)?.let { return VoiceIntent.RemindWhenOn(it.groupValues[1].trim()) }
 
         // "turn to Nine HD" / "switch to bein sports" / "put on channel 42"
         // / "tune to CNN" / "go to fox news"
@@ -243,6 +285,39 @@ object VoiceIntentParser {
                 val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
                 if (q.isNotBlank()) return VoiceIntent.TellMeAbout(q)
             }
+
+        // ---- Multi-attribute movie search --------------------------------------
+        // "action movies from 2020", "comedy movies after 2015 with Tom Hanks",
+        // "80s horror movies", "sci-fi movies starring Sigourney Weaver".
+        if ("movie" in text || "film" in text) {
+            val genres = listOf(
+                "action", "comedy", "drama", "horror", "thriller", "romance",
+                "sci-fi", "science fiction", "fantasy", "adventure", "crime",
+                "mystery", "documentary", "animation", "family", "western",
+                "musical", "war", "biography", "history",
+            )
+            val g = genres.firstOrNull { it in text }
+            val yr = Regex("(?:from |in |released in |year )(\\d{4})").find(text)
+                ?.groupValues?.get(1)?.toIntOrNull()
+                ?: Regex("\\b(\\d{4})\\b").find(text)?.groupValues?.get(1)?.toIntOrNull()
+            val decadeMatch = Regex("([1-9]0)s\\b|\\b(80s|90s|00s|70s|60s|50s)\\b").find(text)
+            val decade = when (decadeMatch?.groupValues?.firstOrNull { it.isNotBlank() && it != decadeMatch.value }
+                ?: decadeMatch?.value) {
+                "80s" -> 1980; "90s" -> 1990; "00s" -> 2000
+                "70s" -> 1970; "60s" -> 1960; "50s" -> 1950
+                else -> null
+            }
+            val actor = Regex("(?:starring|with|featuring) ([a-z][a-z .'-]+?)(?:$| in| from| after| before| starring)")
+                .find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.length >= 3 }
+            if (g != null || yr != null || decade != null || actor != null) {
+                return VoiceIntent.FilteredMovieSearch(
+                    genre = g?.let { if (it == "science fiction") "Sci-Fi" else it.replaceFirstChar { c -> c.uppercase() } },
+                    year = yr,
+                    decade = decade,
+                    actor = actor,
+                )
+            }
+        }
 
         // ---- Scoped search: Movies -----------------------------------------------
         // "search movies for spider-man" / "find me a movie called Dune"

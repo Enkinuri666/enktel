@@ -23,6 +23,11 @@ class VoiceSpeaker(context: Context) {
         } catch (_: Exception) {}
     }
 
+    /** Immediate barge-in stop — used when the wake word interrupts a reply. */
+    fun stop() {
+        try { tts.stop() } catch (_: Exception) {}
+    }
+
     fun release() {
         try { tts.stop(); tts.shutdown() } catch (_: Exception) {}
     }
