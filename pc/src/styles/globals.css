@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    background-color: theme('colors.bg');
+    color: theme('colors.text');
+    font-family: 'Inter var', 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'ss01', 'cv11', 'ss02';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-user-select: none;
+  }
+  /* Custom scrollbar to match the app palette. */
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: theme('colors.surfaceHi'); border-radius: 5px; }
+  *::-webkit-scrollbar-thumb:hover { background: theme('colors.border'); }
+}
+
+@layer components {
+  /* Frosted glass surface, used across cards and side panels. */
+  .glass {
+    @apply bg-surface/70 backdrop-blur-md border border-white/5;
+  }
+  .glass-strong {
+    @apply bg-surfaceHi/85 backdrop-blur-lg border border-white/10;
+  }
+  /* Netflix-style focus ring — for keyboard nav on channel / poster grids. */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
+  }
+  /* GlassChip — mirrors the mobile app's filter chip design. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
+           text-xs font-semibold border border-white/10 bg-white/[0.04]
+           text-textDim hover:text-text hover:bg-white/[0.09] focus-ring
+           transition-colors cursor-pointer;
+  }
+  .chip[data-selected='true'] {
+    @apply bg-brand/25 text-white border-brand/60;
+  }
+  /* Accent bar shown at the left of section headers. */
+  .rail-header {
+    @apply flex items-center gap-3 mb-3 pl-1;
+  }
+  .rail-header::before {
+    content: '';
+    @apply block h-5 w-1 rounded-sm bg-gradient-to-b from-brand to-brand/40;
+  }
+}
+
+@layer utilities {
+  /* Drag region for the custom title bar. */
+  .app-drag { -webkit-app-region: drag; app-region: drag; }
+  .app-no-drag { -webkit-app-region: no-drag; app-region: no-drag; }
+}

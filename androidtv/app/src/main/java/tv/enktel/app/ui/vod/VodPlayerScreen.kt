@@ -115,11 +115,9 @@ fun VodPlayerScreen(
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
     DisposableEffect(Unit) {
-        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
+        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
         onDispose {
-            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
-                tv.enktel.app.voice.ActivePlayerRef.player = null
-            }
+            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }
     }
@@ -378,6 +376,11 @@ fun VodPlayerScreen(
                     item {
                         FocusButton("⧉ PiP", onClick = {
                             (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) }
+                        })
+                    }
+                    item {
+                        FocusButton("📺 Cast", onClick = {
+                            tv.enktel.app.player.CastToTv.open(context)
                         })
                     }
                 }

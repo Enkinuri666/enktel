@@ -1,0 +1,48 @@
+{
+  "name": "enktel-pc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "EnkTel IPTV for Windows — Tauri + React desktop client.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "typecheck": "tsc -b --pretty",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.51.15",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.3.19",
+    "hls.js": "^1.5.13",
+    "lucide-react": "^0.408.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0",
+    "shaka-player": "^4.10.7",
+    "tailwind-merge": "^2.4.0",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.4"
+  }
+}

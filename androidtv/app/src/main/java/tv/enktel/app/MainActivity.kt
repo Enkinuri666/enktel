@@ -71,9 +71,10 @@ class MainActivity : ComponentActivity() {
                 textScalePct = textPct,
             ) {
                 val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
+                val wakeWordEnabled by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)
                 ToastHost {
                     ScreensaverHost(graph, isPlaying = { false }) {
-                        tv.enktel.app.voice.VoiceHost(voiceBus) {
+                        tv.enktel.app.voice.VoiceHost(voiceBus, wakeWordEnabled = wakeWordEnabled) {
                             MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
                         }
                     }
@@ -137,9 +138,12 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                 is tv.enktel.app.voice.VoiceIntent.FindSports -> nav.navigate("sports")
                 is tv.enktel.app.voice.VoiceIntent.Search -> {
                     nav.navigate("search")
-                    // Search field takes a moment to mount; publishing the query is a
-                    // future-work follow-up (screen currently reads its query from
-                    // local state).
+                    // Push the spoken query onto the bus so SearchScreen (which
+                    // collects it in a LaunchedEffect) can populate its input.
+                    // Kick after a short delay so the destination has time to
+                    // mount its collector.
+                    kotlinx.coroutines.delay(150)
+                    voiceBus.searchQueries.emit(intent.query)
                 }
                 is tv.enktel.app.voice.VoiceIntent.TuneChannel -> {
                     val p = graph.playlists.activeProfile() ?: return@collect
@@ -407,7 +411,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                 isLive = a?.getString("live") == "1",
             )
         }
-        composable("search") { SearchScreen(graph, nav) }
+        composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
         composable("settings") { SettingsScreen(graph, nav) }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }

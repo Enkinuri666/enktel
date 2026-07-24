@@ -106,11 +106,9 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
     DisposableEffect(engine) {
-        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
+        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
         onDispose {
-            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
-                tv.enktel.app.voice.ActivePlayerRef.player = null
-            }
+            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }
     }
@@ -613,6 +611,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         FocusButton("⧉ PiP", onClick = {
                             val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
                             if (!ok) toaster.error("Picture-in-Picture not supported here")
+                        })
+                    }
+                    item {
+                        FocusButton("📺 Cast", onClick = {
+                            val ok = tv.enktel.app.player.CastToTv.open(context)
+                            if (!ok) toaster.error("Cast picker not available on this device")
                         })
                     }
                     item { FocusButton("⋯ More", onClick = { showQuickMenu = true }) }

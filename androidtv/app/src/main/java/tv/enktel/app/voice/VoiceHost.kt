@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +66,9 @@ class VoiceCommandBus {
     val intents = MutableSharedFlow<VoiceIntent>(extraBufferCapacity = 8)
     /** Emissions here are rendered by VoiceHost as an on-screen answer card + TTS. */
     val answers = MutableSharedFlow<VoiceAnswer>(extraBufferCapacity = 4)
+    /** Search query pushed from a voice "search for X" — SearchScreen collects
+     *  this so its input field actually receives the spoken query. */
+    val searchQueries = MutableSharedFlow<String>(extraBufferCapacity = 4)
 }
 
 /**
@@ -77,21 +82,54 @@ class VoiceCommandBus {
  * [bus.intents] and (optionally) speaks a short confirmation.
  */
 @Composable
-fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
+fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
     val recognizer = remember { VoiceRecognizer(context) }
     val speaker = remember { VoiceSpeaker(context) }
-    DisposableEffect(Unit) {
-        onDispose { recognizer.release(); speaker.release() }
-    }
 
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
     var lastIntentLabel by remember { mutableStateOf<String?>(null) }
     var currentAnswer by remember { mutableStateOf<VoiceAnswer?>(null) }
+
+    // "Hey Enki" wake-word listener. When it hears the wake phrase, it stops
+    // itself and feeds the payload (everything after "hey enki") straight
+    // into the same intent-parse-and-handle path as a mic tap.
+    val wakeWord = remember {
+        WakeWordListener(context) { payload ->
+            if (payload.isNotBlank()) {
+                // Instant hands-free command — parse + dispatch inline.
+                val intent = VoiceIntentParser.parse(payload)
+                lastIntentLabel = "🎙 \"hey enki, $payload\"  →  ${describe(intent, payload)}"
+                speaker.speak(spokenReply(intent))
+                if (intent !is VoiceIntent.Unknown) {
+                    scope.launch { bus.intents.emit(intent) }
+                }
+            } else {
+                // Bare wake word — pop the listening card so the user can dictate.
+                toaster.info("Listening…")
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { recognizer.release(); speaker.release(); wakeWord.stop() }
+    }
+    androidx.compose.runtime.LaunchedEffect(wakeWordEnabled) {
+        if (wakeWordEnabled) {
+            // Wake word needs the same RECORD_AUDIO permission the main mic uses;
+            // if it isn't granted, silently no-op — the toggle will re-attempt
+            // next time the pref flips.
+            val ok = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (ok) wakeWord.start()
+        } else {
+            wakeWord.stop()
+        }
+    }
 
     // Structured answer cards come from the "personal guide" query intents that
     // MainNav resolves. We render + speak them here so the plumbing stays local.
@@ -160,18 +198,44 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
         else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    // Player-active → we hide the FAB and use a discrete left-edge peek so the
+    // mic is always reachable but never covers channels / search / titles.
+    val playerActive by androidx.compose.runtime.remember { ActivePlayerRef.active }
+
     Box(Modifier.fillMaxSize()) {
         content()
-        MicFab(
-            listening = listening,
-            onTap = { toggleListening() },
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
-        )
+
+        if (playerActive) {
+            // Player is up: tiny left-edge peek. Expands into the full mic pill
+            // on tap. Sits vertically centred so it never clashes with the
+            // Info Bar or the action strip at the bottom.
+            MicEdgePeek(
+                listening = listening,
+                onTap = { toggleListening() },
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+        } else {
+            // No player up: small round mic pill in the bottom-LEFT corner (the
+            // bottom-right is claimed by the mobile More tab; bottom-left is
+            // empty everywhere).
+            MicFab(
+                listening = listening,
+                onTap = { toggleListening() },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 14.dp, bottom = 84.dp),
+            )
+        }
+
         if (listening) {
+            // Anchor the Listening card near the mic so the user's eye can
+            // follow it. Left-side when on a player, otherwise bottom-left.
             ListeningOverlay(
                 partial = partial,
                 onCancel = { recognizer.stop(); listening = false },
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 68.dp),
+                modifier = if (playerActive) Modifier.align(Alignment.CenterStart).padding(start = 60.dp)
+                           else Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 14.dp, bottom = 140.dp),
             )
         }
         lastIntentLabel?.let { label ->
@@ -257,6 +321,33 @@ private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Mod
                 "(tap outside to dismiss)", color = EnktelTextDim, fontSize = 9.sp,
             )
         }
+    }
+}
+
+/** Left-edge tap-to-open peek shown while a player is on-screen. Almost
+ *  invisible until the user needs it, but always reachable with a single tap. */
+@Composable
+private fun MicEdgePeek(listening: Boolean, onTap: () -> Unit, modifier: Modifier) {
+    Box(
+        modifier
+            .size(width = 22.dp, height = 56.dp)
+            .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+            .background(
+                (if (listening) EnktelLive else EnktelBlue).copy(alpha = if (listening) 0.85f else 0.55f),
+            )
+            .border(
+                1.dp,
+                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
+                androidx.compose.foundation.shape.RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+            )
+            .pointerInput(Unit) { detectTapGestures { onTap() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            if (listening) "●" else "🎙",
+            fontSize = 12.sp, fontWeight = FontWeight.Black,
+            color = androidx.compose.ui.graphics.Color.White,
+        )
     }
 }
 

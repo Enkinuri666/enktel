@@ -258,6 +258,21 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
 
         Spacer(Modifier.height(10.dp))
+        Text("VOICE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val wakeWord by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)
+        FocusButton(
+            "\"Hey Enki\" wake word: ${if (wakeWord) "ON" else "off"}",
+            accent = wakeWord,
+            onClick = { scope.launch { graph.settings.setWakeWordEnabled(!wakeWord) } },
+        )
+        Text(
+            "When on, EnkTel listens continuously for \"Hey Enki\" (or just \"Enki\") and " +
+                "acts on whatever you say next: \"Hey Enki, turn to Nine HD\", \"Hey Enki, pause\", " +
+                "\"Hey Enki, what live sports is on\". Uses more battery — off by default.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
         Text("SPORTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
         FocusButton("Live scores (TheSportsDB): ${if (scoresOn) "ON" else "off"}", accent = scoresOn, onClick = {

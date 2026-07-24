@@ -47,12 +47,23 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 
 @Suppress("ProduceStateDoesNotAssignValue")
 @Composable
-fun SearchScreen(graph: AppGraph, nav: NavHostController) {
+fun SearchScreen(
+    graph: AppGraph,
+    nav: NavHostController,
+    voiceBus: tv.enktel.app.voice.VoiceCommandBus? = null,
+) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
 
     var query by remember { mutableStateOf("") }
+
+    // Receive spoken searches: "search for Interstellar" navigates here and
+    // pushes "Interstellar" onto the voice bus. We collect it and drop it
+    // straight into the query field.
+    androidx.compose.runtime.LaunchedEffect(voiceBus) {
+        voiceBus?.searchQueries?.collect { spoken -> query = spoken }
+    }
     var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var series by remember { mutableStateOf<List<Series>>(emptyList()) }

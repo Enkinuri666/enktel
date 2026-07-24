@@ -59,6 +59,7 @@ class SettingsStore(private val context: Context) {
     private val TEXT_SCALE_PCT = intPreferencesKey("text_scale_pct") // 85-140
     private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
     private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | guide_dock
+    private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
 
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
@@ -111,6 +112,8 @@ class SettingsStore(private val context: Context) {
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
     val backAction: Flow<String> = context.dataStore.data.map { it[BACK_ACTION] ?: "exit" }
+    val wakeWordEnabled: Flow<Boolean> = context.dataStore.data.map { it[WAKE_WORD_ENABLED] ?: false }
+    suspend fun setWakeWordEnabled(v: Boolean) = context.dataStore.edit { it[WAKE_WORD_ENABLED] = v }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
