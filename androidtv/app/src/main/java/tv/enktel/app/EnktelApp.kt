@@ -14,17 +14,26 @@ import tv.enktel.app.data.repo.ScoresRepository
 import tv.enktel.app.data.repo.SportsRepository
 import tv.enktel.app.data.repo.WatchlistRepository
 import tv.enktel.app.data.xtream.XtreamClient
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 class AppGraph(app: Application) {
+    val db = AppDatabase.build(app)
+    val settings = SettingsStore(app)
+    // Volatile so the health interceptor can read the latest without a Flow
+    // subscription — updated whenever the setting flow emits (see below).
+    @Volatile private var backupGatewaysSnapshot: List<String> = emptyList()
     val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .addInterceptor(
+            tv.enktel.app.data.net.StreamHealthInterceptor(
+                gateways = { backupGatewaysSnapshot },
+            )
+        )
         .build()
-    val db = AppDatabase.build(app)
-    val settings = SettingsStore(app)
     val xtream = XtreamClient(http)
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream)
     val content = ContentRepository(app, db, xtream, http)
@@ -33,6 +42,17 @@ class AppGraph(app: Application) {
     val watchlist = WatchlistRepository(db.watchlistDao())
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
+
+    init {
+        // Keep the interceptor's backup-gateway snapshot in sync with the
+        // user's setting.  Uses a plain thread so we don't need a coroutine
+        // scope pinned to the AppGraph lifecycle — the flow lives as long
+        // as the process.
+        val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+        bgScope.launch {
+            settings.backupGateways.collect { backupGatewaysSnapshot = it }
+        }
+    }
 }
 
 class EnktelApp : Application() {
