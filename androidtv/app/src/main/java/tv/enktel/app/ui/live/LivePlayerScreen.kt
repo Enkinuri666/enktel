@@ -212,10 +212,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         graph.content.isFavoriteFlow(p.id, "live", ch.streamId).collect { isFav = it }
     }
 
-    // Auto-hide info bar
+    // Auto-hide info bar — faster fade on mobile so the tap-target chrome
+    // clears out of the way quickly, longer on TV so a viewer with a remote
+    // has time to register the current channel + program before it vanishes.
     LaunchedEffect(infoTick, anyOverlay) {
         if (showInfo && !anyOverlay) {
-            delay(6000)
+            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 6000L
+            delay(hideMs)
             showInfo = false
         }
     }

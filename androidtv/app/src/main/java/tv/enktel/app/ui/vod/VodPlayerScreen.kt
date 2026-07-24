@@ -164,7 +164,11 @@ fun VodPlayerScreen(
 
     LaunchedEffect(controlsTick) {
         if (showControls) {
-            delay(5000)
+            // Faster fade on mobile (touch) — TV needs more time so a viewer
+            // can register the current transport state before the overlay
+            // vanishes.
+            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 5000L
+            delay(hideMs)
             if (trackMenu.isEmpty()) showControls = false
         }
     }
