@@ -85,7 +85,10 @@ fun VodPlayerScreen(
     isLive: Boolean,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfile = if (bufferProfileRaw == "auto")
+        tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
+    else bufferProfileRaw
     val engine = remember { PlayerEngine(context, graph.http, bufferProfile) }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
@@ -337,6 +340,11 @@ fun VodPlayerScreen(
                 Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
             }
         }
+
+        // Stream-health chip — self-hides when everything's fine.
+        tv.enktel.app.ui.components.StreamHealthChip(
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+        )
 
         // ---- Skip Intro pill ------------------------------------------------
         // Netflix-style floating chip.  Shown between 5 s and 90 s into VOD

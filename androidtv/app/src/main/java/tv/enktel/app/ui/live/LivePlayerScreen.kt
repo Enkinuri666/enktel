@@ -101,7 +101,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
 
-    val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    // Auto-mode: let NetworkClass pick the profile based on the active
+    // network (WIRED → large, WIFI → balanced, MOBILE → large for resilience).
+    val bufferProfile = if (bufferProfileRaw == "auto")
+        tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
+    else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
@@ -567,6 +572,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
             }
         }
+
+        // Stream-health chip — always mounted (self-hides when quality is
+        // fine) so the user sees ISP/VPN degradation the instant it lands
+        // without needing to bring up the info overlay.
+        tv.enktel.app.ui.components.StreamHealthChip(
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+        )
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
         // the docked Browse mode we hide them so the BrowseDock isn't overlapped from
