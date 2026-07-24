@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Build
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,18 +54,24 @@ object NetworkClass {
             context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         } catch (_: Throwable) { return }
         _kind.value = classify(cm)
-        try {
-            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) { _kind.value = classify(cm) }
-                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                    _kind.value = fromCaps(caps)
-                }
-                override fun onLost(network: Network) {
-                    // Keep the last observed kind so a brief drop doesn't
-                    // trigger a buffer resize in the middle of playback.
-                }
-            })
-        } catch (_: Throwable) { /* API present but device refused */ }
+        // registerDefaultNetworkCallback is API 24+; on older devices we
+        // still seeded _kind above from the current active network and
+        // let it stay stale (the app can't listen for transport changes
+        // pre-Nougat without more elaborate broadcast plumbing).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) { _kind.value = classify(cm) }
+                    override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                        _kind.value = fromCaps(caps)
+                    }
+                    override fun onLost(network: Network) {
+                        // Keep the last observed kind so a brief drop
+                        // doesn't trigger a buffer resize mid-playback.
+                    }
+                })
+            } catch (_: Throwable) { /* API present but device refused */ }
+        }
     }
 
     private fun classify(cm: ConnectivityManager): Kind {
