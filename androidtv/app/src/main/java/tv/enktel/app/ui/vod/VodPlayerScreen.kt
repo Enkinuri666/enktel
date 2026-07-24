@@ -320,6 +320,43 @@ fun VodPlayerScreen(
             }
         }
 
+        // ---- Skip Intro pill ------------------------------------------------
+        // Netflix-style floating chip.  Shown between 5 s and 90 s into VOD
+        // playback so users can bypass series intro sequences with one tap
+        // (or by saying "skip intro"). Dismissed once tapped, once the
+        // player crosses the 90 s mark, or when it's a live stream.
+        var skipIntroDismissed by remember(progressKey) { androidx.compose.runtime.mutableStateOf(false) }
+        val showSkipIntro = !isLive && !skipIntroDismissed &&
+            positionMs in 5_000L..90_000L && durationMs > 180_000L
+        if (showSkipIntro) {
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 32.dp, bottom = if (showControls) 140.dp else 40.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.Black.copy(alpha = 0.75f))
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            engine.player.seekTo(90_000L)
+                            skipIntroDismissed = true
+                            showControls = true
+                            controlsTick++
+                        }
+                    }
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("⏭", color = Color.White, fontSize = 15.sp)
+                Text(
+                    "Skip Intro",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
         if (showControls) {
             // Mobile gets tighter side padding so the seek bar reaches closer to the
             // screen edges on a phone, which is where the thumb naturally goes.

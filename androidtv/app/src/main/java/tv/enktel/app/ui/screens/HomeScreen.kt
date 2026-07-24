@@ -82,8 +82,11 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     var newThisWeek by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var latestReleases by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var comingSoon by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    // Key on both p.id and the calendar day so the rails auto-refresh at midnight without
-    // needing WorkManager. If the app is open past midnight, this LaunchedEffect re-runs.
+    var moodGritty by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var moodLateNight by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var moodFastPaced by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var moodMindBending by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var moodFeelGood by remember { mutableStateOf<List<Movie>>(emptyList()) }
     val today = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
     LaunchedEffect(p.id, today) {
         try {
@@ -92,6 +95,11 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             newThisWeek = graph.recommendations.newThisWeek(p.id)
             latestReleases = graph.recommendations.latestReleases(p.id)
             comingSoon = graph.recommendations.comingSoon(p.id)
+            moodGritty = graph.recommendations.moodGritty(p.id)
+            moodLateNight = graph.recommendations.moodLateNight(p.id)
+            moodFastPaced = graph.recommendations.moodFastPaced(p.id)
+            moodMindBending = graph.recommendations.moodMindBending(p.id)
+            moodFeelGood = graph.recommendations.moodFeelGood(p.id)
         } catch (_: Throwable) {}
     }
 
@@ -299,6 +307,80 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail("New This Week", newThisWeek, key = { it.key }) { m ->
                     PosterCard(m.name, m.poster, subtitle = "New",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        // --- Mood / vibe rails ---
+        // Rendered as its own group so users who "just want a vibe" can
+        // browse the way they actually think about content instead of
+        // hunting through raw genre grids.
+        if (moodFastPaced.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🔥 Fast-Paced Thrillers", moodFastPaced,
+                    accent = tv.enktel.app.ui.theme.EnktelLive,
+                    subtitle = "keep the adrenaline high",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (moodGritty.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🌒 Gritty & Tension-Filled", moodGritty,
+                    accent = tv.enktel.app.ui.theme.EnktelPurple,
+                    subtitle = "shadowy, morally grey",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (moodMindBending.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🧠 Mind-Bending Plots", moodMindBending,
+                    accent = tv.enktel.app.ui.theme.EnktelBlue,
+                    subtitle = "sci-fi and mystery, top-rated",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (moodLateNight.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🌙 Late-Night Background Watch", moodLateNight,
+                    accent = tv.enktel.app.ui.theme.EnktelTextDim,
+                    subtitle = "easy, comforting picks",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (moodFeelGood.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "☀️ Feel-Good & Warm-Fuzzy", moodFeelGood,
+                    accent = tv.enktel.app.ui.theme.EnktelOk,
+                    subtitle = "wholesome vibes",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
                         onClick = { nav.navigate("movie/${m.key}") })
                 }
             }
