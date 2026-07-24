@@ -67,18 +67,20 @@ fun SearchScreen(
     var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var series by remember { mutableStateOf<List<Series>>(emptyList()) }
+    var epg by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
     val history by graph.db.searchDao().recent(20).collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(query) {
         if (query.length < 2) {
-            channels = emptyList(); movies = emptyList(); series = emptyList()
+            channels = emptyList(); movies = emptyList(); series = emptyList(); epg = emptyList()
             return@LaunchedEffect
         }
         delay(300)
-        // Fuzzy = case-insensitive substring across name/cast/director/genre for VOD (title-only for channels).
         channels = graph.content.searchChannels(p.id, query)
         movies = graph.db.searchDao().searchMoviesDeep(p.id, query)
         series = graph.db.searchDao().searchSeriesDeep(p.id, query)
+        epg = try { graph.db.epgDao().searchUpcoming(p.id, query, System.currentTimeMillis()) }
+              catch (_: Throwable) { emptyList() }
     }
 
     LazyColumn(
@@ -114,7 +116,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (query.length >= 2 && channels.isEmpty() && movies.isEmpty() && series.isEmpty()) {
+        if (query.length >= 2 && channels.isEmpty() && movies.isEmpty() && series.isEmpty() && epg.isEmpty()) {
             item {
                 Column(Modifier.padding(horizontal = 48.dp, vertical = 24.dp)) {
                     Text("No matches for \"$query\"", color = androidx.compose.ui.graphics.Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -123,7 +125,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (query.length >= 2 && (channels.isNotEmpty() || movies.isNotEmpty() || series.isNotEmpty())) {
+        if (query.length >= 2 && (channels.isNotEmpty() || movies.isNotEmpty() || series.isNotEmpty() || epg.isNotEmpty())) {
             item {
                 LaunchedEffect(query) {
                     graph.db.searchDao().push(SearchHistoryItem(query.trim()))
@@ -135,6 +137,29 @@ fun SearchScreen(
                 ContentRail("Channels", channels, accent = EnktelBlue, key = { it.key }) { ch ->
                     PosterCard(ch.name, ch.logo, wide = true, subtitle = ch.categoryName,
                         onClick = { nav.navigate("live?ch=${ch.key}") })
+                }
+            }
+        }
+        // Master-search EPG rail: upcoming programs matching the query
+        // across every channel, sorted by earliest start.  Tap to open the
+        // guide anchored on that program's channel + time.
+        if (epg.isNotEmpty()) {
+            item {
+                val epgWithChan = remember(epg, channels) {
+                    epg.map { p -> p to channels.firstOrNull { it.epgId == p.epgId } }
+                }
+                val fmt = remember { java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault()) }
+                ContentRail("In the Guide", epgWithChan, accent = EnktelPurple,
+                    key = { "${it.first.id}" }) { (prog, ch) ->
+                    val time = fmt.format(java.util.Date(prog.startMs))
+                    PosterCard(
+                        prog.title, ch?.logo.orEmpty(), wide = true,
+                        subtitle = listOfNotNull(time, ch?.name).joinToString(" · "),
+                        onClick = {
+                            if (ch != null) nav.navigate("live?ch=${ch.key}")
+                            else nav.navigate("guide")
+                        },
+                    )
                 }
             }
         }
