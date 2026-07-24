@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
  * drives a single Float that's read inside drawWithContent) so long
  * shimmer grids scroll without dropping frames on budget hardware.
  */
+@Composable
 fun Modifier.shimmer(
     baseColor: Color = Color(0xFF1F2937),
     highlightColor: Color = Color(0xFF374151),
