@@ -114,9 +114,22 @@ fun VodPlayerScreen(
         engine.setLoudnessOn(loudnessOn)
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
+    val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(engine) {
+        engine.videoFrameRate.collect { fps ->
+            if (fps > 0f) {
+                (ctxForRefresh as? android.app.Activity)?.let {
+                    tv.enktel.app.player.RefreshRateMatcher.match(it, fps)
+                }
+            }
+        }
+    }
     DisposableEffect(Unit) {
         tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
         onDispose {
+            (ctxForRefresh as? android.app.Activity)?.let {
+                tv.enktel.app.player.RefreshRateMatcher.reset(it)
+            }
             tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }

@@ -53,6 +53,9 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     /** true while ExoPlayer is in BUFFERING state — surfaced so the UI can show
      *  the branded animated loader over the video pane. */
     val buffering = MutableStateFlow(false)
+    /** Native frame rate reported by the current video track, or 0 if unknown.
+     *  UI observes this so it can command a matching HDMI refresh rate. */
+    val videoFrameRate = MutableStateFlow(0f)
     private var dropped = 0
     private var retries = 0
     private var lastUrl: String? = null
@@ -134,6 +137,7 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
                     videoCodec = format.sampleMimeType.orEmpty().substringAfterLast('/'),
                     videoBitrate = format.bitrate.coerceAtLeast(0),
                 )
+                if (format.frameRate > 0) videoFrameRate.value = format.frameRate
             }
 
             override fun onAudioInputFormatChanged(
