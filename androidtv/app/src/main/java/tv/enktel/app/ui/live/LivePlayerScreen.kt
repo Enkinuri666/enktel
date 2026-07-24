@@ -121,6 +121,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             (ctxForRefresh as? android.app.Activity)?.let {
                 tv.enktel.app.player.RefreshRateMatcher.reset(it)
             }
+            tv.enktel.app.data.net.PresenceTracker.clear()
             tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }
@@ -210,6 +211,18 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     LaunchedEffect(current?.key) {
         val ch = current ?: return@LaunchedEffect
         graph.content.isFavoriteFlow(p.id, "live", ch.streamId).collect { isFav = it }
+    }
+
+    // Presence: keep the tracker in sync with the currently-tuned channel +
+    // now-playing EPG program.
+    LaunchedEffect(current?.key, nowNext.now?.title) {
+        val ch = current ?: return@LaunchedEffect
+        tv.enktel.app.data.net.PresenceTracker.setLive(
+            channelName = ch.name,
+            channelLogo = ch.logo,
+            programTitle = nowNext.now?.title,
+            programEndMs = nowNext.now?.endMs ?: 0L,
+        )
     }
 
     // Auto-hide info bar — faster fade on mobile so the tap-target chrome

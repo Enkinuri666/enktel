@@ -44,14 +44,16 @@ class AppGraph(app: Application) {
     val scores = ScoresRepository(http)
 
     init {
-        // Keep the interceptor's backup-gateway snapshot in sync with the
-        // user's setting.  Uses a plain thread so we don't need a coroutine
-        // scope pinned to the AppGraph lifecycle — the flow lives as long
-        // as the process.
         val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
         }
+        // Social presence: pushes PresenceTracker.state to a user-configured
+        // Discord webhook — no-op when the URL is blank.  Debounces at 15 s
+        // so scrubbing doesn't spam the channel.
+        tv.enktel.app.data.net.DiscordWebhookPublisher(
+            http, settings.discordWebhook,
+        ).startIn(bgScope)
     }
 }
 

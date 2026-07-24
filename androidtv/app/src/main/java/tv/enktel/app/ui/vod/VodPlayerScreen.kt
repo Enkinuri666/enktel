@@ -114,6 +114,19 @@ fun VodPlayerScreen(
         engine.setLoudnessOn(loudnessOn)
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
+    // Presence tracker: seed on first mount, then throttle position updates
+    // to once every couple of seconds so we don't churn the webhook debounce.
+    LaunchedEffect(title, isLive) {
+        if (!isLive) tv.enktel.app.data.net.PresenceTracker.setVod(title = title)
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!isLive && durationMs > 0) {
+                tv.enktel.app.data.net.PresenceTracker.updateVodPosition(positionMs, durationMs)
+            }
+            delay(4_000)
+        }
+    }
     val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(engine) {
         engine.videoFrameRate.collect { fps ->
@@ -130,6 +143,7 @@ fun VodPlayerScreen(
             (ctxForRefresh as? android.app.Activity)?.let {
                 tv.enktel.app.player.RefreshRateMatcher.reset(it)
             }
+            tv.enktel.app.data.net.PresenceTracker.clear()
             tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }

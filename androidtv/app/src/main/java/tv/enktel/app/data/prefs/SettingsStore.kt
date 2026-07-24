@@ -63,6 +63,8 @@ class SettingsStore(private val context: Context) {
     // v1.13.0: newline-separated `host[:port]` list of backup gateways used by
     // StreamHealthInterceptor when the primary throws 403 / times out.
     private val BACKUP_GATEWAYS = stringPreferencesKey("backup_gateways")
+    // v1.14.2: Discord webhook URL for social presence pushes.  Blank disables.
+    private val DISCORD_WEBHOOK = stringPreferencesKey("discord_webhook")
 
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
@@ -125,6 +127,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setBackupGateways(list: List<String>) = context.dataStore.edit {
         it[BACKUP_GATEWAYS] = list.joinToString("\n")
     }
+    val discordWebhook: Flow<String> = context.dataStore.data.map { it[DISCORD_WEBHOOK].orEmpty() }
+    suspend fun setDiscordWebhook(v: String) = context.dataStore.edit { it[DISCORD_WEBHOOK] = v.trim() }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
