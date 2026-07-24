@@ -1,8 +1,10 @@
 package tv.enktel.app.voice
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.speech.RecognitionListener
@@ -18,33 +20,34 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * "Hey Enki" wake-word listener.  Runs an on-device SpeechRecognizer in a
- * short-utterance restart loop: each utterance is scanned for the wake phrase
- * ("hey enki", "hi enki", "enki") and, on match, the payload (everything after
- * the wake phrase) is fed into the main command bus so users can chain
- * requests like "hey enki, turn to Nine HD".
+ * "Hey Enki" wake-word listener.
  *
- * Multi-layer defence against self-triggering while playback is active:
- *  - [paused] flag: caller pauses the listener when a Player screen is on
- *    (see VoiceHost's `LaunchedEffect(playerActiveForWake)`).
- *  - Audio-active gate: before starting a listen turn, we ask AudioManager
- *    whether STREAM_MUSIC is currently playing.  If it is (PiP, background
- *    audio, or an ExoPlayer we don't know about) we defer the turn and try
- *    again later — the mic would otherwise pick up the app's own TV audio
- *    through the device speakers and hallucinate "hey enki".
- *  - Stale-callback guard: every RecognitionListener callback checks
- *    [paused]/[audioActive] again before acting on the transcription, so a
- *    result from a listen-turn that started before the pause landed can't
- *    slip through and fire a false wake.
- *  - Grace period: after leaving the paused state we wait 800 ms before
- *    starting the next turn so the audio pipeline has a chance to release.
+ * The naïve version — restart the SpeechRecognizer as soon as it times out —
+ * causes two known problems that this class works hard to avoid:
  *
- * Notes / limitations:
- *  - Android's stock SpeechRecognizer is designed for one-shot utterances and
- *    will off-load audio to the vendor speech service.  Battery cost is
- *    real; the toggle in Settings defaults to OFF.  Users who want proper
- *    always-on wake-word detection should install a dedicated on-device
- *    engine (Porcupine / Vosk) — future work.
+ *   1. **The chirp loop.**  On most Androids each `startListening()` call
+ *      triggers the system mic-in-use privacy chirp AND lights up the mic
+ *      privacy indicator.  If the recogniser times out in a quiet room and
+ *      we restart in 2 s, the user hears a continuous chirp-chirp-chirp
+ *      until they toggle the feature off.  We defeat this by:
+ *        - Waiting a minimum of 20 s between listen-turns in a quiet room.
+ *        - Growing that wait: 3 empty turns → 60 s, 5 empty turns → 3 min.
+ *        - Only shrinking the backoff back to a fast cadence AFTER real
+ *          speech has been detected in a recent turn (onBeginningOfSpeech
+ *          fires), so once the user is talking the app feels responsive
+ *          again.
+ *
+ *   2. **Self-triggering from the app's own audio.**  The mic physically
+ *      picks up TV audio through the device speakers.  We defeat this with
+ *      three layers of suppression (see suppressed()): a caller-driven
+ *      pause flag, an AudioManager.isMusicActive gate that catches PiP /
+ *      background players, and a stale-callback guard so late results
+ *      from a listen-turn started before the audio kicked in can't slip
+ *      through.
+ *
+ * Both problems are ultimately caused by using a full ASR engine as a
+ * wake-word detector.  A dedicated on-device engine (Porcupine, Vosk) is
+ * the correct long-term fix; documented as future work.
  */
 class WakeWordListener(
     private val context: Context,
@@ -55,8 +58,14 @@ class WakeWordListener(
     private var recognizer: SpeechRecognizer? = null
     private var scope: CoroutineScope? = null
     private var loop: Job? = null
-    private var backoffMs: Long = 2_500
+
+    // Empty-turn tracking. Grows monotonically while the room is quiet
+    // (no onBeginningOfSpeech callbacks); resets to 0 the moment a real
+    // speech onset is detected. Drives the exponential backoff below.
     private var emptyRoundCount: Int = 0
+
+    // Elevated backoff triggered by transient failures (network / busy).
+    private var errorBackoffMs: Long = 0
     private var lastUnpauseAt: Long = 0L
     private val audio: AudioManager by lazy {
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -65,13 +74,29 @@ class WakeWordListener(
      *  player is active (mic conflicts with playback audio anyway). */
     @Volatile var paused: Boolean = false
 
-    /** True if the app (or anything else) is currently outputting on the media
-     *  stream.  We treat this as an implicit pause because the recogniser would
-     *  otherwise pick up the device speakers. */
     private fun audioActive(): Boolean = try { audio.isMusicActive } catch (_: Throwable) { false }
-
-    /** True if the listener should not be acting right now for any reason. */
     private fun suppressed(): Boolean = paused || audioActive()
+
+    /**
+     * How long to wait before the next listen-turn.  The whole point of
+     * this function is to make sure the mic doesn't chirp every couple of
+     * seconds when nobody is talking.
+     */
+    private fun nextWaitMs(): Long {
+        if (audioActive()) return 5_000L
+        // Error-recovery override — pushed by onError branches below.
+        if (errorBackoffMs > 0) {
+            val e = errorBackoffMs
+            errorBackoffMs = 0
+            return e
+        }
+        return when {
+            emptyRoundCount >= 5 -> 180_000L  // 3 min after long silence
+            emptyRoundCount >= 3 -> 60_000L   // 1 min
+            emptyRoundCount >= 1 -> 30_000L   // 30 s
+            else -> 20_000L                    // baseline in a quiet room
+        }
+    }
 
     fun start() {
         if (active.value) return
@@ -88,7 +113,7 @@ class WakeWordListener(
         try { recognizer?.stopListening(); recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
         scope?.cancel(); scope = null
-        backoffMs = 2_500
+        errorBackoffMs = 0
         emptyRoundCount = 0
     }
 
@@ -104,22 +129,28 @@ class WakeWordListener(
         }
     }
 
+    /**
+     * If the OS supports it (API 31+), prefer the on-device recogniser —
+     * it runs without a cloud round-trip and, on most OEM builds, doesn't
+     * trigger the same "mic chirp" the online recogniser does.  Falls
+     * back to the classic constructor everywhere else.
+     */
+    private fun createRecognizer(): SpeechRecognizer {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                val svc = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                if (svc != null) return svc
+            } catch (_: Throwable) { /* fall through to classic */ }
+        }
+        return SpeechRecognizer.createSpeechRecognizer(context)
+    }
+
     private fun beginNextTurn() {
         if (!active.value || paused) return
         val s = scope ?: return
         loop?.cancel()
         loop = s.launch(Dispatchers.Main) {
-            // Aggressive back-off if we've had a run of empty turns: the mic
-            // shouldn't visibly toggle on and off every second when the user's
-            // room is silent.  After 3 empty turns we sit for 8s, after 6 we
-            // wait 20s.  Also: if audio is currently playing, poll every 3s
-            // until it stops (instead of opening the mic on top of speakers).
-            val wait = when {
-                audioActive() -> 3_000L
-                emptyRoundCount >= 6 -> 20_000L
-                emptyRoundCount >= 3 -> 8_000L
-                else -> backoffMs
-            }
+            val wait = nextWaitMs()
             // Grace period after unpause — give the audio pipeline time to
             // release the mic and let any tail-end playback stop echoing.
             val sinceUnpause = SystemClock.elapsedRealtime() - lastUnpauseAt
@@ -130,32 +161,33 @@ class WakeWordListener(
             if (!active.value || paused) return@launch
             if (audioActive()) { beginNextTurn(); return@launch }
             try { recognizer?.destroy() } catch (_: Exception) {}
-            val r = SpeechRecognizer.createSpeechRecognizer(context)
+            val r = createRecognizer()
             recognizer = r
             var got = false
+            var speechStarted = false
             r.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
-                override fun onBeginningOfSpeech() { emptyRoundCount = 0 }
+                override fun onBeginningOfSpeech() {
+                    speechStarted = true
+                    emptyRoundCount = 0
+                }
                 override fun onRmsChanged(rmsdB: Float) {
                     hearingMeter.value = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
                 }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
-                    // NO_MATCH / SPEECH_TIMEOUT are the "quiet room" cases — those
-                    // count toward the empty-round backoff.  Everything else
-                    // resets it so we don't punish a network blip.
                     when (error) {
                         SpeechRecognizer.ERROR_NO_MATCH,
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> emptyRoundCount++
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
+                            if (!speechStarted) emptyRoundCount++
+                        }
                         SpeechRecognizer.ERROR_NETWORK,
                         SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
-                            backoffMs = (backoffMs * 2).coerceAtMost(30_000)
+                            errorBackoffMs = (errorBackoffMs.coerceAtLeast(30_000L) * 2).coerceAtMost(300_000L)
                         SpeechRecognizer.ERROR_CLIENT,
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
-                            backoffMs = 5_000
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> errorBackoffMs = 15_000L
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
-                            // Permission gone — stop entirely; the toggle will restart us.
                             stop(); return
                         }
                         else -> {}
@@ -164,9 +196,6 @@ class WakeWordListener(
                 }
                 override fun onEvent(eventType: Int, params: Bundle?) {}
                 override fun onPartialResults(partialResults: Bundle?) {
-                    // Stale-callback guard: if we've been paused or audio is
-                    // now playing, ignore this — the recogniser is almost
-                    // certainly hearing our own TV audio through the speakers.
                     if (suppressed()) return
                     val list = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     val text = list?.firstOrNull().orEmpty()
@@ -180,16 +209,16 @@ class WakeWordListener(
                     val text = list?.firstOrNull().orEmpty()
                     val payload = extractPayload(text)
                     if (payload != null) { got = true; handleWake(payload) }
-                    else { emptyRoundCount++; beginNextTurn() }
+                    else {
+                        if (!speechStarted) emptyRoundCount++
+                        beginNextTurn()
+                    }
                 }
             })
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
-                // Long silence timeouts so the recognizer stays open for a
-                // meaningful window (~15s) instead of flipping the mic every
-                // second in a quiet room.
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 15_000L)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 4_000L)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500L)
@@ -199,12 +228,7 @@ class WakeWordListener(
     }
 
     private fun handleWake(payload: String) {
-        // Final belt-and-braces: if suppression flipped on between the
-        // suppressed() check in the callback and here, drop the wake silently.
         if (suppressed()) return
-        // Stop the loop, notify listener, resume once caller finishes with a
-        // fresh call to start().  We deliberately don't auto-restart here so
-        // callers can pop up their command UI without racing us for the mic.
         stop()
         onWake(payload)
     }

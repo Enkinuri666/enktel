@@ -120,7 +120,8 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         if (!initialChannelKey.isNullOrBlank()) nav.navigate("live?ch=$initialChannelKey")
     }
 
-    val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val appCtx = ctx.applicationContext
 
     // Voice-command navigation handler. Player-scoped commands (Pause/Resume/etc)
     // are consumed by whichever player screen is currently mounted; we take the
@@ -378,9 +379,299 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                 }
 
                 is tv.enktel.app.voice.VoiceIntent.TellMeAbout -> {
-                    // Route to search for now; deeper metadata is a future add.
-                    nav.navigate("search")
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    if (hit != null) {
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "About",
+                                heading = hit.name,
+                                lines = listOf(
+                                    tv.enktel.app.voice.VoiceAnswerLine(
+                                        title = hit.name,
+                                        subtitle = kb.describe(hit).take(120),
+                                        route = kb.route(hit),
+                                    )
+                                ),
+                                spoken = kb.describe(hit),
+                            )
+                        )
+                    } else {
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "About",
+                                heading = intent.query,
+                                lines = emptyList(),
+                                spoken = "I couldn't find ${intent.query} in your library. Try refreshing the playlist.",
+                            )
+                        )
+                    }
                 }
+
+                // ---- Playback transport ---------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.SeekForward ->
+                    tv.enktel.app.voice.ActivePlayerRef.seekForward(intent.seconds)
+                is tv.enktel.app.voice.VoiceIntent.SeekBack ->
+                    tv.enktel.app.voice.ActivePlayerRef.seekBack(intent.seconds)
+                is tv.enktel.app.voice.VoiceIntent.SeekTo ->
+                    tv.enktel.app.voice.ActivePlayerRef.seekToMinutes(intent.minutes)
+                is tv.enktel.app.voice.VoiceIntent.Restart ->
+                    tv.enktel.app.voice.ActivePlayerRef.restart()
+                is tv.enktel.app.voice.VoiceIntent.SkipIntro ->
+                    // Best-effort: 90 s ahead, roughly one intro's worth.
+                    tv.enktel.app.voice.ActivePlayerRef.seekForward(90)
+                is tv.enktel.app.voice.VoiceIntent.NextEpisode ->
+                    tv.enktel.app.voice.ActivePlayerRef.next()
+                is tv.enktel.app.voice.VoiceIntent.PreviousEpisode ->
+                    tv.enktel.app.voice.ActivePlayerRef.previous()
+                is tv.enktel.app.voice.VoiceIntent.EnterPip -> {
+                    try {
+                        (ctx as? android.app.Activity)?.enterPictureInPictureMode(
+                            android.app.PictureInPictureParams.Builder().build()
+                        )
+                    } catch (_: Throwable) {}
+                }
+                is tv.enktel.app.voice.VoiceIntent.CastNow ->
+                    tv.enktel.app.player.CastToTv.open(appCtx)
+
+                // ---- Content actions -------------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.PlayRandomMovie -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val all = try { graph.db.searchDao().searchMoviesDeep(p.id, "") } catch (_: Throwable) { emptyList() }
+                    all.randomOrNull()?.let { nav.navigate("movie/${it.key}") }
+                }
+                is tv.enktel.app.voice.VoiceIntent.PlayRandomSeries -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val all = try { graph.db.searchDao().searchSeriesDeep(p.id, "") } catch (_: Throwable) { emptyList() }
+                    all.randomOrNull()?.let { nav.navigate("seriesDetails/${it.key}") }
+                }
+                is tv.enktel.app.voice.VoiceIntent.ResumeLast,
+                is tv.enktel.app.voice.VoiceIntent.ContinueWatching -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val last = try {
+                        graph.db.userDao().continueWatching(p.id, 1).first().firstOrNull()
+                    } catch (_: Throwable) { null }
+                    val route = last?.key?.let { k ->
+                        // key convention: "$profileId:vod:$id" / "$profileId:series:$id" / "live:$id"
+                        when {
+                            "vod" in k -> "movie/$k"
+                            "series" in k -> "seriesDetails/$k"
+                            else -> "home"
+                        }
+                    } ?: "home"
+                    nav.navigate(route)
+                }
+                is tv.enktel.app.voice.VoiceIntent.AddToWatchlist -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    if (hit != null) {
+                        val (kind, refId, name, poster) = when (hit) {
+                            is tv.enktel.app.voice.VoiceKnowledgeBase.Hit.MovieHit ->
+                                Quadruple("vod", hit.m.streamId, hit.m.name, hit.m.poster)
+                            is tv.enktel.app.voice.VoiceKnowledgeBase.Hit.SeriesHit ->
+                                Quadruple("series", hit.s.seriesId, hit.s.name, hit.s.poster)
+                            else -> Quadruple("vod", 0L, hit.name, hit.poster)
+                        }
+                        val p = graph.playlists.activeProfile() ?: return@collect
+                        try {
+                            graph.db.watchlistDao().add(
+                                tv.enktel.app.data.db.WatchlistItem(
+                                    key = "${p.id}:$kind:$refId",
+                                    profileId = p.id, kind = kind, refId = refId,
+                                    name = name, poster = poster,
+                                )
+                            )
+                            voiceBus.answers.emit(
+                                tv.enktel.app.voice.VoiceAnswer(
+                                    eyebrow = "☆ Watchlist",
+                                    heading = "Added $name",
+                                    lines = emptyList(),
+                                    spoken = "Added $name to your watchlist.",
+                                )
+                            )
+                        } catch (_: Throwable) {}
+                    } else {
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "☆ Watchlist",
+                                heading = "Not found",
+                                lines = emptyList(),
+                                spoken = "I couldn't find ${intent.query}.",
+                            )
+                        )
+                    }
+                }
+                is tv.enktel.app.voice.VoiceIntent.RemoveFromWatchlist -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    if (hit != null) {
+                        val (kind, refId) = when (hit) {
+                            is tv.enktel.app.voice.VoiceKnowledgeBase.Hit.MovieHit -> "vod" to hit.m.streamId
+                            is tv.enktel.app.voice.VoiceKnowledgeBase.Hit.SeriesHit -> "series" to hit.s.seriesId
+                            else -> "vod" to 0L
+                        }
+                        try { graph.db.watchlistDao().remove("${p.id}:$kind:$refId") } catch (_: Throwable) {}
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "☆ Watchlist",
+                                heading = "Removed ${hit.name}",
+                                lines = emptyList(),
+                                spoken = "Removed ${hit.name} from your watchlist.",
+                            )
+                        )
+                    }
+                }
+                is tv.enktel.app.voice.VoiceIntent.MoreLike -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    if (hit != null) {
+                        val sims = kb.similar(hit)
+                        val lines = sims.take(6).map { h ->
+                            tv.enktel.app.voice.VoiceAnswerLine(
+                                title = h.name,
+                                subtitle = kb.genre(h)?.take(28).orEmpty(),
+                                route = kb.route(h),
+                            )
+                        }
+                        voiceBus.answers.emit(
+                            tv.enktel.app.voice.VoiceAnswer(
+                                eyebrow = "Similar to ${hit.name}",
+                                heading = "You might also like",
+                                lines = lines,
+                                spoken = if (sims.isEmpty()) "I couldn't find anything similar."
+                                else "Here are ${sims.size} titles similar to ${hit.name}.",
+                            )
+                        )
+                    }
+                }
+
+                // ---- Info / IMDb-style ----------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.WhoIsIn -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val cast = hit?.let { kb.cast(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Cast", heading = hit?.name ?: intent.query,
+                        spoken = when {
+                            hit == null -> "I couldn't find ${intent.query}."
+                            cast == null -> "I don't have cast information for ${hit.name}."
+                            else -> "${hit.name} stars ${cast.take(200)}."
+                        }
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.WhoDirected -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val d = hit?.let { kb.director(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Director", heading = hit?.name ?: intent.query,
+                        spoken = when {
+                            hit == null -> "I couldn't find ${intent.query}."
+                            d == null -> "I don't have director information for ${hit.name}."
+                            else -> "${hit.name} was directed by $d."
+                        }
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.WhatYear -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val y = hit?.let { kb.year(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Year", heading = hit?.name ?: intent.query,
+                        spoken = when {
+                            hit == null -> "I couldn't find ${intent.query}."
+                            y == null -> "I don't have a year for ${hit.name}."
+                            else -> "${hit.name} came out in $y."
+                        }
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.WhatRating -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val r = hit?.let { kb.rating(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Rating", heading = hit?.name ?: intent.query,
+                        spoken = when {
+                            hit == null -> "I couldn't find ${intent.query}."
+                            r == null -> "I don't have a rating for ${hit.name}."
+                            else -> "${hit.name} is rated ${"%.1f".format(r)} out of ten."
+                        }
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.WhatGenre -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val g = hit?.let { kb.genre(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Genre", heading = hit?.name ?: intent.query,
+                        spoken = when {
+                            hit == null -> "I couldn't find ${intent.query}."
+                            g == null -> "I don't have a genre for ${hit.name}."
+                            else -> "${hit.name} is $g."
+                        }
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.PlotOf -> {
+                    val kb = tv.enktel.app.voice.VoiceKnowledgeBase(graph)
+                    val hit = kb.findTitle(intent.query)
+                    val plot = hit?.let { kb.plot(it) ?: kb.describe(it) }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "Plot", heading = hit?.name ?: intent.query,
+                        spoken = plot ?: "I couldn't find ${intent.query}.",
+                    ))
+                }
+
+                // ---- Discovery / EPG ------------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.WhatsOnTonight,
+                is tv.enktel.app.voice.VoiceIntent.WhatsOnTomorrow -> {
+                    // Reuse the existing WhatsOnNow rail — a proper time-window
+                    // EPG scan lands with the next TV-guide refresh.
+                    nav.navigate("guide")
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "TV Guide", heading = "Opening the guide",
+                        spoken = "Opening the guide so you can browse tonight's schedule.",
+                    ))
+                }
+                is tv.enktel.app.voice.VoiceIntent.WhenIsOn -> {
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "When is on", heading = intent.query,
+                        spoken = "Opening the guide — try searching for ${intent.query} there.",
+                    ))
+                    nav.navigate("guide")
+                }
+                is tv.enktel.app.voice.VoiceIntent.TrendingNow -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val list = try { graph.recommendations.trending(p.id) } catch (_: Throwable) { emptyList() }
+                    val lines = list.take(6).map { m ->
+                        tv.enktel.app.voice.VoiceAnswerLine(
+                            title = m.name,
+                            subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                            route = "movie/${m.key}",
+                        )
+                    }
+                    voiceBus.answers.emit(voiceCard(
+                        eyebrow = "🔥 Trending",
+                        heading = "Popular right now",
+                        lines = lines,
+                        spoken = if (list.isEmpty()) "Nothing marked as trending yet."
+                        else "Top of the charts: ${list.take(3).joinToString(", ") { it.name }}.",
+                    ))
+                }
+
+                // ---- Sync ------------------------------------------------------
+                is tv.enktel.app.voice.VoiceIntent.RefreshPlaylist -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    try { graph.content.refreshAll(p) } catch (_: Throwable) {}
+                }
+                is tv.enktel.app.voice.VoiceIntent.RefreshEpg -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    try { graph.epg.refresh(p) } catch (_: Throwable) {}
+                }
+                is tv.enktel.app.voice.VoiceIntent.ToggleTheme ->
+                    nav.navigate("settings")
+                is tv.enktel.app.voice.VoiceIntent.OpenSports ->
+                    nav.navigate("sports")
             }
         }
     }
@@ -462,3 +753,15 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
 
 fun vodPlayerRoute(url: String, title: String, progressKey: String = "", live: Boolean = false): String =
     "vodPlayer?url=${encode(url)}&title=${encode(title)}&pk=$progressKey&live=${if (live) 1 else 0}"
+
+private data class Quadruple<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
+/** Compact voice-answer builder shared across the many small info intents. */
+private fun voiceCard(
+    eyebrow: String,
+    heading: String,
+    lines: List<tv.enktel.app.voice.VoiceAnswerLine> = emptyList(),
+    spoken: String,
+): tv.enktel.app.voice.VoiceAnswer = tv.enktel.app.voice.VoiceAnswer(
+    eyebrow = eyebrow, heading = heading, lines = lines, spoken = spoken,
+)

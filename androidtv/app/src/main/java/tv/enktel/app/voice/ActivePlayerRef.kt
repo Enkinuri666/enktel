@@ -31,4 +31,16 @@ object ActivePlayerRef {
     fun pause() { try { player?.pause() } catch (_: Throwable) {} }
     fun resume() { try { player?.play() } catch (_: Throwable) {} }
     fun isPlaying(): Boolean = try { player?.isPlaying == true } catch (_: Throwable) { false }
+    fun seekForward(seconds: Int) { try {
+        player?.let { it.seekTo((it.currentPosition + seconds * 1000L).coerceAtLeast(0)) }
+    } catch (_: Throwable) {} }
+    fun seekBack(seconds: Int) { try {
+        player?.let { it.seekTo((it.currentPosition - seconds * 1000L).coerceAtLeast(0)) }
+    } catch (_: Throwable) {} }
+    fun seekToMinutes(minutes: Int) { try {
+        player?.seekTo((minutes * 60_000L).coerceAtLeast(0))
+    } catch (_: Throwable) {} }
+    fun restart() { try { player?.seekTo(0) } catch (_: Throwable) {} }
+    fun next() { try { player?.seekToNext() } catch (_: Throwable) {} }
+    fun previous() { try { player?.seekToPrevious() } catch (_: Throwable) {} }
 }
