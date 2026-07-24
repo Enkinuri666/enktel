@@ -99,7 +99,11 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
-            kotlinx.coroutines.delay(60_000)
+            // Under thermal load, stretch the guide's now-tick refresh so
+            // recomposition of the timeline doesn't add to CPU pressure.
+            val mult = tv.enktel.app.data.net.ThermalGuard.level.value.pollIntervalMultiplier
+            val wait = (60_000L * mult).toLong().coerceAtMost(600_000L)
+            kotlinx.coroutines.delay(wait)
         }
     }
     suspend fun scrollToNow() {

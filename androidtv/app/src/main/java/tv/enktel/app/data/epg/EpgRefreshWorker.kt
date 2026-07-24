@@ -13,6 +13,12 @@ import java.util.concurrent.TimeUnit
 class EpgRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as EnktelApp
+        // Thermal guard: if the device is hot, skip this cycle entirely
+        // rather than adding to the load.  WorkManager will fire us again
+        // on the next scheduled tick when things have cooled down.
+        if (tv.enktel.app.data.net.ThermalGuard.level.value.shouldSkipBackground) {
+            return Result.success()
+        }
         val profile = app.graph.playlists.activeProfile() ?: return Result.success()
         return try {
             app.graph.epg.refresh(profile)

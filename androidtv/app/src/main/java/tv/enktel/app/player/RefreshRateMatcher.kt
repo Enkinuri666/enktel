@@ -72,7 +72,9 @@ object RefreshRateMatcher {
         try {
             val window = activity.window ?: return
             val lp = window.attributes
-            lp.preferredDisplayModeId = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                lp.preferredDisplayModeId = 0
+            }
             lp.preferredRefreshRate = 0f
             window.attributes = lp
         } catch (_: Throwable) {}
