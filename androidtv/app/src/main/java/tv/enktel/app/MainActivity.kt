@@ -425,11 +425,13 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                 is tv.enktel.app.voice.VoiceIntent.PreviousEpisode ->
                     tv.enktel.app.voice.ActivePlayerRef.previous()
                 is tv.enktel.app.voice.VoiceIntent.EnterPip -> {
-                    try {
-                        (ctx as? android.app.Activity)?.enterPictureInPictureMode(
-                            android.app.PictureInPictureParams.Builder().build()
-                        )
-                    } catch (_: Throwable) {}
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        try {
+                            (ctx as? android.app.Activity)?.enterPictureInPictureMode(
+                                android.app.PictureInPictureParams.Builder().build()
+                            )
+                        } catch (_: Throwable) {}
+                    }
                 }
                 is tv.enktel.app.voice.VoiceIntent.CastNow ->
                     tv.enktel.app.player.CastToTv.open(appCtx)
