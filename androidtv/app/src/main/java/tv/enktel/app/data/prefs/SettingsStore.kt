@@ -65,6 +65,10 @@ class SettingsStore(private val context: Context) {
     private val BACKUP_GATEWAYS = stringPreferencesKey("backup_gateways")
     // v1.14.2: Discord webhook URL for social presence pushes.  Blank disables.
     private val DISCORD_WEBHOOK = stringPreferencesKey("discord_webhook")
+    // v1.15.0: master toggle for the app's sonic-branding earcons
+    // (nav clicks, rail-end chimes, movie-open swell).  Voice-command
+    // earcons are separately gated by the voice feature itself.
+    private val UI_SOUNDS_ENABLED = booleanPreferencesKey("ui_sounds_enabled")
 
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
@@ -129,6 +133,8 @@ class SettingsStore(private val context: Context) {
     }
     val discordWebhook: Flow<String> = context.dataStore.data.map { it[DISCORD_WEBHOOK].orEmpty() }
     suspend fun setDiscordWebhook(v: String) = context.dataStore.edit { it[DISCORD_WEBHOOK] = v.trim() }
+    val uiSoundsEnabled: Flow<Boolean> = context.dataStore.data.map { it[UI_SOUNDS_ENABLED] ?: true }
+    suspend fun setUiSoundsEnabled(v: Boolean) = context.dataStore.edit { it[UI_SOUNDS_ENABLED] = v }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

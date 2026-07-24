@@ -144,6 +144,15 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
+    // Ambilight glow: extract dominant colour from the hero poster and
+    // bleed it behind the whole Home layout as a soft radial wash.  Sits
+    // in a Box below the LazyColumn so it never intercepts touches.
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+        val heroPoster = heroItems.firstOrNull()?.poster
+        tv.enktel.app.ui.components.AmbilightGlow(
+            imageUrl = heroPoster,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     LazyColumn(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(28.dp),
@@ -458,6 +467,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
     }
+    } // close ambilight wrapper Box
 }
 
 /**

@@ -14,8 +14,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 49
-        versionName = "1.14.2"
+        versionCode = 50
+        versionName = "1.15.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -123,5 +123,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    implementation(libs.palette.ktx)
     implementation(libs.work.runtime.ktx)
 }
