@@ -85,7 +85,10 @@ fun VodPlayerScreen(
     isLive: Boolean,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfile = if (bufferProfileRaw == "auto")
+        tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
+    else bufferProfileRaw
     val engine = remember { PlayerEngine(context, graph.http, bufferProfile) }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
@@ -114,12 +117,37 @@ fun VodPlayerScreen(
         engine.setLoudnessOn(loudnessOn)
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
-    DisposableEffect(Unit) {
-        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
-        onDispose {
-            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
-                tv.enktel.app.voice.ActivePlayerRef.player = null
+    // Presence tracker: seed on first mount, then throttle position updates
+    // to once every couple of seconds so we don't churn the webhook debounce.
+    LaunchedEffect(title, isLive) {
+        if (!isLive) tv.enktel.app.data.net.PresenceTracker.setVod(title = title)
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!isLive && durationMs > 0) {
+                tv.enktel.app.data.net.PresenceTracker.updateVodPosition(positionMs, durationMs)
             }
+            delay(4_000)
+        }
+    }
+    val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(engine) {
+        engine.videoFrameRate.collect { fps ->
+            if (fps > 0f) {
+                (ctxForRefresh as? android.app.Activity)?.let {
+                    tv.enktel.app.player.RefreshRateMatcher.match(it, fps)
+                }
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
+        onDispose {
+            (ctxForRefresh as? android.app.Activity)?.let {
+                tv.enktel.app.player.RefreshRateMatcher.reset(it)
+            }
+            tv.enktel.app.data.net.PresenceTracker.clear()
+            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }
     }
@@ -153,7 +181,11 @@ fun VodPlayerScreen(
 
     LaunchedEffect(controlsTick) {
         if (showControls) {
-            delay(5000)
+            // Faster fade on mobile (touch) — TV needs more time so a viewer
+            // can register the current transport state before the overlay
+            // vanishes.
+            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 5000L
+            delay(hideMs)
             if (trackMenu.isEmpty()) showControls = false
         }
     }
@@ -309,6 +341,48 @@ fun VodPlayerScreen(
             }
         }
 
+        // Stream-health chip — self-hides when everything's fine.
+        tv.enktel.app.ui.components.StreamHealthChip(
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+        )
+
+        // ---- Skip Intro pill ------------------------------------------------
+        // Netflix-style floating chip.  Shown between 5 s and 90 s into VOD
+        // playback so users can bypass series intro sequences with one tap
+        // (or by saying "skip intro"). Dismissed once tapped, once the
+        // player crosses the 90 s mark, or when it's a live stream.
+        var skipIntroDismissed by remember(progressKey) { androidx.compose.runtime.mutableStateOf(false) }
+        val showSkipIntro = !isLive && !skipIntroDismissed &&
+            positionMs in 5_000L..90_000L && durationMs > 180_000L
+        if (showSkipIntro) {
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 32.dp, bottom = if (showControls) 140.dp else 40.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.Black.copy(alpha = 0.75f))
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            engine.player.seekTo(90_000L)
+                            skipIntroDismissed = true
+                            showControls = true
+                            controlsTick++
+                        }
+                    }
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("⏭", color = Color.White, fontSize = 15.sp)
+                Text(
+                    "Skip Intro",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
         if (showControls) {
             // Mobile gets tighter side padding so the seek bar reaches closer to the
             // screen edges on a phone, which is where the thumb naturally goes.
@@ -378,6 +452,11 @@ fun VodPlayerScreen(
                     item {
                         FocusButton("⧉ PiP", onClick = {
                             (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) }
+                        })
+                    }
+                    item {
+                        FocusButton("📺 Cast", onClick = {
+                            tv.enktel.app.player.CastToTv.open(context)
                         })
                     }
                 }

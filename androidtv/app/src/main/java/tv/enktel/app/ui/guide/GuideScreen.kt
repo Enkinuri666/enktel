@@ -69,6 +69,15 @@ private val DP_PER_HOUR = 220.dp
 
 @Composable
 fun GuideScreen(graph: AppGraph, nav: NavHostController) {
+    // Narrow phone viewport (Galaxy S25 Ultra portrait, standard 6" phones): a
+    // seven-day multi-column grid is unusable at that width.  Bounce to a
+    // single-channel vertical timeline so scrolling stays 1-dimensional.
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val isNarrow = cfg.screenWidthDp < 600
+    if (isNarrow) {
+        MobileGuideScreen(graph, nav)
+        return
+    }
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
@@ -99,7 +108,11 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
-            kotlinx.coroutines.delay(60_000)
+            // Under thermal load, stretch the guide's now-tick refresh so
+            // recomposition of the timeline doesn't add to CPU pressure.
+            val mult = tv.enktel.app.data.net.ThermalGuard.level.value.pollIntervalMultiplier
+            val wait = (60_000L * mult).toLong().coerceAtMost(600_000L)
+            kotlinx.coroutines.delay(wait)
         }
     }
     suspend fun scrollToNow() {

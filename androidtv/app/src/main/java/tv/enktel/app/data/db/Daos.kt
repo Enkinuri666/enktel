@@ -87,6 +87,11 @@ interface EpgDao {
     suspend fun archive(profileId: Long, epgId: String, from: Long, now: Long): List<EpgProgram>
 
     @Query("SELECT COUNT(*) FROM epg WHERE profileId = :profileId") suspend fun count(profileId: Long): Int
+
+    /** Global title search — used by the unified master-search screen so
+     *  users can find an upcoming program by name across every channel. */
+    @Query("SELECT * FROM epg WHERE profileId = :profileId AND endMs > :now AND (title LIKE '%' || :q || '%' OR desc LIKE '%' || :q || '%') ORDER BY startMs LIMIT 40")
+    suspend fun searchUpcoming(profileId: Long, q: String, now: Long): List<EpgProgram>
 }
 
 @Dao

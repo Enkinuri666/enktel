@@ -59,6 +59,16 @@ class SettingsStore(private val context: Context) {
     private val TEXT_SCALE_PCT = intPreferencesKey("text_scale_pct") // 85-140
     private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
     private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | guide_dock
+    private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
+    // v1.13.0: newline-separated `host[:port]` list of backup gateways used by
+    // StreamHealthInterceptor when the primary throws 403 / times out.
+    private val BACKUP_GATEWAYS = stringPreferencesKey("backup_gateways")
+    // v1.14.2: Discord webhook URL for social presence pushes.  Blank disables.
+    private val DISCORD_WEBHOOK = stringPreferencesKey("discord_webhook")
+    // v1.15.0: master toggle for the app's sonic-branding earcons
+    // (nav clicks, rail-end chimes, movie-open swell).  Voice-command
+    // earcons are separately gated by the voice feature itself.
+    private val UI_SOUNDS_ENABLED = booleanPreferencesKey("ui_sounds_enabled")
 
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
@@ -111,6 +121,20 @@ class SettingsStore(private val context: Context) {
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
     val backAction: Flow<String> = context.dataStore.data.map { it[BACK_ACTION] ?: "exit" }
+    val wakeWordEnabled: Flow<Boolean> = context.dataStore.data.map { it[WAKE_WORD_ENABLED] ?: false }
+    suspend fun setWakeWordEnabled(v: Boolean) = context.dataStore.edit { it[WAKE_WORD_ENABLED] = v }
+    val backupGateways: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        prefs[BACKUP_GATEWAYS].orEmpty().split('\n').mapNotNull {
+            it.trim().takeIf { s -> s.isNotEmpty() }
+        }
+    }
+    suspend fun setBackupGateways(list: List<String>) = context.dataStore.edit {
+        it[BACKUP_GATEWAYS] = list.joinToString("\n")
+    }
+    val discordWebhook: Flow<String> = context.dataStore.data.map { it[DISCORD_WEBHOOK].orEmpty() }
+    suspend fun setDiscordWebhook(v: String) = context.dataStore.edit { it[DISCORD_WEBHOOK] = v.trim() }
+    val uiSoundsEnabled: Flow<Boolean> = context.dataStore.data.map { it[UI_SOUNDS_ENABLED] ?: true }
+    suspend fun setUiSoundsEnabled(v: Boolean) = context.dataStore.edit { it[UI_SOUNDS_ENABLED] = v }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

@@ -101,16 +101,33 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
 
-    val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    // Auto-mode: let NetworkClass pick the profile based on the active
+    // network (WIRED → large, WIFI → balanced, MOBILE → large for resilience).
+    val bufferProfile = if (bufferProfileRaw == "auto")
+        tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
+    else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
-    DisposableEffect(engine) {
-        tv.enktel.app.voice.ActivePlayerRef.player = engine.player
-        onDispose {
-            if (tv.enktel.app.voice.ActivePlayerRef.player === engine.player) {
-                tv.enktel.app.voice.ActivePlayerRef.player = null
+    val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(engine) {
+        engine.videoFrameRate.collect { fps ->
+            if (fps > 0f) {
+                (ctxForRefresh as? android.app.Activity)?.let {
+                    tv.enktel.app.player.RefreshRateMatcher.match(it, fps)
+                }
             }
+        }
+    }
+    DisposableEffect(engine) {
+        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
+        onDispose {
+            (ctxForRefresh as? android.app.Activity)?.let {
+                tv.enktel.app.player.RefreshRateMatcher.reset(it)
+            }
+            tv.enktel.app.data.net.PresenceTracker.clear()
+            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
             engine.release()
         }
     }
@@ -201,10 +218,25 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         graph.content.isFavoriteFlow(p.id, "live", ch.streamId).collect { isFav = it }
     }
 
-    // Auto-hide info bar
+    // Presence: keep the tracker in sync with the currently-tuned channel +
+    // now-playing EPG program.
+    LaunchedEffect(current?.key, nowNext.now?.title) {
+        val ch = current ?: return@LaunchedEffect
+        tv.enktel.app.data.net.PresenceTracker.setLive(
+            channelName = ch.name,
+            channelLogo = ch.logo,
+            programTitle = nowNext.now?.title,
+            programEndMs = nowNext.now?.endMs ?: 0L,
+        )
+    }
+
+    // Auto-hide info bar — faster fade on mobile so the tap-target chrome
+    // clears out of the way quickly, longer on TV so a viewer with a remote
+    // has time to register the current channel + program before it vanishes.
     LaunchedEffect(infoTick, anyOverlay) {
         if (showInfo && !anyOverlay) {
-            delay(6000)
+            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 6000L
+            delay(hideMs)
             showInfo = false
         }
     }
@@ -541,6 +573,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             }
         }
 
+        // Stream-health chip — always mounted (self-hides when quality is
+        // fine) so the user sees ISP/VPN degradation the instant it lands
+        // without needing to bring up the info overlay.
+        tv.enktel.app.ui.components.StreamHealthChip(
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+        )
+
         // InfoBar + action strip are for fullscreen playback only. When the user opens
         // the docked Browse mode we hide them so the BrowseDock isn't overlapped from
         // below — the docked-video ribbon and the dock itself already give the user all
@@ -613,6 +652,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         FocusButton("⧉ PiP", onClick = {
                             val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
                             if (!ok) toaster.error("Picture-in-Picture not supported here")
+                        })
+                    }
+                    item {
+                        FocusButton("📺 Cast", onClick = {
+                            val ok = tv.enktel.app.player.CastToTv.open(context)
+                            if (!ok) toaster.error("Cast picker not available on this device")
                         })
                     }
                     item { FocusButton("⋯ More", onClick = { showQuickMenu = true }) }

@@ -18,8 +18,13 @@ sealed class VoiceIntent {
     data object FindSports : VoiceIntent()
     data object OpenHome : VoiceIntent()
     data object OpenGuide : VoiceIntent()
+    data object OpenLiveTv : VoiceIntent()
     data object OpenMovies : VoiceIntent()
     data object OpenSeries : VoiceIntent()
+    /** Scoped searches — navigate to the given screen and pre-fill the search
+     *  field.  Result set is filtered client-side to that content type. */
+    data class SearchMovies(val query: String) : VoiceIntent()
+    data class SearchSeries(val query: String) : VoiceIntent()
     data object OpenWatchlist : VoiceIntent()
     data object OpenRecordings : VoiceIntent()
     data object OpenSettings : VoiceIntent()
@@ -36,6 +41,61 @@ sealed class VoiceIntent {
     data class WhatsOnChannel(val channel: String) : VoiceIntent()
     data class TellMeAbout(val query: String) : VoiceIntent()
     data class Unknown(val heard: String) : VoiceIntent()
+
+    // ---- Playback transport --------------------------------------------------
+    data class SeekForward(val seconds: Int) : VoiceIntent()
+    data class SeekBack(val seconds: Int) : VoiceIntent()
+    data class SeekTo(val minutes: Int) : VoiceIntent()
+    data object Restart : VoiceIntent()
+    data object SkipIntro : VoiceIntent()
+    data object NextEpisode : VoiceIntent()
+    data object PreviousEpisode : VoiceIntent()
+    data object EnterPip : VoiceIntent()
+    data object CastNow : VoiceIntent()
+
+    // ---- Content actions -----------------------------------------------------
+    data object PlayRandomMovie : VoiceIntent()
+    data object PlayRandomSeries : VoiceIntent()
+    data object ResumeLast : VoiceIntent()
+    data object ContinueWatching : VoiceIntent()
+    data class AddToWatchlist(val query: String) : VoiceIntent()
+    data class RemoveFromWatchlist(val query: String) : VoiceIntent()
+    data class MoreLike(val query: String) : VoiceIntent()
+
+    // ---- Info / knowledge (IMDb-style questions) -----------------------------
+    data class WhoIsIn(val query: String) : VoiceIntent()
+    data class WhoDirected(val query: String) : VoiceIntent()
+    data class WhatYear(val query: String) : VoiceIntent()
+    data class WhatRating(val query: String) : VoiceIntent()
+    data class WhatGenre(val query: String) : VoiceIntent()
+    data class PlotOf(val query: String) : VoiceIntent()
+
+    // ---- Discovery / EPG -----------------------------------------------------
+    data object WhatsOnTonight : VoiceIntent()
+    data object WhatsOnTomorrow : VoiceIntent()
+    data class WhenIsOn(val query: String) : VoiceIntent()
+    data object TrendingNow : VoiceIntent()
+
+    // ---- Sync + housekeeping -------------------------------------------------
+    data object RefreshPlaylist : VoiceIntent()
+    data object RefreshEpg : VoiceIntent()
+    data object ToggleTheme : VoiceIntent()
+    data object OpenSports : VoiceIntent()
+    /** "Show me sports channels" / "movie channels" — filter Live TV by category kind. */
+    data class ShowChannelKind(val keyword: String) : VoiceIntent()
+    /** "Play the Arsenal game" / "Man United game" — best-effort fuzzy match
+     *  against currently-live EPG programs. */
+    data class PlayTeamGame(val team: String) : VoiceIntent()
+    /** "Remind me when Formula 1 starts" — schedules a notification for the
+     *  next upcoming EPG match of the phrase. */
+    data class RemindWhenOn(val query: String) : VoiceIntent()
+    /** Multi-attribute filter: "action movies from 2020 starring Tom Cruise". */
+    data class FilteredMovieSearch(
+        val genre: String? = null,
+        val year: Int? = null,
+        val decade: Int? = null,
+        val actor: String? = null,
+    ) : VoiceIntent()
 }
 
 /**
@@ -101,6 +161,33 @@ object VoiceIntentParser {
                 "channel down", "previous channel", "last channel",
                 "flip down", "go down a channel",
             )) return VoiceIntent.ChannelDown
+
+        // Shorthand pure-number: "channel 402", "jump to channel 42"
+        Regex("(?:jump to |go to |put on |tune to )?channel (\\d+)")
+            .find(text)?.let {
+                return VoiceIntent.TuneChannel(it.groupValues[1])
+            }
+
+        // "show me sports channels" / "browse movie channels" / "kids channels" —
+        // opens the channel list scoped to that category kind.
+        Regex("(?:show me |browse |open |find |list )?(sports|movie|movies|kids|news|music|entertainment|documentary|adult|international) channels?")
+            .find(text)?.let {
+                return VoiceIntent.ShowChannelKind(it.groupValues[1])
+            }
+
+        // "play the arsenal game" / "arsenal game" / "man united match" —
+        // scans live EPG for a program mentioning the team.
+        Regex("(?:play (?:the )?|watch (?:the )?)?([a-z][a-z ']{2,30}?) (?:game|match|fixture|kickoff)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim()
+                if (q.length >= 3 && q !in setOf("live", "next", "the", "a")) {
+                    return VoiceIntent.PlayTeamGame(q)
+                }
+            }
+
+        // "remind me when Formula 1 starts" / "remind me when the game starts"
+        Regex("remind me when (.+?) (?:starts|is on|comes on|airs)")
+            .find(text)?.let { return VoiceIntent.RemindWhenOn(it.groupValues[1].trim()) }
 
         // "turn to Nine HD" / "switch to bein sports" / "put on channel 42"
         // / "tune to CNN" / "go to fox news"
@@ -199,7 +286,74 @@ object VoiceIntentParser {
                 if (q.isNotBlank()) return VoiceIntent.TellMeAbout(q)
             }
 
-        // ---- Search -------------------------------------------------------------
+        // ---- Multi-attribute movie search --------------------------------------
+        // "action movies from 2020", "comedy movies after 2015 with Tom Hanks",
+        // "80s horror movies", "sci-fi movies starring Sigourney Weaver".
+        if ("movie" in text || "film" in text) {
+            val genres = listOf(
+                "action", "comedy", "drama", "horror", "thriller", "romance",
+                "sci-fi", "science fiction", "fantasy", "adventure", "crime",
+                "mystery", "documentary", "animation", "family", "western",
+                "musical", "war", "biography", "history",
+            )
+            val g = genres.firstOrNull { it in text }
+            val yr = Regex("(?:from |in |released in |year )(\\d{4})").find(text)
+                ?.groupValues?.get(1)?.toIntOrNull()
+                ?: Regex("\\b(\\d{4})\\b").find(text)?.groupValues?.get(1)?.toIntOrNull()
+            val decadeMatch = Regex("([1-9]0)s\\b|\\b(80s|90s|00s|70s|60s|50s)\\b").find(text)
+            val decade = when (decadeMatch?.groupValues?.firstOrNull { it.isNotBlank() && it != decadeMatch.value }
+                ?: decadeMatch?.value) {
+                "80s" -> 1980; "90s" -> 1990; "00s" -> 2000
+                "70s" -> 1970; "60s" -> 1960; "50s" -> 1950
+                else -> null
+            }
+            val actor = Regex("(?:starring|with|featuring) ([a-z][a-z .'-]+?)(?:$| in| from| after| before| starring)")
+                .find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.length >= 3 }
+            if (g != null || yr != null || decade != null || actor != null) {
+                return VoiceIntent.FilteredMovieSearch(
+                    genre = g?.let { if (it == "science fiction") "Sci-Fi" else it.replaceFirstChar { c -> c.uppercase() } },
+                    year = yr,
+                    decade = decade,
+                    actor = actor,
+                )
+            }
+        }
+
+        // ---- Scoped search: Movies -----------------------------------------------
+        // "search movies for spider-man" / "find me a movie called Dune"
+        // / "look for the movie Inception" / "movie search spider-man"
+        Regex(
+            "(?:search|find|look up|look for|show me|do you have|browse) " +
+                "(?:me |for )?(?:a |the |any |some )?(?:movie|film|movies|films) " +
+                "(?:called |named |about |for |with |on )?(.+)",
+        ).find(text)?.let {
+            val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+            if (q.isNotBlank()) return VoiceIntent.SearchMovies(q)
+        }
+        Regex("(?:movie|film|movies|films) search (?:for |about )?(.+)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+                if (q.isNotBlank()) return VoiceIntent.SearchMovies(q)
+            }
+
+        // ---- Scoped search: Series -----------------------------------------------
+        // "search series for breaking bad" / "find me a show called The Office"
+        // / "look for the series Chernobyl" / "series search Foundation"
+        Regex(
+            "(?:search|find|look up|look for|show me|do you have|browse) " +
+                "(?:me |for )?(?:a |the |any |some )?(?:series|show|shows|tv show|tv shows) " +
+                "(?:called |named |about |for |with |on )?(.+)",
+        ).find(text)?.let {
+            val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+            if (q.isNotBlank()) return VoiceIntent.SearchSeries(q)
+        }
+        Regex("(?:series|show|shows) search (?:for |about )?(.+)")
+            .find(text)?.let {
+                val q = it.groupValues[1].trim().trimEnd('?', '.', '!')
+                if (q.isNotBlank()) return VoiceIntent.SearchSeries(q)
+            }
+
+        // ---- Search (generic — searches both Movies and Series at once) ---------
         Regex("(?:search|find|look up|look for|show me|do you have) (?:for |me )?(?:the |a |any )?(.+)")
             .find(text)?.let {
                 val q = it.groupValues[1].trim()
@@ -217,6 +371,12 @@ object VoiceIntentParser {
                 "open guide", "tv guide", "open tv guide", "show me the guide",
                 "epg", "electronic program guide",
             )) return VoiceIntent.OpenGuide
+        if (text.matchesAny(
+                "open live tv", "live tv", "browse live tv", "show me live tv",
+                "browse channels", "show channels", "channel list", "all channels",
+                "show me the channels", "open channels", "channels", "live channels",
+                "browse live channels",
+            )) return VoiceIntent.OpenLiveTv
         if (text.matchesAny("open movies", "show movies", "movies", "browse movies"))
             return VoiceIntent.OpenMovies
         if (text.matchesAny(
@@ -229,6 +389,126 @@ object VoiceIntentParser {
                 "open recordings", "recordings", "my recordings", "dvr",
             )) return VoiceIntent.OpenRecordings
         if (text.matchesAny("open settings", "settings")) return VoiceIntent.OpenSettings
+        if (text.matchesAny(
+                "open sports", "sports hub", "sports", "browse sports",
+            )) return VoiceIntent.OpenSports
+
+        // ---- Playback transport ------------------------------------------------
+        // "skip forward 30 seconds" / "jump ahead 2 minutes" / "forward 15"
+        Regex(
+            "(?:skip|jump|fast[- ]?forward|forward|ff|go forward|move ahead)" +
+                "(?: (?:by |ahead |the |about ))?(?:\\s*)?(\\d+)?\\s*(minute|minutes|second|seconds|sec|min)?",
+        ).find(text)?.let {
+            val n = it.groupValues[1].toIntOrNull() ?: 30
+            val unit = it.groupValues[2]
+            val secs = if (unit.startsWith("min")) n * 60 else n
+            return VoiceIntent.SeekForward(secs)
+        }
+        Regex(
+            "(?:rewind|go back|back|skip back|jump back|rewind by)" +
+                "(?: (?:by |the |about ))?(?:\\s*)?(\\d+)?\\s*(minute|minutes|second|seconds|sec|min)?",
+        ).find(text)?.let {
+            val n = it.groupValues[1].toIntOrNull() ?: 30
+            val unit = it.groupValues[2]
+            val secs = if (unit.startsWith("min")) n * 60 else n
+            return VoiceIntent.SeekBack(secs)
+        }
+        Regex("(?:seek|go|jump) to (\\d+)\\s*(?:minutes?|min)?")
+            .find(text)?.let {
+                return VoiceIntent.SeekTo(it.groupValues[1].toInt())
+            }
+        if (text.matchesAny(
+                "restart", "start over", "from the beginning", "restart from the beginning",
+                "play from the start", "restart it", "play from beginning",
+            )) return VoiceIntent.Restart
+        if (text.matchesAny(
+                "skip intro", "skip the intro", "skip opening", "skip credits",
+                "skip the opening",
+            )) return VoiceIntent.SkipIntro
+        if (text.matchesAny(
+                "next episode", "play next episode", "next", "play next",
+            )) return VoiceIntent.NextEpisode
+        if (text.matchesAny(
+                "previous episode", "play previous episode", "last episode", "go back an episode",
+            )) return VoiceIntent.PreviousEpisode
+        if (text.matchesAny(
+                "picture in picture", "pip", "enter pip", "minimize the player",
+                "shrink the player", "picture-in-picture",
+            )) return VoiceIntent.EnterPip
+        if (text.matchesAny(
+                "cast", "cast this", "cast to tv", "cast to the tv", "screencast",
+                "mirror to tv", "start casting", "cast now",
+            )) return VoiceIntent.CastNow
+
+        // ---- Content actions ---------------------------------------------------
+        if (text.matchesAny(
+                "play random movie", "play a random movie", "random movie",
+                "surprise me with a movie", "pick a movie", "pick a random movie",
+            )) return VoiceIntent.PlayRandomMovie
+        if (text.matchesAny(
+                "play random series", "play a random series", "random series",
+                "random show", "surprise me with a show", "pick a series",
+            )) return VoiceIntent.PlayRandomSeries
+        if (text.matchesAny(
+                "resume last", "resume", "pick up where i left off", "continue",
+                "continue where i left off", "keep watching",
+            )) return VoiceIntent.ResumeLast
+        if (text.matchesAny(
+                "continue watching", "what am i watching", "what was i watching",
+                "show my continue watching",
+            )) return VoiceIntent.ContinueWatching
+
+        Regex("(?:add|save|put) (.+?) to (?:my )?(?:watchlist|list|favorites|favourites)")
+            .find(text)?.let { return VoiceIntent.AddToWatchlist(it.groupValues[1].trim()) }
+        Regex("(?:remove|take|delete) (.+?) from (?:my )?(?:watchlist|list|favorites|favourites)")
+            .find(text)?.let { return VoiceIntent.RemoveFromWatchlist(it.groupValues[1].trim()) }
+        Regex("(?:more like|similar to|things like|shows like|movies like) (.+)")
+            .find(text)?.let { return VoiceIntent.MoreLike(it.groupValues[1].trim().trimEnd('?','.','!')) }
+
+        // ---- Info / IMDb-style questions --------------------------------------
+        Regex("(?:who(?:'s| is)? in|who stars in|cast of|who acts in) (.+)")
+            .find(text)?.let { return VoiceIntent.WhoIsIn(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        Regex("(?:who directed|who is the director of|director of|who made) (.+)")
+            .find(text)?.let { return VoiceIntent.WhoDirected(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        Regex("(?:what year (?:did|is|was)|when did|when was|release year of|when was .* released|what year is) (.+)")
+            .find(text)?.let { return VoiceIntent.WhatYear(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        Regex("(?:what(?:'s| is) the rating of|rating of|how good is|score of) (.+)")
+            .find(text)?.let { return VoiceIntent.WhatRating(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        Regex("(?:what genre is|what kind of movie is|genre of) (.+)")
+            .find(text)?.let { return VoiceIntent.WhatGenre(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        Regex("(?:what(?:'s| is) (?:.+?)? about|plot of|what happens in|summary of|synopsis of) (.+)")
+            .find(text)?.let { return VoiceIntent.PlotOf(it.groupValues[1].trim().trimEnd('?','.','!')) }
+
+        // ---- Discovery / EPG ---------------------------------------------------
+        if (text.matchesAny(
+                "what's on tonight", "what is on tonight", "tonight's tv", "tonight",
+                "what's playing tonight",
+            )) return VoiceIntent.WhatsOnTonight
+        if (text.matchesAny(
+                "what's on tomorrow", "what is on tomorrow", "tomorrow's tv", "tomorrow",
+                "what's playing tomorrow",
+            )) return VoiceIntent.WhatsOnTomorrow
+        Regex("when (?:is|will) (.+?) (?:be )?(?:on|playing|airing)")
+            .find(text)?.let { return VoiceIntent.WhenIsOn(it.groupValues[1].trim().trimEnd('?','.','!')) }
+        if (text.matchesAny(
+                "what's trending", "trending now", "what is trending", "what's popular",
+                "what is popular", "top picks",
+            )) return VoiceIntent.TrendingNow
+
+        // ---- Sync / housekeeping ----------------------------------------------
+        if (text.matchesAny(
+                "refresh playlist", "sync playlist", "reload playlist", "refresh channels",
+                "refresh the playlist", "resync playlist", "resync the playlist",
+                "sync the playlist", "reload channels",
+            )) return VoiceIntent.RefreshPlaylist
+        if (text.matchesAny(
+                "refresh epg", "refresh the guide", "reload epg", "refresh tv guide",
+                "sync epg", "resync epg", "update guide", "update the guide",
+            )) return VoiceIntent.RefreshEpg
+        if (text.matchesAny(
+                "toggle theme", "switch theme", "dark mode", "light mode",
+                "switch to dark mode", "switch to light mode",
+            )) return VoiceIntent.ToggleTheme
 
         return VoiceIntent.Unknown(raw)
     }

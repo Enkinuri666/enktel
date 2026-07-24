@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0A0E17"/>
+  <circle cx="14" cy="32" r="6" fill="#EF4444"/>
+  <text x="26" y="42" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="28" fill="#EAF0FA">E</text>
+  <text x="44" y="42" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="28" fill="#3B9DFF">T</text>
+</svg>

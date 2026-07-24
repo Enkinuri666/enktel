@@ -2,6 +2,7 @@ package tv.enktel.app.voice
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -15,11 +16,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +67,12 @@ class VoiceCommandBus {
     val intents = MutableSharedFlow<VoiceIntent>(extraBufferCapacity = 8)
     /** Emissions here are rendered by VoiceHost as an on-screen answer card + TTS. */
     val answers = MutableSharedFlow<VoiceAnswer>(extraBufferCapacity = 4)
+    /** Search query pushed from a voice "search for X" — SearchScreen collects
+     *  this so its input field actually receives the spoken query. */
+    val searchQueries = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** External trigger for tap-to-talk — the mobile nav bar's Mic tab emits
+     *  into this, VoiceHost collects and starts listening. */
+    val micActivate = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 }
 
 /**
@@ -77,21 +86,113 @@ class VoiceCommandBus {
  * [bus.intents] and (optionally) speaks a short confirmation.
  */
 @Composable
-fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
+fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
     val recognizer = remember { VoiceRecognizer(context) }
     val speaker = remember { VoiceSpeaker(context) }
-    DisposableEffect(Unit) {
-        onDispose { recognizer.release(); speaker.release() }
-    }
+    val earcons = remember { VoiceEarcons() }
 
     var listening by remember { mutableStateOf(false) }
     var partial by remember { mutableStateOf("") }
     var lastIntentLabel by remember { mutableStateOf<String?>(null) }
     var currentAnswer by remember { mutableStateOf<VoiceAnswer?>(null) }
+
+    // "Hey Enki" wake-word listener. When it hears the wake phrase, it stops
+    // itself and feeds the payload (everything after "hey enki") straight
+    // into the same intent-parse-and-handle path as a mic tap.
+    val wakeWord = remember {
+        WakeWordListener(context) { payload ->
+            // Barge-in: kill any in-flight TTS the moment the wake phrase
+            // lands so the recogniser can hear the follow-up cleanly.
+            speaker.stop()
+            // Short "I heard you" chime — closes the feedback loop without
+            // waiting for the full TTS reply.
+            earcons.wakeReady()
+            if (payload.isNotBlank()) {
+                val intent = VoiceIntentParser.parse(payload)
+                lastIntentLabel = "🎙 \"hey enki, $payload\"  →  ${describe(intent, payload)}"
+                if (intent is VoiceIntent.Unknown) {
+                    earcons.error()
+                } else {
+                    earcons.confirm()
+                }
+                speaker.speak(spokenReply(intent))
+                if (intent !is VoiceIntent.Unknown) {
+                    scope.launch { bus.intents.emit(intent) }
+                }
+            } else {
+                toaster.info("Listening…")
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { recognizer.release(); speaker.release(); wakeWord.stop(); earcons.release() }
+    }
+    val playerActiveForWake by androidx.compose.runtime.remember { ActivePlayerRef.active }
+    androidx.compose.runtime.LaunchedEffect(wakeWordEnabled) {
+        if (wakeWordEnabled) {
+            val ok = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (ok) wakeWord.start() else toaster.info("Grant microphone access to use Hey Enki")
+        } else {
+            wakeWord.stop()
+        }
+    }
+    // Lifecycle-driven pause: back-off the mic when the app goes to the
+    // background OR the device enters power-save mode.  Screen-off / low
+    // battery still leaves the app resumed on some devices, so we watch
+    // ACTION_POWER_SAVE_MODE_CHANGED and ACTION_BATTERY_LOW too.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var appBackgrounded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var powerConstrained by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> appBackgrounded = true
+                androidx.lifecycle.Lifecycle.Event.ON_START -> appBackgrounded = false
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+        powerConstrained = try { pm.isPowerSaveMode } catch (_: Throwable) { false }
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+                when (i?.action) {
+                    android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED ->
+                        powerConstrained = try { pm.isPowerSaveMode } catch (_: Throwable) { false }
+                    android.content.Intent.ACTION_BATTERY_LOW -> powerConstrained = true
+                    android.content.Intent.ACTION_BATTERY_OKAY -> powerConstrained = false
+                }
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            addAction(android.content.Intent.ACTION_BATTERY_LOW)
+            addAction(android.content.Intent.ACTION_BATTERY_OKAY)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose { try { context.unregisterReceiver(receiver) } catch (_: Throwable) {} }
+    }
+    // Combine every reason we might want the wake-word paused into a
+    // single derived flag.  applyPause() no-ops when the state doesn't
+    // change, so we can emit freely on each recomposition.
+    androidx.compose.runtime.LaunchedEffect(
+        playerActiveForWake, appBackgrounded, powerConstrained, wakeWordEnabled,
+    ) {
+        wakeWord.applyPause(playerActiveForWake || appBackgrounded || powerConstrained)
+    }
 
     // Structured answer cards come from the "personal guide" query intents that
     // MainNav resolves. We render + speak them here so the plumbing stays local.
@@ -101,6 +202,7 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
             speaker.speak(answer.spoken)
         }
     }
+
 
     fun handleTranscription(text: String) {
         val intent = VoiceIntentParser.parse(text)
@@ -160,18 +262,46 @@ fun VoiceHost(bus: VoiceCommandBus, content: @Composable () -> Unit) {
         else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    // Collect nav-bar Mic-tap trigger. Placed here so `toggleListening` is in scope.
+    androidx.compose.runtime.LaunchedEffect(bus) {
+        bus.micActivate.collect { toggleListening() }
+    }
+
+    // Player-active → left-edge peek only. On mobile builds the standalone FAB
+    // is gone entirely — the mic lives inside the bottom nav bar (see
+    // MobileShell). TV builds still get the peek/pill because they have no
+    // nav bar.
+    val playerActive by androidx.compose.runtime.remember { ActivePlayerRef.active }
+    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+
     Box(Modifier.fillMaxSize()) {
         content()
-        MicFab(
-            listening = listening,
-            onTap = { toggleListening() },
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
-        )
+
+        if (playerActive) {
+            MicEdgePeek(
+                listening = listening,
+                onTap = { toggleListening() },
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+        } else if (!isMobile) {
+            MicFab(
+                listening = listening,
+                onTap = { toggleListening() },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 14.dp, bottom = 84.dp),
+            )
+        }
+
         if (listening) {
+            // Anchor the Listening card near the mic so the user's eye can
+            // follow it. Left-side when on a player, otherwise bottom-left.
             ListeningOverlay(
                 partial = partial,
                 onCancel = { recognizer.stop(); listening = false },
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 68.dp),
+                modifier = if (playerActive) Modifier.align(Alignment.CenterStart).padding(start = 60.dp)
+                           else Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 14.dp, bottom = 140.dp),
             )
         }
         lastIntentLabel?.let { label ->
@@ -260,6 +390,33 @@ private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Mod
     }
 }
 
+/** Left-edge tap-to-open peek shown while a player is on-screen. Almost
+ *  invisible until the user needs it, but always reachable with a single tap. */
+@Composable
+private fun MicEdgePeek(listening: Boolean, onTap: () -> Unit, modifier: Modifier) {
+    Box(
+        modifier
+            .size(width = 22.dp, height = 56.dp)
+            .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
+            .background(
+                (if (listening) EnktelLive else EnktelBlue).copy(alpha = if (listening) 0.85f else 0.55f),
+            )
+            .border(
+                1.dp,
+                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
+                androidx.compose.foundation.shape.RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+            )
+            .pointerInput(Unit) { detectTapGestures { onTap() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            if (listening) "●" else "🎙",
+            fontSize = 12.sp, fontWeight = FontWeight.Black,
+            color = androidx.compose.ui.graphics.Color.White,
+        )
+    }
+}
+
 @Composable
 private fun MicFab(listening: Boolean, onTap: () -> Unit, modifier: Modifier) {
     Box(
@@ -336,8 +493,11 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
     VoiceIntent.FindSports -> "Open Sports Hub"
     VoiceIntent.OpenHome -> "Home"
     VoiceIntent.OpenGuide -> "TV Guide"
+    VoiceIntent.OpenLiveTv -> "Live TV"
     VoiceIntent.OpenMovies -> "Movies"
     VoiceIntent.OpenSeries -> "Series"
+    is VoiceIntent.SearchMovies -> "Search Movies for \"${intent.query}\""
+    is VoiceIntent.SearchSeries -> "Search Series for \"${intent.query}\""
     VoiceIntent.OpenWatchlist -> "Watchlist"
     VoiceIntent.OpenRecordings -> "Recordings"
     VoiceIntent.OpenSettings -> "Settings"
@@ -353,6 +513,46 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
     is VoiceIntent.WhatsOnChannel -> "What's on ${intent.channel}"
     is VoiceIntent.TellMeAbout -> "Tell me about ${intent.query}"
     is VoiceIntent.Unknown -> "Didn't catch that"
+    is VoiceIntent.SeekForward -> "Forward ${intent.seconds}s"
+    is VoiceIntent.SeekBack -> "Back ${intent.seconds}s"
+    is VoiceIntent.SeekTo -> "Jump to ${intent.minutes}m"
+    VoiceIntent.Restart -> "Restart"
+    VoiceIntent.SkipIntro -> "Skip intro"
+    VoiceIntent.NextEpisode -> "Next episode"
+    VoiceIntent.PreviousEpisode -> "Previous episode"
+    VoiceIntent.EnterPip -> "Enter picture-in-picture"
+    VoiceIntent.CastNow -> "Cast to TV"
+    VoiceIntent.PlayRandomMovie -> "Random movie"
+    VoiceIntent.PlayRandomSeries -> "Random series"
+    VoiceIntent.ResumeLast -> "Resume last"
+    VoiceIntent.ContinueWatching -> "Continue watching"
+    is VoiceIntent.AddToWatchlist -> "Add ${intent.query} to watchlist"
+    is VoiceIntent.RemoveFromWatchlist -> "Remove ${intent.query} from watchlist"
+    is VoiceIntent.MoreLike -> "More like ${intent.query}"
+    is VoiceIntent.WhoIsIn -> "Cast of ${intent.query}"
+    is VoiceIntent.WhoDirected -> "Director of ${intent.query}"
+    is VoiceIntent.WhatYear -> "Year of ${intent.query}"
+    is VoiceIntent.WhatRating -> "Rating of ${intent.query}"
+    is VoiceIntent.WhatGenre -> "Genre of ${intent.query}"
+    is VoiceIntent.PlotOf -> "Plot of ${intent.query}"
+    VoiceIntent.WhatsOnTonight -> "Tonight's TV"
+    VoiceIntent.WhatsOnTomorrow -> "Tomorrow's TV"
+    is VoiceIntent.WhenIsOn -> "When is ${intent.query} on"
+    VoiceIntent.TrendingNow -> "Trending now"
+    VoiceIntent.RefreshPlaylist -> "Refresh playlist"
+    VoiceIntent.RefreshEpg -> "Refresh EPG"
+    VoiceIntent.ToggleTheme -> "Toggle theme"
+    VoiceIntent.OpenSports -> "Sports Hub"
+    is VoiceIntent.ShowChannelKind -> "${intent.keyword} channels"
+    is VoiceIntent.PlayTeamGame -> "Find ${intent.team} game"
+    is VoiceIntent.RemindWhenOn -> "Remind me: ${intent.query}"
+    is VoiceIntent.FilteredMovieSearch -> buildString {
+        append("Movies")
+        intent.genre?.let { append(" · ").append(it) }
+        intent.year?.let { append(" · ").append(it) }
+        intent.decade?.let { append(" · ").append(it).append("s") }
+        intent.actor?.let { append(" · ").append(it) }
+    }
 }
 
 private fun spokenReply(intent: VoiceIntent): String = when (intent) {
@@ -368,8 +568,11 @@ private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     VoiceIntent.FindSports -> "Here are the sports"
     VoiceIntent.OpenHome -> ""
     VoiceIntent.OpenGuide -> ""
+    VoiceIntent.OpenLiveTv -> "Opening Live TV"
     VoiceIntent.OpenMovies -> ""
     VoiceIntent.OpenSeries -> ""
+    is VoiceIntent.SearchMovies -> "Searching movies for ${intent.query}"
+    is VoiceIntent.SearchSeries -> "Searching series for ${intent.query}"
     VoiceIntent.OpenWatchlist -> ""
     VoiceIntent.OpenRecordings -> ""
     VoiceIntent.OpenSettings -> ""
@@ -381,5 +584,34 @@ private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     VoiceIntent.LatestSeries, VoiceIntent.WhatsOnNow,
     is VoiceIntent.WhatsOnChannel, is VoiceIntent.TellMeAbout -> "" // handler speaks the actual answer
     is VoiceIntent.Unknown -> "Sorry, I didn't catch that"
+    is VoiceIntent.SeekForward -> "Skipping ahead"
+    is VoiceIntent.SeekBack -> "Going back"
+    is VoiceIntent.SeekTo -> "Jumping to ${intent.minutes} minutes"
+    VoiceIntent.Restart -> "Starting over"
+    VoiceIntent.SkipIntro -> "Skipping the intro"
+    VoiceIntent.NextEpisode -> "Next episode"
+    VoiceIntent.PreviousEpisode -> "Previous episode"
+    VoiceIntent.EnterPip -> "Going to picture in picture"
+    VoiceIntent.CastNow -> "Opening the cast picker"
+    VoiceIntent.PlayRandomMovie -> "Rolling the dice on movies"
+    VoiceIntent.PlayRandomSeries -> "Rolling the dice on series"
+    VoiceIntent.ResumeLast -> "Resuming"
+    VoiceIntent.ContinueWatching -> "" // handler speaks the actual answer
+    is VoiceIntent.AddToWatchlist -> "" // handler speaks after DB write
+    is VoiceIntent.RemoveFromWatchlist -> ""
+    is VoiceIntent.MoreLike -> ""
+    is VoiceIntent.WhoIsIn, is VoiceIntent.WhoDirected, is VoiceIntent.WhatYear,
+    is VoiceIntent.WhatRating, is VoiceIntent.WhatGenre, is VoiceIntent.PlotOf -> ""
+    VoiceIntent.WhatsOnTonight, VoiceIntent.WhatsOnTomorrow -> ""
+    is VoiceIntent.WhenIsOn -> ""
+    VoiceIntent.TrendingNow -> ""
+    VoiceIntent.RefreshPlaylist -> "Refreshing your playlist"
+    VoiceIntent.RefreshEpg -> "Refreshing the TV guide"
+    VoiceIntent.ToggleTheme -> "Toggling theme"
+    VoiceIntent.OpenSports -> ""
+    is VoiceIntent.ShowChannelKind -> "Filtering to ${intent.keyword} channels"
+    is VoiceIntent.PlayTeamGame -> "Looking for the ${intent.team} match"
+    is VoiceIntent.RemindWhenOn -> "" // handler speaks after searching EPG
+    is VoiceIntent.FilteredMovieSearch -> "Filtering movies"
 }
 
