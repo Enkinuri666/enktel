@@ -54,6 +54,13 @@ class AppGraph(app: Application) {
         tv.enktel.app.data.net.DiscordWebhookPublisher(
             http, settings.discordWebhook,
         ).startIn(bgScope)
+        // Keep the NavSounds master flag mirrored to the ui-sounds pref so
+        // navigation earcons instantly go silent when the toggle is off.
+        bgScope.launch {
+            settings.uiSoundsEnabled.collect {
+                tv.enktel.app.ui.components.NavSounds.enabled = it
+            }
+        }
     }
 }
 

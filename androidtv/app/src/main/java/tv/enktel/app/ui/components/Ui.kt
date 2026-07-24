@@ -220,8 +220,12 @@ fun PosterCard(
     val h = if (wide) 135.dp else 210.dp
     var focused by remember { mutableStateOf(false) }
     Surface(
-        onClick = onClick,
-        modifier = modifier.width(w).tapClick(onClick).onFocusChanged { focused = it.isFocused },
+        onClick = { NavSounds.open(); onClick() },
+        modifier = modifier.width(w).tapClick { NavSounds.open(); onClick() }.onFocusChanged {
+            val wasFocused = focused
+            focused = it.isFocused
+            if (!wasFocused && it.isFocused) NavSounds.click()
+        },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,

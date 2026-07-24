@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -37,14 +38,7 @@ fun Modifier.shimmer(
     baseColor: Color = Color(0xFF1F2937),
     highlightColor: Color = Color(0xFF374151),
     durationMs: Int = 1400,
-): Modifier = composedShimmer(baseColor, highlightColor, durationMs)
-
-@Composable
-private fun Modifier.composedShimmer(
-    baseColor: Color,
-    highlightColor: Color,
-    durationMs: Int,
-): Modifier {
+): Modifier = composed {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val progress by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
@@ -54,7 +48,7 @@ private fun Modifier.composedShimmer(
         ),
         label = "shimmerP",
     )
-    return this
+    this
         .background(baseColor)
         .drawWithContent {
             drawContent()
