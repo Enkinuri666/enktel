@@ -7,6 +7,11 @@ package tv.enktel.app.voice
  */
 sealed class VoiceIntent {
     data class TuneChannel(val query: String) : VoiceIntent()
+    /** "switch to X and set audio to Y" / "turn to X in French" — tunes,
+     *  then applies the audio-language preference once tracks are known. */
+    data class TuneChannelWithAudio(val channel: String, val language: String) : VoiceIntent()
+    /** "set audio to Spanish" — applies to whatever is currently playing. */
+    data class SetAudioLanguage(val language: String) : VoiceIntent()
     data class Search(val query: String) : VoiceIntent()
     data object Pause : VoiceIntent()
     data object Resume : VoiceIntent()
@@ -188,6 +193,21 @@ object VoiceIntentParser {
         // "remind me when Formula 1 starts" / "remind me when the game starts"
         Regex("remind me when (.+?) (?:starts|is on|comes on|airs)")
             .find(text)?.let { return VoiceIntent.RemindWhenOn(it.groupValues[1].trim()) }
+
+        // ---- Combo: tune + audio language ----------------------------------------
+        // "switch to CNN and set audio to English" / "turn to Canal+ in French"
+        // / "tune to BBC and set the audio to Spanish"
+        Regex(
+            "(?:turn|switch|change|tune|put|go) (?:it |the channel |over )?(?:to |on )?" +
+                "(?:channel )?(.+?) (?:and set (?:the )?audio to|and switch audio to|in) " +
+                "(english|spanish|french|german|italian|portuguese|arabic|russian|hindi|mandarin|chinese|japanese|korean|dutch|polish|turkish)",
+        ).find(text)?.let {
+            return VoiceIntent.TuneChannelWithAudio(it.groupValues[1].trim(), it.groupValues[2].trim())
+        }
+
+        // "set audio to Spanish" / "switch audio to English" / "change the audio to French"
+        Regex("(?:set|switch|change) (?:the )?audio (?:track )?to (english|spanish|french|german|italian|portuguese|arabic|russian|hindi|mandarin|chinese|japanese|korean|dutch|polish|turkish)")
+            .find(text)?.let { return VoiceIntent.SetAudioLanguage(it.groupValues[1].trim()) }
 
         // "turn to Nine HD" / "switch to bein sports" / "put on channel 42"
         // / "tune to CNN" / "go to fox news"

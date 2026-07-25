@@ -179,6 +179,33 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
+        Text("KIDS MODE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val kidsModeOn by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
+        Text(
+            "Simplified, high-contrast Home restricted to family/kids content. " +
+                "Requires a parental PIN above to turn back off.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        FocusButton(
+            if (kidsModeOn) "🧸 Kids Mode: ON — tap to turn off" else "🧸 Kids Mode: OFF — tap to turn on",
+            accent = kidsModeOn,
+            onClick = {
+                scope.launch {
+                    if (kidsModeOn) {
+                        if (pinHash.isBlank()) {
+                            graph.settings.setKidsModeEnabled(false)
+                        } else {
+                            status = "Exit Kids Mode from its own lock icon (needs PIN)"
+                        }
+                    } else {
+                        graph.settings.setKidsModeEnabled(true)
+                        status = "Kids Mode enabled"
+                    }
+                }
+            },
+        )
+
+        Spacer(Modifier.height(10.dp))
         Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
         val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")

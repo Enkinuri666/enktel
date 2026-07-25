@@ -482,6 +482,8 @@ private fun IntentToast(label: String, onDismiss: () -> Unit, modifier: Modifier
 
 private fun describe(intent: VoiceIntent, heard: String): String = when (intent) {
     is VoiceIntent.TuneChannel -> "Turn to ${intent.query}"
+    is VoiceIntent.TuneChannelWithAudio -> "Turn to ${intent.channel} · audio ${intent.language}"
+    is VoiceIntent.SetAudioLanguage -> "Audio → ${intent.language}"
     is VoiceIntent.Search -> "Search for \"${intent.query}\""
     VoiceIntent.Pause -> "Pause"
     VoiceIntent.Resume -> "Resume"
@@ -557,6 +559,8 @@ private fun describe(intent: VoiceIntent, heard: String): String = when (intent)
 
 private fun spokenReply(intent: VoiceIntent): String = when (intent) {
     is VoiceIntent.TuneChannel -> "Turning to ${intent.query}"
+    is VoiceIntent.TuneChannelWithAudio -> "Turning to ${intent.channel} with ${intent.language} audio"
+    is VoiceIntent.SetAudioLanguage -> "Switching audio to ${intent.language}"
     is VoiceIntent.Search -> "Searching for ${intent.query}"
     VoiceIntent.Pause -> "Paused"
     VoiceIntent.Resume -> "Playing"

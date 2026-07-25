@@ -82,12 +82,17 @@ fun MobileScaffold(
     nav: NavHostController,
     currentRoute: String?,
     voiceBus: VoiceCommandBus? = null,
+    /** True while Kids Mode is showing on the "home" route — hides the bottom
+     *  nav so a child can't navigate out of the filtered content via Live TV
+     *  / Search / More, defeating the whole point of the mode. */
+    kidsModeActive: Boolean = false,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var showMore by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding).
-    val showBar = currentRoute in setOf(
+    // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding)
+    // and while Kids Mode owns the Home route.
+    val showBar = !kidsModeActive && currentRoute in setOf(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
         "speedTest", "manageCategories",
     )
