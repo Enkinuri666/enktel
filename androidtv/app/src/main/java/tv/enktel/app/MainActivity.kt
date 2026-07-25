@@ -175,6 +175,27 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                     } catch (_: Throwable) { null }
                     if (match != null) nav.navigate("live?ch=${match.key}")
                 }
+                is tv.enktel.app.voice.VoiceIntent.TuneChannelWithAudio -> {
+                    val p = graph.playlists.activeProfile() ?: return@collect
+                    val match = try {
+                        val all = graph.content.channels(p.id).first()
+                        val q = intent.channel.lowercase()
+                        all.firstOrNull { it.name.equals(intent.channel, ignoreCase = true) }
+                            ?: all.firstOrNull { q in it.name.lowercase() }
+                    } catch (_: Throwable) { null }
+                    if (match != null) {
+                        nav.navigate("live?ch=${match.key}")
+                        // Give the new player a moment to register + report
+                        // its track list before we try to apply the language
+                        // preference — otherwise trackSelectionParameters
+                        // would be set on the OLD (about-to-be-torn-down)
+                        // player instance.
+                        kotlinx.coroutines.delay(900)
+                        tv.enktel.app.voice.ActivePlayerRef.setAudioLanguage(intent.language)
+                    }
+                }
+                is tv.enktel.app.voice.VoiceIntent.SetAudioLanguage ->
+                    tv.enktel.app.voice.ActivePlayerRef.setAudioLanguage(intent.language)
                 is tv.enktel.app.voice.VoiceIntent.Suggest -> {
                     val p = graph.playlists.activeProfile() ?: return@collect
                     val pick = try {
@@ -799,7 +820,10 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         modifier = Modifier.fillMaxSize().background(EnktelBg).padding(padding),
     ) {
         composable("onboarding") { OnboardingScreen(graph, onDone = { nav.navigate("home") { popUpTo(0) } }) }
-        composable("home") { HomeScreen(graph, nav) }
+        composable("home") {
+            val kidsMode by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
+            if (kidsMode) tv.enktel.app.ui.screens.KidsModeScreen(graph, nav) else HomeScreen(graph, nav)
+        }
         composable("live?ch={ch}") { back ->
             LivePlayerScreen(graph, nav, initialChannelKey = back.arguments?.getString("ch").orEmpty())
         }
@@ -826,6 +850,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
         composable("settings") { SettingsScreen(graph, nav) }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
+        composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
@@ -843,7 +868,11 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     }
 
     if (isMobileShell) {
-        tv.enktel.app.ui.mobile.MobileScaffold(nav = nav, currentRoute = currentRoute, voiceBus = voiceBus) { padding ->
+        val kidsModeOnRoot by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
+        tv.enktel.app.ui.mobile.MobileScaffold(
+            nav = nav, currentRoute = currentRoute, voiceBus = voiceBus,
+            kidsModeActive = kidsModeOnRoot && currentRoute == "home",
+        ) { padding ->
             navHost(padding)
         }
     } else {
