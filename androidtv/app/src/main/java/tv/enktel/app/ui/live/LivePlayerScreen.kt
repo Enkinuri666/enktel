@@ -110,6 +110,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
+    val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
+    DisposableEffect(zapPreloader) { onDispose { zapPreloader.cancel() } }
     val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
     androidx.compose.runtime.LaunchedEffect(engine) {
         engine.videoFrameRate.collect { fps ->
@@ -168,7 +170,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         showInfo = true
         infoTick++
         shiftedFrom = 0L
-        engine.play(graph.content.liveUrl(p, ch, streamFormat), live = true)
+        // Universal URL resolver: try the preferred format first, then walk
+        // the fallback chain (other format, extensionless, legacy no-/live/
+        // shape) if the panel rejects the primary candidate.  Covers the
+        // wide variance in how Xtream-compatible panels actually serve a
+        // stream behind the same API.
+        val candidates = tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
+            p, ch, preferHls = streamFormat != "ts",
+        )
+        engine.playCandidates(candidates, live = true)
         scope.launch {
             graph.settings.setLastChannel(ch.key)
             graph.settings.pushRecentChannel(ch.key)
@@ -196,6 +206,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         val idx = list.indexOfFirst { it.key == current?.key }
         val next = list[((idx + delta) % list.size + list.size) % list.size]
         tune(next)
+    }
+
+    // Rapid-zapping latency hider: warm connections to the channel directly
+    // above and below the current one so the socket/TLS handshake is
+    // already done by the time the user actually flips.  See ZapPreloader.
+    LaunchedEffect(current?.key, channels) {
+        val list = channels
+        val cur = current
+        if (list.isEmpty() || cur == null) return@LaunchedEffect
+        val idx = list.indexOfFirst { it.key == cur.key }
+        if (idx < 0) return@LaunchedEffect
+        val up = list[(idx + 1) % list.size]
+        val down = list[((idx - 1) % list.size + list.size) % list.size]
+        val urls = listOf(up, down).map {
+            tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(p, it, preferHls = streamFormat != "ts").first()
+        }
+        zapPreloader.warm(this, urls)
     }
 
     // Docked-browse state: when true the video shrinks to the top half of the screen and

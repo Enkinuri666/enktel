@@ -59,6 +59,16 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     private var dropped = 0
     private var retries = 0
     private var lastUrl: String? = null
+    // Fallback-chain state: remaining candidate URLs to try (in priority
+    // order) if the current one keeps failing.  Populated by
+    // playCandidates(); empty when playing a single fixed url via play().
+    private var candidateQueue: MutableList<String> = mutableListOf()
+    private var candidateLive = false
+    private var candidateStartMs = 0L
+    private var candidateSubUrl = ""
+    /** Surfaced so the UI can show "trying an alternate stream source…"
+     *  instead of a flat error while the fallback chain is still working. */
+    val triedFallback = MutableStateFlow(false)
 
     val player: ExoPlayer
 
@@ -151,11 +161,22 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
 
         player.addListener(object : Player.Listener {
             override fun onPlayerError(err: PlaybackException) {
-                if (retries < 4 && lastUrl != null) {
+                if (retries < 2 && lastUrl != null) {
+                    // Short in-place retry first — covers transient network
+                    // blips without wasting time walking the fallback chain.
                     retries++
                     player.seekToDefaultPosition()
                     player.prepare()
                     player.play()
+                } else if (candidateQueue.isNotEmpty()) {
+                    // In-place retries exhausted and we still have alternate
+                    // URL shapes to try (see StreamUrlResolver) — this is
+                    // what actually recovers from a panel that 404s on
+                    // .m3u8 but happily serves raw .ts, or vice versa.
+                    triedFallback.value = true
+                    val next = candidateQueue.removeAt(0)
+                    retries = 0
+                    playInternal(next, candidateLive, candidateStartMs, candidateSubUrl)
                 } else {
                     error.value = err.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ')
                 }
@@ -177,7 +198,33 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         )
     }
 
+    /** Play a single fixed URL — no fallback chain (used for M3U channels,
+     *  VOD/catch-up assets that already resolved to one confirmed URL). */
     fun play(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+        candidateQueue = mutableListOf()
+        triedFallback.value = false
+        playInternal(url, live, startPositionMs, externalSubUrl)
+    }
+
+    /**
+     * Play the first URL in [urls], falling through to the next candidate
+     * if playback errors out after a couple of in-place retries.  This is
+     * how the app recovers from a panel that serves one Xtream URL shape
+     * (HLS, raw TS, extensionless, or the legacy no-`/live/` layout) but
+     * 404s or resets the connection on the others — see
+     * [tv.enktel.app.data.xtream.StreamUrlResolver].
+     */
+    fun playCandidates(urls: List<String>, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+        if (urls.isEmpty()) return
+        candidateQueue = urls.drop(1).toMutableList()
+        candidateLive = live
+        candidateStartMs = startPositionMs
+        candidateSubUrl = externalSubUrl
+        triedFallback.value = false
+        playInternal(urls.first(), live, startPositionMs, externalSubUrl)
+    }
+
+    private fun playInternal(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
         lastUrl = url
         retries = 0
         dropped = 0

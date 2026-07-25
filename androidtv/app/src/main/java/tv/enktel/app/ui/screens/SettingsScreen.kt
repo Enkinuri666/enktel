@@ -91,6 +91,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
             FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
+            FocusButton("📶 Network Speed Test", onClick = { nav.navigate("speedTest") })
         }
 
         Spacer(Modifier.height(10.dp))

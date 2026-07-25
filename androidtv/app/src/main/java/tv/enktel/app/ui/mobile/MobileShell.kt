@@ -89,6 +89,7 @@ fun MobileScaffold(
     // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding).
     val showBar = currentRoute in setOf(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
+        "speedTest", "manageCategories",
     )
 
     // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can
