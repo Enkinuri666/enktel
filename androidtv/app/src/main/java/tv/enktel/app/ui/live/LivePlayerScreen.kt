@@ -681,6 +681,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                             scope.launch { graph.content.toggleFavorite(p.id, "live", current!!.streamId) }
                         })
                     }
+                    item { FocusButton("Quality", onClick = { trackMenu = "video" }) }
                     item { FocusButton("Audio", onClick = { trackMenu = "audio" }) }
                     item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
                     item {
@@ -773,6 +774,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         else "Sleep in ${(sleepUntil - System.currentTimeMillis()) / 60_000} min"
                     )
                 },
+                onVideo = { trackMenu = "video"; showQuickMenu = false },
                 onAudio = { trackMenu = "audio"; showQuickMenu = false },
                 onSubs = { trackMenu = "subs"; showQuickMenu = false },
                 onAspect = {
@@ -824,10 +826,22 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
 
         if (trackMenu.isNotEmpty()) {
-            val type = if (trackMenu == "audio") C.TRACK_TYPE_AUDIO else C.TRACK_TYPE_TEXT
+            val type = when (trackMenu) {
+                "audio" -> C.TRACK_TYPE_AUDIO
+                "video" -> C.TRACK_TYPE_VIDEO
+                else -> C.TRACK_TYPE_TEXT
+            }
+            val title = when (trackMenu) {
+                "audio" -> "Audio Track"
+                "video" -> "Video Quality"
+                else -> "Subtitles"
+            }
             TrackPicker(
-                title = if (trackMenu == "audio") "Audio Track" else "Subtitles",
-                allowOff = trackMenu == "subs",
+                title = title,
+                // Video: "Auto" resets to adaptive; Subs: "Off" disables text
+                // rendering; Audio: no off option (a track must be selected).
+                allowOff = trackMenu == "subs" || trackMenu == "video",
+                offLabel = if (trackMenu == "video") "Auto (adaptive)" else "Off",
                 tracks = engine.tracksOf(type),
                 onPick = { choice -> engine.selectTrack(type, choice); trackMenu = "" },
                 onClose = { trackMenu = "" },
@@ -1086,6 +1100,7 @@ private fun QuickMenu(
     onRewindLive: () -> Unit,
     onBackToLive: () -> Unit,
     onSleep: () -> Unit,
+    onVideo: () -> Unit,
     onAudio: () -> Unit,
     onSubs: () -> Unit,
     onAspect: () -> Unit,
@@ -1123,6 +1138,7 @@ private fun QuickMenu(
             FocusButton(if (recording) "■ Stop recording" else "● Record now (DVR)", onClick = onRecord, modifier = Modifier.fillMaxWidth())
             if (channel.hasArchive) FocusButton("🗂 Catch-up archive", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
             FocusButton(sleepLabel, onClick = onSleep, modifier = Modifier.fillMaxWidth())
+            FocusButton("Video quality", onClick = onVideo, modifier = Modifier.fillMaxWidth())
             FocusButton("Audio track", onClick = onAudio, modifier = Modifier.fillMaxWidth())
             FocusButton("Subtitles", onClick = onSubs, modifier = Modifier.fillMaxWidth())
             FocusButton("Aspect ratio", onClick = onAspect, modifier = Modifier.fillMaxWidth())
@@ -1142,6 +1158,7 @@ fun TrackPicker(
     tracks: List<TrackChoice>,
     onPick: (TrackChoice?) -> Unit,
     onClose: () -> Unit,
+    offLabel: String = "Off",
 ) {
     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.6f)), contentAlignment = Alignment.Center) {
         Column(
@@ -1153,7 +1170,10 @@ fun TrackPicker(
         ) {
             Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             if (tracks.isEmpty()) Text("No tracks available", color = EnktelTextDim, fontSize = 13.sp)
-            if (allowOff) FocusButton("Off", onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth())
+            // For video-quality, the "Off" row means "let ExoPlayer pick
+            // adaptively" — clearing the override falls back to the
+            // AdaptiveTrackSelection factory the engine is wired with.
+            if (allowOff) FocusButton(offLabel, onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth())
             tracks.forEach { t ->
                 FocusButton(
                     (if (t.selected) "✓ " else "") + t.name,

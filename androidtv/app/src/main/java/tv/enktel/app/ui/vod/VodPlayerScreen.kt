@@ -450,6 +450,7 @@ fun VodPlayerScreen(
                     }
                     item { FocusButton("−10s", onClick = { engine.player.seekBack(); controlsTick++ }) }
                     item { FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ }) }
+                    item { FocusButton("Quality", onClick = { trackMenu = "video" }) }
                     item { FocusButton("Audio", onClick = { trackMenu = "audio" }) }
                     item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
                     if (!isLive) {
@@ -486,10 +487,20 @@ fun VodPlayerScreen(
         }
 
         if (trackMenu.isNotEmpty()) {
-            val type = if (trackMenu == "audio") C.TRACK_TYPE_AUDIO else C.TRACK_TYPE_TEXT
+            val type = when (trackMenu) {
+                "audio" -> C.TRACK_TYPE_AUDIO
+                "video" -> C.TRACK_TYPE_VIDEO
+                else -> C.TRACK_TYPE_TEXT
+            }
+            val title = when (trackMenu) {
+                "audio" -> "Audio Track"
+                "video" -> "Video Quality"
+                else -> "Subtitles"
+            }
             TrackPicker(
-                title = if (trackMenu == "audio") "Audio Track" else "Subtitles",
-                allowOff = trackMenu == "subs",
+                title = title,
+                allowOff = trackMenu == "subs" || trackMenu == "video",
+                offLabel = if (trackMenu == "video") "Auto (adaptive)" else "Off",
                 tracks = engine.tracksOf(type),
                 onPick = { choice -> engine.selectTrack(type, choice); trackMenu = "" },
                 onClose = { trackMenu = "" },

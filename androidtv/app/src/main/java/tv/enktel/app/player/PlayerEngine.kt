@@ -46,7 +46,15 @@ data class StreamStats(
 class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) {
 
     private val bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(context)
-    val trackSelector = DefaultTrackSelector(context)
+    // Track selection: explicitly pair DefaultTrackSelector with an
+    // AdaptiveTrackSelection factory so ABR (adaptive bitrate) is on by
+    // default for HLS/DASH streams that publish multiple renditions. The
+    // user can then override the adaptive pick per-track through the
+    // Video/Audio quality dialog (see selectTrack / videoQualityOptions).
+    val trackSelector = DefaultTrackSelector(
+        context,
+        androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(),
+    )
 
     val stats = MutableStateFlow(StreamStats())
     val error = MutableStateFlow<String?>(null)
@@ -143,16 +151,28 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
             )
             .build()
 
-        // Extra-permissive extractor factory: MP4 URLs frequently *actually*
-        // serve MKV/WebM (Matroska) on transcoded panels, and headerless raw
-        // MPEG-TS live streams still need the FLAG_ALLOW_NON_IDR_KEYFRAMES /
-        // ADTS scan flags to lock on without extra segment context. Turning
-        // everything permissive makes the container-mismatch case a no-op
-        // instead of a "Source error" toast. DefaultExtractorsFactory tries
-        // MP4 → MKV/WebM → FLV → TS in order, so an MP4-URL that's actually
-        // Matroska on the wire is picked up on the second attempt.
+        // Extractor factory — explicitly registers Matroska + MP4 + TS
+        // extractors and turns on the permissive flags for each. On
+        // DefaultExtractorsFactory the full order is:
+        //   MP4 → FMP4 → Matroska/WebM → FLV → MPEG-TS → OGG → AAC → …
+        // so MP4-labelled URLs that actually serve MKV on the wire are
+        // picked up on the second attempt. We also explicitly whitelist
+        // video/x-matroska MIME + .mkv extension routing on the media source
+        // factory below so a MediaItem with mimeType = VIDEO_MATROSKA (from
+        // the Force MP4 setting's sibling code path, if extended later)
+        // routes to MatroskaExtractor without sniffing.
         val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
+            // Best-effort seeking inside constant-bitrate MPEG-TS streams —
+            // the alternative is "seek always jumps to nearest keyframe
+            // 30 s away" on live catch-up TS archives.
             .setConstantBitrateSeekingEnabled(true)
+            // Matroska has one flag worth flipping: disable cue-point seeking
+            // fallback so ExoPlayer will *fall through* to raw sample-index
+            // seeking when the MKV has no Cues element (common on live-DVR
+            // captures). Media3 exposes this as FLAG_DISABLE_SEEK_FOR_CUES.
+            .setMatroskaExtractorFlags(
+                androidx.media3.extractor.mkv.MatroskaExtractor.FLAG_DISABLE_SEEK_FOR_CUES
+            )
             .setTsExtractorFlags(
                 androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
                     androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
@@ -332,9 +352,21 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
                 val f = group.getTrackFormat(ti)
                 val name = buildString {
                     val lang = f.language?.takeIf { it.isNotBlank() && it != "und" }
-                    append(f.label ?: lang ?: "Track ${out.size + 1}")
-                    if (type == C.TRACK_TYPE_VIDEO && f.height > 0) append(" · ${f.height}p")
-                    if (type == C.TRACK_TYPE_AUDIO && f.channelCount > 0) append(" · ${f.channelCount}ch")
+                    // Video quality picker prefers "1080p · 5.2 Mbps · H.265"
+                    // over the format's raw label (which is usually blank on
+                    // Xtream). Audio picker gets language/channels; text
+                    // stays as-is.
+                    if (type == C.TRACK_TYPE_VIDEO) {
+                        val res = if (f.height > 0) "${f.height}p" else null
+                        val br = if (f.bitrate > 0) "%.1f Mbps".format(f.bitrate / 1_000_000.0) else null
+                        val codec = f.sampleMimeType?.substringAfterLast('/')?.uppercase()
+                        val parts = listOfNotNull(res, br, codec).filter { it.isNotBlank() }
+                        if (parts.isNotEmpty()) append(parts.joinToString(" · "))
+                        else append(f.label ?: "Track ${out.size + 1}")
+                    } else {
+                        append(f.label ?: lang ?: "Track ${out.size + 1}")
+                        if (type == C.TRACK_TYPE_AUDIO && f.channelCount > 0) append(" · ${f.channelCount}ch")
+                    }
                 }
                 out += TrackChoice(name, gi, ti, group.isTrackSelected(ti))
             }
@@ -342,10 +374,22 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         return out
     }
 
+    /** Apply a manual track override, or clear the override to fall back
+     *  to the AdaptiveTrackSelection factory. For video specifically,
+     *  `choice == null` means "let ExoPlayer pick adaptively" (does NOT
+     *  disable video); text tracks are actually disabled when null. */
     fun selectTrack(type: Int, choice: TrackChoice?) {
         val params = player.trackSelectionParameters.buildUpon()
         if (choice == null) {
-            params.setTrackTypeDisabled(type, true)
+            if (type == C.TRACK_TYPE_VIDEO) {
+                // Clear any prior override and unlock adaptive selection —
+                // this is how the "Auto (adaptive)" row in the quality
+                // dialog returns the player to normal ABR behaviour.
+                params.clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                params.setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+            } else {
+                params.setTrackTypeDisabled(type, true)
+            }
         } else {
             val group: Tracks.Group = player.currentTracks.groups[choice.groupIndex]
             params.setTrackTypeDisabled(type, false)
