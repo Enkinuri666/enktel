@@ -31,18 +31,35 @@ import tv.enktel.app.data.db.Profile
  */
 object StreamUrlResolver {
 
-    /** Ordered candidate list for a Live TV channel. First entry is tried first. */
+    /** Ordered candidate list for a Live TV channel. First entry is tried first.
+     *  Covers every Xtream / Xtream-compatible URL shape we've seen in the wild:
+     *    • `/live/{user}/{pass}/{id}.m3u8`   — HLS (modern default)
+     *    • `/live/{user}/{pass}/{id}.ts`     — direct MPEG-TS
+     *    • `/live/{user}/{pass}/{id}`        — extensionless (raw TS on some panels)
+     *    • `{user}/{pass}/{id}.m3u8`         — HLS without /live segment
+     *    • `{user}/{pass}/{id}.ts`           — MPEG-TS without /live segment
+     *    • `{user}/{pass}/{id}`              — legacy extensionless without /live
+     *  The preferred format's variants are attempted first, then the alternate. */
     fun forChannel(p: Profile, ch: Channel, preferHls: Boolean): List<String> {
         if (p.kind == "m3u") return listOf(ch.url).filter { it.isNotBlank() }
         val base = p.server.trimEnd('/')
         val user = p.username
         val pass = p.password
         val id = ch.streamId
-        val primary = if (preferHls) "$base/live/$user/$pass/$id.m3u8" else "$base/live/$user/$pass/$id.ts"
-        val secondary = if (preferHls) "$base/live/$user/$pass/$id.ts" else "$base/live/$user/$pass/$id.m3u8"
-        val extensionless = "$base/live/$user/$pass/$id"
-        val legacy = "$base/$user/$pass/$id"
-        return listOf(primary, secondary, extensionless, legacy).distinct()
+        // preferred / alternate ordering — HLS-first when the user asked for HLS,
+        // otherwise MPEG-TS-first. Extensionless comes last within each shape
+        // (some panels answer only if the .ts / .m3u8 is asked for explicitly).
+        val hlsLive = "$base/live/$user/$pass/$id.m3u8"
+        val tsLive  = "$base/live/$user/$pass/$id.ts"
+        val extLive = "$base/live/$user/$pass/$id"
+        val hlsBare = "$base/$user/$pass/$id.m3u8"
+        val tsBare  = "$base/$user/$pass/$id.ts"
+        val extBare = "$base/$user/$pass/$id"
+        return if (preferHls) {
+            listOf(hlsLive, tsLive, extLive, hlsBare, tsBare, extBare)
+        } else {
+            listOf(tsLive, hlsLive, extLive, tsBare, hlsBare, extBare)
+        }.distinct()
     }
 
     /** Ordered candidate list for a VOD movie. Widened to also try ts / avi

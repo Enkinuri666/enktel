@@ -73,6 +73,15 @@ class SettingsStore(private val context: Context) {
     // content.  Reuses the existing parental PIN (no separate credential).
     private val KIDS_MODE_ENABLED = booleanPreferencesKey("kids_mode_enabled")
 
+    // v1.19.0: player HUD auto-hide duration in seconds.
+    //   0  = never auto-hide (stays until user explicitly dismisses)
+    //   1+ = seconds before the info bar / controls fade out
+    // Applies to both the live player's info overlay and the VOD player's
+    // controls. Default 8s — longer than the previous hardcoded 5-6s so
+    // users on a couch with a remote have time to read the current channel /
+    // program info before it vanishes.
+    private val HUD_AUTOHIDE_SEC = intPreferencesKey("hud_autohide_sec")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -140,6 +149,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setUiSoundsEnabled(v: Boolean) = context.dataStore.edit { it[UI_SOUNDS_ENABLED] = v }
     val kidsModeEnabled: Flow<Boolean> = context.dataStore.data.map { it[KIDS_MODE_ENABLED] ?: false }
     suspend fun setKidsModeEnabled(v: Boolean) = context.dataStore.edit { it[KIDS_MODE_ENABLED] = v }
+    val hudAutoHideSec: Flow<Int> = context.dataStore.data.map { it[HUD_AUTOHIDE_SEC] ?: 8 }
+    suspend fun setHudAutoHideSec(v: Int) = context.dataStore.edit { it[HUD_AUTOHIDE_SEC] = v.coerceIn(0, 60) }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

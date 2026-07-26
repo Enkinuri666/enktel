@@ -99,6 +99,7 @@ fun VodPlayerScreen(
     val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
     val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
     val subBgAlpha by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
+    val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
 
     var showControls by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
@@ -140,6 +141,15 @@ fun VodPlayerScreen(
             }
         }
     }
+    // Keep the OS display awake while a movie/episode is playing — mirrors
+    // what the live player does. Cleared on dispose.
+    DisposableEffect(Unit) {
+        val activity = ctxForRefresh as? android.app.Activity
+        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     DisposableEffect(Unit) {
         tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
         onDispose {
@@ -179,13 +189,10 @@ fun VodPlayerScreen(
         }
     }
 
-    LaunchedEffect(controlsTick) {
-        if (showControls) {
-            // Faster fade on mobile (touch) — TV needs more time so a viewer
-            // can register the current transport state before the overlay
-            // vanishes.
-            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 5000L
-            delay(hideMs)
+    LaunchedEffect(controlsTick, hudAutoHideSec) {
+        // 0 = never auto-hide (only the user's back/tap dismisses the HUD).
+        if (showControls && hudAutoHideSec > 0) {
+            delay(hudAutoHideSec * 1000L)
             if (trackMenu.isEmpty()) showControls = false
         }
     }

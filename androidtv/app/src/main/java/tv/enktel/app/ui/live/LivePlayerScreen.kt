@@ -108,6 +108,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
     else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
 
     val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
     val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
@@ -120,6 +121,18 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     tv.enktel.app.player.RefreshRateMatcher.match(it, fps)
                 }
             }
+        }
+    }
+    // Keep the OS display awake while the live player is on-screen — otherwise
+    // Android's own screen-off timer fires mid-programme after a few minutes of
+    // no touch input, which is *especially* wrong on TV where the remote is
+    // idle by design.  Cleared on dispose so backgrounding the activity lets
+    // the panel sleep normally.
+    DisposableEffect(Unit) {
+        val activity = ctxForRefresh as? android.app.Activity
+        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
     DisposableEffect(engine) {
@@ -257,13 +270,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         )
     }
 
-    // Auto-hide info bar — faster fade on mobile so the tap-target chrome
-    // clears out of the way quickly, longer on TV so a viewer with a remote
-    // has time to register the current channel + program before it vanishes.
-    LaunchedEffect(infoTick, anyOverlay) {
-        if (showInfo && !anyOverlay) {
-            val hideMs = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 2500L else 6000L
-            delay(hideMs)
+    // Auto-hide info bar — honours the user's setting. 0 = never fade
+    // (stays until the user dismisses with Back / Up), otherwise the
+    // configured seconds elapse before the overlay vanishes.
+    LaunchedEffect(infoTick, anyOverlay, hudAutoHideSec) {
+        if (showInfo && !anyOverlay && hudAutoHideSec > 0) {
+            delay(hudAutoHideSec * 1000L)
             showInfo = false
         }
     }
@@ -837,7 +849,20 @@ private fun InfoBar(
     Column(
         modifier
             .fillMaxWidth()
+            // Layered glass: deep scrim underneath so text stays legible over
+            // bright programme frames, then a subtle brand-tinted overlay for
+            // that "premium HUD" feel.  Kept fully opaque along the bottom
+            // edge so the info card never disappears into the video.
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.92f))))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        EnktelBlue.copy(alpha = 0.06f),
+                        Color.Transparent,
+                        Color.Transparent,
+                    )
+                )
+            )
             .padding(horizontal = hPad, vertical = vPad),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
