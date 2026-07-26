@@ -612,12 +612,17 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             }
         }
 
-        // Stream-health chip — always mounted (self-hides when quality is
-        // fine) so the user sees ISP/VPN degradation the instant it lands
-        // without needing to bring up the info overlay.
-        tv.enktel.app.ui.components.StreamHealthChip(
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
-        )
+        // Stream-health chip — only surface it when the info HUD is up (or
+        // an overlay is open). It was showing on top of the picture all the
+        // time even when quality was fine and users complained about the
+        // bubble obstructing content; scoping it to the HUD keeps the
+        // diagnostic visible when the user *asks* for it (opens the overlay)
+        // without persistently painting over the video.
+        if (showInfo || anyOverlay || browseMode) {
+            tv.enktel.app.ui.components.StreamHealthChip(
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+            )
+        }
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
         // the docked Browse mode we hide them so the BrowseDock isn't overlapped from
