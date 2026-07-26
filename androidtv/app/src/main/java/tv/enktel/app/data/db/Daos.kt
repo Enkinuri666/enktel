@@ -154,3 +154,25 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings ORDER BY startMs DESC") fun all(): Flow<List<Recording>>
     @Query("UPDATE recordings SET status = :status WHERE id = :id") suspend fun setStatus(id: Long, status: String)
 }
+
+@Dao
+interface DownloadDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(d: DownloadEntry)
+    @Query("DELETE FROM downloads WHERE id = :id") suspend fun delete(id: String)
+    @Query("SELECT * FROM downloads WHERE id = :id") suspend fun byId(id: String): DownloadEntry?
+    @Query("SELECT * FROM downloads ORDER BY addedAt DESC") fun all(): Flow<List<DownloadEntry>>
+    @Query("SELECT * FROM downloads WHERE profileId = :profileId ORDER BY addedAt DESC")
+    fun forProfile(profileId: Long): Flow<List<DownloadEntry>>
+    @Query("SELECT * FROM downloads WHERE seriesKey = :seriesKey ORDER BY season, episode")
+    fun forSeries(seriesKey: String): Flow<List<DownloadEntry>>
+    @Query("SELECT EXISTS(SELECT 1 FROM downloads WHERE id = :id)") fun existsFlow(id: String): Flow<Boolean>
+    @Query("SELECT EXISTS(SELECT 1 FROM downloads WHERE id = :id AND status = 'DONE')")
+    fun completedFlow(id: String): Flow<Boolean>
+    @Query("UPDATE downloads SET status = :status, progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, updatedAt = :now WHERE id = :id")
+    suspend fun updateProgress(id: String, status: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())
+    @Query("UPDATE downloads SET status = :status, filePath = :path, updatedAt = :now WHERE id = :id")
+    suspend fun markDone(id: String, path: String, status: String = "DONE", now: Long = System.currentTimeMillis())
+    @Query("UPDATE downloads SET status = :status, errorMessage = :err, updatedAt = :now WHERE id = :id")
+    suspend fun markFailed(id: String, err: String, status: String = "FAILED", now: Long = System.currentTimeMillis())
+    @Query("SELECT COALESCE(SUM(downloadedBytes), 0) FROM downloads") suspend fun totalBytes(): Long
+}

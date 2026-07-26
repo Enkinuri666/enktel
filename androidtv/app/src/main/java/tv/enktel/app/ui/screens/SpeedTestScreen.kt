@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,21 +24,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.Profile
-import tv.enktel.app.data.net.NetworkClass
 import tv.enktel.app.data.net.SpeedTestEngine
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
@@ -48,12 +48,12 @@ import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
- * In-app network diagnostic tool.  Tests connectivity directly against
- * the active profile's IPTV server — ping (TCP connect time), jitter,
- * packet-loss estimate, real download throughput, DNS latency, resolved
- * IP, connection type, and a plain-language format recommendation +
- * buffer-health projection.  One-tap "Copy Diagnostic Report" for
- * pasting into a support ticket.
+ * Connection Diagnostics.  Combines the older "Speed Test" workflow with
+ * real Xtream server-info detection, HEAD probes on live + VOD stream URLs
+ * (to identify container / codec / transcoder actually in the path), a
+ * plain-language suggestion list built from the observed numbers, and
+ * inline troubleshooting toggles for the settings that most often help —
+ * stream format (HLS vs TS), buffer profile, and live time-shift.
  */
 @Composable
 fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
@@ -66,19 +66,29 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
     var status by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<SpeedTestEngine.Result?>(null) }
 
+    val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
+    val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val liveShift by graph.settings.liveShiftEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val loudness by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
+
     fun runTest() {
         if (running) return
         running = true
         result = null
         scope.launch {
-            val streamUrl = try {
-                val list: List<tv.enktel.app.data.db.Channel> = graph.content.channels(p.id).first()
-                list.firstOrNull()?.let { c -> graph.content.liveUrl(p, c, "hls") }
-            } catch (_: Throwable) { null }
+            // Pick a real live channel + real VOD asset so the probes actually
+            // reflect what the panel serves — not the panel API JSON. When the
+            // profile hasn't finished syncing yet, this returns null and the
+            // engine gracefully falls back to a server-URL throughput test.
+            val liveUrl = pickLiveUrl(graph, p)
+            val vodUrl = pickVodUrl(graph, p)
             val r = SpeedTestEngine.run(
                 http = graph.http,
                 serverUrl = p.server,
-                streamSampleUrl = streamUrl,
+                streamSampleUrl = liveUrl,
+                vodSampleUrl = vodUrl,
+                profile = p,
+                xtream = graph.xtream,
                 onProgress = { status = it },
             )
             result = r
@@ -89,24 +99,24 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionTitle("Network Speed Test")
+                SectionTitle("Connection Diagnostics")
                 Spacer(Modifier.weight(1f))
                 FocusButton(
-                    if (running) "Testing…" else "▶ Run Test",
+                    if (running) "Testing…" else "▶ Run diagnostics",
                     accent = true,
                     onClick = { runTest() },
                 )
             }
         }
         item {
+            val kindLabel = if (p.kind == "xtream") "Xtream Codes API" else "M3U playlist"
             Text(
-                "Tests your connection directly against your IPTV server (${p.server}) — " +
-                    "not a generic third-party benchmark.",
+                "Tests your live connection against your $kindLabel server — panel host, DNS, latency, real throughput, plus the container + codec the panel actually serves.",
                 color = EnktelTextDim, fontSize = 12.sp,
             )
         }
@@ -125,6 +135,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         result?.let { r ->
+            item { GroupHeader("Network") }
             item { MetricRow("Resolved IP", r.resolvedIp ?: "unresolved") }
             item { MetricRow("DNS lookup", "${r.dnsLookupMs} ms") }
             item {
@@ -157,6 +168,50 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             item { MetricRow("Connection type", r.connectionType.name) }
+
+            if (!r.server.isEmpty()) {
+                item { GroupHeader("Panel · Xtream Codes API") }
+                if (r.server.url.isNotBlank()) item { MetricRow("URL", r.server.url) }
+                if (r.server.protocol.isNotBlank() || r.server.port.isNotBlank()) {
+                    item {
+                        MetricRow(
+                            "Protocol / port",
+                            "${r.server.protocol.uppercase()}  ${r.server.port}${if (r.server.httpsPort.isNotBlank()) " · https ${r.server.httpsPort}" else ""}",
+                        )
+                    }
+                }
+                if (r.server.serverSoftware.isNotBlank()) item { MetricRow("Server software", r.server.serverSoftware) }
+                if (r.server.transcoderProcess.isNotBlank()) item { MetricRow("Transcoder", r.server.transcoderProcess) }
+                if (r.server.timezone.isNotBlank()) item { MetricRow("Timezone / clock", "${r.server.timezone} · ${r.server.timeNow}") }
+                if (r.server.maxConnections > 0) {
+                    item {
+                        MetricRow(
+                            "Connections used",
+                            "${r.server.activeConnections} / ${r.server.maxConnections}${if (r.server.trial) " (trial)" else ""}",
+                            color = if (r.server.activeConnections >= r.server.maxConnections && r.server.maxConnections > 0) EnktelLive else Color.White,
+                        )
+                    }
+                }
+            }
+
+            r.liveProbe?.let { probe ->
+                item { GroupHeader("Live stream probe") }
+                item { MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive) }
+                item { MetricRow("Container", probe.container) }
+                if (probe.contentType.isNotBlank()) item { MetricRow("Content-Type", probe.contentType) }
+                if (probe.codecHint.isNotBlank()) item { MetricRow("Codec (hint)", probe.codecHint) }
+                if (probe.serverHeader.isNotBlank()) item { MetricRow("Server", probe.serverHeader) }
+                item { MetricRow("Transcoder in path", probe.transcoderHint.ifBlank { "direct / unknown" }) }
+                probe.error?.let { item { MetricRow("Error", it, color = EnktelLive) } }
+            }
+            r.vodProbe?.let { probe ->
+                item { GroupHeader("VOD stream probe") }
+                item { MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive) }
+                item { MetricRow("Container", probe.container) }
+                if (probe.contentType.isNotBlank()) item { MetricRow("Content-Type", probe.contentType) }
+                if (probe.codecHint.isNotBlank()) item { MetricRow("Codec (hint)", probe.codecHint) }
+            }
+
             item {
                 Column(
                     Modifier
@@ -174,14 +229,86 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     Text(r.bufferProjection, color = Color.White, fontSize = 14.sp)
                 }
             }
+
+            if (r.suggestions.isNotEmpty()) {
+                item { GroupHeader("Suggestions") }
+                items(r.suggestions) { s ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EnktelSurface)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Text("•", color = EnktelBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(end = 8.dp))
+                        Text(s, color = Color.White.copy(0.92f), fontSize = 13.sp)
+                    }
+                }
+            }
+
+            item { GroupHeader("Troubleshooting toggles") }
             item {
-                FocusButton(
-                    "📋 Copy Diagnostic Report",
-                    onClick = { clipboard.setText(AnnotatedString(r.toReport())) },
-                )
+                Column(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(EnktelSurface)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ToggleGroup("Stream format", options = listOf("hls" to "HLS", "ts" to "MPEG-TS"),
+                        current = streamFormat,
+                        onPick = { scope.launch { graph.settings.setStreamFormat(it) } })
+                    ToggleGroup("Buffer profile",
+                        options = listOf("low" to "Low", "balanced" to "Balanced", "large" to "Large", "auto" to "Auto"),
+                        current = bufferProfile,
+                        onPick = { scope.launch { graph.settings.setBufferProfile(it) } })
+                    SwitchRow(
+                        label = "Live time-shift",
+                        subLabel = "Turn off if seek-back on live channels stalls playback.",
+                        checked = liveShift,
+                        onToggle = { scope.launch { graph.settings.setLiveShiftEnabled(it) } },
+                    )
+                    SwitchRow(
+                        label = "Loudness normalization",
+                        subLabel = "Only turn on if audio is very quiet on your setup — some AVRs dislike it.",
+                        checked = loudness,
+                        onToggle = { scope.launch { graph.settings.setLoudnessOn(it) } },
+                    )
+                }
+            }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FocusButton(
+                        "📋 Copy report",
+                        onClick = { clipboard.setText(AnnotatedString(r.toReport())) },
+                    )
+                    FocusButton("↻ Re-run", onClick = { runTest() })
+                }
             }
         }
     }
+}
+
+private suspend fun pickLiveUrl(graph: AppGraph, p: Profile): String? = try {
+    val list = graph.content.channels(p.id).first()
+    list.firstOrNull()?.let { c -> graph.content.liveUrl(p, c, graph.settings.streamFormat.first()) }
+} catch (_: Throwable) { null }
+
+private suspend fun pickVodUrl(graph: AppGraph, p: Profile): String? = try {
+    val list = graph.content.movies(p.id).first()
+    list.firstOrNull()?.let { m -> graph.content.vodUrl(p, m) }
+} catch (_: Throwable) { null }
+
+@Composable
+private fun GroupHeader(text: String) {
+    Text(
+        text.uppercase(), color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Black,
+        letterSpacing = 1.4.sp,
+        modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
+    )
 }
 
 @Composable
@@ -197,5 +324,42 @@ private fun MetricRow(label: String, value: String, color: Color = Color.White) 
     ) {
         Text(label, color = EnktelTextDim, fontSize = 13.sp)
         Text(value, color = color, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ToggleGroup(
+    label: String,
+    options: List<Pair<String, String>>,
+    current: String,
+    onPick: (String) -> Unit,
+) {
+    Column {
+        Text(label, color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            options.forEach { (key, display) ->
+                GlassChip(display, selected = current == key, onClick = { onPick(key) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(label: String, subLabel: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(subLabel, color = EnktelTextDim, fontSize = 11.sp)
+        }
+        FocusButton(
+            text = if (checked) "On" else "Off",
+            accent = checked,
+            onClick = { onToggle(!checked) },
+        )
     }
 }

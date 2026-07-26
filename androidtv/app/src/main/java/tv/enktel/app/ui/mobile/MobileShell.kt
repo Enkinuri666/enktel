@@ -94,7 +94,7 @@ fun MobileScaffold(
     // and while Kids Mode owns the Home route.
     val showBar = !kidsModeActive && currentRoute in setOf(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
-        "speedTest", "manageCategories",
+        "speedTest", "manageCategories", "downloads",
     )
 
     // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can
@@ -259,6 +259,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                 "🎮  Series" to "series",
                 "📺  TV Guide" to "guide",
                 "☆  Watchlist" to "watchlist",
+                "⬇  Downloads" to "downloads",
                 "⏺  Recordings" to "recordings",
                 "⚙  Settings" to "settings",
             ).forEach { (label, route) ->
