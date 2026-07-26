@@ -89,6 +89,11 @@ class SettingsStore(private val context: Context) {
     // chain shipped in v1.18.3 handles most mismatches transparently.
     private val VOD_FORCE_MP4 = booleanPreferencesKey("vod_force_mp4")
 
+    // v1.20.0: TMDB API key for the metadata enrichment worker. v3 numeric
+    // key OR v4 read-only bearer token accepted. Blank = worker no-ops.
+    // Instructions in Settings help text.
+    private val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -160,6 +165,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setHudAutoHideSec(v: Int) = context.dataStore.edit { it[HUD_AUTOHIDE_SEC] = v.coerceIn(0, 60) }
     val vodForceMp4: Flow<Boolean> = context.dataStore.data.map { it[VOD_FORCE_MP4] ?: false }
     suspend fun setVodForceMp4(v: Boolean) = context.dataStore.edit { it[VOD_FORCE_MP4] = v }
+    val tmdbApiKey: Flow<String> = context.dataStore.data.map { it[TMDB_API_KEY].orEmpty() }
+    suspend fun setTmdbApiKey(v: String) = context.dataStore.edit { it[TMDB_API_KEY] = v.trim() }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

@@ -84,6 +84,57 @@ class ContentRepository(
     suspend fun searchMovies(profileId: Long, q: String) = content.searchMovies(profileId, q)
     suspend fun searchSeries(profileId: Long, q: String) = content.searchSeries(profileId, q)
 
+    // ---- v1.20.0 metadata + themed rails ----------------------------------
+
+    /** Advanced filter for the Movies screen — any blank field is a wildcard. */
+    suspend fun moviesFiltered(profileId: Long, genre: String = "", year: Int = 0, studio: String = "") =
+        content.moviesFiltered(profileId, genre, year, studio)
+
+    /** Advanced filter for the Series screen — any blank field is a wildcard. */
+    suspend fun seriesFiltered(profileId: Long, genre: String = "", year: Int = 0, studio: String = "") =
+        content.seriesFiltered(profileId, genre, year, studio)
+
+    /** Distinct facet values for populating filter chip rows. */
+    suspend fun movieGenres(profileId: Long) = content.distinctMovieGenres(profileId)
+    suspend fun movieYears(profileId: Long) = content.distinctMovieYears(profileId)
+
+    /** Themed-rail keyword search. Runs one DB query per keyword and dedupes
+     *  by primary key — cheaper than a single big OR-chain LIKE (SQLite
+     *  can't use an index on OR-chains of LIKE) and still fast because the
+     *  keyword list is short. */
+    suspend fun moviesMatchingKeywords(
+        profileId: Long, keywords: List<String>, limit: Int,
+    ): List<Movie> = withContext(Dispatchers.IO) {
+        val bag = LinkedHashMap<String, Movie>()
+        keywords.forEach { kw ->
+            content.moviesTagged(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            if (bag.size >= limit) return@forEach
+        }
+        bag.values.take(limit).toList()
+    }
+
+    suspend fun seriesMatchingKeywords(
+        profileId: Long, keywords: List<String>, limit: Int,
+    ): List<tv.enktel.app.data.db.Series> = withContext(Dispatchers.IO) {
+        val bag = LinkedHashMap<String, tv.enktel.app.data.db.Series>()
+        keywords.forEach { kw ->
+            content.seriesTagged(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            if (bag.size >= limit) return@forEach
+        }
+        bag.values.take(limit).toList()
+    }
+
+    suspend fun moviesDocsMatchingKeywords(
+        profileId: Long, keywords: List<String>, limit: Int,
+    ): List<Movie> = withContext(Dispatchers.IO) {
+        val bag = LinkedHashMap<String, Movie>()
+        keywords.forEach { kw ->
+            content.moviesTaggedDocs(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            if (bag.size >= limit) return@forEach
+        }
+        bag.values.take(limit).toList()
+    }
+
     fun isFavoriteFlow(profileId: Long, kind: String, refId: Long) =
         user.isFavoriteFlow("$profileId:$kind:$refId")
 
@@ -124,7 +175,7 @@ class ContentRepository(
             val catId = e.str("category_id").orEmpty()
             Channel(
                 key = "${p.id}:$sid", profileId = p.id, streamId = sid,
-                name = e.str("name") ?: "Channel $sid",
+                name = tv.enktel.app.data.metadata.TitleSanitizer.clean(e.str("name") ?: "Channel $sid"),
                 num = e.int("num") ?: (i + 1),
                 logo = e.str("stream_icon").orEmpty(),
                 categoryId = catId,
@@ -140,7 +191,7 @@ class ContentRepository(
             val sid = e.long("stream_id") ?: return@mapNotNull null
             Movie(
                 key = "${p.id}:$sid", profileId = p.id, streamId = sid,
-                name = e.str("name") ?: "Movie $sid",
+                name = tv.enktel.app.data.metadata.TitleSanitizer.clean(e.str("name") ?: "Movie $sid"),
                 poster = e.str("stream_icon").orEmpty(),
                 categoryId = e.str("category_id").orEmpty(),
                 rating = e.double("rating") ?: 0.0,
@@ -157,7 +208,7 @@ class ContentRepository(
             val sid = e.long("series_id") ?: return@mapNotNull null
             Series(
                 key = "${p.id}:$sid", profileId = p.id, seriesId = sid,
-                name = e.str("name") ?: "Series $sid",
+                name = tv.enktel.app.data.metadata.TitleSanitizer.clean(e.str("name") ?: "Series $sid"),
                 poster = e.str("cover").orEmpty(),
                 categoryId = e.str("category_id").orEmpty(),
                 rating = e.double("rating") ?: 0.0,
@@ -175,6 +226,10 @@ class ContentRepository(
         live.chunked(500).forEach { content.upsertChannels(it) }
         movies.chunked(500).forEach { content.upsertMovies(it) }
         seriesList.chunked(500).forEach { content.upsertSeries(it) }
+        // Kick off the TMDB enrichment worker so the themed home rails
+        // repopulate as the metadata streams in. Worker no-ops when the
+        // user hasn't supplied a TMDB API key, so calling it is always safe.
+        tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(context, p.id)
         return "${live.size} channels · ${movies.size} movies · ${seriesList.size} series"
     }
 

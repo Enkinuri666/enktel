@@ -38,6 +38,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
@@ -156,6 +157,40 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 scope.launch { graph.settings.setRecSuffixMin(when (recSuffix) { 0 -> 5; 5 -> 10; 10 -> 15; else -> 0 }) }
             })
         }
+
+        Spacer(Modifier.height(10.dp))
+        Text("METADATA ENRICHMENT (TMDB)", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val tmdbKey by graph.settings.tmdbApiKey.collectAsStateWithLifecycle(initialValue = "")
+        var newTmdb by remember { mutableStateOf(tmdbKey) }
+        androidx.compose.runtime.LaunchedEffect(tmdbKey) { if (newTmdb.isBlank()) newTmdb = tmdbKey }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Box(Modifier.width(360.dp)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    newTmdb, { newTmdb = it }, "TMDB v3 key or v4 bearer token", password = true,
+                )
+            }
+            FocusButton("Save", onClick = {
+                scope.launch {
+                    graph.settings.setTmdbApiKey(newTmdb)
+                    status = if (newTmdb.isBlank()) "TMDB enrichment disabled" else "TMDB key saved — enrichment will run after next sync"
+                }
+            })
+            if (tmdbKey.isNotBlank()) {
+                FocusButton("Run now", onClick = {
+                    scope.launch {
+                        val pid = graph.settings.activeProfileIdNow()
+                        if (pid > 0) {
+                            tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(ctx, pid)
+                            status = "Metadata enrichment queued"
+                        }
+                    }
+                })
+            }
+        }
+        Text(
+            "Free TMDB account → developer.themoviedb.org → API → request access → paste your v3 key or v4 read-only token here. Blank disables enrichment (the themed home rails still work off titles/genres alone).",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
 
         Spacer(Modifier.height(10.dp))
         Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)

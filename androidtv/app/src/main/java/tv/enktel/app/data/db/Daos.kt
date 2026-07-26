@@ -66,6 +66,80 @@ interface ContentDao {
     suspend fun searchMovies(profileId: Long, q: String): List<Movie>
     @Query("SELECT * FROM series WHERE profileId = :profileId AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 60")
     suspend fun searchSeries(profileId: Long, q: String): List<Series>
+
+    // ---- v1.20.0 metadata enrichment + themed home rails -------------------
+
+    /** Movies that either have no TMDB enrichment yet (enrichedAt == 0) OR
+     *  whose last enrichment is older than [staleBefore]. Ordered by most
+     *  recently added so the freshest content gets enriched first. */
+    @Query("SELECT * FROM movies WHERE profileId = :profileId AND (enrichedAt = 0 OR enrichedAt < :staleBefore) ORDER BY addedAt DESC LIMIT :n")
+    suspend fun moviesNeedingEnrichment(profileId: Long, staleBefore: Long, n: Int): List<Movie>
+
+    @Query("SELECT * FROM series WHERE profileId = :profileId AND (enrichedAt = 0 OR enrichedAt < :staleBefore) ORDER BY name LIMIT :n")
+    suspend fun seriesNeedingEnrichment(profileId: Long, staleBefore: Long, n: Int): List<Series>
+
+    /** Themed-rail lookup — matches a comma-separated tags/keywords column
+     *  against a single LIKE clause. Callers pass a `%keyword%` pattern.
+     *  Also matches title/genre so an "aliens" search catches "Aliens (1986)"
+     *  even before TMDB tags land. */
+    @Query("""SELECT * FROM movies WHERE profileId = :profileId AND (
+             tags LIKE :like OR genre LIKE :like OR name LIKE :like
+         ) ORDER BY year DESC, name LIMIT :n""")
+    suspend fun moviesTagged(profileId: Long, like: String, n: Int = 40): List<Movie>
+
+    @Query("""SELECT * FROM series WHERE profileId = :profileId AND (
+             tags LIKE :like OR genre LIKE :like OR name LIKE :like
+         ) ORDER BY year DESC, name LIMIT :n""")
+    suspend fun seriesTagged(profileId: Long, like: String, n: Int = 40): List<Series>
+
+    /** Same as [moviesTagged] but constrained to genre = 'Documentary'. */
+    @Query("""SELECT * FROM movies WHERE profileId = :profileId AND (
+             genre LIKE '%Documentary%' OR tags LIKE '%documentary%'
+         ) AND (
+             tags LIKE :like OR name LIKE :like
+         ) ORDER BY year DESC, addedAt DESC LIMIT :n""")
+    suspend fun moviesTaggedDocs(profileId: Long, like: String, n: Int = 40): List<Movie>
+
+    /** Filter dropdown supports: genre / year / studio. Any blank string
+     *  becomes an unbounded wildcard so the caller can compose partial
+     *  filters (e.g. genre only). */
+    @Query("""SELECT * FROM movies WHERE profileId = :profileId
+             AND genre LIKE '%' || :genre || '%'
+             AND (:year = 0 OR year = :year)
+             AND studios LIKE '%' || :studio || '%'
+             ORDER BY name LIMIT 200""")
+    suspend fun moviesFiltered(profileId: Long, genre: String, year: Int, studio: String): List<Movie>
+
+    @Query("""SELECT * FROM series WHERE profileId = :profileId
+             AND genre LIKE '%' || :genre || '%'
+             AND (:year = 0 OR year = :year)
+             AND studios LIKE '%' || :studio || '%'
+             ORDER BY name LIMIT 200""")
+    suspend fun seriesFiltered(profileId: Long, genre: String, year: Int, studio: String): List<Series>
+
+    /** Distinct-value helpers for populating the filter chip rows. */
+    @Query("SELECT DISTINCT genre FROM movies WHERE profileId = :profileId AND genre != '' ORDER BY genre")
+    suspend fun distinctMovieGenres(profileId: Long): List<String>
+
+    @Query("SELECT DISTINCT year FROM movies WHERE profileId = :profileId AND year > 0 ORDER BY year DESC")
+    suspend fun distinctMovieYears(profileId: Long): List<Int>
+
+    /** Push enriched fields from the worker without rewriting the entire row. */
+    @Query("""UPDATE movies SET tmdbId = :tmdbId, studios = :studios, tags = :tags,
+             genre = :genre, year = :year, `cast` = :cast, director = :director,
+             enrichedAt = :now WHERE key = :key""")
+    suspend fun enrichMovie(
+        key: String, tmdbId: Long, studios: String, tags: String,
+        genre: String, year: Int, cast: String, director: String, now: Long,
+    )
+
+    @Query("""UPDATE series SET tmdbId = :tmdbId, studios = :studios, tags = :tags,
+             genre = :genre, year = :year, `cast` = :cast, director = :director,
+             enrichedAt = :now WHERE key = :key""")
+    suspend fun enrichSeries(
+        key: String, tmdbId: Long, studios: String, tags: String,
+        genre: String, year: Int, cast: String, director: String, now: Long,
+    )
 }
 
 @Dao
@@ -125,10 +199,31 @@ interface SearchDao {
     @Query("DELETE FROM search_history WHERE query = :query") suspend fun forget(query: String)
     @Query("DELETE FROM search_history") suspend fun clear()
 
-    @Query("SELECT * FROM movies WHERE profileId = :profileId AND (name LIKE '%' || :q || '%' OR `cast` LIKE '%' || :q || '%' OR director LIKE '%' || :q || '%' OR genre LIKE '%' || :q || '%') ORDER BY name LIMIT 60")
+    // Multi-dimensional search — title, cast, director, genre, studios, tags,
+    // and (for movies) a year match if the query is a plain 4-digit year.
+    // The `year` OR-clause uses CAST so LIKE '%2023%' still hits releases
+    // labelled with `year = 2023` in the integer column.
+    @Query("""SELECT * FROM movies WHERE profileId = :profileId AND (
+             name LIKE '%' || :q || '%'
+             OR `cast` LIKE '%' || :q || '%'
+             OR director LIKE '%' || :q || '%'
+             OR genre LIKE '%' || :q || '%'
+             OR studios LIKE '%' || :q || '%'
+             OR tags LIKE '%' || :q || '%'
+             OR CAST(year AS TEXT) LIKE '%' || :q || '%'
+         ) ORDER BY name LIMIT 60""")
     suspend fun searchMoviesDeep(profileId: Long, q: String): List<Movie>
 
-    @Query("SELECT * FROM series WHERE profileId = :profileId AND (name LIKE '%' || :q || '%' OR `cast` LIKE '%' || :q || '%' OR director LIKE '%' || :q || '%' OR genre LIKE '%' || :q || '%' OR plot LIKE '%' || :q || '%') ORDER BY name LIMIT 60")
+    @Query("""SELECT * FROM series WHERE profileId = :profileId AND (
+             name LIKE '%' || :q || '%'
+             OR `cast` LIKE '%' || :q || '%'
+             OR director LIKE '%' || :q || '%'
+             OR genre LIKE '%' || :q || '%'
+             OR studios LIKE '%' || :q || '%'
+             OR tags LIKE '%' || :q || '%'
+             OR plot LIKE '%' || :q || '%'
+             OR CAST(year AS TEXT) LIKE '%' || :q || '%'
+         ) ORDER BY name LIMIT 60""")
     suspend fun searchSeriesDeep(profileId: Long, q: String): List<Series>
 }
 

@@ -51,7 +51,7 @@ data class Category(
     val sortIdx: Int = 0,
 )
 
-@Entity(tableName = "movies", indices = [Index("profileId"), Index("profileId", "categoryId")])
+@Entity(tableName = "movies", indices = [Index("profileId"), Index("profileId", "categoryId"), Index("tmdbId")])
 data class Movie(
     /** "$profileId:$streamId" */
     @PrimaryKey val key: String,
@@ -68,9 +68,20 @@ data class Movie(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    // v1.20.0 metadata enrichment — populated first from Xtream (tmdbId), then
+    // overwritten by MetadataEnrichmentWorker with the extended TMDB payload.
+    val tmdbId: Long = 0,
+    /** Comma-separated production studios (e.g. "Warner Bros.,Legendary"). */
+    val studios: String = "",
+    /** Comma-separated lowercased normalised keywords + tags — used by the
+     *  themed home rails (The Phenomenon, Deep Dive Documentaries, etc.) and
+     *  by the advanced search. */
+    val tags: String = "",
+    /** Unix ms of the last successful TMDB enrichment — 0 means never. */
+    val enrichedAt: Long = 0,
 )
 
-@Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId")])
+@Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId"), Index("tmdbId")])
 data class Series(
     /** "$profileId:$seriesId" */
     @PrimaryKey val key: String,
@@ -85,6 +96,10 @@ data class Series(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    val tmdbId: Long = 0,
+    val studios: String = "",
+    val tags: String = "",
+    val enrichedAt: Long = 0,
 )
 
 @Entity(tableName = "watchlist")

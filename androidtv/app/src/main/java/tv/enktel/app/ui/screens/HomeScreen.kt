@@ -87,6 +87,13 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     var moodFastPaced by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var moodMindBending by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var moodFeelGood by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    // v1.20.0 themed rails — populated by RecommendationsRepository, backed
+    // by the DB `tags` column that the MetadataEnrichmentWorker fills after
+    // each sync. Titles + genres are also matched, so users see hits even
+    // before enrichment lands.
+    var phenomenonMovies by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var deepDiveDocs by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var latestExopolitics by remember { mutableStateOf<List<Movie>>(emptyList()) }
     val today = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
     LaunchedEffect(p.id, today) {
         try {
@@ -100,6 +107,9 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             moodFastPaced = graph.recommendations.moodFastPaced(p.id)
             moodMindBending = graph.recommendations.moodMindBending(p.id)
             moodFeelGood = graph.recommendations.moodFeelGood(p.id)
+            phenomenonMovies = graph.recommendations.phenomenonMovies(p.id)
+            deepDiveDocs = graph.recommendations.deepDiveDocs(p.id)
+            latestExopolitics = graph.recommendations.latestExopolitics(p.id)
         } catch (_: Throwable) {}
     }
 
@@ -292,6 +302,51 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         subtitle = countdown,
                         onClick = { nav.navigate("movie/${m.key}") },
                     )
+                }
+            }
+        }
+        // v1.20.0 themed rails — surfaced above "Because You Watched" so
+        // engaged viewers see the fresh content first. Each is skipped when
+        // its query yields nothing so the home page doesn't render empty
+        // section headers on catalogues that don't overlap the theme.
+        if (phenomenonMovies.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🛸  The Phenomenon", phenomenonMovies,
+                    accent = tv.enktel.app.ui.theme.EnktelPurple,
+                    subtitle = "UFO / UAP / disclosure — movies + series",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster, subtitle = m.genre.take(24),
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (deepDiveDocs.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "📚  Deep Dive Documentaries", deepDiveDocs,
+                    accent = tv.enktel.app.ui.theme.EnktelBlue,
+                    subtitle = "long-form documentaries covering the phenomenon",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.year > 0) "${m.year} · ${m.genre.take(18)}" else m.genre.take(24),
+                        onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (latestExopolitics.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "🌐  Latest Exopolitics", latestExopolitics,
+                    accent = tv.enktel.app.ui.theme.EnktelOk,
+                    subtitle = "disclosure / whistleblower / recent releases",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(m.name, m.poster,
+                        subtitle = if (m.year > 0) "${m.year}" else m.genre.take(24),
+                        onClick = { nav.navigate("movie/${m.key}") })
                 }
             }
         }
