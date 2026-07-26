@@ -144,4 +144,26 @@ class RecommendationsRepository(private val content: ContentRepository) {
             minRating = 6.0, n = n,
         )
     }
+
+    // ---- v1.20.0 themed rails (UFO / UAP / Exopolitics) --------------------
+    // Backed by the DB `tags` column which the MetadataEnrichmentWorker
+    // populates from TMDB keywords. Falls back to matching `name` + `genre`
+    // so users see hits even before enrichment runs.
+
+    /** "The Phenomenon" — mixed movies + series matching the broad UFO/UAP
+     *  keyword umbrella (see [tv.enktel.app.data.metadata.UfoKeywords]). */
+    suspend fun phenomenonMovies(profileId: Long, n: Int = 30): List<Movie> =
+        content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
+
+    suspend fun phenomenonSeries(profileId: Long, n: Int = 30): List<tv.enktel.app.data.db.Series> =
+        content.seriesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
+
+    /** "Deep Dive Documentaries" — documentary genre + phenomenon keywords. */
+    suspend fun deepDiveDocs(profileId: Long, n: Int = 30): List<Movie> =
+        content.moviesDocsMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
+
+    /** "Latest Exopolitics" — narrower exopolitics keyword set, sorted by
+     *  release year descending so the freshest content leads. */
+    suspend fun latestExopolitics(profileId: Long, n: Int = 30): List<Movie> =
+        content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.exopolitics, n)
 }

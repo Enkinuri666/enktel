@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
         DownloadEntry::class,
     ],
-    version = 5, // v5 adds offline downloads (movies + series episodes) for in-app file manager
+    version = 6, // v6 adds TMDB enrichment fields (tmdbId, studios, tags, enrichedAt) on movies + series
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -102,9 +102,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Extend movies + series with TMDB enrichment columns. All
+                // default-nullable-safe via NOT NULL DEFAULT so existing
+                // rows are usable immediately after upgrade; the worker
+                // fills them in asynchronously.
+                listOf("movies", "series").forEach { table ->
+                    db.execSQL("ALTER TABLE $table ADD COLUMN tmdbId INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN studios TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN enrichedAt INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_${table}_tmdbId ON $table(tmdbId)")
+                }
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration()
                 .build()
     }
