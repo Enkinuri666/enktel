@@ -57,6 +57,15 @@ fun PlayerGestureLayer(
     var boxHeightPx by remember { mutableStateOf(1f) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var dragStartSide by remember { mutableStateOf(Side.None) }
+    // Snapshot of the volume/brightness fraction at drag-start plus the
+    // cumulative Y delta since then. This lets us set an *absolute* target
+    // on each drag event instead of nudging by a per-event delta — the old
+    // per-event nudge got truncated to zero by Android's integer-quantised
+    // stream volume API, which is why the volume slider felt like it didn't
+    // do anything on short drags.
+    var dragStartVolume by remember { mutableStateOf(0f) }
+    var dragStartBrightness by remember { mutableStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableStateOf(0f) }
 
     Box(
         modifier
@@ -70,21 +79,26 @@ fun PlayerGestureLayer(
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         dragStartSide = if (offset.x < boxWidthPx / 2f) Side.Brightness else Side.Volume
+                        accumulatedFraction = 0f
+                        dragStartVolume = PlayerGestures.currentVolumeFraction(context)
+                        dragStartBrightness = activity?.let { PlayerGestures.currentBrightness(it) } ?: 0.5f
                     },
                     onDragEnd = { dragStartSide = Side.None },
                     onDragCancel = { dragStartSide = Side.None },
                     onVerticalDrag = { _, dy ->
                         // dy positive = drag down = decrease. Invert so drag up = increase.
-                        val delta = -dy / boxHeightPx
+                        // 1.5× multiplier so a modest thumb swipe covers the full range
+                        // — matches the tactile feel of MX Player / VLC on Android.
+                        accumulatedFraction += -dy / boxHeightPx * 1.5f
                         when (dragStartSide) {
                             Side.Brightness -> activity?.let {
-                                val next = PlayerGestures.setBrightness(
-                                    it, PlayerGestures.currentBrightness(it) + delta,
-                                )
+                                val target = (dragStartBrightness + accumulatedFraction).coerceIn(0.05f, 1f)
+                                val next = PlayerGestures.setBrightness(it, target)
                                 showLevel = Level.Brightness(next)
                             }
                             Side.Volume -> {
-                                val next = PlayerGestures.adjustVolume(context, delta)
+                                val target = (dragStartVolume + accumulatedFraction).coerceIn(0f, 1f)
+                                val next = PlayerGestures.setVolumeFraction(context, target)
                                 showLevel = Level.Volume(next)
                             }
                             Side.None -> {}

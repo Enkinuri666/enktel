@@ -111,6 +111,24 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text("Buffer changes apply the next time a player opens.", color = EnktelTextDim, fontSize = 11.sp)
 
         Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Force MP4 fallback (VOD)")
+        val vodForceMp4 by graph.settings.vodForceMp4.collectAsStateWithLifecycle(initialValue = false)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip(
+                "Off", selected = !vodForceMp4,
+                onClick = { scope.launch { graph.settings.setVodForceMp4(false) } },
+            )
+            tv.enktel.app.ui.components.GlassChip(
+                "On", selected = vodForceMp4,
+                onClick = { scope.launch { graph.settings.setVodForceMp4(true) } },
+            )
+        }
+        Text(
+            "Bypass container auto-detection and force ExoPlayer to parse every movie / episode strictly as MP4. Turn on if a specific title fails with a codec / container error and the fallback chain doesn't recover.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
         tv.enktel.app.ui.components.ChipRowLabel("Player controls auto-hide")
         val hudSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {

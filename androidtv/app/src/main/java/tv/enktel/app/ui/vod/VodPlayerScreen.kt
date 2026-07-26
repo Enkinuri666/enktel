@@ -100,6 +100,7 @@ fun VodPlayerScreen(
     val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
     val subBgAlpha by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
+    val vodForceMp4 by graph.settings.vodForceMp4.collectAsStateWithLifecycle(initialValue = false)
 
     var showControls by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
@@ -110,11 +111,21 @@ fun VodPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
 
-    LaunchedEffect(url) {
+    LaunchedEffect(url, vodForceMp4) {
         val resume = if (progressKey.isNotBlank()) graph.content.progress(progressKey)?.positionMs ?: 0L else 0L
         // If the user has set an intro-skip length, honour it on the first play (not on resumes).
         val start = if (!isLive && resume <= 0 && skipIntroSec > 0) skipIntroSec * 1000L else resume
-        engine.play(url, live = isLive, startPositionMs = if (!isLive) start else 0, externalSubUrl = extSubUrl)
+        // Force MP4 extractor for VOD only when the user opted in via
+        // Settings → Playback → Force MP4 fallback (VOD). Live streams
+        // always let ExoPlayer sniff so HLS/TS auto-detect keeps working.
+        val forceMime = if (!isLive && vodForceMp4) androidx.media3.common.MimeTypes.VIDEO_MP4 else ""
+        engine.play(
+            url = url,
+            live = isLive,
+            startPositionMs = if (!isLive) start else 0,
+            externalSubUrl = extSubUrl,
+            forceMimeType = forceMime,
+        )
         engine.setLoudnessOn(loudnessOn)
     }
     LaunchedEffect(loudnessOn) { engine.setLoudnessOn(loudnessOn) }
@@ -348,10 +359,14 @@ fun VodPlayerScreen(
             }
         }
 
-        // Stream-health chip — self-hides when everything's fine.
-        tv.enktel.app.ui.components.StreamHealthChip(
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
-        )
+        // Stream-health chip — only when the transport controls are up
+        // (mirroring the live player) so it doesn't paint over the picture
+        // during unattended viewing.
+        if (showControls || trackMenu.isNotEmpty()) {
+            tv.enktel.app.ui.components.StreamHealthChip(
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
+            )
+        }
 
         // ---- Skip Intro pill ------------------------------------------------
         // Netflix-style floating chip.  Shown between 5 s and 90 s into VOD

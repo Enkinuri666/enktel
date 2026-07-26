@@ -21,14 +21,28 @@ object PlayerGestures {
         return (v.toFloat() / max).coerceIn(0f, 1f)
     }
 
-    /** Move volume by [delta] as a fraction of the max stream volume. */
-    fun adjustVolume(context: Context, delta: Float): Float {
+    /**
+     * Set volume to an absolute fraction (0..1). Callers should snapshot
+     * [currentVolumeFraction] at drag-start and pass `start + accumulated`
+     * on each drag event — trying to increment by tiny deltas doesn't
+     * work because Android's stream-volume API is integer-quantised
+     * (typically 0–15) and `(current + 0.15).toInt()` truncates to zero,
+     * meaning small drags used to move the volume nothing at all.
+     */
+    fun setVolumeFraction(context: Context, fraction: Float): Float {
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val current = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-        val target = (current + (delta * max)).toInt().coerceIn(0, max)
+        // Round to nearest step so a drag that lands at 4.5/15 hits step 5,
+        // not step 4 — matches user expectation on a discrete-step slider.
+        val target = (fraction.coerceIn(0f, 1f) * max + 0.5f).toInt().coerceIn(0, max)
         am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
         return (target.toFloat() / max).coerceIn(0f, 1f)
+    }
+
+    /** Legacy delta-based adjust kept for callers that still pass a per-tick
+     *  delta. Prefer [setVolumeFraction] with a start-snapshot accumulator. */
+    fun adjustVolume(context: Context, delta: Float): Float {
+        return setVolumeFraction(context, currentVolumeFraction(context) + delta)
     }
 
     /** Read the player Activity's window brightness. If the window is set to

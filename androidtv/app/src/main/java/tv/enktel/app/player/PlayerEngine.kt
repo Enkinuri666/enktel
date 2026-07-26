@@ -69,6 +69,11 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     /** Surfaced so the UI can show "trying an alternate stream source…"
      *  instead of a flat error while the fallback chain is still working. */
     val triedFallback = MutableStateFlow(false)
+    /** MIME type to pin on the next MediaItem, bypassing ExoPlayer's own
+     *  container auto-detection. Empty = let ExoPlayer figure it out. Set
+     *  via [play]'s `forceMimeType` (used by the "Force MP4 fallback (VOD)"
+     *  setting). Cleared automatically at the top of every new [play] call. */
+    private var forcedMimeType: String = ""
 
     val player: ExoPlayer
 
@@ -244,10 +249,14 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     }
 
     /** Play a single fixed URL — no fallback chain (used for M3U channels,
-     *  VOD/catch-up assets that already resolved to one confirmed URL). */
-    fun play(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+     *  VOD/catch-up assets that already resolved to one confirmed URL).
+     *  [forceMimeType] pins the container so ExoPlayer skips its own
+     *  auto-detection (e.g. `MimeTypes.VIDEO_MP4` to strictly parse as MP4
+     *  when the "Force MP4 fallback (VOD)" setting is on). */
+    fun play(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "", forceMimeType: String = "") {
         candidateQueue = mutableListOf()
         triedFallback.value = false
+        forcedMimeType = forceMimeType
         playInternal(url, live, startPositionMs, externalSubUrl)
     }
 
@@ -275,6 +284,10 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         dropped = 0
         error.value = null
         val builder = MediaItem.Builder().setUri(url).apply {
+            // Pin the MIME type when the caller asked us to skip container
+            // auto-detection (Force MP4 fallback etc). Media3 uses this
+            // hint to select the extractor directly rather than sniffing.
+            if (forcedMimeType.isNotBlank()) setMimeType(forcedMimeType)
             if (live) setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.03f).build()
             )

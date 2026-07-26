@@ -277,12 +277,16 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
     Box(Modifier.fillMaxSize()) {
         content()
 
+        // While a player is on-screen we do NOT paint a mic peek/FAB on top
+        // of the video. Voice is still available via the remote's mic key,
+        // the "Hey Enki" wake word (Settings → Voice), and — on mobile — the
+        // bottom-nav Mic tab once the user exits playback. Overlaying an
+        // always-visible mic glyph over the picture was surfaced as an
+        // "obstructing on-screen bubble" complaint, and users watching a
+        // channel or a movie almost never want a persistent tap target
+        // stealing screen space.
         if (playerActive) {
-            MicEdgePeek(
-                listening = listening,
-                onTap = { toggleListening() },
-                modifier = Modifier.align(Alignment.CenterStart),
-            )
+            // no-op — see block comment above
         } else if (!isMobile) {
             MicFab(
                 listening = listening,
@@ -295,13 +299,15 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
         }
 
         if (listening) {
-            // Anchor the Listening card near the mic so the user's eye can
-            // follow it. Left-side when on a player, otherwise bottom-left.
+            // While playing, anchor the card to the top-start out of the
+            // main viewing area so the picture isn't blocked. Elsewhere the
+            // card lives near the mic FAB so the eye can follow it.
             ListeningOverlay(
                 partial = partial,
                 onCancel = { recognizer.stop(); listening = false },
-                modifier = if (playerActive) Modifier.align(Alignment.CenterStart).padding(start = 60.dp)
-                           else Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 14.dp, bottom = 140.dp),
+                modifier = if (playerActive)
+                    Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp)
+                else Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 14.dp, bottom = 140.dp),
             )
         }
         lastIntentLabel?.let { label ->
@@ -392,6 +398,7 @@ private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Mod
 
 /** Left-edge tap-to-open peek shown while a player is on-screen. Almost
  *  invisible until the user needs it, but always reachable with a single tap. */
+@Suppress("unused") // Retained in case we re-introduce an opt-in "show mic during playback" preference.
 @Composable
 private fun MicEdgePeek(listening: Boolean, onTap: () -> Unit, modifier: Modifier) {
     Box(
