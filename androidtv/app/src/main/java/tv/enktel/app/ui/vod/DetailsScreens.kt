@@ -116,6 +116,16 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     }
                     FavButton(graph, p.id, "vod", m.streamId)
                     WatchlistButton(graph, p.id, "vod", m.streamId, m.name, m.poster)
+                    DownloadButton(
+                        graph = graph,
+                        id = "${p.id}:movie:${m.streamId}",
+                        profileId = p.id,
+                        kind = "movie",
+                        refId = m.streamId,
+                        title = m.name,
+                        poster = m.poster,
+                        sourceUrl = url,
+                    )
                 }
                 Spacer(Modifier.height(18.dp))
                 if (details?.plot?.isNotBlank() == true) {
@@ -148,6 +158,57 @@ fun FavButton(graph: AppGraph, profileId: Long, kind: String, refId: Long) {
     val scope = rememberCoroutineScope()
     FocusButton(if (fav) "★ Favorited" else "☆ Favorite", onClick = {
         scope.launch { graph.content.toggleFavorite(profileId, kind, refId) }
+    })
+}
+
+/**
+ * Download / offline-status button. Reads liveness from the downloads DAO so
+ * the label reflects state changes as the queue progresses ("⬇ Download" →
+ * "⏳ Queued" → "✓ Saved") without a manual refresh.
+ */
+@Composable
+fun DownloadButton(
+    graph: AppGraph,
+    id: String,
+    profileId: Long,
+    kind: String, // "movie" | "episode"
+    refId: Long,
+    title: String,
+    poster: String,
+    sourceUrl: String,
+    seriesKey: String = "",
+    seriesName: String = "",
+    season: Int = 0,
+    episode: Int = 0,
+) {
+    val exists by graph.db.downloadDao().existsFlow(id).collectAsStateWithLifecycle(initialValue = false)
+    val done by graph.db.downloadDao().completedFlow(id).collectAsStateWithLifecycle(initialValue = false)
+    val label = when {
+        done -> "✓ Saved offline"
+        exists -> "⏳ Downloading…"
+        else -> "⬇ Download"
+    }
+    FocusButton(label, onClick = {
+        if (done) return@FocusButton
+        if (exists) {
+            graph.downloads.cancel(id)
+        } else {
+            graph.downloads.enqueue(
+                tv.enktel.app.data.db.DownloadEntry(
+                    id = id,
+                    profileId = profileId,
+                    kind = kind,
+                    refId = refId,
+                    seriesKey = seriesKey,
+                    seriesName = seriesName,
+                    season = season,
+                    episode = episode,
+                    title = title,
+                    poster = poster,
+                    sourceUrl = sourceUrl,
+                )
+            )
+        }
     })
 }
 
@@ -243,6 +304,21 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                             Spacer(Modifier.width(10.dp))
                             Text("${ep.durationSecs / 60} min", fontSize = 12.sp, color = EnktelTextDim)
                         }
+                        Spacer(Modifier.width(10.dp))
+                        DownloadButton(
+                            graph = graph,
+                            id = "${p.id}:episode:${ep.id}",
+                            profileId = p.id,
+                            kind = "episode",
+                            refId = ep.id,
+                            title = "${s.name} S${ep.season}E${ep.episode} · ${ep.title}",
+                            poster = s.poster,
+                            sourceUrl = XtreamClient.episodeUrl(p, ep.id, ep.ext),
+                            seriesKey = s.key,
+                            seriesName = s.name,
+                            season = ep.season,
+                            episode = ep.episode,
+                        )
                     }
                 }
             }

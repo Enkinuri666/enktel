@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import tv.enktel.app.data.db.AppDatabase
+import tv.enktel.app.data.download.DownloadHub
 import tv.enktel.app.data.prefs.SettingsStore
 import tv.enktel.app.data.repo.ContentRepository
 import tv.enktel.app.data.repo.EpgRepository
@@ -42,6 +43,7 @@ class AppGraph(app: Application) {
     val watchlist = WatchlistRepository(db.watchlistDao())
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
+    val downloads = DownloadHub(app, db.downloadDao())
 
     init {
         val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)

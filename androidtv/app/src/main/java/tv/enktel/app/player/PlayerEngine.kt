@@ -73,13 +73,26 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     val player: ExoPlayer
 
     init {
-        val (minBuf, maxBuf, playBuf) = when (bufferProfile) {
-            "low" -> Triple(5_000, 20_000, 1_000)
-            "large" -> Triple(30_000, 120_000, 3_500)
-            else -> Triple(15_000, 60_000, 2_000)
+        // Buffer profiles trade zap speed vs. resilience. "auto" scales the window
+        // by device class (TV keeps a bigger cushion; phones keep it lean).
+        val isTv = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+            android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        data class BufferWindow(val min: Int, val max: Int, val play: Int, val rebuf: Int)
+        val bw = when (bufferProfile) {
+            "low" -> BufferWindow(5_000, 20_000, 1_000, 2_000)
+            "large" -> BufferWindow(30_000, 180_000, 3_500, 6_000)
+            "auto" -> if (isTv) BufferWindow(20_000, 90_000, 2_500, 4_500)
+                      else BufferWindow(15_000, 60_000, 2_000, 3_500)
+            else -> BufferWindow(15_000, 60_000, 2_000, 3_500)
         }
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(minBuf, maxBuf, playBuf, playBuf * 2)
+            .setBufferDurationsMs(bw.min, bw.max, bw.play, bw.rebuf)
+            // Keep 60 s behind the live/playhead so instant-rewinds inside DVR-style
+            // catch-up don't force a re-fetch, and short backward skips stay smooth.
+            .setBackBuffer(60_000, true)
+            // Time-priority means the player refuses to eat into the buffered window
+            // just because we downloaded "enough bytes" — better on high-bitrate 4K
+            // where a small byte count still represents seconds of runway.
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
@@ -87,6 +100,9 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
 
         val renderers = DefaultRenderersFactory(context)
+            // PREFER favours the software extension decoders (AV1/VP9/Opus/FFmpeg)
+            // when they're compiled in, then falls back to the SoC hardware path —
+            // maximum codec breadth without giving up hardware acceleration.
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
             // Route higher-tier audio (AC-3 / E-AC-3 / TrueHD / DTS) untouched to the receiver
@@ -95,15 +111,27 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
 
         // Tunneled HW decoding on Android TV — feeds compressed samples straight to the SoC's
         // hardware decoder for lower latency + fewer dropped frames on 4K panels.
-        val isTv = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
-            android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
         trackSelector.parameters = trackSelector.buildUponParameters()
             .setTunnelingEnabled(isTv)
             .setPreferredAudioMimeTypes(
                 androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC,
                 androidx.media3.common.MimeTypes.AUDIO_E_AC3,
                 androidx.media3.common.MimeTypes.AUDIO_AC3,
+                androidx.media3.common.MimeTypes.AUDIO_TRUEHD,
+                androidx.media3.common.MimeTypes.AUDIO_DTS_HD,
+                androidx.media3.common.MimeTypes.AUDIO_DTS,
+                androidx.media3.common.MimeTypes.AUDIO_OPUS,
                 androidx.media3.common.MimeTypes.AUDIO_AAC,
+            )
+            // Prefer modern codecs when the source publishes multiple variants —
+            // AV1 → HEVC → H.264 on the video side. When only one is offered this
+            // is a no-op; when several exist the player picks the smallest bitrate
+            // for the quality tier, which is the point of adaptive streaming.
+            .setPreferredVideoMimeTypes(
+                androidx.media3.common.MimeTypes.VIDEO_AV1,
+                androidx.media3.common.MimeTypes.VIDEO_H265,
+                androidx.media3.common.MimeTypes.VIDEO_VP9,
+                androidx.media3.common.MimeTypes.VIDEO_H264,
             )
             .build()
 

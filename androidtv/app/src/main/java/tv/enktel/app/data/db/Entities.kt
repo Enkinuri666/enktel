@@ -180,3 +180,40 @@ data class Recording(
     val sizeBytes: Long = 0,
     val channelLogo: String = "",
 )
+
+/**
+ * A single offline download entry — one row per movie or episode the user has
+ * queued or saved locally. Media3's own DownloadManager keeps the byte-level
+ * cache; this table holds the user-facing metadata (name, poster, kind, parent
+ * series) plus a snapshot of progress so the UI can render offline without
+ * subscribing to the DownloadManager listener stream on every scroll.
+ */
+@Entity(tableName = "downloads", indices = [Index("profileId"), Index("kind"), Index("seriesKey")])
+data class DownloadEntry(
+    /** Stable id — matches the Media3 Download#request.id used to enqueue. */
+    @PrimaryKey val id: String,
+    val profileId: Long,
+    /** "movie" | "episode" */
+    val kind: String,
+    val refId: Long,
+    /** For "episode": the "$profileId:$seriesId" key of the parent series so
+     *  we can group episodes together in the Downloads screen. */
+    val seriesKey: String = "",
+    val seriesName: String = "",
+    val season: Int = 0,
+    val episode: Int = 0,
+    val title: String,
+    val poster: String = "",
+    /** Remote URL that was queued. */
+    val sourceUrl: String,
+    /** Local path once the download is DONE — empty while in flight. */
+    val filePath: String = "",
+    /** QUEUED | RUNNING | PAUSED | DONE | FAILED */
+    val status: String = "QUEUED",
+    val progressPct: Int = 0,
+    val sizeBytes: Long = 0,
+    val downloadedBytes: Long = 0,
+    val errorMessage: String = "",
+    val addedAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+)

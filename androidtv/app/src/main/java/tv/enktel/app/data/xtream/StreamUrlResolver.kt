@@ -45,27 +45,24 @@ object StreamUrlResolver {
         return listOf(primary, secondary, extensionless, legacy).distinct()
     }
 
-    /** Ordered candidate list for a VOD movie. */
+    /** Ordered candidate list for a VOD movie. Widened to also try ts / avi
+     *  containers — some Xtream panels report `container_extension` as `mp4`
+     *  but only actually serve `.ts` or (rarely) `.avi`. */
     fun forMovie(p: Profile, m: Movie): List<String> {
         if (p.kind == "m3u") return listOf(m.url).filter { it.isNotBlank() }
         val base = p.server.trimEnd('/')
-        val ext = m.ext.ifBlank { "mp4" }
-        val primary = "$base/movie/${p.username}/${p.password}/${m.streamId}.$ext"
-        // Some panels lie about container_extension; mp4/mkv are the two
-        // overwhelmingly common real containers, so try the other one
-        // before giving up.
-        val altExt = if (ext.equals("mp4", true)) "mkv" else "mp4"
-        val altContainer = "$base/movie/${p.username}/${p.password}/${m.streamId}.$altExt"
-        return listOf(primary, altContainer).distinct()
+        val ext = m.ext.ifBlank { "mp4" }.lowercase()
+        val prefix = "$base/movie/${p.username}/${p.password}/${m.streamId}"
+        val ordered = listOf(ext, "mp4", "mkv", "ts", "avi").distinct()
+        return ordered.map { "$prefix.$it" }
     }
 
-    /** Ordered candidate list for a series episode. */
+    /** Ordered candidate list for a series episode. Same widening as [forMovie]. */
     fun forEpisode(p: Profile, episodeId: Long, ext: String): List<String> {
         val base = p.server.trimEnd('/')
-        val e = ext.ifBlank { "mp4" }
-        val primary = "$base/series/${p.username}/${p.password}/$episodeId.$e"
-        val altExt = if (e.equals("mp4", true)) "mkv" else "mp4"
-        val altContainer = "$base/series/${p.username}/${p.password}/$episodeId.$altExt"
-        return listOf(primary, altContainer).distinct()
+        val e = ext.ifBlank { "mp4" }.lowercase()
+        val prefix = "$base/series/${p.username}/${p.password}/$episodeId"
+        val ordered = listOf(e, "mp4", "mkv", "ts", "avi").distinct()
+        return ordered.map { "$prefix.$it" }
     }
 }
