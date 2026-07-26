@@ -259,7 +259,49 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             CenterMessage("Loading episodes…")
             return
         }
-        tv.enktel.app.ui.components.ChipRowLabel("Season")
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tv.enktel.app.ui.components.ChipRowLabel("Season")
+            Spacer(Modifier.weight(1f))
+            FocusButton("⬇ Season", onClick = {
+                val entries = seasons[season].orEmpty().map { ep ->
+                    tv.enktel.app.data.db.DownloadEntry(
+                        id = "${p.id}:episode:${ep.id}",
+                        profileId = p.id,
+                        kind = "episode",
+                        refId = ep.id,
+                        seriesKey = s.key,
+                        seriesName = s.name,
+                        season = ep.season,
+                        episode = ep.episode,
+                        title = "${s.name} S${ep.season}E${ep.episode} · ${ep.title}",
+                        poster = s.poster,
+                        sourceUrl = XtreamClient.episodeUrl(p, ep.id, ep.ext),
+                    )
+                }
+                graph.downloads.enqueueMany(entries)
+            })
+            FocusButton("⬇ All episodes", accent = true, onClick = {
+                val entries = seasons.values.flatten().map { ep ->
+                    tv.enktel.app.data.db.DownloadEntry(
+                        id = "${p.id}:episode:${ep.id}",
+                        profileId = p.id,
+                        kind = "episode",
+                        refId = ep.id,
+                        seriesKey = s.key,
+                        seriesName = s.name,
+                        season = ep.season,
+                        episode = ep.episode,
+                        title = "${s.name} S${ep.season}E${ep.episode} · ${ep.title}",
+                        poster = s.poster,
+                        sourceUrl = XtreamClient.episodeUrl(p, ep.id, ep.ext),
+                    )
+                }
+                graph.downloads.enqueueMany(entries)
+            })
+        }
         Spacer(Modifier.height(6.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(seasons.keys.toList()) { sn ->

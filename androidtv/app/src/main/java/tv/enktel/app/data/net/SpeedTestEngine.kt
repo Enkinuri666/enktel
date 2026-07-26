@@ -8,6 +8,11 @@ import java.net.InetAddress
 import java.net.Socket
 import java.net.URL
 import kotlin.math.sqrt
+import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.get
+import tv.enktel.app.data.int
+import tv.enktel.app.data.long
+import tv.enktel.app.data.str
 
 /**
  * Custom network diagnostic engine — tests connectivity directly against
@@ -24,6 +29,44 @@ import kotlin.math.sqrt
  */
 object SpeedTestEngine {
 
+    /** Result of a HEAD/GET probe against a single stream URL — used to
+     *  identify what the panel actually serves for a live channel or a VOD
+     *  asset (HLS playlist vs. raw MPEG-TS vs. progressive MP4, etc.). */
+    data class StreamProbe(
+        val url: String,
+        val ok: Boolean,
+        val httpCode: Int,
+        val contentType: String,
+        /** "HLS" | "MPEG-TS" | "MP4" | "MKV" | "DASH" | "UNKNOWN" */
+        val container: String,
+        /** Best-effort codec label from the container's response headers or
+         *  a short byte-sniff of the body. Empty when we can't tell without
+         *  actually decoding. */
+        val codecHint: String,
+        val serverHeader: String,
+        val transcoderHint: String,
+        val error: String? = null,
+    )
+
+    /** Xtream `get_server_info` + `user_info` snapshot; blank fields on
+     *  M3U profiles or when the panel refuses the request. */
+    data class ServerInfo(
+        val url: String = "",
+        val protocol: String = "",
+        val port: String = "",
+        val httpsPort: String = "",
+        val serverSoftware: String = "",
+        val timezone: String = "",
+        val timeNow: String = "",
+        val activeConnections: Int = 0,
+        val maxConnections: Int = 0,
+        val trial: Boolean = false,
+        val expiresAt: Long = 0,
+        val transcoderProcess: String = "",
+    ) {
+        fun isEmpty(): Boolean = url.isBlank() && serverSoftware.isBlank() && timezone.isBlank()
+    }
+
     data class Result(
         val host: String,
         val resolvedIp: String?,
@@ -35,6 +78,10 @@ object SpeedTestEngine {
         val connectionType: NetworkClass.Kind,
         val recommendation: String,
         val bufferProjection: String,
+        val server: ServerInfo = ServerInfo(),
+        val liveProbe: StreamProbe? = null,
+        val vodProbe: StreamProbe? = null,
+        val suggestions: List<String> = emptyList(),
         val error: String? = null,
     ) {
         /** Plain-text report suitable for "copy to clipboard → paste to support". */
@@ -48,6 +95,37 @@ object SpeedTestEngine {
             appendLine("Packet loss (probe failures): $packetLossPct%")
             appendLine("Download throughput: %.2f Mbps".format(downloadMbps))
             appendLine("Connection type: $connectionType")
+            if (!server.isEmpty()) {
+                appendLine("---")
+                appendLine("Panel URL: ${server.url}")
+                appendLine("Protocol: ${server.protocol}  Port: ${server.port} (https ${server.httpsPort})")
+                appendLine("Server software: ${server.serverSoftware}")
+                appendLine("Transcoder process: ${server.transcoderProcess.ifBlank { "unknown" }}")
+                appendLine("Timezone: ${server.timezone}   Panel time: ${server.timeNow}")
+                appendLine("Connections: ${server.activeConnections} / ${server.maxConnections}${if (server.trial) " (trial)" else ""}")
+            }
+            liveProbe?.let {
+                appendLine("---")
+                appendLine("Live probe: ${it.url}")
+                appendLine("  HTTP ${it.httpCode}   Content-Type: ${it.contentType}")
+                appendLine("  Container: ${it.container}   Codec: ${it.codecHint.ifBlank { "n/a" }}")
+                appendLine("  Server header: ${it.serverHeader.ifBlank { "n/a" }}")
+                appendLine("  Transcoder: ${it.transcoderHint.ifBlank { "direct/unknown" }}")
+                it.error?.let { e -> appendLine("  Error: $e") }
+            }
+            vodProbe?.let {
+                appendLine("---")
+                appendLine("VOD probe: ${it.url}")
+                appendLine("  HTTP ${it.httpCode}   Content-Type: ${it.contentType}")
+                appendLine("  Container: ${it.container}   Codec: ${it.codecHint.ifBlank { "n/a" }}")
+                it.error?.let { e -> appendLine("  Error: $e") }
+            }
+            if (suggestions.isNotEmpty()) {
+                appendLine("---")
+                appendLine("Suggestions:")
+                suggestions.forEach { appendLine(" • $it") }
+            }
+            appendLine("---")
             appendLine("Recommended format: $recommendation")
             appendLine("Buffer health: $bufferProjection")
             error?.let { appendLine("Note: $it") }
@@ -55,16 +133,25 @@ object SpeedTestEngine {
     }
 
     /**
-     * Runs the full diagnostic against [serverUrl] (the active profile's
-     * Xtream/M3U server).  [streamSampleUrl], if provided (e.g. the
-     * currently-tuned live channel), is used for the throughput test
-     * instead of the bare panel API so the Mbps number reflects real
-     * streaming conditions rather than a tiny JSON response.
+     * Full connection diagnostic against a profile's server.
+     *   • DNS + TCP-connect latency, jitter, loss on the panel host.
+     *   • Real download throughput measured against a real stream URL when
+     *     the caller supplies one (falls back to the panel root).
+     *   • Xtream `get_server_info` + `user_info` for panel process, timezone,
+     *     active/max connections, and the trial flag.
+     *   • HEAD/short-GET probe on a live URL and a VOD URL to detect what
+     *     the panel actually serves (HLS playlist / MPEG-TS / MP4 / DASH),
+     *     the Server header, and whether a transcoder is in the path.
+     *   • Suggestion list built from the observed data — surfaced next to
+     *     the metrics so the user knows what to try.
      */
     suspend fun run(
         http: OkHttpClient,
         serverUrl: String,
         streamSampleUrl: String? = null,
+        vodSampleUrl: String? = null,
+        profile: Profile? = null,
+        xtream: tv.enktel.app.data.xtream.XtreamClient? = null,
         onProgress: (String) -> Unit = {},
     ): Result = withContext(Dispatchers.IO) {
         val url = try { URL(serverUrl) } catch (e: Exception) {
@@ -72,6 +159,7 @@ object SpeedTestEngine {
                 host = serverUrl, resolvedIp = null, dnsLookupMs = 0, pingMs = 0, jitterMs = 0,
                 packetLossPct = 100, downloadMbps = 0.0, connectionType = NetworkClass.kind.value,
                 recommendation = "Unable to test — invalid server URL", bufferProjection = "unknown",
+                suggestions = listOf("Fix the server URL in Settings → Profiles."),
                 error = e.message,
             )
         }
@@ -99,14 +187,41 @@ object SpeedTestEngine {
         val jitterMs = if (samples.size >= 2) stddev(samples).toInt() else 0
         val packetLossPct = ((failures.toDouble() / 6) * 100).toInt()
 
+        // Xtream server-info: transcoder process, timezone, connection cap.
+        // Only meaningful for Xtream profiles; m3u profiles skip it cleanly.
+        val server: ServerInfo = if (profile != null && profile.kind == "xtream" && xtream != null) {
+            onProgress("Reading Xtream server info…")
+            fetchServerInfo(xtream, profile)
+        } else ServerInfo()
+
+        // Codec / container probes — the whole point of the "detected Xtream
+        // API codec / m3u codec / transcoder" section.
+        val liveProbe: StreamProbe? = streamSampleUrl?.let {
+            onProgress("Probing live stream…")
+            probeStream(http, it)
+        }
+        val vodProbe: StreamProbe? = vodSampleUrl?.let {
+            onProgress("Probing VOD stream…")
+            probeStream(http, it)
+        }
+
         onProgress("Measuring download throughput…")
         val throughput = try {
             measureThroughputMbps(http, streamSampleUrl ?: serverUrl)
-        } catch (e: Exception) { 0.0 }
+        } catch (_: Exception) { 0.0 }
 
         val kind = NetworkClass.kind.value
         val recommendation = recommend(throughput, pingMs, packetLossPct)
         val bufferProjection = projectBufferHealth(throughput, jitterMs, packetLossPct)
+        val suggestions = buildSuggestions(
+            pingMs = pingMs,
+            jitterMs = jitterMs,
+            lossPct = packetLossPct,
+            mbps = throughput,
+            server = server,
+            live = liveProbe,
+            vod = vodProbe,
+        )
 
         Result(
             host = host,
@@ -119,8 +234,142 @@ object SpeedTestEngine {
             connectionType = kind,
             recommendation = recommendation,
             bufferProjection = bufferProjection,
+            server = server,
+            liveProbe = liveProbe,
+            vodProbe = vodProbe,
+            suggestions = suggestions,
             error = if (pingMs < 0) "Could not establish a TCP connection to $host:$port" else null,
         )
+    }
+
+    private suspend fun fetchServerInfo(
+        xtream: tv.enktel.app.data.xtream.XtreamClient,
+        p: Profile,
+    ): ServerInfo = try {
+        val json = xtream.login(p)
+        val si = json.get("server_info")
+        val ui = json.get("user_info")
+        ServerInfo(
+            url = si.str("url").orEmpty(),
+            protocol = si.str("server_protocol").orEmpty(),
+            port = si.str("port").orEmpty(),
+            httpsPort = si.str("https_port").orEmpty(),
+            serverSoftware = si.str("server_name").orEmpty().ifBlank {
+                si.str("time_zone")?.let { "Xtream Codes / XUI" } ?: ""
+            },
+            timezone = si.str("timezone").orEmpty().ifBlank { si.str("time_zone").orEmpty() },
+            timeNow = si.str("time_now").orEmpty(),
+            transcoderProcess = si.str("process").orEmpty().ifBlank { detectTranscoderFromServerName(si.str("server_name")) },
+            activeConnections = ui.int("active_cons") ?: 0,
+            maxConnections = ui.int("max_connections") ?: 0,
+            trial = (ui.int("is_trial") ?: 0) == 1,
+            expiresAt = (ui.long("exp_date") ?: 0L) * 1000L,
+        )
+    } catch (_: Throwable) {
+        ServerInfo()
+    }
+
+    private fun detectTranscoderFromServerName(name: String?): String {
+        val n = (name ?: "").lowercase()
+        return when {
+            "xui" in n -> "xui.one panel (direct MPEG-TS / HLS proxy)"
+            "xtream" in n -> "Xtream Codes panel (direct MPEG-TS / HLS proxy)"
+            "nginx" in n && "rtmp" in n -> "nginx-rtmp (relayed)"
+            "ffmpeg" in n -> "FFmpeg transcoder in path"
+            n.isBlank() -> ""
+            else -> n
+        }
+    }
+
+    private fun probeStream(http: OkHttpClient, url: String): StreamProbe {
+        // A HEAD-with-Range=0-1 keeps servers that hate bare HEADs happy,
+        // and gives us the Content-Type without paying for a full download.
+        val req = Request.Builder().url(url)
+            .header("Range", "bytes=0-1")
+            .get()
+            .build()
+        return try {
+            http.newCall(req).execute().use { r ->
+                val ct = r.header("Content-Type").orEmpty()
+                val srv = r.header("Server").orEmpty()
+                val xtc = r.header("X-Transcoder").orEmpty()
+                val via = r.header("Via").orEmpty()
+                val container = containerFromContentType(ct, url)
+                val codecHint = codecHintFromContentType(ct)
+                val transcoder = when {
+                    xtc.isNotBlank() -> xtc
+                    via.isNotBlank() -> "Relayed via $via"
+                    srv.contains("ffmpeg", true) -> "FFmpeg transcoder in path"
+                    srv.contains("nginx-rtmp", true) -> "nginx-rtmp relay"
+                    srv.contains("xui", true) || srv.contains("xtream", true) -> "Direct panel (no re-encode)"
+                    else -> ""
+                }
+                StreamProbe(
+                    url = url, ok = r.isSuccessful, httpCode = r.code,
+                    contentType = ct, container = container, codecHint = codecHint,
+                    serverHeader = srv, transcoderHint = transcoder,
+                )
+            }
+        } catch (e: Exception) {
+            StreamProbe(
+                url = url, ok = false, httpCode = 0, contentType = "",
+                container = "UNKNOWN", codecHint = "",
+                serverHeader = "", transcoderHint = "", error = e.message,
+            )
+        }
+    }
+
+    private fun containerFromContentType(ct: String, url: String): String {
+        val c = ct.lowercase()
+        val pathExt = url.substringBefore('?').substringAfterLast('.', "").lowercase()
+        return when {
+            "mpegurl" in c || "m3u" in c || pathExt in setOf("m3u8", "m3u") -> "HLS"
+            "mp2t" in c || pathExt == "ts" -> "MPEG-TS"
+            "video/mp4" in c || pathExt == "mp4" || pathExt == "m4v" -> "MP4"
+            "matroska" in c || "video/x-matroska" in c || pathExt == "mkv" -> "MKV"
+            "dash" in c || pathExt == "mpd" -> "DASH"
+            "video/webm" in c || pathExt == "webm" -> "WebM"
+            "video/x-flv" in c || pathExt == "flv" -> "FLV"
+            c.isBlank() -> "UNKNOWN"
+            else -> c.substringAfter('/').substringBefore(';').uppercase()
+        }
+    }
+
+    private fun codecHintFromContentType(ct: String): String {
+        // Content-Type sometimes ships a codecs="..." parameter (rare on live
+        // TS but common on modern HLS). Surface it verbatim when present.
+        val idx = ct.indexOf("codecs=", ignoreCase = true)
+        if (idx < 0) return ""
+        return ct.substring(idx + "codecs=".length).trim().trim('"', ';', ' ')
+    }
+
+    private fun buildSuggestions(
+        pingMs: Int,
+        jitterMs: Int,
+        lossPct: Int,
+        mbps: Double,
+        server: ServerInfo,
+        live: StreamProbe?,
+        vod: StreamProbe?,
+    ): List<String> {
+        val out = mutableListOf<String>()
+        if (pingMs < 0) out += "TCP connection failed — check the panel URL / port, and that the profile isn't expired."
+        if (lossPct >= 20) out += "Packet loss ≥ 20%: try a wired connection or a different network path (VPN off, or on)."
+        if (jitterMs >= 150) out += "High jitter — switch buffer profile to Large under Settings → Playback."
+        if (mbps in 0.1..4.9) out += "Bandwidth < 5 Mbps — SD only. Consider a lower-bitrate 480p variant."
+        if (live?.container == "HLS" && jitterMs >= 100) out += "Live is HLS with high jitter — Balanced buffer profile is a better fit than Low."
+        if (live?.container == "MPEG-TS") out += "Live is raw MPEG-TS. If it stutters, try the HLS URL shape (Settings → Stream format → HLS)."
+        if (live?.httpCode == 403) out += "Live probe returned 403 — connection cap hit, or IP blocked. Try disabling VPN or waiting a minute."
+        if ((live?.httpCode ?: 0) in 500..599) out += "Live probe returned 5xx — panel-side issue; try again shortly or contact the reseller."
+        if (server.maxConnections > 0 && server.activeConnections >= server.maxConnections) {
+            out += "You've hit the panel's ${server.maxConnections}-connection cap. Close other devices or ask for a plan bump."
+        }
+        if (server.trial) out += "Panel reports this as a TRIAL account — bandwidth may be throttled."
+        if (vod?.container == "MP4" && (live?.container == "MPEG-TS")) {
+            out += "Panel serves VOD as MP4 (progressive) and live as MPEG-TS — normal for Xtream."
+        }
+        if (out.isEmpty()) out += "Everything looks healthy. If a specific stream buffers, use ▶ Retry with alternate source in the player."
+        return out
     }
 
     private inline fun measureMs(block: () -> Unit): Long {

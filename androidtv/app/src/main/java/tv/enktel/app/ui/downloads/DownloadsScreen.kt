@@ -88,6 +88,12 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         val (running, done) = entries.partition { it.status != "DONE" }
+        // Movies get flat rows; episodes group under a per-series folder header
+        // and sub-group by season number for readability.
+        val doneMovies = done.filter { it.kind != "episode" }
+        val doneEpisodes = done.filter { it.kind == "episode" }
+        val doneSeries = doneEpisodes.groupBy { it.seriesName.ifBlank { "Series" } }
+
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (running.isNotEmpty()) {
                 item { GroupHeader("In progress · ${running.size}") }
@@ -96,22 +102,36 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 }
                 item { Spacer(Modifier.height(6.dp)) }
             }
-            if (done.isNotEmpty()) {
-                item { GroupHeader("Saved · ${done.size}") }
-                items(done, key = { it.id }) { entry ->
+            if (doneMovies.isNotEmpty()) {
+                item { GroupHeader("Movies · ${doneMovies.size}") }
+                items(doneMovies, key = { it.id }) { entry ->
                     DownloadRow(
                         entry,
-                        onPlay = {
-                            val local = if (entry.filePath.isNotBlank() && File(entry.filePath).exists()) {
-                                "file://${entry.filePath}"
-                            } else entry.sourceUrl
-                            val pk = if (entry.kind == "episode") {
-                                "${entry.profileId}:episode:${entry.refId}"
-                            } else "${entry.profileId}:vod:${entry.refId}"
-                            nav.navigate(vodPlayerRoute(local, entry.title, pk))
-                        },
+                        onPlay = playAction(entry, nav),
                         onDelete = { confirmDelete = entry },
                     )
+                }
+            }
+            doneSeries.forEach { (seriesName, eps) ->
+                item {
+                    GroupHeader("Series · $seriesName · ${eps.size} episode${if (eps.size == 1) "" else "s"}")
+                }
+                val bySeason = eps.groupBy { it.season }.toSortedMap()
+                bySeason.forEach { (season, list) ->
+                    item {
+                        Text(
+                            "Season $season", color = EnktelTextDim, fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 4.dp, start = 6.dp),
+                        )
+                    }
+                    items(list.sortedBy { it.episode }, key = { it.id }) { entry ->
+                        DownloadRow(
+                            entry,
+                            onPlay = playAction(entry, nav),
+                            onDelete = { confirmDelete = entry },
+                        )
+                    }
                 }
             }
         }
@@ -135,6 +155,19 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
 private fun GroupHeader(text: String) {
     Text(text, color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Black,
         modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+}
+
+/** Shared "open the saved file offline" click handler. Falls back to the
+ *  original stream URL if the local file has been evicted (e.g. user cleared
+ *  storage from OS settings). */
+private fun playAction(entry: DownloadEntry, nav: NavHostController): () -> Unit = {
+    val local = if (entry.filePath.isNotBlank() && File(entry.filePath).exists()) {
+        "file://${entry.filePath}"
+    } else entry.sourceUrl
+    val pk = if (entry.kind == "episode") {
+        "${entry.profileId}:episode:${entry.refId}"
+    } else "${entry.profileId}:vod:${entry.refId}"
+    nav.navigate(vodPlayerRoute(local, entry.title, pk))
 }
 
 @Composable

@@ -70,19 +70,27 @@ class DownloadHub(
         registerCompletionReceiver()
     }
 
-    /** Enqueue a movie or episode. Idempotent per [entry.id]. */
+    /** Enqueue a movie or episode. Idempotent per [entry.id].
+     *  Files land under labeled folders so the file manager on the device
+     *  itself is browsable too:
+     *    - Movies:    Movies/{Movie Title}.mp4
+     *    - Episodes:  Series/{Series Name}/S{season}/E{episode} - {title}.mp4
+     */
     fun enqueue(entry: DownloadEntry) {
         scope.launch {
             val existing = dao.byId(entry.id)
             if (existing != null && existing.status == "DONE") return@launch // already saved
 
-            val safeName = sanitizeFilename(entry.title).ifBlank { entry.id }
-            val ext = pickExtension(entry.sourceUrl)
-            val outFile = File(root, "$safeName.$ext")
+            val outFile = plannedFileFor(entry)
+            outFile.parentFile?.mkdirs()
 
             val req = DownloadManager.Request(entry.sourceUrl.toUri())
                 .setTitle(entry.title)
-                .setDescription("EnkTel offline download")
+                .setDescription(
+                    if (entry.kind == "episode" && entry.seriesName.isNotBlank())
+                        "${entry.seriesName} — offline download"
+                    else "EnkTel offline download"
+                )
                 .setDestinationUri(Uri.fromFile(outFile))
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
                 .setAllowedOverMetered(true)
@@ -97,6 +105,43 @@ class DownloadHub(
             synchronized(jobsLock) { jobs[entry.id] = sysId }
             dao.upsert(entry.copy(status = "QUEUED", filePath = outFile.absolutePath))
             startPolling()
+        }
+    }
+
+    /** Enqueue many entries at once — used by "Download season" and
+     *  "Download entire series". Skips items already saved offline, and
+     *  paces enqueues into the OS DownloadManager by a small delay so the
+     *  system service isn't hit with 40 requests in the same tick. */
+    fun enqueueMany(entries: List<DownloadEntry>) {
+        if (entries.isEmpty()) return
+        scope.launch {
+            entries.forEach { entry ->
+                val existing = dao.byId(entry.id)
+                if (existing?.status == "DONE") return@forEach
+                enqueue(entry)
+                delay(60)
+            }
+        }
+    }
+
+    private fun plannedFileFor(entry: DownloadEntry): File {
+        val ext = pickExtension(entry.sourceUrl)
+        val safeTitle = sanitizeFilename(entry.title).ifBlank { entry.id }
+        return when (entry.kind) {
+            "episode" -> {
+                val seriesFolder = sanitizeFilename(entry.seriesName).ifBlank { "Series" }
+                val season = entry.season.coerceAtLeast(1)
+                val epNum = "E%02d".format(entry.episode.coerceAtLeast(0))
+                val epLabel = sanitizeFilename(
+                    // Strip a leading "SxxExx" prefix from the display title so the
+                    // filename doesn't repeat what the folder already conveys.
+                    entry.title.substringAfter("·", entry.title).trim().ifBlank { entry.title }
+                ).ifBlank { epNum }
+                File(File(File(root, "Series"), seriesFolder).apply { mkdirs() }, "S%02d".format(season))
+                    .apply { mkdirs() }
+                    .let { File(it, "$epNum - $epLabel.$ext") }
+            }
+            else -> File(File(root, "Movies").apply { mkdirs() }, "$safeTitle.$ext")
         }
     }
 
