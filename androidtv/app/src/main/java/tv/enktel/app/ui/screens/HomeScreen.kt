@@ -192,21 +192,24 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         item {
-            // Horizontal scroll so the row survives narrow portrait screens on phones.
+            // Premium "hub tiles" — glass pill cards with an icon glyph and
+            // brand-color gradient sheen. Acts as the one-stop-shop entry to
+            // every content type the app carries (live, VOD, sports, watchlist,
+            // downloads, recordings, guide, search, settings).
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                item { FocusButton("▶  Live TV", accent = true, onClick = { nav.navigate("live?ch=") }) }
-                item { FocusButton("TV Guide", onClick = { nav.navigate("guide") }) }
-                item { FocusButton("Movies", onClick = { nav.navigate("movies") }) }
-                item { FocusButton("Series", onClick = { nav.navigate("series") }) }
-                item { FocusButton("⚽ Sports", onClick = { nav.navigate("sports") }) }
-                item { FocusButton("☆ Watchlist", onClick = { nav.navigate("watchlist") }) }
-                item { FocusButton("Search", onClick = { nav.navigate("search") }) }
-                item { FocusButton("Recordings", onClick = { nav.navigate("recordings") }) }
-                item { FocusButton("⬇ Downloads", onClick = { nav.navigate("downloads") }) }
-                item { FocusButton("Settings", onClick = { nav.navigate("settings") }) }
+                item { HubTile("📺", "Live TV", accent = true, onClick = { nav.navigate("live?ch=") }) }
+                item { HubTile("🗓", "TV Guide", onClick = { nav.navigate("guide") }) }
+                item { HubTile("🎬", "Movies", onClick = { nav.navigate("movies") }) }
+                item { HubTile("🎞", "Series", onClick = { nav.navigate("series") }) }
+                item { HubTile("⚽", "Sports", onClick = { nav.navigate("sports") }) }
+                item { HubTile("☆", "Watchlist", onClick = { nav.navigate("watchlist") }) }
+                item { HubTile("⬇", "Downloads", onClick = { nav.navigate("downloads") }) }
+                item { HubTile("⏺", "Recordings", onClick = { nav.navigate("recordings") }) }
+                item { HubTile("🔍", "Search", onClick = { nav.navigate("search") }) }
+                item { HubTile("⚙", "Settings", onClick = { nav.navigate("settings") }) }
             }
         }
         if (continueWatching.isNotEmpty()) {
@@ -642,6 +645,69 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Premium glass hub tile — big rounded pill with a leading glyph and the
+ * destination label. When [accent] is true it gets a brand-color gradient
+ * fill (used for the primary "Live TV" entry); otherwise it renders as a
+ * frosted-glass card with a hairline border, matching modern TV OS aesthetics.
+ * Focus adds a slight scale + border sheen so a viewer can see which tile
+ * they're on from across the room.
+ */
+@Composable
+private fun HubTile(glyph: String, label: String, onClick: () -> Unit, accent: Boolean = false) {
+    val brand = tv.enktel.app.ui.theme.EnktelBlue
+    val brandDeep = tv.enktel.app.ui.theme.EnktelBlueDeep
+    val container = if (accent) brand.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f)
+    val focused = if (accent) brand else Color.White.copy(alpha = 0.18f)
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        modifier = Modifier.tapClick(onClick),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = container,
+            focusedContainerColor = focused,
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (accent) brand.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.14f),
+                ),
+                shape = RoundedCornerShape(14.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(14.dp),
+            ),
+        ),
+    ) {
+        Box(
+            Modifier
+                .background(
+                    // Subtle diagonal sheen so the tile reads as a "premium
+                    // glass" card rather than a flat pill.
+                    Brush.linearGradient(
+                        colors = if (accent) {
+                            listOf(brand.copy(alpha = 0.35f), brandDeep.copy(alpha = 0.25f))
+                        } else {
+                            listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+                        }
+                    )
+                )
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(glyph, fontSize = 18.sp)
+                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
     }

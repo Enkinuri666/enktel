@@ -111,6 +111,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text("Buffer changes apply the next time a player opens.", color = EnktelTextDim, fontSize = 11.sp)
 
         Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Player controls auto-hide")
+        val hudSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            listOf(0 to "Never", 3 to "3 s", 5 to "5 s", 8 to "8 s", 15 to "15 s", 30 to "30 s").forEach { (v, label) ->
+                tv.enktel.app.ui.components.GlassChip(
+                    label, selected = hudSec == v,
+                    onClick = { scope.launch { graph.settings.setHudAutoHideSec(v) } },
+                )
+            }
+        }
+        Text(
+            "How long the on-screen info bar / transport controls stay visible after the last input. \"Never\" keeps them up until you dismiss with Back.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
         Text("DVR RECORDING PADDING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val recPrefix by graph.settings.recPrefixMin.collectAsStateWithLifecycle(initialValue = 2)
         val recSuffix by graph.settings.recSuffixMin.collectAsStateWithLifecycle(initialValue = 5)

@@ -73,7 +73,15 @@ class MainActivity : ComponentActivity() {
                 val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
                 val wakeWordEnabled by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)
                 ToastHost {
-                    ScreensaverHost(graph, isPlaying = { false }) {
+                    // ActivePlayerRef.active flips true whenever a player screen
+                    // (live or VOD) is mounted; passing it here means the
+                    // screensaver overlay + the device-level idle countdown both
+                    // stay dormant during playback, which is what the user
+                    // expects for a TV/movie viewing session.
+                    ScreensaverHost(
+                        graph,
+                        isPlaying = { tv.enktel.app.voice.ActivePlayerRef.active.value },
+                    ) {
                         tv.enktel.app.voice.VoiceHost(voiceBus, wakeWordEnabled = wakeWordEnabled) {
                             MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
                         }

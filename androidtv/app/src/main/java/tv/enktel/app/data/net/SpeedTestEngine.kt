@@ -368,10 +368,31 @@ object SpeedTestEngine {
         if (lossPct >= 20) out += "Packet loss ≥ 20%: try a wired connection or a different network path (VPN off, or on)."
         if (jitterMs >= 150) out += "High jitter — switch buffer profile to Large under Settings → Playback."
         if (mbps in 0.1..4.9) out += "Bandwidth < 5 Mbps — SD only. Consider a lower-bitrate 480p variant."
+        // Per-HTTP-code guidance, applied to both probes. Live and VOD failures
+        // often have different root causes (auth vs. stream ID vs. transcoder),
+        // so the message calls out which one failed.
+        listOfNotNull(live?.let { "Live" to it }, vod?.let { "VOD" to it }).forEach { (label, p) ->
+            when (p.httpCode) {
+                401 -> out += "$label probe returned 401 Unauthorized — credentials are wrong or the profile has expired. Re-enter the profile in Settings → Profiles."
+                403 -> out += "$label probe returned 403 Forbidden — most often a connection cap on the reseller, a geo/IP block, or a Cloudflare bot rule. Try again in a minute, disable/enable VPN, and check the app is sending a media UA (v1.18.3+)."
+                404 -> out += "$label probe returned 404 — the stream ID isn't served under this URL shape. The player will walk the fallback chain; if this keeps happening on every channel, resync the profile (Settings → Refresh catalogue)."
+                407 -> out += "$label probe returned 407 Proxy Auth Required — a WAF or middlebox is challenging the request. The v1.18.3+ VLC User-Agent should bypass this; if you still see 407, contact the reseller."
+                408, 504 -> out += "$label probe returned ${p.httpCode} — the panel/proxy timed out. Try Settings → Player buffer → Max stability, or move closer to your router."
+                429 -> out += "$label probe returned 429 — the panel is rate-limiting you. Wait a minute, and avoid rapid channel-zapping."
+                in 500..599 -> out += "$label probe returned ${p.httpCode} — panel-side issue; try again shortly or contact the reseller."
+                0 -> if (p.error != null) out += "$label probe never got a response — ${p.error}. If this includes 'timeout', widen Player buffer to Max stability."
+            }
+        }
         if (live?.container == "HLS" && jitterMs >= 100) out += "Live is HLS with high jitter — Balanced buffer profile is a better fit than Low."
         if (live?.container == "MPEG-TS") out += "Live is raw MPEG-TS. If it stutters, try the HLS URL shape (Settings → Stream format → HLS)."
-        if (live?.httpCode == 403) out += "Live probe returned 403 — connection cap hit, or IP blocked. Try disabling VPN or waiting a minute."
-        if ((live?.httpCode ?: 0) in 500..599) out += "Live probe returned 5xx — panel-side issue; try again shortly or contact the reseller."
+        // Container-mismatch heads-up (an .mp4 URL that actually serves MKV).
+        vod?.let { p ->
+            val urlExt = p.url.substringBefore('?').substringAfterLast('.', "").lowercase()
+            val ctIsMkv = p.contentType.contains("matroska", true) || p.container == "MKV"
+            if (urlExt == "mp4" && ctIsMkv) {
+                out += "VOD URL is .mp4 but the panel actually serves MKV — v1.18.3+ handles this transparently. If playback still fails, force MP4 fallback via Settings → Stream format."
+            }
+        }
         if (server.maxConnections > 0 && server.activeConnections >= server.maxConnections) {
             out += "You've hit the panel's ${server.maxConnections}-connection cap. Close other devices or ask for a plan bump."
         }
