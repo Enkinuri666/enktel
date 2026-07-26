@@ -107,7 +107,7 @@ class ContentRepository(
     ): List<Movie> = withContext(Dispatchers.IO) {
         val bag = LinkedHashMap<String, Movie>()
         keywords.forEach { kw ->
-            content.moviesTagged(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            content.moviesTagged(profileId, "%${kw.lowercase()}%").forEach { if (it.key !in bag) bag[it.key] = it }
             if (bag.size >= limit) return@forEach
         }
         bag.values.take(limit).toList()
@@ -118,7 +118,7 @@ class ContentRepository(
     ): List<tv.enktel.app.data.db.Series> = withContext(Dispatchers.IO) {
         val bag = LinkedHashMap<String, tv.enktel.app.data.db.Series>()
         keywords.forEach { kw ->
-            content.seriesTagged(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            content.seriesTagged(profileId, "%${kw.lowercase()}%").forEach { if (it.key !in bag) bag[it.key] = it }
             if (bag.size >= limit) return@forEach
         }
         bag.values.take(limit).toList()
@@ -129,7 +129,7 @@ class ContentRepository(
     ): List<Movie> = withContext(Dispatchers.IO) {
         val bag = LinkedHashMap<String, Movie>()
         keywords.forEach { kw ->
-            content.moviesTaggedDocs(profileId, "%${kw.lowercase()}%").forEach { bag.putIfAbsent(it.key, it) }
+            content.moviesTaggedDocs(profileId, "%${kw.lowercase()}%").forEach { if (it.key !in bag) bag[it.key] = it }
             if (bag.size >= limit) return@forEach
         }
         bag.values.take(limit).toList()
