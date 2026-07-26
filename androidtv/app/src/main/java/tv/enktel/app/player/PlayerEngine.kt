@@ -96,7 +96,10 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-        val httpFactory = OkHttpDataSource.Factory(http).setUserAgent("EnktelTV/1.0")
+        // Same UA as the OkHttp client uses everywhere else — see
+        // tv.enktel.app.DEFAULT_UA for the rationale (Cloudflare / WAF /
+        // Xtream panel bot rules answer OkHttp's default UA with HTTP 407).
+        val httpFactory = OkHttpDataSource.Factory(http).setUserAgent(tv.enktel.app.DEFAULT_UA)
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
 
         val renderers = DefaultRenderersFactory(context)
@@ -135,7 +138,21 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
             )
             .build()
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+        // Extra-permissive extractor factory: MP4 URLs frequently *actually*
+        // serve MKV/WebM (Matroska) on transcoded panels, and headerless raw
+        // MPEG-TS live streams still need the FLAG_ALLOW_NON_IDR_KEYFRAMES /
+        // ADTS scan flags to lock on without extra segment context. Turning
+        // everything permissive makes the container-mismatch case a no-op
+        // instead of a "Source error" toast. DefaultExtractorsFactory tries
+        // MP4 → MKV/WebM → FLV → TS in order, so an MP4-URL that's actually
+        // Matroska on the wire is picked up on the second attempt.
+        val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
+            .setConstantBitrateSeekingEnabled(true)
+            .setTsExtractorFlags(
+                androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
+                    androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+            )
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors)
 
         player = ExoPlayer.Builder(context, renderers)
             .setMediaSourceFactory(mediaSourceFactory)

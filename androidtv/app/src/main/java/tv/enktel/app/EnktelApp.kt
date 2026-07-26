@@ -17,6 +17,7 @@ import tv.enktel.app.data.repo.WatchlistRepository
 import tv.enktel.app.data.xtream.XtreamClient
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 class AppGraph(app: Application) {
@@ -26,9 +27,24 @@ class AppGraph(app: Application) {
     // subscription — updated whenever the setting flow emits (see below).
     @Volatile private var backupGatewaysSnapshot: List<String> = emptyList()
     val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        // Wider timeouts so slower IPTV proxy layers (Cloudflare, IPTV-Editor,
+        // reseller relays) don't trip the "unable to measure throughput" or
+        // ExoPlayer's own read-timeout error before the first byte lands.
+        .connectTimeout(45, TimeUnit.SECONDS)
+        .readTimeout(180, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.SECONDS) // unlimited overall — long VOD downloads shouldn't be capped
         .retryOnConnectionFailure(true)
+        // Explicit NO_PROXY defeats HTTP_PROXY_AUTH (407) loops caused by an
+        // OS-level or JVM-level proxy that gets applied to every OkHttp call
+        // without credentials. Users who really need a proxy can put it in
+        // Settings → Backup gateways which is applied per-request instead.
+        .proxy(Proxy.NO_PROXY)
+        // Send a well-known media UA on every request. Many Cloudflare WAFs +
+        // IPTV panels block "okhttp/*" or empty UAs with a proxy challenge
+        // (which surfaces here as an unauthenticated 407). VLC's UA is the
+        // industry-standard "just let it through" string for IPTV endpoints.
+        .addInterceptor(tv.enktel.app.data.net.UserAgentInterceptor(DEFAULT_UA))
         .addInterceptor(
             tv.enktel.app.data.net.StreamHealthInterceptor(
                 gateways = { backupGatewaysSnapshot },
@@ -88,3 +104,9 @@ class EnktelApp : Application() {
         const val DVR_CHANNEL = "dvr"
     }
 }
+
+/** Public so the ExoPlayer HTTP data source and the SpeedTestEngine probe
+ *  can send the exact same UA the OkHttp client sends. Kept identical to
+ *  what VLC 3 ships as its default network UA — WAF profiles that whitelist
+ *  IPTV traffic universally allow it. */
+const val DEFAULT_UA: String = "VLC/3.0.20 LibVLC/3.0.20"

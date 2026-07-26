@@ -282,8 +282,11 @@ object SpeedTestEngine {
     }
 
     private fun probeStream(http: OkHttpClient, url: String): StreamProbe {
-        // A HEAD-with-Range=0-1 keeps servers that hate bare HEADs happy,
-        // and gives us the Content-Type without paying for a full download.
+        // A GET-with-Range=0-1 keeps servers that hate bare HEADs happy and
+        // gives us the Content-Type without paying for a full download.
+        // Panels reply 206 Partial Content on ranged GETs — that's a healthy
+        // response, not a failure. Some flavors of nginx also drop directly
+        // to 200 with the whole body; both are fine here.
         val req = Request.Builder().url(url)
             .header("Range", "bytes=0-1")
             .get()
@@ -294,6 +297,10 @@ object SpeedTestEngine {
                 val srv = r.header("Server").orEmpty()
                 val xtc = r.header("X-Transcoder").orEmpty()
                 val via = r.header("Via").orEmpty()
+                // Prefer Content-Type over URL extension when they disagree
+                // (a `.mp4` URL that actually serves `video/x-matroska` is
+                // common on transcoded panels; the wire container is the
+                // one ExoPlayer will see, so it wins).
                 val container = containerFromContentType(ct, url)
                 val codecHint = codecHintFromContentType(ct)
                 val transcoder = when {
@@ -304,8 +311,12 @@ object SpeedTestEngine {
                     srv.contains("xui", true) || srv.contains("xtream", true) -> "Direct panel (no re-encode)"
                     else -> ""
                 }
+                // Treat 200 and 206 (Partial Content — the expected response
+                // to our Range header) as success. r.isSuccessful already
+                // covers 2xx, but be explicit so future readers don't wonder.
+                val ok = r.code == 200 || r.code == 206 || r.isSuccessful
                 StreamProbe(
-                    url = url, ok = r.isSuccessful, httpCode = r.code,
+                    url = url, ok = ok, httpCode = r.code,
                     contentType = ct, container = container, codecHint = codecHint,
                     serverHeader = srv, transcoderHint = transcoder,
                 )
@@ -384,19 +395,28 @@ object SpeedTestEngine {
         return sqrt(variance)
     }
 
-    /** Streams up to ~3 seconds (or 8 MB, whichever first) and computes Mbps. */
+    /** Streams up to ~5 seconds (or 24 MB, whichever first) and computes Mbps.
+     *  Larger window + bigger sample buffer than the old 3 s/8 MB one so
+     *  slow-start Cloudflare / IPTV-Editor proxy paths get past the ramp
+     *  before we take the measurement, and so 206 Partial Content responses
+     *  (the norm for range-fetched panels) count as a healthy read. */
     private fun measureThroughputMbps(http: OkHttpClient, url: String): Double {
-        val req = Request.Builder().url(url).build()
+        val req = Request.Builder().url(url)
+            .header("Range", "bytes=0-25165824") // 24 MB
+            .build()
         var bytes = 0L
         val start = System.nanoTime()
-        val deadlineNs = start + 3_000_000_000L
-        val maxBytes = 8L * 1024 * 1024
+        val deadlineNs = start + 5_000_000_000L
+        val maxBytes = 24L * 1024 * 1024
         http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return 0.0
+            // 206 (ranged) is the expected response; 200 also fine when the
+            // panel ignores our Range. Any other code means the URL isn't a
+            // media asset and the throughput number would be junk anyway.
+            if (!(resp.code == 200 || resp.code == 206)) return 0.0
             val source = resp.body?.source() ?: return 0.0
             val buf = okio.Buffer()
             while (System.nanoTime() < deadlineNs && bytes < maxBytes) {
-                val read = try { source.read(buf, 65_536) } catch (_: Exception) { -1L }
+                val read = try { source.read(buf, 262_144) } catch (_: Exception) { -1L }
                 if (read == -1L) break
                 bytes += read
                 buf.clear()
