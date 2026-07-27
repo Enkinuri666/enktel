@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -233,6 +234,54 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Shifts the XMLTV guide times when the panel's clock doesn't match yours. Negative = programmes appear earlier; positive = later.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Text("DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val dlEngine by graph.settings.downloadEngine.collectAsStateWithLifecycle(initialValue = "auto")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Auto (fast)", selected = dlEngine == "auto",
+                onClick = { scope.launch { graph.settings.setDownloadEngine("auto") } })
+            tv.enktel.app.ui.components.GlassChip("Parallel", selected = dlEngine == "parallel",
+                onClick = { scope.launch { graph.settings.setDownloadEngine("parallel") } })
+            tv.enktel.app.ui.components.GlassChip("System (OS)", selected = dlEngine == "system",
+                onClick = { scope.launch { graph.settings.setDownloadEngine("system") } })
+        }
+        Text(
+            "Auto/Parallel use a 4-way HTTP-Range OkHttp downloader — genuinely faster on Xtream VOD panels that support ranges. System uses Android's DownloadManager (OS notification, single-stream). Custom folder = always Parallel (OS can't write SAF).",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        val dlFolderUri by graph.settings.downloadFolderUri.collectAsStateWithLifecycle(initialValue = "")
+        val folderPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+        ) { uri ->
+            if (uri != null) {
+                // Persist the read+write grant across process restarts so the
+                // downloader can still write into the chosen folder tomorrow.
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try { ctx.contentResolver.takePersistableUriPermission(uri, flags) } catch (_: Throwable) {}
+                scope.launch {
+                    graph.settings.setDownloadFolderUri(uri.toString())
+                    status = "Download folder set — future downloads will land here"
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton("📁  Pick download folder", onClick = { folderPicker.launch(null) })
+            if (dlFolderUri.isNotBlank()) {
+                FocusButton("Reset to default", onClick = {
+                    scope.launch {
+                        graph.settings.setDownloadFolderUri("")
+                        status = "Download folder reset — using default"
+                    }
+                })
+            }
+        }
+        Text(
+            if (dlFolderUri.isBlank()) "Default: the app's private Movies dir (uninstall-cleaned)."
+            else "Current: ${dlFolderUri.take(80)}…",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 

@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Environment
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,47 +23,61 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import tv.enktel.app.data.db.DownloadDao
 import tv.enktel.app.data.db.DownloadEntry
+import tv.enktel.app.data.prefs.SettingsStore
 import java.io.File
 
 /**
- * Wraps the platform DownloadManager for progressive movie/episode files. We keep
- * the *metadata* in Room (see [DownloadEntry]) so the file manager can render
- * offline without touching the OS DownloadManager cursor on every scroll — the
- * hub just mirrors progress into Room via a polling loop while jobs are active.
+ * Two-engine download hub:
+ *   • System engine — the platform [DownloadManager]. Best OS notification
+ *     integration, but writes only to a `file://` path (can't target a SAF
+ *     tree URI) and no parallel-range support.
+ *   • Parallel engine — [ParallelDownloader], a custom OkHttp client that
+ *     does 4-way HTTP Range GETs when the server supports it. Writes to
+ *     either a File or a SAF DocumentFile (single-stream in the SAF case
+ *     because SAF's OutputStream has no seek).
  *
- * Xtream VOD is progressive MP4/MKV/TS — download-and-play. Live/HLS/DASH would
- * need Media3's segmented DownloadManager and is intentionally out of scope
- * here (recording covers live capture already).
+ * Engine selection per download:
+ *   1. If the user picked a SAF folder in Settings → Downloads, the
+ *      Parallel engine is used unconditionally (System can't write there).
+ *   2. Otherwise the user's Settings → Downloads → Engine choice wins:
+ *      "system", "parallel", or "auto" (defaults to Parallel — the ranged
+ *      path is genuinely faster on Xtream VOD panels that support ranges).
  */
 class DownloadHub(
     private val app: Context,
     private val dao: DownloadDao,
+    private val settings: SettingsStore,
+    private val http: OkHttpClient,
 ) {
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "downloads"
         const val NOTIFICATION_CHANNEL_NAME = "Downloads"
         private const val POLL_INTERVAL_MS = 1_500L
+        private const val UA = tv.enktel.app.DEFAULT_UA
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dm = app.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    private val jobs = mutableMapOf<String, Long>() // entryId -> system download id
+    private val parallel = ParallelDownloader(app, http)
+
+    // Two separate job maps — one per engine — sharing a single lock.
+    // System jobs store the OS DownloadManager id (Long).
+    // Parallel jobs store the ParallelDownloader.Handle so cancel() can
+    // stop the coroutine mid-flight.
+    private val sysJobs = mutableMapOf<String, Long>()
+    private val parallelJobs = mutableMapOf<String, ParallelDownloader.Handle>()
     private val jobsLock = Any()
     private var poll: Job? = null
 
     private val _totalBytes = MutableStateFlow(0L)
     val totalBytes: kotlinx.coroutines.flow.StateFlow<Long> = _totalBytes.asStateFlow()
 
-    /** Root folder for finished downloads. We use *app-scoped external storage*
-     *  because Android's DownloadManager can't target `filesDir` on many devices —
-     *  writes there fail with SecurityException. `getExternalFilesDir` is still
-     *  private per-app on API 19+, needs no storage permission, and is cleaned
-     *  up automatically on uninstall — same UX guarantees. Falls back to
-     *  `filesDir` on the very rare device with no external volume mounted so
-     *  the app doesn't crash at startup. */
-    val root: File = (app.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+    /** Default root under app-scoped external storage. Used when the user
+     *  hasn't picked a folder via SAF (see [settings.downloadFolderUri]). */
+    val defaultRoot: File = (app.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
         ?: File(app.filesDir, "downloads")).apply { mkdirs() }
 
     init {
@@ -70,48 +85,34 @@ class DownloadHub(
         registerCompletionReceiver()
     }
 
-    /** Enqueue a movie or episode. Idempotent per [entry.id].
-     *  Files land under labeled folders so the file manager on the device
-     *  itself is browsable too:
-     *    - Movies:    Movies/{Movie Title}.mp4
-     *    - Episodes:  Series/{Series Name}/S{season}/E{episode} - {title}.mp4
-     */
+    /** Enqueue a movie or episode. Idempotent per [entry.id]. */
     fun enqueue(entry: DownloadEntry) {
         scope.launch {
             val existing = dao.byId(entry.id)
-            if (existing != null && existing.status == "DONE") return@launch // already saved
+            if (existing != null && existing.status == "DONE") return@launch
 
-            val outFile = plannedFileFor(entry)
-            outFile.parentFile?.mkdirs()
+            val chosenFolderUri = settings.downloadFolderUriNow()
+            val engine = settings.downloadEngineNow()
+            val useSaf = chosenFolderUri.isNotBlank() && chosenFolderUri.startsWith("content://")
+            // System engine can't write to SAF; force parallel there. And
+            // when the user hasn't overridden, prefer parallel — the ranged
+            // GET path is materially faster on Xtream VOD.
+            val forceParallel = useSaf || engine == "parallel" ||
+                (engine == "auto" && chosenFolderUri.isBlank())
+            val forceSystem = !useSaf && engine == "system"
 
-            val req = DownloadManager.Request(entry.sourceUrl.toUri())
-                .setTitle(entry.title)
-                .setDescription(
-                    if (entry.kind == "episode" && entry.seriesName.isNotBlank())
-                        "${entry.seriesName} — offline download"
-                    else "EnkTel offline download"
-                )
-                .setDestinationUri(Uri.fromFile(outFile))
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(false)
-
-            val sysId = try {
-                dm.enqueue(req)
-            } catch (t: Throwable) {
-                dao.upsert(entry.copy(status = "FAILED", errorMessage = t.message ?: "enqueue failed"))
-                return@launch
+            when {
+                useSaf -> enqueueParallelSaf(entry, chosenFolderUri)
+                forceSystem -> enqueueSystem(entry)
+                forceParallel -> enqueueParallelFile(entry)
+                else -> enqueueParallelFile(entry) // fallback
             }
-            synchronized(jobsLock) { jobs[entry.id] = sysId }
-            dao.upsert(entry.copy(status = "QUEUED", filePath = outFile.absolutePath))
-            startPolling()
         }
     }
 
     /** Enqueue many entries at once — used by "Download season" and
      *  "Download entire series". Skips items already saved offline, and
-     *  paces enqueues into the OS DownloadManager by a small delay so the
-     *  system service isn't hit with 40 requests in the same tick. */
+     *  paces enqueues so the platform DownloadManager isn't hit in one tick. */
     fun enqueueMany(entries: List<DownloadEntry>) {
         if (entries.isEmpty()) return
         scope.launch {
@@ -124,6 +125,120 @@ class DownloadHub(
         }
     }
 
+    // ---- System engine (platform DownloadManager) --------------------------
+
+    private suspend fun enqueueSystem(entry: DownloadEntry) {
+        val outFile = plannedFileFor(entry)
+        outFile.parentFile?.mkdirs()
+
+        val req = DownloadManager.Request(entry.sourceUrl.toUri())
+            .setTitle(entry.title)
+            .setDescription(descriptionFor(entry))
+            .setDestinationUri(Uri.fromFile(outFile))
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(false)
+            // Ship the same UA the rest of the app uses; some Xtream/WAF
+            // rulesets throttle or 407 the DownloadManager default UA.
+            .addRequestHeader("User-Agent", UA)
+
+        val sysId = try {
+            dm.enqueue(req)
+        } catch (t: Throwable) {
+            dao.upsert(entry.copy(status = "FAILED", errorMessage = t.message ?: "enqueue failed"))
+            return
+        }
+        synchronized(jobsLock) { sysJobs[entry.id] = sysId }
+        dao.upsert(entry.copy(status = "QUEUED", filePath = outFile.absolutePath))
+        startPolling()
+    }
+
+    // ---- Parallel engine (file target) -------------------------------------
+
+    private suspend fun enqueueParallelFile(entry: DownloadEntry) {
+        val outFile = plannedFileFor(entry)
+        outFile.parentFile?.mkdirs()
+        dao.upsert(entry.copy(status = "RUNNING", filePath = outFile.absolutePath))
+        launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile))
+    }
+
+    // ---- Parallel engine (SAF target) --------------------------------------
+
+    private suspend fun enqueueParallelSaf(entry: DownloadEntry, treeUriStr: String) {
+        val tree = try {
+            DocumentFile.fromTreeUri(app, treeUriStr.toUri())
+        } catch (t: Throwable) { null }
+        if (tree == null || !tree.canWrite()) {
+            dao.upsert(entry.copy(status = "FAILED", errorMessage = "Chosen folder is unwritable"))
+            return
+        }
+        val doc = createSafFile(tree, entry) ?: run {
+            dao.upsert(entry.copy(status = "FAILED", errorMessage = "Could not create file in chosen folder"))
+            return
+        }
+        dao.upsert(entry.copy(status = "RUNNING", filePath = doc.uri.toString()))
+        launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc))
+    }
+
+    private fun createSafFile(root: DocumentFile, entry: DownloadEntry): DocumentFile? {
+        val ext = pickExtension(entry.sourceUrl)
+        val safeTitle = sanitizeFilename(entry.title).ifBlank { entry.id }
+        val mime = mimeForExt(ext)
+        return when (entry.kind) {
+            "episode" -> {
+                val seriesFolder = sanitizeFilename(entry.seriesName).ifBlank { "Series" }
+                val season = entry.season.coerceAtLeast(1)
+                val epNum = "E%02d".format(entry.episode.coerceAtLeast(0))
+                val epLabel = sanitizeFilename(
+                    entry.title.substringAfter("·", entry.title).trim().ifBlank { entry.title }
+                ).ifBlank { epNum }
+                val seriesDir = orCreateSub(root, "Series") ?: return null
+                val showDir = orCreateSub(seriesDir, seriesFolder) ?: return null
+                val seasonDir = orCreateSub(showDir, "S%02d".format(season)) ?: return null
+                seasonDir.createFile(mime, "$epNum - $epLabel")
+            }
+            else -> {
+                val moviesDir = orCreateSub(root, "Movies") ?: return null
+                moviesDir.createFile(mime, safeTitle)
+            }
+        }
+    }
+
+    private fun orCreateSub(parent: DocumentFile, name: String): DocumentFile? =
+        parent.findFile(name)?.takeIf { it.isDirectory } ?: parent.createDirectory(name)
+
+    private fun launchParallel(entry: DownloadEntry, target: ParallelDownloader.Target) {
+        val id = entry.id
+        val handle = parallel.start(
+            url = entry.sourceUrl,
+            target = target,
+            userAgent = UA,
+            onProgress = { downloaded, total ->
+                scope.launch {
+                    val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
+                    dao.updateProgress(id, "RUNNING", pct, downloaded, total)
+                    if (pct % 20 == 0) refreshTotals()
+                }
+            },
+            onDone = { path ->
+                scope.launch {
+                    val e = dao.byId(id) ?: return@launch
+                    dao.updateProgress(id, "DONE", 100, e.sizeBytes.coerceAtLeast(e.downloadedBytes), e.sizeBytes.coerceAtLeast(e.downloadedBytes))
+                    dao.markDone(id, path)
+                    synchronized(jobsLock) { parallelJobs.remove(id) }
+                    refreshTotals()
+                }
+            },
+            onError = { msg ->
+                scope.launch {
+                    dao.markFailed(id, msg)
+                    synchronized(jobsLock) { parallelJobs.remove(id) }
+                }
+            },
+        )
+        synchronized(jobsLock) { parallelJobs[id] = handle }
+    }
+
     private fun plannedFileFor(entry: DownloadEntry): File {
         val ext = pickExtension(entry.sourceUrl)
         val safeTitle = sanitizeFilename(entry.title).ifBlank { entry.id }
@@ -133,24 +248,32 @@ class DownloadHub(
                 val season = entry.season.coerceAtLeast(1)
                 val epNum = "E%02d".format(entry.episode.coerceAtLeast(0))
                 val epLabel = sanitizeFilename(
-                    // Strip a leading "SxxExx" prefix from the display title so the
-                    // filename doesn't repeat what the folder already conveys.
                     entry.title.substringAfter("·", entry.title).trim().ifBlank { entry.title }
                 ).ifBlank { epNum }
-                File(File(File(root, "Series"), seriesFolder).apply { mkdirs() }, "S%02d".format(season))
+                File(File(File(defaultRoot, "Series"), seriesFolder).apply { mkdirs() }, "S%02d".format(season))
                     .apply { mkdirs() }
                     .let { File(it, "$epNum - $epLabel.$ext") }
             }
-            else -> File(File(root, "Movies").apply { mkdirs() }, "$safeTitle.$ext")
+            else -> File(File(defaultRoot, "Movies").apply { mkdirs() }, "$safeTitle.$ext")
         }
     }
 
+    // ---- Cancel / delete (both engines) ------------------------------------
+
     fun cancel(entryId: String) {
         scope.launch {
-            val sysId = synchronized(jobsLock) { jobs.remove(entryId) }
+            val sysId = synchronized(jobsLock) { sysJobs.remove(entryId) }
             if (sysId != null) dm.remove(sysId)
+            val parHandle = synchronized(jobsLock) { parallelJobs.remove(entryId) }
+            parHandle?.cancel?.invoke()
             val entry = dao.byId(entryId) ?: return@launch
-            runCatching { if (entry.filePath.isNotBlank()) File(entry.filePath).delete() }
+            runCatching {
+                if (entry.filePath.startsWith("content://")) {
+                    DocumentFile.fromSingleUri(app, entry.filePath.toUri())?.delete()
+                } else if (entry.filePath.isNotBlank()) {
+                    File(entry.filePath).delete()
+                }
+            }
             dao.delete(entryId)
             refreshTotals()
         }
@@ -159,20 +282,18 @@ class DownloadHub(
     fun delete(entryId: String) = cancel(entryId)
 
     fun observe(): Flow<List<DownloadEntry>> = dao.all()
-
     fun observeCompleted(entryId: String): Flow<Boolean> = dao.completedFlow(entryId)
-
     fun observeExists(entryId: String): Flow<Boolean> = dao.existsFlow(entryId)
 
-    suspend fun refreshTotals() {
-        _totalBytes.value = dao.totalBytes()
-    }
+    suspend fun refreshTotals() { _totalBytes.value = dao.totalBytes() }
+
+    // ---- Polling loop (only used by the System engine) ---------------------
 
     private fun startPolling() {
         if (poll?.isActive == true) return
         poll = scope.launch {
             while (isActive) {
-                val active = synchronized(jobsLock) { jobs.toMap() }
+                val active = synchronized(jobsLock) { sysJobs.toMap() }
                 if (active.isEmpty()) break
                 pollOnce(active)
                 delay(POLL_INTERVAL_MS)
@@ -204,12 +325,12 @@ class DownloadHub(
                             dao.updateProgress(entryId, "DONE", 100, size.coerceAtLeast(soFar), size.coerceAtLeast(soFar))
                             dao.markDone(entryId, entry.filePath)
                         }
-                        synchronized(jobsLock) { jobs.remove(entryId) }
+                        synchronized(jobsLock) { sysJobs.remove(entryId) }
                     }
                     DownloadManager.STATUS_FAILED -> {
                         val reason = c.getInt(reasonIdx)
                         dao.markFailed(entryId, "System code $reason")
-                        synchronized(jobsLock) { jobs.remove(entryId) }
+                        synchronized(jobsLock) { sysJobs.remove(entryId) }
                     }
                     DownloadManager.STATUS_PAUSED -> dao.updateProgress(entryId, "PAUSED", pct, soFar, size)
                     DownloadManager.STATUS_PENDING -> dao.updateProgress(entryId, "QUEUED", pct, soFar, size)
@@ -226,16 +347,12 @@ class DownloadHub(
                 val sysId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
                 if (sysId <= 0) return
                 val entryId = synchronized(jobsLock) {
-                    jobs.entries.firstOrNull { it.value == sysId }?.key
+                    sysJobs.entries.firstOrNull { it.value == sysId }?.key
                 } ?: return
                 scope.launch { pollOnce(mapOf(entryId to sysId)) }
             }
         }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        // ContextCompat handles the API-33 export-flag requirement transparently;
-        // DownloadManager's completion broadcast is a system-source event so
-        // NOT_EXPORTED is sufficient and avoids inadvertently allowing third-party
-        // apps to spoof completions.
         ContextCompat.registerReceiver(app, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
@@ -250,6 +367,11 @@ class DownloadHub(
         )
     }
 
+    private fun descriptionFor(entry: DownloadEntry): String =
+        if (entry.kind == "episode" && entry.seriesName.isNotBlank())
+            "${entry.seriesName} — offline download"
+        else "EnkTel offline download"
+
     private fun sanitizeFilename(raw: String): String =
         raw.replace(Regex("[^A-Za-z0-9._ -]"), "_").take(96).trim().ifBlank { "download" }
 
@@ -263,9 +385,18 @@ class DownloadHub(
             else -> "mp4"
         }
     }
+
+    private fun mimeForExt(ext: String): String = when (ext) {
+        "mp4", "m4v" -> "video/mp4"
+        "mkv" -> "video/x-matroska"
+        "webm" -> "video/webm"
+        "ts" -> "video/mp2t"
+        "avi" -> "video/x-msvideo"
+        "mov" -> "video/quicktime"
+        else -> "video/*"
+    }
 }
 
-/** Convenience: turn a raw byte count into a human string (1.4 GB, 620 MB). */
 fun Long.humanBytes(): String {
     if (this <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")

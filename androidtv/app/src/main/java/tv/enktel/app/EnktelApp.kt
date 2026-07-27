@@ -59,7 +59,7 @@ class AppGraph(app: Application) {
     val watchlist = WatchlistRepository(db.watchlistDao())
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
-    val downloads = DownloadHub(app, db.downloadDao())
+    val downloads = DownloadHub(app, db.downloadDao(), settings, http)
 
     init {
         val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
