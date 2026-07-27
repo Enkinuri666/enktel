@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
         val graph = (application as EnktelApp).graph
 
         setContent {
-            val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
+            val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "obsidian")
             val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
             val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
             EnktelTheme(

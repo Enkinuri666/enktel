@@ -212,6 +212,91 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 if (probe.codecHint.isNotBlank()) item { MetricRow("Codec (hint)", probe.codecHint) }
             }
 
+            // v1.23 additions — protocol / TLS + URL-shape simulation + cap
+            if (r.protocol.httpVersion.isNotBlank() || r.protocol.tlsVersion.isNotBlank()) {
+                item { GroupHeader("HTTP + TLS") }
+                if (r.protocol.httpVersion.isNotBlank()) item { MetricRow("HTTP version", r.protocol.httpVersion) }
+                if (r.protocol.tlsVersion.isNotBlank()) item { MetricRow("TLS version", r.protocol.tlsVersion) }
+                if (r.protocol.handshakeMs > 0) item { MetricRow("Handshake", "${r.protocol.handshakeMs} ms") }
+                if (r.protocol.redirectChain.isNotEmpty()) {
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(EnktelSurface)
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        ) {
+                            Text("Redirect chain", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.height(4.dp))
+                            r.protocol.redirectChain.forEach {
+                                Text(it, color = Color.White.copy(0.9f), fontSize = 12.sp,
+                                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (r.urlShapes.liveShapes.isNotEmpty()) {
+                item { GroupHeader("URL shape simulation") }
+                r.urlShapes.bestLive?.let { best ->
+                    item {
+                        Text(
+                            "Best-matching shape for live: ${best.url.substringAfterLast('/')}",
+                            color = EnktelOk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+                items(r.urlShapes.liveShapes) { s ->
+                    val statusColor = when {
+                        s.ok -> EnktelOk
+                        s.code == 0 -> EnktelLive
+                        s.code in 400..499 -> Color(0xFFFBBF24)
+                        else -> EnktelLive
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EnktelSurface)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            val label = s.url.substringAfter(r.host).ifBlank { s.url }
+                            Text(label, color = Color.White, fontSize = 12.sp,
+                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            if (s.error != null) {
+                                Text(s.error.take(80), color = EnktelTextDim, fontSize = 10.sp,
+                                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            }
+                        }
+                        Text(
+                            if (s.code == 0) "err" else "${s.code} · ${s.ms}ms",
+                            color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+
+            if (r.connectionCap.attempted > 0) {
+                item { GroupHeader("Concurrent connection cap") }
+                val cap = r.connectionCap
+                item {
+                    MetricRow(
+                        "Parallel probes",
+                        "${cap.succeeded} / ${cap.attempted} succeeded" + if (cap.rejectedAt > 0) " · panel rejected at slot ${cap.rejectedAt}" else "",
+                        color = when {
+                            cap.succeeded == cap.attempted -> EnktelOk
+                            cap.succeeded >= 4 -> Color(0xFFFBBF24)
+                            else -> EnktelLive
+                        },
+                    )
+                }
+            }
+
             item {
                 Column(
                     Modifier

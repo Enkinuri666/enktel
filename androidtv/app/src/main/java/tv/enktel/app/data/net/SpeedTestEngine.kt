@@ -67,6 +67,34 @@ object SpeedTestEngine {
         fun isEmpty(): Boolean = url.isBlank() && serverSoftware.isBlank() && timezone.isBlank()
     }
 
+    /** Single URL shape → HTTP status. Reported for each of the 6 candidate
+     *  shapes StreamUrlResolver would try in order for a live channel. */
+    data class ShapeResult(val url: String, val code: Int, val ms: Long, val error: String? = null) {
+        val ok: Boolean get() = code in 200..299
+    }
+
+    data class UrlShapeSimulation(
+        val liveShapes: List<ShapeResult> = emptyList(),
+        val bestLive: ShapeResult? = null,
+    )
+
+    /** Sockets held open in parallel probe. Reports the panel's per-IP cap. */
+    data class ConnectionCap(
+        val attempted: Int,
+        val succeeded: Int,
+        val rejectedAt: Int, // 0 = didn't hit a cap
+        val error: String? = null,
+    )
+
+    /** Redirect follow-up chain, TLS handshake + HTTP version detected on
+     *  the actual panel host — useful for CDN-fronted / Cloudflare setups. */
+    data class ProtocolInfo(
+        val httpVersion: String = "",         // "http/1.1" | "h2" | ""
+        val tlsVersion: String = "",           // "TLSv1.3" | "TLSv1.2" | ""
+        val handshakeMs: Long = 0,
+        val redirectChain: List<String> = emptyList(),
+    )
+
     data class Result(
         val host: String,
         val resolvedIp: String?,
@@ -78,6 +106,9 @@ object SpeedTestEngine {
         val connectionType: NetworkClass.Kind,
         val recommendation: String,
         val bufferProjection: String,
+        val urlShapes: UrlShapeSimulation = UrlShapeSimulation(),
+        val connectionCap: ConnectionCap = ConnectionCap(0, 0, 0),
+        val protocol: ProtocolInfo = ProtocolInfo(),
         val server: ServerInfo = ServerInfo(),
         val liveProbe: StreamProbe? = null,
         val vodProbe: StreamProbe? = null,
@@ -119,6 +150,31 @@ object SpeedTestEngine {
                 appendLine("  HTTP ${it.httpCode}   Content-Type: ${it.contentType}")
                 appendLine("  Container: ${it.container}   Codec: ${it.codecHint.ifBlank { "n/a" }}")
                 it.error?.let { e -> appendLine("  Error: $e") }
+            }
+            if (protocol.httpVersion.isNotBlank() || protocol.tlsVersion.isNotBlank()) {
+                appendLine("---")
+                appendLine("HTTP version: ${protocol.httpVersion.ifBlank { "unknown" }}")
+                appendLine("TLS version: ${protocol.tlsVersion.ifBlank { "unknown" }}")
+                if (protocol.handshakeMs > 0) appendLine("Handshake: ${protocol.handshakeMs} ms")
+                if (protocol.redirectChain.isNotEmpty()) {
+                    appendLine("Redirect chain:")
+                    protocol.redirectChain.forEach { appendLine("  $it") }
+                }
+            }
+            if (urlShapes.liveShapes.isNotEmpty()) {
+                appendLine("---")
+                appendLine("URL shape simulation:")
+                urlShapes.liveShapes.forEach { s ->
+                    val short = s.url.substringAfterLast('/')
+                    val err = s.error?.let { " (${it.take(60)})" }.orEmpty()
+                    appendLine("  ${if (s.code == 0) "err" else s.code}  ${s.ms}ms  $short$err")
+                }
+                urlShapes.bestLive?.let { appendLine("Best live shape: ${it.url}") }
+            }
+            if (connectionCap.attempted > 0) {
+                appendLine("---")
+                appendLine("Connection cap: ${connectionCap.succeeded}/${connectionCap.attempted} succeeded" +
+                    if (connectionCap.rejectedAt > 0) " · panel rejected at slot ${connectionCap.rejectedAt}" else "")
             }
             if (suggestions.isNotEmpty()) {
                 appendLine("---")
@@ -205,6 +261,29 @@ object SpeedTestEngine {
             probeStream(http, it)
         }
 
+        // Detect HTTP/TLS version + handshake time + redirect chain against
+        // the panel host — surfaces CDN fronting (Cloudflare), HTTP/2 support,
+        // and TLS-1.3 negotiation without needing an OS-level tool.
+        onProgress("Probing HTTP + TLS…")
+        val protocolInfo = probeProtocol(http, serverUrl)
+
+        // URL-shape playback simulator — for Xtream profiles we try each of
+        // the six candidate URL shapes StreamUrlResolver would walk and
+        // report which one the panel actually answers. Removes the guesswork
+        // when a channel won't play but the server ping is fine.
+        onProgress("Simulating URL shapes…")
+        val shapes = if (profile != null && profile.kind == "xtream")
+            simulateUrlShapes(http, profile)
+        else UrlShapeSimulation()
+
+        // Concurrent-connection cap detector — opens N parallel range GETs
+        // against a stream URL and reports how many the panel accepts before
+        // rejecting. Tells the user their real per-IP connection allotment.
+        onProgress("Detecting connection cap…")
+        val cap = if (streamSampleUrl != null)
+            detectConnectionCap(http, streamSampleUrl)
+        else ConnectionCap(0, 0, 0)
+
         onProgress("Measuring download throughput…")
         val throughput = try {
             measureThroughputMbps(http, streamSampleUrl ?: serverUrl)
@@ -237,9 +316,93 @@ object SpeedTestEngine {
             server = server,
             liveProbe = liveProbe,
             vodProbe = vodProbe,
+            urlShapes = shapes,
+            connectionCap = cap,
+            protocol = protocolInfo,
             suggestions = suggestions,
             error = if (pingMs < 0) "Could not establish a TCP connection to $host:$port" else null,
         )
+    }
+
+    private fun probeProtocol(http: OkHttpClient, serverUrl: String): ProtocolInfo {
+        val req = Request.Builder().url(serverUrl).get().build()
+        val redirects = mutableListOf<String>()
+        return try {
+            val t0 = System.nanoTime()
+            http.newCall(req).execute().use { r ->
+                val ms = (System.nanoTime() - t0) / 1_000_000
+                // Walk the priorResponse chain — that's OkHttp's linked list
+                // of intermediate responses before the final landing.
+                var p: okhttp3.Response? = r.priorResponse
+                while (p != null) {
+                    redirects += "${p.code} → ${p.header("Location") ?: p.request.url}"
+                    p = p.priorResponse
+                }
+                ProtocolInfo(
+                    httpVersion = r.protocol.toString(),
+                    tlsVersion = r.handshake?.tlsVersion?.javaName.orEmpty(),
+                    handshakeMs = ms,
+                    redirectChain = redirects.reversed(),
+                )
+            }
+        } catch (_: Throwable) {
+            ProtocolInfo()
+        }
+    }
+
+    private fun simulateUrlShapes(http: OkHttpClient, p: Profile): UrlShapeSimulation {
+        // Build the same 6 shapes StreamUrlResolver would try for a live
+        // channel, without needing a real Channel — the shapes only depend
+        // on profile server/username/password + a placeholder stream id (1).
+        val base = p.server.trimEnd('/')
+        val u = p.username
+        val pw = p.password
+        val id = 1L
+        val shapes = listOf(
+            "$base/live/$u/$pw/$id.m3u8",
+            "$base/live/$u/$pw/$id.ts",
+            "$base/live/$u/$pw/$id",
+            "$base/$u/$pw/$id.m3u8",
+            "$base/$u/$pw/$id.ts",
+            "$base/$u/$pw/$id",
+        ).distinct()
+        val results = shapes.map { url ->
+            val t0 = System.nanoTime()
+            try {
+                val req = Request.Builder().url(url).header("Range", "bytes=0-1").get().build()
+                http.newCall(req).execute().use { r ->
+                    ShapeResult(url = url, code = r.code, ms = (System.nanoTime() - t0) / 1_000_000)
+                }
+            } catch (e: Throwable) {
+                ShapeResult(url = url, code = 0, ms = (System.nanoTime() - t0) / 1_000_000, error = e.message)
+            }
+        }
+        val best = results.firstOrNull { it.ok }
+        return UrlShapeSimulation(liveShapes = results, bestLive = best)
+    }
+
+    private fun detectConnectionCap(http: OkHttpClient, sampleUrl: String): ConnectionCap {
+        val target = 8
+        val outcomes = mutableListOf<Int>()
+        val jobs = (1..target).map {
+            java.util.concurrent.CompletableFuture.supplyAsync {
+                try {
+                    val req = Request.Builder().url(sampleUrl)
+                        .header("Range", "bytes=0-65535")
+                        .get()
+                        .build()
+                    http.newCall(req).execute().use { it.code }
+                } catch (_: Throwable) { -1 }
+            }
+        }
+        try {
+            jobs.forEach { outcomes += it.get(20, java.util.concurrent.TimeUnit.SECONDS) }
+        } catch (_: Throwable) {}
+        val succeeded = outcomes.count { it == 200 || it == 206 }
+        // Panels commonly answer 403 / 429 / 503 once the per-IP cap is hit.
+        val rejectedAt = outcomes.indexOfFirst { it == 403 || it == 429 || it == 503 }
+            .let { if (it < 0) 0 else it + 1 }
+        return ConnectionCap(attempted = target, succeeded = succeeded, rejectedAt = rejectedAt)
     }
 
     private suspend fun fetchServerInfo(
