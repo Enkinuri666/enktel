@@ -159,6 +159,84 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
+        Text("POWER-USER DECODING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val decMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("HW+ (default)", selected = decMode == "hwplus",
+                onClick = { scope.launch { graph.settings.setDecoderMode("hwplus") } })
+            tv.enktel.app.ui.components.GlassChip("HW only", selected = decMode == "hw",
+                onClick = { scope.launch { graph.settings.setDecoderMode("hw") } })
+        }
+        Text(
+            "HW+ prefers software extensions (AV1/VP9/FFmpeg) then falls back to SoC hardware — safer for weird codecs. HW-only skips extensions entirely — sharper on strong SoCs (Nvidia Shield, Fire Cube gen 3).",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Minimum buffer override (ms)")
+        val minBuf by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            listOf(0 to "Off", 2_000 to "2s", 5_000 to "5s", 8_000 to "8s", 12_000 to "12s").forEach { (v, label) ->
+                tv.enktel.app.ui.components.GlassChip(label, selected = minBuf == v,
+                    onClick = { scope.launch { graph.settings.setMinBufferMs(v) } })
+            }
+        }
+        Text(
+            "Force a floor under the LoadControl minimum buffer. Use on jittery ISPs where the profile default (Low/Balanced/Large) still under-buffers.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Dialogue boost")
+        val dlg by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            listOf("off" to "Off", "low" to "Low", "medium" to "Medium", "high" to "High").forEach { (v, label) ->
+                tv.enktel.app.ui.components.GlassChip(label, selected = dlg == v,
+                    onClick = { scope.launch { graph.settings.setDialogueBoost(v) } })
+            }
+        }
+        Text(
+            "Lifts the 200–3400 Hz voice band via DynamicsProcessing so whisper-quiet dialogue stops getting drowned by explosion-loud action scenes. Requires Android 9+.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        val bgAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Background audio (live TV)", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Keep live news / sports / podcasts playing when the screen turns off. Applies to live TV only — VOD keeps the screen on.",
+                    color = EnktelTextDim, fontSize = 11.sp,
+                )
+            }
+            FocusButton(
+                text = if (bgAudio) "On" else "Off",
+                accent = bgAudio,
+                onClick = { scope.launch { graph.settings.setBackgroundAudio(!bgAudio) } },
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("EPG timezone offset")
+        val epgOff by graph.settings.epgOffsetMin.collectAsStateWithLifecycle(initialValue = 0)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            listOf(-180, -120, -60, -30, 0, 30, 60, 120, 180).forEach { m ->
+                val label = when {
+                    m == 0 -> "0"
+                    m > 0 -> "+${m}m"
+                    else -> "${m}m"
+                }
+                tv.enktel.app.ui.components.GlassChip(label, selected = epgOff == m,
+                    onClick = { scope.launch { graph.settings.setEpgOffsetMin(m) } })
+            }
+        }
+        Text(
+            "Shifts the XMLTV guide times when the panel's clock doesn't match yours. Negative = programmes appear earlier; positive = later.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
         Text("METADATA ENRICHMENT (TMDB)", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val tmdbKey by graph.settings.tmdbApiKey.collectAsStateWithLifecycle(initialValue = "")
         var newTmdb by remember { mutableStateOf(tmdbKey) }

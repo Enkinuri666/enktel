@@ -109,8 +109,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
+    val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
+    val minBufferMs by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
 
-    val engine = remember(p.id) { PlayerEngine(context, graph.http, bufferProfile) }
+    val engine = remember(p.id, decoderMode, minBufferMs) {
+        PlayerEngine(context, graph.http, bufferProfile, decoderMode = decoderMode, minBufferOverrideMs = minBufferMs)
+    }
+    LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
     val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
     DisposableEffect(zapPreloader) { onDispose { zapPreloader.cancel() } }
     val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
@@ -123,14 +129,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             }
         }
     }
+    val backgroundAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
     // Keep the OS display awake while the live player is on-screen — otherwise
     // Android's own screen-off timer fires mid-programme after a few minutes of
     // no touch input, which is *especially* wrong on TV where the remote is
     // idle by design.  Cleared on dispose so backgrounding the activity lets
     // the panel sleep normally.
-    DisposableEffect(Unit) {
+    //
+    // When the user has opted into "Background audio" (Settings → Playback),
+    // we DO NOT hold the wake flag — playback continues while the screen
+    // sleeps, so news / sports commentary / podcasts can keep going with
+    // the panel dark. Only relevant on live: VOD keeps the flag either way
+    // because a movie without picture is a bug, not a feature.
+    DisposableEffect(backgroundAudio) {
         val activity = ctxForRefresh as? android.app.Activity
-        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (!backgroundAudio) {
+            activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
         onDispose {
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
