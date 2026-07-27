@@ -33,6 +33,20 @@ data class EnktelPalette(
     val border: Color,
 )
 
+/**
+ * Obsidian — the new premium default. Deep near-black backdrop (0x050608)
+ * with a slight cool-tinted mid surface (0x0C1017), electric cyan-blue
+ * primary (0x38BDF8), plum-purple secondary (0xA855F7). Designed for
+ * high-contrast poster art + glass overlays without any of the muddy
+ * navy that the old "EnkTel Blue" theme washed the UI in.
+ */
+private val PaletteObsidian = EnktelPalette(
+    id = "obsidian", label = "Obsidian (Premium)",
+    bg = Color(0xFF050608), surface = Color(0xFF0C1017), surfaceHigh = Color(0xFF141A26),
+    text = Color(0xFFF1F5FA), textDim = Color(0xFF7A8598),
+    primary = Color(0xFF38BDF8), primaryDeep = Color(0xFF0284C7), secondary = Color(0xFFA855F7),
+    live = Color(0xFFF43F5E), ok = Color(0xFF22D3EE), border = Color(0xFF1B2436),
+)
 private val PaletteEnktelBlue = EnktelPalette(
     id = "enktel_blue", label = "EnkTel Blue",
     bg = Color(0xFF0A0E17), surface = Color(0xFF121826), surfaceHigh = Color(0xFF1B2333),
@@ -73,12 +87,12 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
 )
 
 val ALL_PALETTES = listOf(
-    PaletteEnktelBlue, PaletteCrimson, PaletteEmerald, PaletteAmber,
+    PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald, PaletteAmber,
     PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteEnktelBlue
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteObsidian
 
-private val LocalPalette = compositionLocalOf { PaletteEnktelBlue }
+private val LocalPalette = compositionLocalOf { PaletteObsidian }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 
@@ -99,7 +113,7 @@ val EnktelOk: Color @Composable get() = LocalPalette.current.ok
 
 @Composable
 fun EnktelTheme(
-    themeId: String = "enktel_blue",
+    themeId: String = "obsidian",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
     content: @Composable () -> Unit,
