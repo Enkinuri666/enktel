@@ -105,6 +105,22 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     if (mins > 0) Badge("$mins min")
                 }
                 Spacer(Modifier.height(14.dp))
+                // Fetch a YouTube trailer key from TMDB when the movie has a
+                // tmdbId (populated by MetadataEnrichmentWorker). Silent
+                // ambient-style playback would need a real YouTube SDK dep;
+                // this route hands off to the platform browser/YouTube app
+                // via an intent, which is free, permission-less, and works
+                // on every Android+FireTV device.
+                var trailerKey by remember { mutableStateOf<String?>(null) }
+                val ctxT = androidx.compose.ui.platform.LocalContext.current
+                androidx.compose.runtime.LaunchedEffect(m.tmdbId) {
+                    trailerKey = if (m.tmdbId > 0) {
+                        runCatching {
+                            tv.enktel.app.data.metadata.TmdbClient(graph.http, graph.settings.tmdbApiKey.first())
+                                .trailerYoutubeKey("movie", m.tmdbId)
+                        }.getOrNull()
+                    } else null
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FocusButton("▶ Play", accent = true, onClick = {
                         nav.navigate(vodPlayerRoute(url, m.name, progressKey))
@@ -112,6 +128,20 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     if (resumeMs > 60_000) {
                         FocusButton("Resume ${resumeMs / 60000}m", onClick = {
                             nav.navigate(vodPlayerRoute(url, m.name, progressKey))
+                        })
+                    }
+                    trailerKey?.let { key ->
+                        FocusButton("🎬 Trailer", onClick = {
+                            // Prefer the YouTube app when installed (better TV
+                            // UX + audio) and fall back to any browser.
+                            val youtubeAppUri = android.net.Uri.parse("vnd.youtube:$key")
+                            val webUri = android.net.Uri.parse("https://www.youtube.com/watch?v=$key")
+                            val youtubeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, youtubeAppUri)
+                                .setPackage("com.google.android.youtube.tv")
+                            val fallback = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
+                            runCatching { ctxT.startActivity(youtubeIntent) }.getOrElse {
+                                runCatching { ctxT.startActivity(fallback) }
+                            }
                         })
                     }
                     FavButton(graph, p.id, "vod", m.streamId)

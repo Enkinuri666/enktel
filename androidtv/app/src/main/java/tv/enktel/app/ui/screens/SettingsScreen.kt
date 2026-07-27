@@ -58,6 +58,19 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         SectionTitle("Settings")
         if (status.isNotBlank()) Text(status, color = EnktelOk, fontSize = 13.sp)
 
+        // High-visibility quick-actions at the top of Settings so users don't
+        // have to scroll to find the built-in diagnostics tools.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton("🩺  Run connection diagnostics", accent = true,
+                onClick = { nav.navigate("speedTest") })
+            FocusButton("🗂  Manage categories",
+                onClick = { nav.navigate("manageCategories") })
+        }
+        Text(
+            "Diagnostics tests your network + the panel's URL shapes + concurrent-connection cap + HTTP/TLS protocol — all locally, no browser needed.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
         Text("PLAYLISTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         profiles.forEach { p ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

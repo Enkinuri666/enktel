@@ -459,6 +459,7 @@ private fun UpcomingEventCard(
 
 @Composable
 private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.unit.Dp, onReplay: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     Surface(
         onClick = onReplay,
         modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz).tapClick(onReplay),
@@ -485,6 +486,16 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
                     "${ev.channel.name} · ${SimpleDateFormat("EEE d MMM HH:mm", Locale.getDefault()).format(Date(ev.startMs))}",
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
+                Spacer(Modifier.height(6.dp))
+                // Highlights link-out — YouTube search intent using the event
+                // title + "highlights". Free, keyless, and opens the native
+                // YouTube app on TV / phones when available.
+                FocusButton("🎬 Highlights", onClick = {
+                    val query = "${ev.title} highlights"
+                    val webUri = android.net.Uri.parse("https://www.youtube.com/results?search_query=" + java.net.URLEncoder.encode(query, "UTF-8"))
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
+                    runCatching { ctx.startActivity(intent) }
+                })
             }
             Text(
                 if (ev.channel.hasArchive) "⏪" else "—",

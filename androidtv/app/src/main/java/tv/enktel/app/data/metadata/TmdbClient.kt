@@ -50,6 +50,43 @@ class TmdbClient(
     suspend fun movie(tmdbId: Long): Enrichment? = fetch("movie", tmdbId, isSeries = false)
     suspend fun series(tmdbId: Long): Enrichment? = fetch("tv", tmdbId, isSeries = true)
 
+    /**
+     * Returns the first YouTube video key from TMDB `/movie/{id}/videos` (or
+     * `/tv/{id}/videos`), prioritising Trailer > Teaser > Clip. That's the
+     * YouTube video id — the caller drops it into a `YouTubePlayerView` or
+     * a `youtube.com/embed/{key}` iframe for the auto-trailer overlay.
+     * Returns null when no video is available or the key isn't set.
+     */
+    suspend fun trailerYoutubeKey(kind: String, tmdbId: Long): String? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
+        val useBearer = apiKey.length > 60
+        val urlBase = "$BASE/$kind/$tmdbId/videos?language=$LANG"
+        val req = Request.Builder()
+            .url(if (useBearer) urlBase else "$urlBase&api_key=$apiKey")
+            .apply { if (useBearer) header("Authorization", "Bearer $apiKey") }
+            .build()
+        val json: JsonElement = try {
+            http.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@withContext null
+                LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+            }
+        } catch (_: Throwable) { return@withContext null }
+        if (json !is JsonObject) return@withContext null
+        val results = json.get("results").arr() ?: return@withContext null
+        // Prefer Trailer, then Teaser, then Clip. YouTube-hosted only.
+        val ordered = results.sortedBy { v ->
+            when (v.str("type").orEmpty().lowercase()) {
+                "trailer" -> 0
+                "teaser" -> 1
+                "clip" -> 2
+                else -> 3
+            }
+        }
+        ordered.firstOrNull {
+            v -> v.str("site").equals("YouTube", true)
+        }?.str("key")
+    }
+
     private suspend fun fetch(kind: String, tmdbId: Long, isSeries: Boolean): Enrichment? = withContext(Dispatchers.IO) {
         if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
         // Accept either a v3 numeric key OR a v4 bearer token. We detect
