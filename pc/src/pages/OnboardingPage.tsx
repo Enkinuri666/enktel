@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings, type Profile } from '@/stores/settings';
+import { xtreamLogin } from '@/lib/xtream';
 
 export default function OnboardingPage() {
   const nav = useNavigate();
@@ -9,12 +10,29 @@ export default function OnboardingPage() {
   const [form, setForm] = useState({
     name: 'My playlist', server: '', username: '', password: '', m3uUrl: '', epgUrl: '',
   });
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
-    (mode === 'xtream' && form.server && form.username && form.password) ||
-    (mode === 'm3u' && form.m3uUrl);
+    !testing && ((mode === 'xtream' && form.server && form.username && form.password) ||
+    (mode === 'm3u' && form.m3uUrl));
 
-  const submit = () => {
+  const submit = async () => {
+    setError(null);
+    if (mode === 'xtream') {
+      // Pre-flight the Xtream credentials — surfaces "wrong password" /
+      // "server not reachable" up-front so the user isn't dropped into an
+      // empty Home screen with no explanation.
+      setTesting(true);
+      const r = await xtreamLogin({
+        server: form.server, username: form.username, password: form.password,
+      });
+      setTesting(false);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+    }
     const profile: Profile = mode === 'xtream'
       ? { kind: 'xtream', name: form.name, server: form.server, username: form.username, password: form.password }
       : { kind: 'm3u', name: form.name, m3uUrl: form.m3uUrl, epgUrl: form.epgUrl };
@@ -52,12 +70,17 @@ export default function OnboardingPage() {
           )}
         </div>
 
+        {error && (
+          <div className="mt-4 rounded-md border border-live/50 bg-live/10 text-live text-xs p-3">
+            {error}
+          </div>
+        )}
         <button
           onClick={submit}
           disabled={!canSubmit}
           className="mt-6 w-full rounded-md bg-brand text-white font-bold py-2.5 disabled:opacity-40 hover:bg-brand-deep transition"
         >
-          Connect & Import
+          {testing ? 'Testing connection…' : 'Connect & Import'}
         </button>
       </div>
     </div>
