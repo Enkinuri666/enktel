@@ -1,6 +1,8 @@
 package tv.enktel.app.data.net
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -381,29 +383,34 @@ object SpeedTestEngine {
         return UrlShapeSimulation(liveShapes = results, bestLive = best)
     }
 
-    private fun detectConnectionCap(http: OkHttpClient, sampleUrl: String): ConnectionCap {
-        val target = 8
-        val outcomes = mutableListOf<Int>()
-        val jobs = (1..target).map {
-            java.util.concurrent.CompletableFuture.supplyAsync {
-                try {
-                    val req = Request.Builder().url(sampleUrl)
-                        .header("Range", "bytes=0-65535")
-                        .get()
-                        .build()
-                    http.newCall(req).execute().use { it.code }
-                } catch (_: Throwable) { -1 }
+    private suspend fun detectConnectionCap(http: OkHttpClient, sampleUrl: String): ConnectionCap =
+        kotlinx.coroutines.coroutineScope {
+            val target = 8
+            // kotlinx.coroutines.async replaces CompletableFuture.supplyAsync
+            // here — supplyAsync requires API 24 but the app supports 21.
+            // Dispatchers.IO gives the same "run these concurrently on
+            // background threads" behaviour without the minSdk bump.
+            val jobs = (1..target).map {
+                async(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val req = Request.Builder().url(sampleUrl)
+                            .header("Range", "bytes=0-65535")
+                            .get()
+                            .build()
+                        http.newCall(req).execute().use { it.code }
+                    } catch (_: Throwable) { -1 }
+                }
             }
+            val outcomes = try {
+                kotlinx.coroutines.withTimeoutOrNull(20_000) { jobs.awaitAll() }
+                    ?: emptyList()
+            } catch (_: Throwable) { emptyList() }
+            val succeeded = outcomes.count { it == 200 || it == 206 }
+            // Panels commonly answer 403 / 429 / 503 once the per-IP cap is hit.
+            val rejectedAt = outcomes.indexOfFirst { it == 403 || it == 429 || it == 503 }
+                .let { if (it < 0) 0 else it + 1 }
+            ConnectionCap(attempted = target, succeeded = succeeded, rejectedAt = rejectedAt)
         }
-        try {
-            jobs.forEach { outcomes += it.get(20, java.util.concurrent.TimeUnit.SECONDS) }
-        } catch (_: Throwable) {}
-        val succeeded = outcomes.count { it == 200 || it == 206 }
-        // Panels commonly answer 403 / 429 / 503 once the per-IP cap is hit.
-        val rejectedAt = outcomes.indexOfFirst { it == 403 || it == 429 || it == 503 }
-            .let { if (it < 0) 0 else it + 1 }
-        return ConnectionCap(attempted = target, succeeded = succeeded, rejectedAt = rejectedAt)
-    }
 
     private suspend fun fetchServerInfo(
         xtream: tv.enktel.app.data.xtream.XtreamClient,
