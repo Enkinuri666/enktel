@@ -14,8 +14,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 61
-        versionName = "1.21.0"
+        versionCode = 62
+        versionName = "1.22.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -125,4 +125,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.palette.ktx)
     implementation(libs.work.runtime.ktx)
+    // Storage Access Framework helpers — used by the download manager so
+    // the user can pick a target folder (USB, external SD, NAS via
+    // DocumentsUI) and have it treated as a plain folder for writes.
+    implementation(libs.documentfile)
 }

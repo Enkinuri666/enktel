@@ -113,6 +113,18 @@ class SettingsStore(private val context: Context) {
     // running in the background.
     private val BACKGROUND_AUDIO = booleanPreferencesKey("background_audio")
 
+    // v1.22.0 download-manager overhaul.
+    //   downloadEngine: "auto" (parallel when the source + target permit,
+    //                   else falls back to system), "parallel" (force the
+    //                   new 4-way ranged OkHttp downloader), "system"
+    //                   (platform DownloadManager — best OS notification
+    //                   integration, single-stream).
+    //   downloadFolderUri: SAF tree URI the user picked in Settings. Empty
+    //                   means "use the app's default (app-scoped external
+    //                   Movies dir)".
+    private val DOWNLOAD_ENGINE = stringPreferencesKey("download_engine")
+    private val DOWNLOAD_FOLDER_URI = stringPreferencesKey("download_folder_uri")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -194,6 +206,12 @@ class SettingsStore(private val context: Context) {
     suspend fun setDialogueBoost(v: String) = context.dataStore.edit { it[DIALOGUE_BOOST] = v }
     val backgroundAudio: Flow<Boolean> = context.dataStore.data.map { it[BACKGROUND_AUDIO] ?: false }
     suspend fun setBackgroundAudio(v: Boolean) = context.dataStore.edit { it[BACKGROUND_AUDIO] = v }
+    val downloadEngine: Flow<String> = context.dataStore.data.map { it[DOWNLOAD_ENGINE] ?: "auto" }
+    suspend fun setDownloadEngine(v: String) = context.dataStore.edit { it[DOWNLOAD_ENGINE] = v }
+    suspend fun downloadEngineNow(): String = downloadEngine.first()
+    val downloadFolderUri: Flow<String> = context.dataStore.data.map { it[DOWNLOAD_FOLDER_URI].orEmpty() }
+    suspend fun setDownloadFolderUri(v: String) = context.dataStore.edit { it[DOWNLOAD_FOLDER_URI] = v.trim() }
+    suspend fun downloadFolderUriNow(): String = downloadFolderUri.first()
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
