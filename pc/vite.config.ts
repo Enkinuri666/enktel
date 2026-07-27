@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: {
@@ -24,4 +24,4 @@ export default defineConfig(async () => ({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
-}));
+});
