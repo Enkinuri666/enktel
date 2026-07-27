@@ -43,7 +43,18 @@ data class StreamStats(
  * playback errors trigger bounded auto-retry so flaky IPTV feeds recover on their own.
  */
 @UnstableApi
-class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) {
+class PlayerEngine(
+    context: Context,
+    http: OkHttpClient,
+    bufferProfile: String,
+    /** "hwplus" (default, EXTENSION_RENDERER_MODE_PREFER) | "hw"
+     *  (EXTENSION_RENDERER_MODE_OFF, hardware-only) | any other value
+     *  falls back to hwplus. Kept as a plain string so the setting flow
+     *  can drive it without introducing a shared enum. */
+    decoderMode: String = "hwplus",
+    /** Override the profile's minimum buffer (ms). 0 = don't override. */
+    minBufferOverrideMs: Int = 0,
+) {
 
     private val bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(context)
     // Track selection: explicitly pair DefaultTrackSelector with an
@@ -98,8 +109,9 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
                       else BufferWindow(15_000, 60_000, 2_000, 3_500)
             else -> BufferWindow(15_000, 60_000, 2_000, 3_500)
         }
+        val effMin = if (minBufferOverrideMs > 0) minBufferOverrideMs.coerceAtMost(bw.max) else bw.min
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(bw.min, bw.max, bw.play, bw.rebuf)
+            .setBufferDurationsMs(effMin, bw.max, bw.play, bw.rebuf)
             // Keep 60 s behind the live/playhead so instant-rewinds inside DVR-style
             // catch-up don't force a re-fetch, and short backward skips stay smooth.
             .setBackBuffer(60_000, true)
@@ -115,11 +127,19 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
         val httpFactory = OkHttpDataSource.Factory(http).setUserAgent(tv.enktel.app.DEFAULT_UA)
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
 
+        val extMode = when (decoderMode) {
+            "hw" -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
+            "hwplus", "on" -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+            else -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        }
         val renderers = DefaultRenderersFactory(context)
-            // PREFER favours the software extension decoders (AV1/VP9/Opus/FFmpeg)
-            // when they're compiled in, then falls back to the SoC hardware path —
-            // maximum codec breadth without giving up hardware acceleration.
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            // "hwplus" (default): favours software extension decoders
+            // (AV1/VP9/Opus/FFmpeg) then falls back to SoC hardware —
+            // maximum codec breadth without giving up HW acceleration.
+            // "hw": extensions OFF, hardware-only — sharper on devices with
+            // strong SoC decoders (Nvidia Shield, Fire Cube gen 3) that
+            // don't need the software safety net.
+            .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(true)
             // Route higher-tier audio (AC-3 / E-AC-3 / TrueHD / DTS) untouched to the receiver
             // where supported, so home-theatre pass-through works instead of software decode.
@@ -342,6 +362,57 @@ class PlayerEngine(context: Context, http: OkHttpClient, bufferProfile: String) 
     }
 
     private var loudness: android.media.audiofx.LoudnessEnhancer? = null
+
+    /**
+     * Dialogue boost — a multi-band DynamicsProcessing chain that lifts the
+     * voice band (200–3400 Hz) so whisper-quiet dialogue stops getting
+     * drowned by explosion-loud action tracks. Requires API 28 (P);
+     * gracefully no-ops on older devices.
+     *
+     * "off" / "low" (+2 dB) / "medium" (+4 dB) / "high" (+6 dB).
+     */
+    fun setDialogueBoost(level: String) {
+        dialogueFx?.release(); dialogueFx = null
+        if (level == "off" || level.isBlank()) return
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P) return
+        val sessionId = player.audioSessionId
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
+        val gainDb = when (level) {
+            "low" -> 2f
+            "medium" -> 4f
+            "high" -> 6f
+            else -> 0f
+        }
+        if (gainDb == 0f) return
+        dialogueFx = try {
+            val cfg = android.media.audiofx.DynamicsProcessing.Config.Builder(
+                android.media.audiofx.DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                /*channels*/ 2,
+                /*preEqInUse*/ true, /*preEqBandCount*/ 3,
+                /*mbcInUse*/ false, /*mbcBandCount*/ 0,
+                /*postEqInUse*/ false, /*postEqBandCount*/ 0,
+                /*limiterInUse*/ true,
+            ).build()
+            val fx = android.media.audiofx.DynamicsProcessing(0, sessionId, cfg)
+            // Boost the ~200–3400 Hz voice band on both channels; leave the
+            // low + high bands flat so bass rumble and cymbal air stay intact.
+            for (ch in 0..1) {
+                val preEq = fx.getPreEqByChannelIndex(ch)
+                preEq.setEnabled(true)
+                // Band 0: 0–200 Hz (flat)
+                preEq.getBand(0).apply { setEnabled(true); setCutoffFrequency(200f); setGain(0f) }
+                // Band 1: 200–3400 Hz (voice) → boost
+                preEq.getBand(1).apply { setEnabled(true); setCutoffFrequency(3400f); setGain(gainDb) }
+                // Band 2: 3400 Hz+ (flat)
+                preEq.getBand(2).apply { setEnabled(true); setCutoffFrequency(20_000f); setGain(0f) }
+                fx.setPreEqByChannelIndex(ch, preEq)
+            }
+            fx.enabled = true
+            fx
+        } catch (_: Throwable) { null }
+    }
+
+    private var dialogueFx: android.media.audiofx.DynamicsProcessing? = null
 
     fun tracksOf(type: Int): List<TrackChoice> {
         val out = ArrayList<TrackChoice>()

@@ -94,6 +94,25 @@ class SettingsStore(private val context: Context) {
     // Instructions in Settings help text.
     private val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
 
+    // v1.21.0 power-user playback controls.
+    // Decoding mode: "hwplus" (software extensions preferred, HW fallback —
+    // default; equivalent to Media3's EXTENSION_RENDERER_MODE_PREFER),
+    // "hw" (hardware-only, no extensions — sharper on Nvidia Shield /
+    // Fire Cube), "off" (extensions off, standard HW path).
+    private val DECODER_MODE = stringPreferencesKey("decoder_mode")
+    // Manual override for the ExoPlayer LoadControl minimum buffer, in ms.
+    // 0 = keep the profile default (Low / Balanced / Large / Auto). Any
+    // positive value overrides just the minimum-buffer field so a user on
+    // a jittery ISP can force a 5s buffer floor without moving to Large.
+    private val MIN_BUFFER_MS = intPreferencesKey("min_buffer_ms")
+    // Dialogue boost — DynamicsProcessing tuned for the 200-3400 Hz voice
+    // band. Levels: "off" | "low" | "medium" | "high".
+    private val DIALOGUE_BOOST = stringPreferencesKey("dialogue_boost")
+    // Background audio: when true, live/vod playback continues after the
+    // screen turns off, so a user can leave a news/podcast/sport feed
+    // running in the background.
+    private val BACKGROUND_AUDIO = booleanPreferencesKey("background_audio")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -167,6 +186,14 @@ class SettingsStore(private val context: Context) {
     suspend fun setVodForceMp4(v: Boolean) = context.dataStore.edit { it[VOD_FORCE_MP4] = v }
     val tmdbApiKey: Flow<String> = context.dataStore.data.map { it[TMDB_API_KEY].orEmpty() }
     suspend fun setTmdbApiKey(v: String) = context.dataStore.edit { it[TMDB_API_KEY] = v.trim() }
+    val decoderMode: Flow<String> = context.dataStore.data.map { it[DECODER_MODE] ?: "hwplus" }
+    suspend fun setDecoderMode(v: String) = context.dataStore.edit { it[DECODER_MODE] = v }
+    val minBufferMs: Flow<Int> = context.dataStore.data.map { it[MIN_BUFFER_MS] ?: 0 }
+    suspend fun setMinBufferMs(v: Int) = context.dataStore.edit { it[MIN_BUFFER_MS] = v.coerceIn(0, 20_000) }
+    val dialogueBoost: Flow<String> = context.dataStore.data.map { it[DIALOGUE_BOOST] ?: "off" }
+    suspend fun setDialogueBoost(v: String) = context.dataStore.edit { it[DIALOGUE_BOOST] = v }
+    val backgroundAudio: Flow<Boolean> = context.dataStore.data.map { it[BACKGROUND_AUDIO] ?: false }
+    suspend fun setBackgroundAudio(v: Boolean) = context.dataStore.edit { it[BACKGROUND_AUDIO] = v }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

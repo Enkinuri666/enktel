@@ -89,7 +89,10 @@ fun VodPlayerScreen(
     val bufferProfile = if (bufferProfileRaw == "auto")
         tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
     else bufferProfileRaw
-    val engine = remember { PlayerEngine(context, graph.http, bufferProfile) }
+    val engine = remember(decoderMode, minBufferMs) {
+        PlayerEngine(context, graph.http, bufferProfile, decoderMode = decoderMode, minBufferOverrideMs = minBufferMs)
+    }
+    LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
     val loudnessOn by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
@@ -101,6 +104,9 @@ fun VodPlayerScreen(
     val subBgAlpha by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
     val vodForceMp4 by graph.settings.vodForceMp4.collectAsStateWithLifecycle(initialValue = false)
+    val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
+    val minBufferMs by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
 
     var showControls by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
