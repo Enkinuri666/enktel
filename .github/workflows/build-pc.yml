@@ -75,7 +75,11 @@ jobs:
             $accent = [System.Drawing.Color]::FromArgb(255, 56, 189, 248) # Obsidian primary
             $g.Clear($bg)
             $brush = New-Object System.Drawing.SolidBrush $accent
-            $font = New-Object System.Drawing.Font "Segoe UI", 320, [System.Drawing.FontStyle]::Bold
+            # 4-arg form (GraphicsUnit::Pixel) is unambiguous — the 3-arg
+            # form is ambiguous between Font(string, float, FontStyle) and
+            # Font(string, float, GraphicsUnit) since both trailing enums
+            # coerce from an enum literal in PowerShell.
+            $font = New-Object System.Drawing.Font("Segoe UI", [Single]320, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
             $sf = New-Object System.Drawing.StringFormat
             $sf.Alignment = [System.Drawing.StringAlignment]::Center
             $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
