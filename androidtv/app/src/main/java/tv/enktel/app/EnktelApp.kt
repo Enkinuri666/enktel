@@ -60,6 +60,7 @@ class AppGraph(app: Application) {
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
     val downloads = DownloadHub(app, db.downloadDao(), settings, http)
+    val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 
     init {
         val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)

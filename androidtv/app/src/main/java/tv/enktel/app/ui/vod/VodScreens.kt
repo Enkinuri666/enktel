@@ -126,6 +126,46 @@ private fun CategorySidebar(
     }
 }
 
+/**
+ * v1.26.0 phone-portrait fallback: on the mobile flavor at portrait
+ * widths the sidebar was eating ~40 % of the screen and squeezing the
+ * poster grid down to a single column. This chip row collapses the
+ * category picker into a horizontal scroll at the top of the screen so
+ * the whole width is available for posters.
+ */
+@Composable
+private fun CategoryChipRow(
+    title: String,
+    categories: List<Pair<String, String>>,
+    selected: String?,
+    isLocked: (String) -> Boolean = { false },
+    onLocked: (String) -> Unit = {},
+    onSelect: (String?) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp)) {
+        SectionTitle(title)
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            item {
+                tv.enktel.app.ui.components.GlassChip(
+                    "All", selected = selected == null,
+                    accent = EnktelBlue,
+                    onClick = { onSelect(null) },
+                )
+            }
+            items(categories) { (id, name) ->
+                val locked = isLocked(id)
+                tv.enktel.app.ui.components.GlassChip(
+                    (if (locked) "🔒 " else "") + name,
+                    selected = selected == id,
+                    accent = EnktelBlue,
+                    onClick = { if (locked) onLocked(id) else onSelect(id) },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
@@ -203,7 +243,32 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     }
     val gate = rememberParentalGate(graph, "vod")
 
-    Row(Modifier.fillMaxSize()) {
+    // v1.26.0 — phone portrait uses chip-row + full-width grid instead of a
+    // vertical sidebar, so the poster grid isn't squeezed into a single
+    // column on ~410 dp handsets. TV and tablet/landscape keep the sidebar.
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+    val cellSize = if (narrow) 104.dp else 118.dp
+
+    if (narrow) {
+        Column(Modifier.fillMaxSize()) {
+            CategoryChipRow(
+                "Movies",
+                categories.map { it.categoryId to it.name },
+                cat,
+                isLocked = gate.isLocked,
+                onLocked = gate.prompt,
+            ) { cat = it }
+            MoviesGrid(
+                movies = movies, categories = categories, cat = cat, nav = nav,
+                cellSize = cellSize, sort = sort, genres = genres,
+                genreFilter = genreFilter, onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                query = query, onQuery = { query = it },
+            )
+        }
+    } else Row(Modifier.fillMaxSize()) {
         CategorySidebar(
             "Movies",
             categories.map { it.categoryId to it.name },
@@ -212,31 +277,60 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
             onLocked = gate.prompt,
         ) { cat = it }
         Column(Modifier.fillMaxSize()) {
-            FilterBar(
-                sort = sort,
-                sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "added" to "Recently added", "year" to "Newest"),
+            MoviesGrid(
+                movies = movies, categories = categories, cat = cat, nav = nav,
+                cellSize = cellSize, sort = sort, genres = genres,
+                genreFilter = genreFilter, onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
                 onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                genres = genres,
-                genreFilter = genreFilter,
-                onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter,
-                onDecade = { decadeFilter = it },
-                query = query,
-                onQuery = { query = it },
+                query = query, onQuery = { query = it },
             )
-            if (movies.isEmpty()) {
-                CenterMessage("No movies in this category.")
-            } else {
-                LazyVerticalGrid(
-                    // v1.25.0 — denser adaptive grid: 118 dp cells fit ~8
-                    // posters per row on a 1080p TV vs. 6 previously, and
-                    // tighter gaps keep more posters above the fold.
-                    columns = GridCells.Adaptive(118.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+        }
+    }
+    gate.Dialog()
+}
+
+@Composable
+private fun MoviesGrid(
+    movies: List<tv.enktel.app.data.db.Movie>,
+    categories: List<tv.enktel.app.data.db.Category>,
+    cat: String?,
+    nav: NavHostController,
+    cellSize: androidx.compose.ui.unit.Dp,
+    sort: String,
+    genres: List<String>,
+    genreFilter: String?,
+    onGenre: (String?) -> Unit,
+    decadeFilter: Int?,
+    onDecade: (Int?) -> Unit,
+    onSort: (String) -> Unit,
+    query: String,
+    onQuery: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        FilterBar(
+            sort = sort,
+            sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "added" to "Recently added", "year" to "Newest"),
+            onSort = onSort,
+            genres = genres,
+            genreFilter = genreFilter,
+            onGenre = onGenre,
+            decadeFilter = decadeFilter,
+            onDecade = onDecade,
+            query = query,
+            onQuery = onQuery,
+        )
+        if (movies.isEmpty()) {
+            CenterMessage("No movies in this category.")
+        } else {
+            LazyVerticalGrid(
+                // v1.25.0/v1.26.0 — denser adaptive grid: 104-118 dp cells.
+                columns = GridCells.Adaptive(cellSize),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
                     val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
                         ?: movies.firstOrNull { it.poster.isNotBlank() }
                     if (hero != null) {
@@ -252,19 +346,88 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                             )
                         }
                     }
-                    items(movies, key = { it.key }) { m ->
-                        PosterCard(
-                            title = m.name,
-                            imageUrl = m.poster,
-                            subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else if (m.year > 0) "${m.year}" else "",
-                            onClick = { nav.navigate("movie/${m.key}") },
-                        )
-                    }
+                items(movies, key = { it.key }) { m ->
+                    PosterCard(
+                        title = m.name,
+                        imageUrl = m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else if (m.year > 0) "${m.year}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") },
+                    )
                 }
             }
         }
     }
-    gate.Dialog()
+}
+
+@Composable
+private fun SeriesGrid(
+    series: List<tv.enktel.app.data.db.Series>,
+    categories: List<tv.enktel.app.data.db.Category>,
+    cat: String?,
+    nav: NavHostController,
+    cellSize: androidx.compose.ui.unit.Dp,
+    sort: String,
+    genres: List<String>,
+    genreFilter: String?,
+    onGenre: (String?) -> Unit,
+    decadeFilter: Int?,
+    onDecade: (Int?) -> Unit,
+    onSort: (String) -> Unit,
+    query: String,
+    onQuery: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        FilterBar(
+            sort = sort,
+            sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "year" to "Newest"),
+            onSort = onSort,
+            genres = genres,
+            genreFilter = genreFilter,
+            onGenre = onGenre,
+            decadeFilter = decadeFilter,
+            onDecade = onDecade,
+            query = query,
+            onQuery = onQuery,
+        )
+        if (series.isEmpty()) {
+            CenterMessage("No series match these filters.")
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(cellSize),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
+                    ?: series.firstOrNull { it.poster.isNotBlank() }
+                if (hero != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        CategoryHero(
+                            title = hero.name,
+                            poster = hero.poster,
+                            rating = hero.rating,
+                            year = hero.year,
+                            genre = hero.genre,
+                            subtitle = if (cat != null) categories.firstOrNull { it.categoryId == cat }?.name ?: "Featured" else "Top pick",
+                            onOpen = { nav.navigate("seriesDetails/${hero.key}") },
+                        )
+                    }
+                }
+                items(series, key = { it.key }) { s ->
+                    PosterCard(
+                        title = s.name,
+                        imageUrl = s.poster,
+                        subtitle = buildString {
+                            if (s.year > 0) append(s.year)
+                            if (s.rating > 0) { if (isNotEmpty()) append(" · "); append("★ ${"%.1f".format(s.rating)}") }
+                        },
+                        onClick = { nav.navigate("seriesDetails/${s.key}") },
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -307,7 +470,29 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             }.toList()
     }
 
-    Row(Modifier.fillMaxSize()) {
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+    val cellSize = if (narrow) 104.dp else 118.dp
+
+    if (narrow) {
+        Column(Modifier.fillMaxSize()) {
+            CategoryChipRow(
+                "Series",
+                categories.map { it.categoryId to it.name },
+                cat,
+                isLocked = gate.isLocked,
+                onLocked = gate.prompt,
+            ) { cat = it }
+            SeriesGrid(
+                series = series, categories = categories, cat = cat, nav = nav,
+                cellSize = cellSize, sort = sort, genres = genres,
+                genreFilter = genreFilter, onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                query = query, onQuery = { query = it },
+            )
+        }
+    } else Row(Modifier.fillMaxSize()) {
         CategorySidebar(
             "Series",
             categories.map { it.categoryId to it.name },
@@ -316,59 +501,14 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             onLocked = gate.prompt,
         ) { cat = it }
         Column(Modifier.fillMaxSize()) {
-            FilterBar(
-                sort = sort,
-                sortOptions = listOf("name" to "A–Z", "rating" to "Top rated", "year" to "Newest"),
+            SeriesGrid(
+                series = series, categories = categories, cat = cat, nav = nav,
+                cellSize = cellSize, sort = sort, genres = genres,
+                genreFilter = genreFilter, onGenre = { genreFilter = it },
+                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
                 onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                genres = genres,
-                genreFilter = genreFilter,
-                onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter,
-                onDecade = { decadeFilter = it },
-                query = query,
-                onQuery = { query = it },
+                query = query, onQuery = { query = it },
             )
-            if (series.isEmpty()) {
-                CenterMessage("No series match these filters.")
-            } else {
-                LazyVerticalGrid(
-                    // v1.25.0 — denser adaptive grid: 118 dp cells fit ~8
-                    // posters per row on a 1080p TV vs. 6 previously, and
-                    // tighter gaps keep more posters above the fold.
-                    columns = GridCells.Adaptive(118.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
-                        ?: series.firstOrNull { it.poster.isNotBlank() }
-                    if (hero != null) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            CategoryHero(
-                                title = hero.name,
-                                poster = hero.poster,
-                                rating = hero.rating,
-                                year = hero.year,
-                                genre = hero.genre,
-                                subtitle = if (cat != null) categories.firstOrNull { it.categoryId == cat }?.name ?: "Featured" else "Top pick",
-                                onOpen = { nav.navigate("seriesDetails/${hero.key}") },
-                            )
-                        }
-                    }
-                    items(series, key = { it.key }) { s ->
-                        PosterCard(
-                            title = s.name,
-                            imageUrl = s.poster,
-                            subtitle = buildString {
-                                if (s.year > 0) append(s.year)
-                                if (s.rating > 0) { if (isNotEmpty()) append(" · "); append("★ ${"%.1f".format(s.rating)}") }
-                            },
-                            onClick = { nav.navigate("seriesDetails/${s.key}") },
-                        )
-                    }
-                }
-            }
         }
     }
     gate.Dialog()

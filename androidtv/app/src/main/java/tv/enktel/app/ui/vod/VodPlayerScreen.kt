@@ -94,10 +94,21 @@ fun VodPlayerScreen(
     // ctor reads decoderMode + minBufferMs, and the LaunchedEffect below
     // reads dialogueBoost.
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
-    val minBufferMs by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val companionMode by graph.settings.companionMode.collectAsStateWithLifecycle(initialValue = false)
     val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
-    val engine = remember(decoderMode, minBufferMs) {
-        PlayerEngine(context, graph.http, bufferProfile, decoderMode = decoderMode, minBufferOverrideMs = minBufferMs)
+    // v1.26.0 — Streaming Companion Mode: forces a 30 s min-buffer floor so
+    // the Discord viewer never sees a stall while the local player rebuffers.
+    // Overrides whatever the user set via the min-buffer slider only when
+    // that value is lower (respect a user who's already turned it up high).
+    val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
+    val engine = remember(decoderMode, minBufferMs, companionMode) {
+        PlayerEngine(
+            context, graph.http, bufferProfile,
+            decoderMode = decoderMode,
+            minBufferOverrideMs = minBufferMs,
+            lockToTopBitrate = companionMode,
+        )
     }
     LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
     val playError by engine.error.collectAsStateWithLifecycle()
@@ -491,6 +502,27 @@ fun VodPlayerScreen(
                         FocusButton("📺 Cast", onClick = {
                             tv.enktel.app.player.CastToTv.open(context)
                         })
+                    }
+                    // v1.26.0 — one-tap "Share to Discord" announces this title
+                    // in the configured voice channel. Only surfaces when the
+                    // user has actually set a webhook URL in Settings.
+                    val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+                    val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+                    val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+                    if (discordUrl.isNotBlank()) {
+                        item {
+                            val toaster = tv.enktel.app.ui.components.LocalToaster.current
+                            FocusButton("🎧 Share to $voiceChan", onClick = {
+                                graph.discord.share(
+                                    shareScope,
+                                    tv.enktel.app.data.net.DiscordAnnouncer.Kind.Vod(
+                                        title = title, year = 0, poster = "", genre = "",
+                                    ),
+                                )
+                                toaster.success("Shared to Discord")
+                                controlsTick++
+                            })
+                        }
                     }
                 }
             }

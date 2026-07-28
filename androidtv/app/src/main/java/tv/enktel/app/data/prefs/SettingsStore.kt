@@ -65,6 +65,14 @@ class SettingsStore(private val context: Context) {
     private val BACKUP_GATEWAYS = stringPreferencesKey("backup_gateways")
     // v1.14.2: Discord webhook URL for social presence pushes.  Blank disables.
     private val DISCORD_WEBHOOK = stringPreferencesKey("discord_webhook")
+    // v1.26.0 — voice channel name appended to the manual "Share to Discord"
+    // announce, so the message reads "🎬 Now streaming X in $DISCORD_VOICE_CHANNEL".
+    private val DISCORD_VOICE_CHANNEL = stringPreferencesKey("discord_voice_channel")
+    // v1.26.0 — "Streaming Companion Mode" preset: bumps min buffer to a
+    // large floor, locks video to the highest steady bitrate, and disables
+    // aggressive upshifts. Used when broadcasting playback out over Discord
+    // screen-share (bitrate flapping looks terrible on the receiving end).
+    private val COMPANION_MODE = booleanPreferencesKey("companion_mode")
     // v1.15.0: master toggle for the app's sonic-branding earcons
     // (nav clicks, rail-end chimes, movie-open swell).  Voice-command
     // earcons are separately gated by the voice feature itself.
@@ -191,6 +199,13 @@ class SettingsStore(private val context: Context) {
     }
     val discordWebhook: Flow<String> = context.dataStore.data.map { it[DISCORD_WEBHOOK].orEmpty() }
     suspend fun setDiscordWebhook(v: String) = context.dataStore.edit { it[DISCORD_WEBHOOK] = v.trim() }
+    val discordVoiceChannel: Flow<String> = context.dataStore.data.map {
+        it[DISCORD_VOICE_CHANNEL].orEmpty().ifEmpty { "Richard's Hangout" }
+    }
+    suspend fun setDiscordVoiceChannel(v: String) = context.dataStore.edit { it[DISCORD_VOICE_CHANNEL] = v.trim() }
+    val companionMode: Flow<Boolean> = context.dataStore.data.map { it[COMPANION_MODE] ?: false }
+    suspend fun setCompanionMode(v: Boolean) = context.dataStore.edit { it[COMPANION_MODE] = v }
+    suspend fun companionModeNow(): Boolean = companionMode.first()
     val uiSoundsEnabled: Flow<Boolean> = context.dataStore.data.map { it[UI_SOUNDS_ENABLED] ?: true }
     suspend fun setUiSoundsEnabled(v: Boolean) = context.dataStore.edit { it[UI_SOUNDS_ENABLED] = v }
     val kidsModeEnabled: Flow<Boolean> = context.dataStore.data.map { it[KIDS_MODE_ENABLED] ?: false }
