@@ -179,10 +179,13 @@ class SettingsStore(private val context: Context) {
     val scoresEnabled: Flow<Boolean> = context.dataStore.data.map { it[SCORES_ENABLED] ?: false }
     val hiddenItems: Flow<Set<String>> = context.dataStore.data.map { it[HIDDEN_ITEMS] ?: emptySet() }
 
+    // v1.27.0 default flipped to "cinematic" — Midnight Charcoal base with
+    // Electric Indigo D-Pad focus + Cyber Cyan live badge, per the TV design
+    // brief. Existing installs on Obsidian keep their setting via DataStore.
     // v1.23.0 default flipped to "obsidian" — the new premium theme. Existing
     // installs that picked a palette keep their preference (the ?: only
     // fires when the pref is absent).
-    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "obsidian" }
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "cinematic" }
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
