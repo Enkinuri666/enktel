@@ -126,6 +126,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun MovieDetailsBody(
     graph: AppGraph,
