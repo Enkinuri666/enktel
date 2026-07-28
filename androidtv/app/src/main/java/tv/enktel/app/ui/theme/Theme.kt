@@ -34,6 +34,27 @@ data class EnktelPalette(
 )
 
 /**
+ * v1.27.0 — "Cinematic" theme. Midnight Charcoal base with Electric
+ * Indigo D-Pad focus and Cyber Cyan live/quality accents. Colour tokens
+ * from the TV brief; sits alongside Obsidian as the new default premium
+ * option for the 10-foot experience.
+ *
+ * - Base surface: #0B0C10 (Midnight Charcoal — never pure black so poster
+ *   art doesn't lose its darkest tones against a #000 backdrop).
+ * - Glass surface: sRGB 18,20,29 @ 70 % alpha (drawn via GlassCard).
+ * - Focus accent: #5A52FF (Electric Indigo) — the D-Pad focus ring.
+ * - Live / quality accent: #00F2FE (Cyber Cyan) — LIVE badge, HDR /
+ *   quality indicators, "Now Playing" chip.
+ */
+private val PaletteCinematic = EnktelPalette(
+    id = "cinematic", label = "Cinematic (Midnight Pro)",
+    bg = Color(0xFF0B0C10), surface = Color(0xFF12141D), surfaceHigh = Color(0xFF1A1D28),
+    text = Color(0xFFF3F4F8), textDim = Color(0xFF7A8298),
+    primary = Color(0xFF5A52FF), primaryDeep = Color(0xFF3A34C8), secondary = Color(0xFF00F2FE),
+    live = Color(0xFF00F2FE), ok = Color(0xFF34D399), border = Color(0x1AFFFFFF),
+)
+
+/**
  * Obsidian — the new premium default. Deep near-black backdrop (0x050608)
  * with a slight cool-tinted mid surface (0x0C1017), electric cyan-blue
  * primary (0x38BDF8), plum-purple secondary (0xA855F7). Designed for
@@ -87,12 +108,12 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
 )
 
 val ALL_PALETTES = listOf(
-    PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald, PaletteAmber,
+    PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald, PaletteAmber,
     PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteObsidian
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteCinematic
 
-private val LocalPalette = compositionLocalOf { PaletteObsidian }
+private val LocalPalette = compositionLocalOf { PaletteCinematic }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 
@@ -113,7 +134,7 @@ val EnktelOk: Color @Composable get() = LocalPalette.current.ok
 
 @Composable
 fun EnktelTheme(
-    themeId: String = "obsidian",
+    themeId: String = "cinematic",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
     content: @Composable () -> Unit,

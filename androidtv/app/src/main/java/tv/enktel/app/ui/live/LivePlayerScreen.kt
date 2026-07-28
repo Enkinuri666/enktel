@@ -673,11 +673,17 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 val shareScope = androidx.compose.runtime.rememberCoroutineScope()
                 val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
                 val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+                // v1.27.0 TV cinematic — floating GlassCard action bar with
+                // 24 dp bottom / horizontal margin, replacing the full-width
+                // dark gradient. Matches the "Apple TV+ style floating OSD"
+                // spec from the design brief.
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                ) { tv.enktel.app.ui.components.GlassCard {
                 LazyRow(
                     Modifier
                         .fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(Color.Black.copy(0.75f), Color.Black.copy(0.92f))))
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     item { FocusButton("▤ Browse", accent = true, onClick = { browseMode = true }) }
@@ -758,6 +764,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     }
                     item { FocusButton("⋯ More", onClick = { showQuickMenu = true }) }
                 }
+                } } // close GlassCard { and Box(padding).run { }
             }
         }
 

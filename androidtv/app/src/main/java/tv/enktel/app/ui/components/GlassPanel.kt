@@ -17,6 +17,27 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
+ * v1.27.0 — TV Cinematic glass card. Matches the design brief exactly:
+ * 14 dp corners, `#A012141D` tint (sRGB 18,20,29 @ 70 % alpha), and a
+ * 1 dp `#1AFFFFFF` stroke. Thin wrapper over [GlassPanel] so callers
+ * don't have to remember the token values.
+ */
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    GlassPanel(
+        modifier = modifier,
+        cornerRadius = 14.dp,
+        blurRadius = 20.dp,
+        tint = Color(0xB012141D),
+        borderColor = Color(0x1AFFFFFF),
+        content = content,
+    )
+}
+
+/**
  * A frosted-glass surface for floating overlays, bottom sheets and EPG
  * tooltips.
  *
