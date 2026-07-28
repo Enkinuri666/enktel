@@ -462,6 +462,13 @@ fun VodPlayerScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
+                // v1.26.0 — hoist Discord state above the LazyRow. LazyListScope's
+                // `item {}` builder isn't @Composable, so remember* / collectAsState
+                // calls have to happen in the parent composable and be captured.
+                val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+                val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+                val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+                val hudToaster = tv.enktel.app.ui.components.LocalToaster.current
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     item {
                         FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
@@ -503,15 +510,8 @@ fun VodPlayerScreen(
                             tv.enktel.app.player.CastToTv.open(context)
                         })
                     }
-                    // v1.26.0 — one-tap "Share to Discord" announces this title
-                    // in the configured voice channel. Only surfaces when the
-                    // user has actually set a webhook URL in Settings.
-                    val shareScope = androidx.compose.runtime.rememberCoroutineScope()
-                    val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
-                    val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
                     if (discordUrl.isNotBlank()) {
                         item {
-                            val toaster = tv.enktel.app.ui.components.LocalToaster.current
                             FocusButton("🎧 Share to $voiceChan", onClick = {
                                 graph.discord.share(
                                     shareScope,
@@ -519,7 +519,7 @@ fun VodPlayerScreen(
                                         title = title, year = 0, poster = "", genre = "",
                                     ),
                                 )
-                                toaster.success("Shared to Discord")
+                                hudToaster.success("Shared to Discord")
                                 controlsTick++
                             })
                         }

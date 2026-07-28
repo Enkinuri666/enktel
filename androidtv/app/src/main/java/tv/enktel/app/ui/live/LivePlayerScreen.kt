@@ -668,6 +668,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 // needing a remote/MENU button. Also visible on TV but designed to be tap-safe.
                 // LazyRow so the strip scrolls horizontally on portrait phones instead of
                 // clipping when the ⋯ More button falls off-screen.
+                // v1.26.0 — hoist Discord state above the LazyRow (LazyListScope
+                // isn't @Composable, so remember* / collectAsState must sit here).
+                val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+                val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+                val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
                 LazyRow(
                     Modifier
                         .fillMaxWidth()
@@ -732,9 +737,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     }
                     // v1.26.0 — Share to Discord (announces this channel in
                     // the configured voice channel). Only shown when webhook is set.
-                    val shareScope = androidx.compose.runtime.rememberCoroutineScope()
-                    val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
-                    val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+                    // State is hoisted above the LazyRow for @Composable scope.
                     if (discordUrl.isNotBlank()) {
                         item {
                             FocusButton("🎧 Share to $voiceChan", onClick = {
