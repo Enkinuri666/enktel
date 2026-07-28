@@ -89,7 +89,27 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             )
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, EnktelBg))))
         }
-        Row(Modifier.fillMaxSize().padding(48.dp)) {
+        // v1.28.1 — phone portrait was hard-wired to Row(220 dp poster +
+        // 32 dp gap + 48 dp side padding), leaving ~62 dp for the metadata
+        // column on a 410 dp handset — so "Documentary" wrapped one letter
+        // per line and the title stacked "The / Age / of / Disclo / sure".
+        // On narrow mobile we now stack the poster above the metadata; TV
+        // and tablet/landscape keep the side-by-side Row.
+        val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+        val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+        val outerPad = if (narrow) 20.dp else 48.dp
+        if (narrow) Column(Modifier.fillMaxSize().padding(outerPad).verticalScroll(rememberScrollState())) {
+            Box(Modifier.width(180.dp).height(260.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
+                if (m.poster.isNotBlank()) {
+                    AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            MovieDetailsBody(
+                graph = graph, nav = nav, p = p, m = m, details = details,
+                url = url, progressKey = progressKey, resumeMs = resumeMs,
+            )
+        } else Row(Modifier.fillMaxSize().padding(outerPad)) {
             Box(Modifier.width(220.dp).height(320.dp).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
                 if (m.poster.isNotBlank()) {
                     AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -97,79 +117,96 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             }
             Spacer(Modifier.width(32.dp))
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                Text(m.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (m.rating > 0) Badge("★ ${"%.1f".format(m.rating)}")
-                    if (details?.genre?.isNotBlank() == true) Badge(details!!.genre.take(30))
-                    val mins = (details?.durationSecs ?: 0) / 60
-                    if (mins > 0) Badge("$mins min")
-                }
-                Spacer(Modifier.height(14.dp))
-                // Fetch a YouTube trailer key from TMDB when the movie has a
-                // tmdbId (populated by MetadataEnrichmentWorker). Silent
-                // ambient-style playback would need a real YouTube SDK dep;
-                // this route hands off to the platform browser/YouTube app
-                // via an intent, which is free, permission-less, and works
-                // on every Android+FireTV device.
-                var trailerKey by remember { mutableStateOf<String?>(null) }
-                val ctxT = androidx.compose.ui.platform.LocalContext.current
-                androidx.compose.runtime.LaunchedEffect(m.tmdbId) {
-                    trailerKey = if (m.tmdbId > 0) {
-                        runCatching {
-                            tv.enktel.app.data.metadata.TmdbClient(graph.http, graph.settings.tmdbApiKey.first())
-                                .trailerYoutubeKey("movie", m.tmdbId)
-                        }.getOrNull()
-                    } else null
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FocusButton("▶ Play", accent = true, onClick = {
-                        nav.navigate(vodPlayerRoute(url, m.name, progressKey))
-                    })
-                    if (resumeMs > 60_000) {
-                        FocusButton("Resume ${resumeMs / 60000}m", onClick = {
-                            nav.navigate(vodPlayerRoute(url, m.name, progressKey))
-                        })
-                    }
-                    trailerKey?.let { key ->
-                        FocusButton("🎬 Trailer", onClick = {
-                            // Prefer the YouTube app when installed (better TV
-                            // UX + audio) and fall back to any browser.
-                            val youtubeAppUri = android.net.Uri.parse("vnd.youtube:$key")
-                            val webUri = android.net.Uri.parse("https://www.youtube.com/watch?v=$key")
-                            val youtubeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, youtubeAppUri)
-                                .setPackage("com.google.android.youtube.tv")
-                            val fallback = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
-                            runCatching { ctxT.startActivity(youtubeIntent) }.getOrElse {
-                                runCatching { ctxT.startActivity(fallback) }
-                            }
-                        })
-                    }
-                    FavButton(graph, p.id, "vod", m.streamId)
-                    WatchlistButton(graph, p.id, "vod", m.streamId, m.name, m.poster)
-                    DownloadButton(
-                        graph = graph,
-                        id = "${p.id}:movie:${m.streamId}",
-                        profileId = p.id,
-                        kind = "movie",
-                        refId = m.streamId,
-                        title = m.name,
-                        poster = m.poster,
-                        sourceUrl = url,
-                    )
-                }
-                Spacer(Modifier.height(18.dp))
-                if (details?.plot?.isNotBlank() == true) {
-                    Text(details!!.plot, color = Color.White.copy(0.9f), fontSize = 14.sp, lineHeight = 21.sp)
-                    Spacer(Modifier.height(16.dp))
-                }
-                if (details != null) {
-                    if (details!!.cast.isNotBlank()) KeyValue("Cast", details!!.cast.take(160))
-                    if (details!!.director.isNotBlank()) KeyValue("Director", details!!.director)
-                    if (details!!.releaseDate.isNotBlank()) KeyValue("Released", details!!.releaseDate)
-                }
+                MovieDetailsBody(
+                    graph = graph, nav = nav, p = p, m = m, details = details,
+                    url = url, progressKey = progressKey, resumeMs = resumeMs,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun MovieDetailsBody(
+    graph: AppGraph,
+    nav: NavHostController,
+    p: Profile,
+    m: tv.enktel.app.data.db.Movie,
+    details: tv.enktel.app.data.repo.MovieDetails?,
+    url: String,
+    progressKey: String,
+    resumeMs: Long,
+) {
+    Text(m.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (m.rating > 0) Badge("★ ${"%.1f".format(m.rating)}")
+        if (details?.genre?.isNotBlank() == true) Badge(details.genre.take(30))
+        val mins = (details?.durationSecs ?: 0) / 60
+        if (mins > 0) Badge("$mins min")
+    }
+    Spacer(Modifier.height(14.dp))
+    var trailerKey by remember { mutableStateOf<String?>(null) }
+    val ctxT = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(m.tmdbId) {
+        trailerKey = if (m.tmdbId > 0) {
+            runCatching {
+                tv.enktel.app.data.metadata.TmdbClient(graph.http, graph.settings.tmdbApiKey.first())
+                    .trailerYoutubeKey("movie", m.tmdbId)
+            }.getOrNull()
+        } else null
+    }
+    // FlowRow so long action lists (Play + Resume + Trailer + Fav + Watchlist +
+    // Download) wrap to a second row on narrow phones instead of clipping.
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        FocusButton("▶ Play", accent = true, onClick = {
+            nav.navigate(vodPlayerRoute(url, m.name, progressKey))
+        })
+        if (resumeMs > 60_000) {
+            FocusButton("Resume ${resumeMs / 60000}m", onClick = {
+                nav.navigate(vodPlayerRoute(url, m.name, progressKey))
+            })
+        }
+        trailerKey?.let { key ->
+            FocusButton("🎬 Trailer", onClick = {
+                val youtubeAppUri = android.net.Uri.parse("vnd.youtube:$key")
+                val webUri = android.net.Uri.parse("https://www.youtube.com/watch?v=$key")
+                val youtubeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, youtubeAppUri)
+                    .setPackage("com.google.android.youtube.tv")
+                val fallback = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
+                runCatching { ctxT.startActivity(youtubeIntent) }.getOrElse {
+                    runCatching { ctxT.startActivity(fallback) }
+                }
+            })
+        }
+        FavButton(graph, p.id, "vod", m.streamId)
+        WatchlistButton(graph, p.id, "vod", m.streamId, m.name, m.poster)
+        DownloadButton(
+            graph = graph,
+            id = "${p.id}:movie:${m.streamId}",
+            profileId = p.id,
+            kind = "movie",
+            refId = m.streamId,
+            title = m.name,
+            poster = m.poster,
+            sourceUrl = url,
+        )
+    }
+    Spacer(Modifier.height(18.dp))
+    if (details?.plot?.isNotBlank() == true) {
+        Text(details.plot, color = Color.White.copy(0.9f), fontSize = 14.sp, lineHeight = 21.sp)
+        Spacer(Modifier.height(16.dp))
+    }
+    if (details != null) {
+        if (details.cast.isNotBlank()) KeyValue("Cast", details.cast.take(160))
+        if (details.director.isNotBlank()) KeyValue("Director", details.director)
+        if (details.releaseDate.isNotBlank()) KeyValue("Released", details.releaseDate)
     }
 }
 
@@ -257,14 +294,22 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     val seasons = details?.seasons ?: emptyMap()
     if (season == -1 && seasons.isNotEmpty()) season = seasons.keys.first()
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp)) {
+    // v1.28.1 — narrower horizontal padding on phones so the metadata column
+    // isn't squeezed to ~180 dp with 48 dp side gutters.
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+    val hPad = if (narrow) 16.dp else 48.dp
+    val posterW = if (narrow) 90.dp else 110.dp
+    val posterH = if (narrow) 130.dp else 160.dp
+    val gap = if (narrow) 14.dp else 24.dp
+    Column(Modifier.fillMaxSize().padding(horizontal = hPad, vertical = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(110.dp).height(160.dp).clip(RoundedCornerShape(10.dp)).background(EnktelSurfaceHigh)) {
+            Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(10.dp)).background(EnktelSurfaceHigh)) {
                 if (s.poster.isNotBlank()) {
                     AsyncImage(model = s.poster, contentDescription = s.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
-            Spacer(Modifier.width(24.dp))
+            Spacer(Modifier.width(gap))
             Column(Modifier.weight(1f)) {
                 Text(s.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))

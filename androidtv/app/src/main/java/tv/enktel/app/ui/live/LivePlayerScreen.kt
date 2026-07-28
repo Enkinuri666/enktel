@@ -1285,15 +1285,19 @@ private fun BrowseDock(
             ),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            // v1.28.1 — flex the label Column so a long category name
+            // ("|UK| ✪ BBC GENERAL") ellipses instead of pushing "25 channels"
+            // + "Full Guide" + "✕" off the right edge in landscape.
+            Column(Modifier.weight(1f)) {
                 Text("BROWSE", color = EnktelTextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 Text(
                     if (selectedCat != null) categories.firstOrNull { it.categoryId == selectedCat }?.name ?: "All Channels"
                     else "All Channels",
-                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1,
+                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -1302,7 +1306,7 @@ private fun BrowseDock(
                 color = EnktelBlue, fontSize = 20.sp, fontWeight = FontWeight.Black,
             )
             Text(" channels", color = EnktelTextDim, fontSize = 11.sp)
-            Box(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
             // TiVi Mate style colour-remote-button row: quick actions the user's eye
             // learns as coloured shortcuts (red = full guide, grey = close).
             FocusButton("📅 Full Guide", accent = true, onClick = onOpenGuide)
