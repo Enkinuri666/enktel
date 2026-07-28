@@ -54,6 +54,10 @@ class PlayerEngine(
     decoderMode: String = "hwplus",
     /** Override the profile's minimum buffer (ms). 0 = don't override. */
     minBufferOverrideMs: Int = 0,
+    /** v1.26.0 — when true, force the AdaptiveTrackSelection to pin the top
+     *  bitrate rendition and hold it. Used by Streaming Companion Mode so
+     *  Discord viewers don't see quality flapping mid-stream. */
+    lockToTopBitrate: Boolean = false,
 ) {
 
     private val bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(context)
@@ -65,7 +69,13 @@ class PlayerEngine(
     val trackSelector = DefaultTrackSelector(
         context,
         androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(),
-    )
+    ).apply {
+        if (lockToTopBitrate) {
+            parameters = buildUponParameters()
+                .setForceHighestSupportedBitrate(true)
+                .build()
+        }
+    }
 
     val stats = MutableStateFlow(StreamStats())
     val error = MutableStateFlow<String?>(null)

@@ -250,6 +250,40 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        // v1.26.0 — Discord Watch Party section.
+        Spacer(Modifier.height(10.dp))
+        Text("DISCORD WATCH PARTY", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val discordWebhook by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+        val discordVoice by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+        val companionOn by graph.settings.companionMode.collectAsStateWithLifecycle(initialValue = false)
+        Spacer(Modifier.height(4.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = discordWebhook,
+            onValueChange = { scope.launch { graph.settings.setDiscordWebhook(it) } },
+            label = "Webhook URL (Discord channel → Edit → Integrations → Webhooks)",
+        )
+        Spacer(Modifier.height(6.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = discordVoice,
+            onValueChange = { scope.launch { graph.settings.setDiscordVoiceChannel(it) } },
+            label = "Voice channel name (shown in the share message)",
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Streaming Companion Mode", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Locks the top bitrate and raises the min buffer to 30 s so Discord screen-share viewers don't see quality flapping or micro-stalls.",
+                    color = EnktelTextDim, fontSize = 11.sp,
+                )
+            }
+            FocusButton(
+                text = if (companionOn) "On" else "Off",
+                accent = companionOn,
+                onClick = { scope.launch { graph.settings.setCompanionMode(!companionOn) } },
+            )
+        }
+
         Spacer(Modifier.height(10.dp))
         Text("DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val dlEngine by graph.settings.downloadEngine.collectAsStateWithLifecycle(initialValue = "auto")

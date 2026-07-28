@@ -1,5 +1,5 @@
 import { useSettings } from '@/stores/settings';
-import { Check, LogOut, Palette, User } from 'lucide-react';
+import { Check, Headphones, LogOut, Palette, User, Zap } from 'lucide-react';
 
 const THEMES: { id: 'enktel_blue' | 'crimson' | 'emerald' | 'amber' | 'monochrome' | 'midnight' | 'high_contrast'; label: string; swatch: [string, string] }[] = [
   { id: 'enktel_blue', label: 'EnkTel Blue', swatch: ['#3B9DFF', '#8B5CF6'] },
@@ -103,6 +103,68 @@ export default function SettingsPage() {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      {/* Discord Watch Party — v1.26.0 port from android */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Headphones size={16} className="text-brand" />
+          <h2 className="text-xs font-black tracking-widest text-textDim">DISCORD WATCH PARTY</h2>
+        </div>
+        <div className="glass rounded-xl p-5 space-y-4">
+          <label className="block">
+            <span className="text-[10px] font-black tracking-widest text-textDim">WEBHOOK URL</span>
+            <input
+              type="text"
+              defaultValue={useSettings.getState().discordWebhook}
+              onBlur={(e) => useSettings.getState().setDiscordWebhook(e.target.value)}
+              placeholder="https://discord.com/api/webhooks/…"
+              className="mt-1 w-full bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand font-mono"
+            />
+            <span className="text-[10px] text-textDim mt-1 block">
+              Discord channel → Edit → Integrations → Webhooks → New Webhook → Copy URL.
+            </span>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-black tracking-widest text-textDim">VOICE CHANNEL NAME</span>
+            <input
+              type="text"
+              defaultValue={useSettings.getState().discordVoiceChannel}
+              onBlur={(e) => useSettings.getState().setDiscordVoiceChannel(e.target.value)}
+              placeholder="Richard's Hangout"
+              className="mt-1 w-full bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand"
+            />
+            <span className="text-[10px] text-textDim mt-1 block">
+              Shown in the share message: "🎬 Now streaming X in [this]".
+            </span>
+          </label>
+        </div>
+      </section>
+
+      {/* Streaming Companion Mode — v1.26.0 port from android */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Zap size={16} className="text-brand" />
+          <h2 className="text-xs font-black tracking-widest text-textDim">STREAMING COMPANION MODE</h2>
+        </div>
+        <div className="glass rounded-xl p-5 flex items-center justify-between">
+          <div className="pr-6">
+            <div className="text-sm font-semibold">Lock top quality for Discord screen-share</div>
+            <div className="text-xs text-textDim mt-0.5">
+              Pins hls.js to the highest bitrate level, disables adaptive downshifts,
+              and enlarges the segment buffer (max 300 s) so Discord viewers don't
+              see quality flapping while you're screen-sharing this window.
+            </div>
+          </div>
+          <button
+            onClick={() => useSettings.getState().setCompanionMode(!useSettings.getState().companionMode)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+              useSettings((s) => s.companionMode) ? 'bg-brand text-black' : 'bg-white/10 hover:bg-white/15'
+            }`}
+          >
+            {useSettings((s) => s.companionMode) ? 'On' : 'Off'}
+          </button>
         </div>
       </section>
 

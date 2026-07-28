@@ -110,11 +110,21 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
-    val minBufferMs by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val companionMode by graph.settings.companionMode.collectAsStateWithLifecycle(initialValue = false)
+    // v1.26.0 — Streaming Companion Mode raises the min-buffer floor to
+    // 30 s and pins the top bitrate so Discord viewers don't see quality
+    // flapping or micro-stalls during a screen-share.
+    val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
     val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
 
-    val engine = remember(p.id, decoderMode, minBufferMs) {
-        PlayerEngine(context, graph.http, bufferProfile, decoderMode = decoderMode, minBufferOverrideMs = minBufferMs)
+    val engine = remember(p.id, decoderMode, minBufferMs, companionMode) {
+        PlayerEngine(
+            context, graph.http, bufferProfile,
+            decoderMode = decoderMode,
+            minBufferOverrideMs = minBufferMs,
+            lockToTopBitrate = companionMode,
+        )
     }
     LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
     val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
@@ -658,6 +668,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 // needing a remote/MENU button. Also visible on TV but designed to be tap-safe.
                 // LazyRow so the strip scrolls horizontally on portrait phones instead of
                 // clipping when the ⋯ More button falls off-screen.
+                // v1.26.0 — hoist Discord state above the LazyRow (LazyListScope
+                // isn't @Composable, so remember* / collectAsState must sit here).
+                val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+                val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+                val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
                 LazyRow(
                     Modifier
                         .fillMaxWidth()
@@ -719,6 +734,27 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                             val ok = tv.enktel.app.player.CastToTv.open(context)
                             if (!ok) toaster.error("Cast picker not available on this device")
                         })
+                    }
+                    // v1.26.0 — Share to Discord (announces this channel in
+                    // the configured voice channel). Only shown when webhook is set.
+                    // State is hoisted above the LazyRow for @Composable scope.
+                    if (discordUrl.isNotBlank()) {
+                        item {
+                            FocusButton("🎧 Share to $voiceChan", onClick = {
+                                val cur = current
+                                if (cur != null) {
+                                    graph.discord.share(
+                                        shareScope,
+                                        tv.enktel.app.data.net.DiscordAnnouncer.Kind.Live(
+                                            channelName = cur.name,
+                                            logo = cur.logo,
+                                            programTitle = "",
+                                        ),
+                                    )
+                                    toaster.success("Shared to Discord")
+                                }
+                            })
+                        }
                     }
                     item { FocusButton("⋯ More", onClick = { showQuickMenu = true }) }
                 }

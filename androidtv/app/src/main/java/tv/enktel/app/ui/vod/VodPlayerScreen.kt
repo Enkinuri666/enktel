@@ -94,10 +94,21 @@ fun VodPlayerScreen(
     // ctor reads decoderMode + minBufferMs, and the LaunchedEffect below
     // reads dialogueBoost.
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
-    val minBufferMs by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
+    val companionMode by graph.settings.companionMode.collectAsStateWithLifecycle(initialValue = false)
     val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
-    val engine = remember(decoderMode, minBufferMs) {
-        PlayerEngine(context, graph.http, bufferProfile, decoderMode = decoderMode, minBufferOverrideMs = minBufferMs)
+    // v1.26.0 — Streaming Companion Mode: forces a 30 s min-buffer floor so
+    // the Discord viewer never sees a stall while the local player rebuffers.
+    // Overrides whatever the user set via the min-buffer slider only when
+    // that value is lower (respect a user who's already turned it up high).
+    val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
+    val engine = remember(decoderMode, minBufferMs, companionMode) {
+        PlayerEngine(
+            context, graph.http, bufferProfile,
+            decoderMode = decoderMode,
+            minBufferOverrideMs = minBufferMs,
+            lockToTopBitrate = companionMode,
+        )
     }
     LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
     val playError by engine.error.collectAsStateWithLifecycle()
@@ -451,6 +462,13 @@ fun VodPlayerScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
+                // v1.26.0 — hoist Discord state above the LazyRow. LazyListScope's
+                // `item {}` builder isn't @Composable, so remember* / collectAsState
+                // calls have to happen in the parent composable and be captured.
+                val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+                val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
+                val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
+                val hudToaster = tv.enktel.app.ui.components.LocalToaster.current
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     item {
                         FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
@@ -491,6 +509,20 @@ fun VodPlayerScreen(
                         FocusButton("📺 Cast", onClick = {
                             tv.enktel.app.player.CastToTv.open(context)
                         })
+                    }
+                    if (discordUrl.isNotBlank()) {
+                        item {
+                            FocusButton("🎧 Share to $voiceChan", onClick = {
+                                graph.discord.share(
+                                    shareScope,
+                                    tv.enktel.app.data.net.DiscordAnnouncer.Kind.Vod(
+                                        title = title, year = 0, poster = "", genre = "",
+                                    ),
+                                )
+                                hudToaster.success("Shared to Discord")
+                                controlsTick++
+                            })
+                        }
                     }
                 }
             }

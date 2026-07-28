@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { useSettings } from '@/stores/settings';
 
 /**
  * Universal video player. Picks the best strategy for the given URL:
@@ -26,6 +27,10 @@ export default function Player({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [buffering, setBuffering] = useState(true);
+  // v1.26.0 port from android — Streaming Companion Mode locks hls.js to
+  // its top-quality level and enlarges the segment buffer so a Discord
+  // screen-share viewer doesn't see bitrate flapping or micro-stalls.
+  const companionMode = useSettings((s) => s.companionMode);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -43,15 +48,30 @@ export default function Player({
 
     if (isHls && Hls.isSupported()) {
       const hls = new Hls({
-        lowLatencyMode: live,
-        liveSyncDurationCount: live ? 3 : 5,
+        lowLatencyMode: live && !companionMode,
+        // Companion Mode: bigger sync window + backBuffer so a hiccup in
+        // your outbound Discord stream doesn't drain the media element.
+        liveSyncDurationCount: live ? (companionMode ? 6 : 3) : 5,
         enableWorker: true,
-        backBufferLength: live ? 30 : 90,
+        backBufferLength: companionMode ? 120 : (live ? 30 : 90),
+        // Cap the forward-fetch further out so we've always got runway.
+        maxBufferLength: companionMode ? 60 : 30,
+        maxMaxBufferLength: companionMode ? 300 : 60,
+        // Companion Mode: don't cap level by measured bandwidth — the
+        // Discord path is what's variable, not the source feed. capLevelToPlayerSize
+        // would down-select when the window is small, which is wrong here.
+        capLevelToPlayerSize: !companionMode,
       });
       hlsRef.current = hls;
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (companionMode && hls.levels.length > 0) {
+          // Pin to top level and stop the ABR from re-picking. Users who need
+          // the source to downshift can toggle Companion Mode off in Settings.
+          hls.currentLevel = hls.levels.length - 1;
+          hls.autoLevelCapping = hls.levels.length - 1;
+        }
         if (autoPlay) video.play().catch(() => {});
         onReady?.(video);
       });
@@ -99,7 +119,7 @@ export default function Player({
       video.removeEventListener('error', onErr);
       cleanup();
     };
-  }, [src, autoPlay, live, onBuffering, onError, onReady]);
+  }, [src, autoPlay, live, onBuffering, onError, onReady, companionMode]);
 
   return (
     <div className={`relative w-full h-full bg-black ${className ?? ''}`}>
