@@ -885,7 +885,30 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             navHost(padding)
         }
     } else {
-        navHost(androidx.compose.foundation.layout.PaddingValues(0.dp))
+        // v1.29.0 TV cinematic phase 3 — collapsible left rail. Immersive
+        // routes (players, onboarding, first-run) render bare; everything
+        // else gets the rail (auto-expands on focus, collapses to 64 dp
+        // icon strip when focus is in the content area).
+        val kidsModeOnRoot by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
+        val immersive = currentRoute == null ||
+            currentRoute.startsWith("vodPlayer") ||
+            currentRoute.startsWith("live?") ||
+            currentRoute == "onboarding" ||
+            (currentRoute == "home" && kidsModeOnRoot)
+        if (immersive) {
+            navHost(androidx.compose.foundation.layout.PaddingValues(0.dp))
+        } else {
+            tv.enktel.app.ui.components.TvNavShell(
+                currentRoute = currentRoute,
+                onSelect = { route ->
+                    if (currentRoute != route) {
+                        nav.navigate(route) { launchSingleTop = true }
+                    }
+                },
+            ) { padding ->
+                navHost(padding)
+            }
+        }
     }
 
     if (tourVisible) {
