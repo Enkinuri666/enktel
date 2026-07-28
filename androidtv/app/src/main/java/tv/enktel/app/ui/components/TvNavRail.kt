@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusGroup
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -101,9 +100,11 @@ fun TvNavShell(
                         listOf(Color(0xEA0B0C10), Color(0xEA0A0B0F)),
                     ),
                 )
-                .focusGroup()
-                // `hasFocus` covers any descendant; the rail flips open the
-                // moment D-Pad-Left brings focus onto any of its buttons.
+                // `hasFocus` on the outer Column covers any descendant, so
+                // the rail flips open the moment D-Pad-Left brings focus onto
+                // any of its buttons. (No `focusGroup()` needed — that
+                // extension isn't in this Compose version and Compose's
+                // focus tree already propagates hasFocus to the parent.)
                 .onFocusChanged { expanded = it.hasFocus },
         ) {
             Spacer(Modifier.height(24.dp))
