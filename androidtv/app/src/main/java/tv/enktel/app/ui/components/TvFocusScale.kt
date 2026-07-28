@@ -72,10 +72,14 @@ fun Modifier.tvFocusScaleByFlag(focused: Boolean): Modifier = composed {
 
 fun Modifier.tvFocusScaleReporting(onFocusedChanged: (Boolean) -> Unit): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
+    // Chain the two extensions on `this` directly. Wrapping the factory
+    // in `.then(tvFocusScaleByFlag(...))` would add `this` to the chain
+    // twice (SuspiciousModifierThen lint) since the factory internally
+    // calls this.then().
     onFocusChanged {
         if (focused != it.isFocused) {
             focused = it.isFocused
             onFocusedChanged(it.isFocused)
         }
-    }.then(tvFocusScaleByFlag(focused))
+    }.tvFocusScaleByFlag(focused)
 }
