@@ -219,12 +219,18 @@ fun PosterCard(
     val w = if (wide) 240.dp else 150.dp
     val h = if (wide) 135.dp else 210.dp
     var focused by remember { mutableStateOf(false) }
+    // v1.28.0 — report focus + poster URL to the enclosing FocusedPosterState
+    // (if provided), so the AmbilightGlow backdrop can crossfade to whichever
+    // poster the user rests on. Null when no screen has installed the state,
+    // so the modifier degrades to a no-op elsewhere in the app.
+    val focusedPoster = LocalFocusedPoster.current
     Surface(
         onClick = { NavSounds.open(); onClick() },
         modifier = modifier.width(w).tapClick { NavSounds.open(); onClick() }.onFocusChanged {
             val wasFocused = focused
             focused = it.isFocused
             if (!wasFocused && it.isFocused) NavSounds.click()
+            focusedPoster?.report(it.isFocused, imageUrl)
         },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
