@@ -392,31 +392,25 @@ private fun FilterBar(
         // v1.25.0 — inline title search. Filters the visible grid live
         // without navigating away to the global search screen; useful for
         // "I know it's in Movies, I just don't want to scroll to it".
-        androidx.compose.material3.OutlinedTextField(
-            value = query,
-            onValueChange = onQuery,
-            singleLine = true,
-            placeholder = { androidx.compose.material3.Text("Search titles, cast, or director…", fontSize = 13.sp) },
-            leadingIcon = { androidx.compose.material3.Text("🔍", fontSize = 14.sp) },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    androidx.compose.material3.TextButton(onClick = { onQuery("") }) {
-                        androidx.compose.material3.Text("✕", color = EnktelTextDim, fontSize = 14.sp)
-                    }
-                }
-            },
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = EnktelBlue,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.14f),
-                focusedContainerColor = Color.White.copy(alpha = 0.04f),
-                unfocusedContainerColor = Color.White.copy(alpha = 0.03f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = EnktelBlue,
-            ),
-            shape = RoundedCornerShape(8.dp),
+        // TV project uses androidx.tv.material3, not compose-material3, so
+        // we drive the field with the app's existing TvTextField helper
+        // (BasicTextField wrapped with DPAD-friendly focus handling).
+        Row(
+            verticalAlignment = Alignment.Bottom,
             modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-        )
+        ) {
+            Box(Modifier.weight(1f)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    value = query,
+                    onValueChange = onQuery,
+                    label = "🔍 Search titles, cast, or director",
+                )
+            }
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                FocusButton("Clear", onClick = { onQuery("") })
+            }
+        }
         tv.enktel.app.ui.components.ChipRowLabel(
             "Sort by",
             modifier = Modifier.padding(bottom = 6.dp),
