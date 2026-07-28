@@ -17,24 +17,30 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * v1.27.0 — TV Cinematic glass card. Matches the design brief exactly:
- * 14 dp corners, `#A012141D` tint (sRGB 18,20,29 @ 70 % alpha), and a
- * 1 dp `#1AFFFFFF` stroke. Thin wrapper over [GlassPanel] so callers
- * don't have to remember the token values.
+ * v1.28.1 — TV Cinematic glass card. Matches the design brief tokens
+ * (14 dp corners, `#A012141D` tint, 1 dp `#1AFFFFFF` stroke) but skips
+ * the RenderEffect blur: `RenderEffect.createBlurEffect` on a Compose
+ * Box blurs the composable's *own* content, not the backdrop behind
+ * it, so wrapping the player action bar in a blurred GlassPanel
+ * (v1.27.0) rendered every button as an unreadable smear. The 70 %
+ * alpha tint + hairline stroke reads as a floating card without the
+ * live blur, which is how most iOS / Apple TV+ "glass" cards actually
+ * ship today.
  */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    GlassPanel(
-        modifier = modifier,
-        cornerRadius = 14.dp,
-        blurRadius = 20.dp,
-        tint = Color(0xB012141D),
-        borderColor = Color(0x1AFFFFFF),
-        content = content,
-    )
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(Color(0xB012141D), shape)
+            .border(1.dp, Color(0x1AFFFFFF), shape),
+    ) {
+        content()
+    }
 }
 
 /**
