@@ -166,4 +166,182 @@ class RecommendationsRepository(private val content: ContentRepository) {
      *  release year descending so the freshest content leads. */
     suspend fun latestExopolitics(profileId: Long, n: Int = 30): List<Movie> =
         content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.exopolitics, n)
+
+    // ---- v1.25.0 consolidated home rails -----------------------------------
+    // Everything above is a per-rail query that reads the full movie list
+    // and applies its own filter/sort. When mood/theme keywords overlap
+    // (`crime` hits "Gritty", "Fast-Paced" *and* "Trending"), the same
+    // half-dozen top-rated titles ended up dominating every rail on the
+    // home page. [homeRails] computes the whole set in one pass with
+    // cross-rail dedup so each themed strip has a distinct sample:
+    //
+    //   Continue Watching / Watchlist / Recordings / Favs are user-owned
+    //     rails and stay untouched — they should always contain their
+    //     entries even if those items also match a mood.
+    //   Latest Releases is picked first so newest content is guaranteed
+    //     to appear even when it also fits a mood.
+    //   Trending → New This Week → Because You Watched follow, each
+    //     drawing from the pool minus everything already handed out.
+    //   Mood + themed rails come last, taking the top matches remaining.
+    //
+    // Result: no more "Blade Runner 2049 in every single rail" feel; each
+    // strip surfaces a genuinely different corner of the catalogue.
+
+    /** Aggregated home-page rail payload. */
+    data class HomeRails(
+        val latestReleases: List<Movie>,
+        val comingSoon: List<Movie>,
+        val topPicks: List<Movie>,
+        val trending: List<Movie>,
+        val newThisWeek: List<Movie>,
+        val becauseYouWatched: List<Movie>,
+        val moodFastPaced: List<Movie>,
+        val moodGritty: List<Movie>,
+        val moodMindBending: List<Movie>,
+        val moodLateNight: List<Movie>,
+        val moodFeelGood: List<Movie>,
+        val phenomenon: List<Movie>,
+        val deepDiveDocs: List<Movie>,
+        val latestExopolitics: List<Movie>,
+    )
+
+    suspend fun homeRails(profileId: Long): HomeRails = withContext(Dispatchers.Default) {
+        val allMovies = content.movies(profileId).first()
+        val withPoster = allMovies.filter { it.poster.isNotBlank() }
+        val history = content.continueWatching(profileId, 30).first()
+        val seedIds = history.map { it.refId }.toHashSet()
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val week = TimeUnit.DAYS.toSeconds(14)
+        val nowSec = System.currentTimeMillis() / 1000
+
+        // Latest Releases: freshest additions with a poster. Always at least
+        // 6 items when the catalogue has content, even if `addedAt` is zero
+        // (fall back to year desc).
+        val latest = withPoster
+            .sortedWith(compareByDescending<Movie> { it.addedAt }.thenByDescending { it.year })
+            .take(24)
+
+        val used = HashSet<String>().apply { addAll(latest.map { it.key }) }
+
+        fun pick(list: List<Movie>, limit: Int): List<Movie> {
+            val out = ArrayList<Movie>(limit)
+            for (m in list) {
+                if (m.key in used) continue
+                out.add(m)
+                used.add(m.key)
+                if (out.size >= limit) break
+            }
+            return out
+        }
+
+        // Coming Soon — release year is current year or later. Even the
+        // newest of these is likely already in `latest`; dedup keeps that
+        // rail meaningful when the catalogue has genuine forward-dated stock.
+        val comingSoon = pick(
+            withPoster.asSequence()
+                .filter { it.year >= currentYear }
+                .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
+                .toList(),
+            20,
+        )
+
+        // Trending: top-rated. TMDB enrichment fills `rating` from the
+        // popular-and-well-reviewed slice; when a lot of titles share the
+        // same rating we tie-break on year desc.
+        val trending = pick(
+            withPoster.asSequence()
+                .filter { it.rating >= 6.5 }
+                .sortedWith(compareByDescending<Movie> { it.rating }.thenByDescending { it.year })
+                .toList(),
+            18,
+        )
+
+        // Top Picks: TMDB-enriched titles ranked by rating regardless of
+        // recency — the "curated by the algorithm" cut. Lets us guarantee
+        // a rail full of quality when a fresh catalogue hasn't landed
+        // many high-rated items in the last two weeks.
+        val topPicks = pick(
+            withPoster.asSequence()
+                .filter { it.enrichedAt > 0 && it.rating >= 7.0 }
+                .sortedByDescending { it.rating }
+                .toList(),
+            18,
+        )
+
+        // New This Week: added in the last 14 days.
+        val newThis = pick(
+            withPoster.asSequence()
+                .filter { it.addedAt > nowSec - week }
+                .sortedByDescending { it.addedAt }
+                .toList(),
+            18,
+        )
+
+        // Because You Watched: keep the existing scoring but exclude
+        // anything we've already surfaced.
+        val because = if (history.isNotEmpty()) {
+            val seed = withPoster.filter { it.streamId in seedIds }
+            val seedGenres = seed.flatMap { ContentRepository.splitGenres(it.genre) }
+                .groupingBy { it.lowercase() }.eachCount()
+            val scored = withPoster.asSequence()
+                .filter { it.streamId !in seedIds && it.genre.isNotBlank() }
+                .map { m ->
+                    val overlap = ContentRepository.splitGenres(m.genre).sumOf {
+                        seedGenres[it.lowercase()] ?: 0
+                    }
+                    m to (overlap * 3 + (m.rating / 2).toInt())
+                }
+                .filter { it.second > 0 }
+                .sortedByDescending { it.second }
+                .map { it.first }
+                .toList()
+            pick(scored, 15)
+        } else emptyList()
+
+        fun moodPool(keywords: List<String>, minRating: Double): List<Movie> =
+            withPoster.asSequence()
+                .filter { it.rating >= minRating }
+                .filter { m ->
+                    val hay = (m.genre + " " + m.tags).lowercase()
+                    keywords.any { it in hay }
+                }
+                .sortedByDescending { it.rating }
+                .toList()
+
+        val moodFast = pick(moodPool(listOf("action", "adventure", "thriller", "war", "crime"), 6.5), 14)
+        val moodGrit = pick(moodPool(listOf("crime", "thriller", "noir", "mystery", "drama"), 6.8), 14)
+        val moodMind = pick(moodPool(listOf("sci-fi", "science", "mystery", "thriller", "fantasy"), 7.0), 14)
+        val moodLate = pick(moodPool(listOf("comedy", "sitcom", "family", "romance", "animation"), 5.5), 14)
+        val moodGood = pick(moodPool(listOf("animation", "family", "romance", "music", "biography"), 6.0), 14)
+
+        val phen = pick(
+            content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, 60),
+            30,
+        )
+        val docs = pick(
+            content.moviesDocsMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, 60),
+            30,
+        )
+        val exo = pick(
+            content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.exopolitics, 60),
+            30,
+        )
+
+        HomeRails(
+            latestReleases = latest,
+            comingSoon = comingSoon,
+            topPicks = topPicks,
+            trending = trending,
+            newThisWeek = newThis,
+            becauseYouWatched = because,
+            moodFastPaced = moodFast,
+            moodGritty = moodGrit,
+            moodMindBending = moodMind,
+            moodLateNight = moodLate,
+            moodFeelGood = moodGood,
+            phenomenon = phen,
+            deepDiveDocs = docs,
+            latestExopolitics = exo,
+        )
+    }
 }
