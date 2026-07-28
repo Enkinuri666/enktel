@@ -104,11 +104,14 @@ private fun CategorySidebar(
     onLocked: (String) -> Unit = {},
     onSelect: (String?) -> Unit,
 ) {
+    // v1.25.0 — trimmed from 230→168 dp so the poster grid has ~60 dp
+    // more width to render posters in (an extra row of posters at 118 dp
+    // adaptive cells on 1080p / 1280p).
     Column(
-        Modifier.width(230.dp).fillMaxHeight().padding(top = 20.dp, start = 24.dp),
+        Modifier.width(168.dp).fillMaxHeight().padding(top = 20.dp, start = 16.dp),
     ) {
         SectionTitle(title)
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
         LazyColumn {
             item {
                 SidebarRow("All", selected == null) { onSelect(null) }
@@ -166,12 +169,14 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by remember { mutableStateOf<String?>(null) }
     var decadeFilter by remember { mutableStateOf<Int?>(null) }
+    var query by remember { mutableStateOf("") }
     val genres = remember(raw) {
         raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
             .groupingBy { it }.eachCount().entries
             .sortedByDescending { it.value }.take(18).map { it.key }
     }
-    val movies = remember(raw, sort, genreFilter, decadeFilter) {
+    val movies = remember(raw, sort, genreFilter, decadeFilter, query) {
+        val needle = query.trim().lowercase()
         raw.asSequence()
             .filter { m -> genreFilter == null || m.genre.contains(genreFilter!!, ignoreCase = true) }
             .filter { m ->
@@ -180,6 +185,12 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                     -1 -> m.year in 1900..1989
                     else -> m.year in decadeFilter!!..(decadeFilter!! + 9)
                 }
+            }
+            .filter { m ->
+                if (needle.isEmpty()) true
+                else m.name.lowercase().contains(needle) ||
+                    m.cast.lowercase().contains(needle) ||
+                    m.director.lowercase().contains(needle)
             }
             .let { seq ->
                 when (sort) {
@@ -210,15 +221,20 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                 onGenre = { genreFilter = it },
                 decadeFilter = decadeFilter,
                 onDecade = { decadeFilter = it },
+                query = query,
+                onQuery = { query = it },
             )
             if (movies.isEmpty()) {
                 CenterMessage("No movies in this category.")
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
-                    contentPadding = PaddingValues(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    // v1.25.0 — denser adaptive grid: 118 dp cells fit ~8
+                    // posters per row on a 1080p TV vs. 6 previously, and
+                    // tighter gaps keep more posters above the fold.
+                    columns = GridCells.Adaptive(118.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
@@ -264,12 +280,14 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by remember { mutableStateOf<String?>(null) }
     var decadeFilter by remember { mutableStateOf<Int?>(null) }
+    var query by remember { mutableStateOf("") }
     val genres = remember(raw) {
         raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
             .groupingBy { it }.eachCount().entries
             .sortedByDescending { it.value }.take(18).map { it.key }
     }
-    val series = remember(raw, sort, genreFilter, decadeFilter) {
+    val series = remember(raw, sort, genreFilter, decadeFilter, query) {
+        val needle = query.trim().lowercase()
         raw.asSequence()
             .filter { s -> genreFilter == null || s.genre.contains(genreFilter!!, ignoreCase = true) }
             .filter { s ->
@@ -279,6 +297,7 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
                     else -> s.year in decadeFilter!!..(decadeFilter!! + 9)
                 }
             }
+            .filter { s -> needle.isEmpty() || s.name.lowercase().contains(needle) }
             .let { seq ->
                 when (sort) {
                     "rating" -> seq.sortedByDescending { it.rating }
@@ -306,15 +325,20 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
                 onGenre = { genreFilter = it },
                 decadeFilter = decadeFilter,
                 onDecade = { decadeFilter = it },
+                query = query,
+                onQuery = { query = it },
             )
             if (series.isEmpty()) {
                 CenterMessage("No series match these filters.")
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
-                    contentPadding = PaddingValues(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    // v1.25.0 — denser adaptive grid: 118 dp cells fit ~8
+                    // posters per row on a 1080p TV vs. 6 previously, and
+                    // tighter gaps keep more posters above the fold.
+                    columns = GridCells.Adaptive(118.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
@@ -361,8 +385,32 @@ private fun FilterBar(
     onGenre: (String?) -> Unit,
     decadeFilter: Int?,
     onDecade: (Int?) -> Unit,
+    query: String,
+    onQuery: (String) -> Unit,
 ) {
-    Column(Modifier.padding(start = 24.dp, top = 16.dp)) {
+    Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp)) {
+        // v1.25.0 — inline title search. Filters the visible grid live
+        // without navigating away to the global search screen; useful for
+        // "I know it's in Movies, I just don't want to scroll to it".
+        // TV project uses androidx.tv.material3, not compose-material3, so
+        // we drive the field with the app's existing TvTextField helper
+        // (BasicTextField wrapped with DPAD-friendly focus handling).
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+        ) {
+            Box(Modifier.weight(1f)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    value = query,
+                    onValueChange = onQuery,
+                    label = "🔍 Search titles, cast, or director",
+                )
+            }
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                FocusButton("Clear", onClick = { onQuery("") })
+            }
+        }
         tv.enktel.app.ui.components.ChipRowLabel(
             "Sort by",
             modifier = Modifier.padding(bottom = 6.dp),

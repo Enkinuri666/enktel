@@ -1006,16 +1006,20 @@ private fun ChannelPanel(
         if (idx > 0) listState.scrollToItem(idx)
     }
 
+    // v1.25.0 — the live browser overlay used to eat 210 + 400 = 610 dp of
+    // horizontal space (32 % of a 1080p TV, 48 % of 720p). Shrunk to
+    // 168 + 320 = 488 dp so the video pane behind the overlay stays
+    // meaningfully visible.
     Row(Modifier.fillMaxHeight()) {
         Column(
             Modifier
-                .width(210.dp)
+                .width(168.dp)
                 .fillMaxHeight()
                 .background(Color.Black.copy(0.92f))
-                .padding(vertical = 20.dp),
+                .padding(vertical = 16.dp),
         ) {
-            Text("CATEGORIES", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp))
-            Spacer(Modifier.height(10.dp))
+            Text("CATEGORIES", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp))
+            Spacer(Modifier.height(8.dp))
             LazyColumn {
                 item {
                     PanelRow("All channels (${channels.size})", selected = selectedCat == null) { selectedCat = null }
@@ -1033,10 +1037,10 @@ private fun ChannelPanel(
         }
         Column(
             Modifier
-                .width(400.dp)
+                .width(320.dp)
                 .fillMaxHeight()
                 .background(Color.Black.copy(0.85f))
-                .padding(vertical = 20.dp),
+                .padding(vertical = 16.dp),
         ) {
             Text("CHANNELS", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(Modifier.height(10.dp))

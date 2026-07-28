@@ -77,41 +77,30 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val watchlist by graph.watchlist.all(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    var becauseYouWatched by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var trending by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var newThisWeek by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var latestReleases by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var comingSoon by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var moodGritty by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var moodLateNight by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var moodFastPaced by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var moodMindBending by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var moodFeelGood by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    // v1.20.0 themed rails — populated by RecommendationsRepository, backed
-    // by the DB `tags` column that the MetadataEnrichmentWorker fills after
-    // each sync. Titles + genres are also matched, so users see hits even
-    // before enrichment lands.
-    var phenomenonMovies by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var deepDiveDocs by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var latestExopolitics by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    // v1.25.0 — one aggregated computation with cross-rail dedup so a
+    // single title no longer shows up in five rails at once. See
+    // RecommendationsRepository.homeRails().
+    var rails by remember { mutableStateOf<tv.enktel.app.data.repo.RecommendationsRepository.HomeRails?>(null) }
     val today = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
     LaunchedEffect(p.id, today) {
         try {
-            becauseYouWatched = graph.recommendations.becauseYouWatched(p.id)
-            trending = graph.recommendations.trending(p.id)
-            newThisWeek = graph.recommendations.newThisWeek(p.id)
-            latestReleases = graph.recommendations.latestReleases(p.id)
-            comingSoon = graph.recommendations.comingSoon(p.id)
-            moodGritty = graph.recommendations.moodGritty(p.id)
-            moodLateNight = graph.recommendations.moodLateNight(p.id)
-            moodFastPaced = graph.recommendations.moodFastPaced(p.id)
-            moodMindBending = graph.recommendations.moodMindBending(p.id)
-            moodFeelGood = graph.recommendations.moodFeelGood(p.id)
-            phenomenonMovies = graph.recommendations.phenomenonMovies(p.id)
-            deepDiveDocs = graph.recommendations.deepDiveDocs(p.id)
-            latestExopolitics = graph.recommendations.latestExopolitics(p.id)
+            rails = graph.recommendations.homeRails(p.id)
         } catch (_: Throwable) {}
     }
+    val becauseYouWatched = rails?.becauseYouWatched ?: emptyList()
+    val trending = rails?.trending ?: emptyList()
+    val topPicks = rails?.topPicks ?: emptyList()
+    val newThisWeek = rails?.newThisWeek ?: emptyList()
+    val latestReleases = rails?.latestReleases ?: emptyList()
+    val comingSoon = rails?.comingSoon ?: emptyList()
+    val moodGritty = rails?.moodGritty ?: emptyList()
+    val moodLateNight = rails?.moodLateNight ?: emptyList()
+    val moodFastPaced = rails?.moodFastPaced ?: emptyList()
+    val moodMindBending = rails?.moodMindBending ?: emptyList()
+    val moodFeelGood = rails?.moodFeelGood ?: emptyList()
+    val phenomenonMovies = rails?.phenomenon ?: emptyList()
+    val deepDiveDocs = rails?.deepDiveDocs ?: emptyList()
+    val latestExopolitics = rails?.latestExopolitics ?: emptyList()
 
     // If the profile has never finished its first sync (e.g. onboarding was interrupted),
     // kick off content + EPG sync in the background. Only key on p.id — depending on
@@ -368,6 +357,22 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster, subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
                         onClick = { nav.navigate("movie/${m.key}") })
+                }
+            }
+        }
+        if (topPicks.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "⭐  Top Picks", topPicks,
+                    accent = tv.enktel.app.ui.theme.EnktelOk,
+                    subtitle = "TMDB-rated highlights from your library",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else m.genre.take(20),
+                        onClick = { nav.navigate("movie/${m.key}") },
+                    )
                 }
             }
         }
