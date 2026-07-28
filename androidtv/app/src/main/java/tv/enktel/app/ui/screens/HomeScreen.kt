@@ -143,13 +143,23 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
-    // Ambilight glow: extract dominant colour from the hero poster and
-    // bleed it behind the whole Home layout as a soft radial wash.  Sits
-    // in a Box below the LazyColumn so it never intercepts touches.
+    // v1.28.0 — install a shared FocusedPosterState so every PosterCard on
+    // this screen can crossfade the Ambilight backdrop to its own artwork
+    // after a 220 ms dwell. Falls back to the current hero when nothing is
+    // focused (fresh screen, empty rail, etc.).
+    val focusedPoster = tv.enktel.app.ui.components.rememberFocusedPosterState()
+    androidx.compose.runtime.CompositionLocalProvider(
+        tv.enktel.app.ui.components.LocalFocusedPoster provides focusedPoster,
+    ) {
+    // Ambilight glow: extract dominant colour from the currently-focused
+    // poster (or the hero banner if nothing is focused yet) and bleed it
+    // behind the whole Home layout as a soft radial wash.  Sits in a Box
+    // below the LazyColumn so it never intercepts touches.
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         val heroPoster = heroItems.firstOrNull()?.poster
+        val backdropUrl = focusedPoster.currentUrl ?: heroPoster
         tv.enktel.app.ui.components.AmbilightGlow(
-            imageUrl = heroPoster,
+            imageUrl = backdropUrl,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     LazyColumn(
@@ -532,6 +542,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
     } // close ambilight wrapper Box
+    } // close CompositionLocalProvider (FocusedPosterState)
 }
 
 /**
