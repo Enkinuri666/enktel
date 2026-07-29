@@ -96,6 +96,71 @@ class MainActivity : ComponentActivity() {
         setIntent(intent) // let composable pick up new channel_key from notification taps
     }
 
+    /**
+     * v1.30.0 — global media hardware-key handler so a Fire TV / Android TV
+     * remote's dedicated media buttons work everywhere, not just inside a
+     * player-owned focus. Routes through ActivePlayerRef so we only act
+     * when a player is actually mounted; otherwise falls through to the
+     * default handler (letting menu / OS zoom / launcher shortcuts keep
+     * their normal behavior).
+     *
+     * Also handles KEYCODE_CHANNEL_UP / KEYCODE_CHANNEL_DOWN — hardware
+     * PVR-style channel keys — by invoking the zap handler that
+     * LivePlayerScreen registers on mount. Non-live screens leave the
+     * handler null and the key falls through.
+     */
+    @android.annotation.SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isCanceled) {
+            when (event.keyCode) {
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                    tv.enktel.app.voice.ActivePlayerRef.resume(); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    tv.enktel.app.voice.ActivePlayerRef.pause(); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                    if (tv.enktel.app.voice.ActivePlayerRef.isPlaying()) tv.enktel.app.voice.ActivePlayerRef.pause()
+                    else tv.enktel.app.voice.ActivePlayerRef.resume()
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_STOP -> {
+                    tv.enktel.app.voice.ActivePlayerRef.pause(); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    tv.enktel.app.voice.ActivePlayerRef.seekForward(30); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    tv.enktel.app.voice.ActivePlayerRef.seekBack(10); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                    tv.enktel.app.voice.ActivePlayerRef.channelZap(+1); return true
+                }
+                android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                    tv.enktel.app.voice.ActivePlayerRef.channelZap(-1); return true
+                }
+                android.view.KeyEvent.KEYCODE_CHANNEL_UP -> {
+                    tv.enktel.app.voice.ActivePlayerRef.channelZap(+1); return true
+                }
+                android.view.KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                    tv.enktel.app.voice.ActivePlayerRef.channelZap(-1); return true
+                }
+                android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                android.view.KeyEvent.KEYCODE_ENTER,
+                android.view.KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                    // Long-press OK on the D-Pad center toggles the current
+                    // channel's favorite. Short-press falls through to Compose
+                    // so cards, buttons, etc. still get their normal click.
+                    if (event.isLongPress && tv.enktel.app.voice.ActivePlayerRef.toggleFavHandler != null) {
+                        tv.enktel.app.voice.ActivePlayerRef.toggleFavorite()
+                        return true
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         // If the user hits Home while a player is on-screen and they've opted into

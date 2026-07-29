@@ -237,13 +237,13 @@ fun PosterCard(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
         ),
-        // v1.27.0 — brief-spec focus scale (1.05× / 150 ms / decelerate)
-        // instead of the previous 1.1× step. Feels less "jumpy" on rails
-        // and matches the Apple TV+ feel the design brief called out.
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        // v1.30.0 — bumped 1.05→1.08 per the follow-up design brief for
+        // extra depth on 10-foot displays. Border also stepped up to 4 dp
+        // Electric Indigo so the focus ring reads from across the room.
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, EnktelBlue),
+                border = androidx.compose.foundation.BorderStroke(4.dp, EnktelBlue),
                 shape = RoundedCornerShape(14.dp),
             ),
         ),
