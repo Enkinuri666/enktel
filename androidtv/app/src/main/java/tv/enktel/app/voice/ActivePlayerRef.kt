@@ -15,6 +15,16 @@ import androidx.media3.common.Player
 object ActivePlayerRef {
     @Volatile var player: Player? = null
     val active = mutableStateOf(false)
+    // v1.30.0 — LivePlayerScreen registers a channel-zap handler when it
+    // mounts; MainActivity.dispatchKeyEvent routes the KEYCODE_CHANNEL_UP
+    // and KEYCODE_CHANNEL_DOWN hardware keys through it. Null when no
+    // live screen is up (VOD screens leave it null so those keys pass
+    // through to the OS).
+    @Volatile var channelZapHandler: ((Int) -> Unit)? = null
+    // v1.30.0 — LivePlayerScreen also registers a favorite-toggle handler
+    // so a long-press on the D-Pad center flips the star on the current
+    // channel without needing a menu round-trip.
+    @Volatile var toggleFavHandler: (() -> Unit)? = null
 
     fun register(p: Player) {
         player = p
@@ -27,6 +37,9 @@ object ActivePlayerRef {
             active.value = false
         }
     }
+
+    fun channelZap(delta: Int) { try { channelZapHandler?.invoke(delta) } catch (_: Throwable) {} }
+    fun toggleFavorite() { try { toggleFavHandler?.invoke() } catch (_: Throwable) {} }
 
     fun pause() { try { player?.pause() } catch (_: Throwable) {} }
     fun resume() { try { player?.play() } catch (_: Throwable) {} }

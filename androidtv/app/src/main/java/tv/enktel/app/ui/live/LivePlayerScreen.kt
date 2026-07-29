@@ -246,6 +246,21 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tune(next)
     }
 
+    // v1.30.0 — expose channel zap + favorite-toggle to the global
+    // hardware-key router in MainActivity.dispatchKeyEvent. Cleared on
+    // dispose so keys pass through to the OS when the live screen exits.
+    DisposableEffect(Unit) {
+        tv.enktel.app.voice.ActivePlayerRef.channelZapHandler = { delta -> zap(delta) }
+        tv.enktel.app.voice.ActivePlayerRef.toggleFavHandler = {
+            val ch = current
+            if (ch != null) scope.launch { graph.content.toggleFavorite(p.id, "live", ch.streamId) }
+        }
+        onDispose {
+            tv.enktel.app.voice.ActivePlayerRef.channelZapHandler = null
+            tv.enktel.app.voice.ActivePlayerRef.toggleFavHandler = null
+        }
+    }
+
     // Rapid-zapping latency hider: warm connections to the channel directly
     // above and below the current one so the socket/TLS handshake is
     // already done by the time the user actually flips.  See ZapPreloader.
