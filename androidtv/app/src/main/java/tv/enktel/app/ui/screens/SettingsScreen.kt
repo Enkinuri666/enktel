@@ -119,11 +119,24 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
 
         tv.enktel.app.ui.components.ChipRowLabel("Player buffer")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-            tv.enktel.app.ui.components.GlassChip("Fast zap", selected = bufferProfile == "low", onClick = { scope.launch { graph.settings.setBufferProfile("low") } })
-            tv.enktel.app.ui.components.GlassChip("Balanced", selected = bufferProfile == "balanced", onClick = { scope.launch { graph.settings.setBufferProfile("balanced") } })
-            tv.enktel.app.ui.components.GlassChip("Max stability", selected = bufferProfile == "large", onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
+            // v1.31.0 — "Auto" chip now surfaces the auto-per-device-class code
+            // path that PlayerEngine already picked up but Settings never showed.
+            // Renamed the other three chips to match the user-facing spec.
+            tv.enktel.app.ui.components.GlassChip("Auto (recommended)", selected = bufferProfile == "auto",
+                onClick = { scope.launch { graph.settings.setBufferProfile("auto") } })
+            tv.enktel.app.ui.components.GlassChip("Low latency", selected = bufferProfile == "low",
+                onClick = { scope.launch { graph.settings.setBufferProfile("low") } })
+            tv.enktel.app.ui.components.GlassChip("Balanced", selected = bufferProfile == "balanced",
+                onClick = { scope.launch { graph.settings.setBufferProfile("balanced") } })
+            tv.enktel.app.ui.components.GlassChip("High buffer", selected = bufferProfile == "large",
+                onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
         }
-        Text("Buffer changes apply the next time a player opens.", color = EnktelTextDim, fontSize = 11.sp)
+        Text(
+            "Auto = scales by device class (TV keeps a bigger cushion; phones lean lean). " +
+                "Low latency ≈ 5 s buffer for live sports. Balanced ≈ 15 s for typical use. " +
+                "High buffer ≈ 30 s+ for unstable Wi-Fi or mobile networks. Applies next player open.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
 
         Spacer(Modifier.height(10.dp))
         tv.enktel.app.ui.components.ChipRowLabel("Force MP4 fallback (VOD)")
@@ -282,6 +295,52 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 accent = companionOn,
                 onClick = { scope.launch { graph.settings.setCompanionMode(!companionOn) } },
             )
+        }
+
+        // v1.31.0 — surface Backup Gateways in the UI. The setting has been
+        // in SettingsStore for a while (setBackupGateways / backupGateways),
+        // but it wasn't editable from the app. When the active playlist's
+        // origin host fails an HTTP 403 / 502 / 5xx or times out, the
+        // fallback resolver walks this list of alternate host prefixes
+        // (one URL per line) before giving up.
+        Spacer(Modifier.height(10.dp))
+        Text("BACKUP GATEWAYS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val backupGw by graph.settings.backupGateways.collectAsStateWithLifecycle(initialValue = emptyList())
+        var newGw by remember { mutableStateOf("") }
+        Spacer(Modifier.height(4.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = newGw,
+            onValueChange = { newGw = it },
+            label = "Add gateway host (e.g. http://mirror.example.com:8080)",
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FocusButton("Add", accent = true, onClick = {
+                val trimmed = newGw.trim()
+                if (trimmed.isNotEmpty() && trimmed !in backupGw) {
+                    scope.launch { graph.settings.setBackupGateways(backupGw + trimmed) }
+                    newGw = ""
+                }
+            })
+        }
+        if (backupGw.isEmpty()) {
+            Text(
+                "No gateways yet. When your primary panel is unreachable (403 / 502 / timeout), the resolver will fall back to whatever hosts you add here in order.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        } else {
+            Spacer(Modifier.height(8.dp))
+            backupGw.forEach { host ->
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                ) {
+                    Text(host, color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    FocusButton("Remove", onClick = {
+                        scope.launch { graph.settings.setBackupGateways(backupGw - host) }
+                    })
+                }
+            }
         }
 
         Spacer(Modifier.height(10.dp))
