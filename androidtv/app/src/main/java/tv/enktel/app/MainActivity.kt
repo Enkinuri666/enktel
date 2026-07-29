@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
      * LivePlayerScreen registers on mount. Non-live screens leave the
      * handler null and the key falls through.
      */
+    @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isCanceled) {
             when (event.keyCode) {
