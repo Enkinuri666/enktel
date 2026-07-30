@@ -6,6 +6,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
@@ -31,6 +33,60 @@ data class EnktelPalette(
     val live: Color,
     val ok: Color,
     val border: Color,
+    // ---- v1.35.0 focus tokens ---------------------------------------------
+    // The D-pad focus treatment used to be hardcoded at each call site
+    // (PosterCard's border width, TvFocusScale's constants), which meant
+    // "make focus 2 dp instead of 4" was a hunt across files and the two
+    // could drift apart. They're palette fields now, so a theme owns its
+    // whole focus language and every focusable surface stays consistent.
+    //
+    // Defaults reproduce the v1.30.0 treatment exactly, so palettes that
+    // don't opt in are visually unchanged.
+    /** Thickness of the focus outline drawn around a focused card. */
+    val focusRingWidth: Dp = 4.dp,
+    /** Radius of the diffuse coloured glow behind a focused card. */
+    val focusGlowRadius: Dp = 18.dp,
+    /** Alpha applied to [primary] to produce that glow. */
+    val focusGlowAlpha: Float = 0.5f,
+    /** Scale a focusable grows to while focused. */
+    val focusScale: Float = 1.08f,
+    /** Tertiary text — dimmer than [textDim], for de-emphasised metadata. */
+    val textFaint: Color = Color(0xFF64748B),
+)
+
+/**
+ * v1.35.0 — "Deep Space" theme, and the new default for fresh installs.
+ *
+ * Implements the Deep Space & Neon Accent token set:
+ *   Surface L0  #0B0E14   Surface L1 #121824   Surface L2 #1A2332
+ *   Border      #2A364F   Primary    #00F0FF   Secondary  #7B2CBF
+ *   Success     #10B981   Alert      #EF4444
+ *   Text        #F8FAFC / #94A3B8 / #64748B
+ *
+ * Two deliberate mappings, because the token list and this app's palette
+ * model don't line up one-to-one:
+ *
+ *  - **`live` is bound to the alert red (#EF4444), not the cyan primary.**
+ *    `live` paints LIVE badges, stream-error banners and the "server
+ *    offline" state. The spec assigns #EF4444 to exactly that role, and
+ *    binding it to the cyan accent instead would make a dead stream and a
+ *    focused poster the same colour — the one pair that must never collide.
+ *  - **The cyan primary doubles as the focus ring**, which is what makes
+ *    the 2 dp / 12 px-glow focus spec render as specified without any
+ *    per-component overrides.
+ *
+ * Focus geometry follows the brief (2 dp ring, 12 dp glow at 35 % alpha,
+ * 1.05× over 150 ms) rather than the v1.30.0 values it supersedes — see
+ * the note on [EnktelPalette.focusRingWidth].
+ */
+private val PaletteDeepSpace = EnktelPalette(
+    id = "deep_space", label = "Deep Space (Neon)",
+    bg = Color(0xFF0B0E14), surface = Color(0xFF121824), surfaceHigh = Color(0xFF1A2332),
+    text = Color(0xFFF8FAFC), textDim = Color(0xFF94A3B8),
+    primary = Color(0xFF00F0FF), primaryDeep = Color(0xFF00A8B5), secondary = Color(0xFF7B2CBF),
+    live = Color(0xFFEF4444), ok = Color(0xFF10B981), border = Color(0xFF2A364F),
+    focusRingWidth = 2.dp, focusGlowRadius = 12.dp, focusGlowAlpha = 0.35f, focusScale = 1.05f,
+    textFaint = Color(0xFF64748B),
 )
 
 /**
@@ -108,12 +164,12 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
 )
 
 val ALL_PALETTES = listOf(
-    PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald, PaletteAmber,
-    PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
+    PaletteDeepSpace, PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald,
+    PaletteAmber, PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteCinematic
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteDeepSpace
 
-private val LocalPalette = compositionLocalOf { PaletteCinematic }
+private val LocalPalette = compositionLocalOf { PaletteDeepSpace }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 
@@ -132,9 +188,41 @@ val EnktelTextDim: Color @Composable get() = LocalPalette.current.textDim
 val EnktelLive: Color @Composable get() = LocalPalette.current.live
 val EnktelOk: Color @Composable get() = LocalPalette.current.ok
 
+// ---------------------------------------------------------------------------
+// Design tokens. Read these instead of hardcoding a value at a call site —
+// that's what keeps one theme's focus language consistent across every
+// focusable surface in the app.
+// ---------------------------------------------------------------------------
+
+/** Structural divider / outline colour. */
+val EnktelBorder: Color @Composable get() = LocalPalette.current.border
+
+/** Tertiary text: de-emphasised metadata, below [EnktelTextDim]. */
+val EnktelTextFaint: Color @Composable get() = LocalPalette.current.textFaint
+
+/** Thickness of the D-pad focus outline. */
+val EnktelFocusRingWidth: Dp @Composable get() = LocalPalette.current.focusRingWidth
+
+/** Radius of the diffuse glow behind a focused card. */
+val EnktelFocusGlowRadius: Dp @Composable get() = LocalPalette.current.focusGlowRadius
+
+/** Scale a focusable grows to while focused. */
+val EnktelFocusScale: Float @Composable get() = LocalPalette.current.focusScale
+
+/**
+ * Colour of the focus glow — the accent at the palette's glow alpha.
+ *
+ * Rendered via `Modifier.shadow(spotColor = …)`, which only honours a
+ * coloured spot colour on API 28+. On API 21-27 (Fire TV Stick 2nd gen)
+ * it degrades to a neutral shadow; the 2 dp ring still reads, so focus
+ * is never ambiguous on those devices.
+ */
+val EnktelFocusGlow: Color
+    @Composable get() = LocalPalette.current.primary.copy(alpha = LocalPalette.current.focusGlowAlpha)
+
 @Composable
 fun EnktelTheme(
-    themeId: String = "cinematic",
+    themeId: String = "deep_space",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
     content: @Composable () -> Unit,

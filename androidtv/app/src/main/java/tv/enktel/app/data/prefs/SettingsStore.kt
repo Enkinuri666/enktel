@@ -195,7 +195,10 @@ class SettingsStore(private val context: Context) {
     // v1.23.0 default flipped to "obsidian" — the new premium theme. Existing
     // installs that picked a palette keep their preference (the ?: only
     // fires when the pref is absent).
-    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "cinematic" }
+    // v1.35.0 default flipped to "deep_space" — the Deep Space & Neon Accent
+    // token set. As with every previous default change, the ?: only fires when
+    // the pref is absent, so anyone who has picked a theme keeps it.
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "deep_space" }
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }

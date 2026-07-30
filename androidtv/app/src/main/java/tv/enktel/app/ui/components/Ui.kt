@@ -58,6 +58,10 @@ import coil.compose.AsyncImage
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelFocusGlow
+import tv.enktel.app.ui.theme.EnktelFocusGlowRadius
+import tv.enktel.app.ui.theme.EnktelFocusRingWidth
+import tv.enktel.app.ui.theme.EnktelFocusScale
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -241,13 +245,15 @@ fun PosterCard(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
         ),
-        // v1.30.0 — bumped 1.05→1.08 per the follow-up design brief for
-        // extra depth on 10-foot displays. Border also stepped up to 4 dp
-        // Electric Indigo so the focus ring reads from across the room.
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        // v1.35.0 — ring width and scale come from the active palette's focus
+        // tokens instead of being pinned here. Deep Space specifies a tighter
+        // 2 dp ring at 1.05×; the older palettes keep the v1.30.0 4 dp / 1.08×
+        // treatment via the token defaults, so nothing regresses for a user
+        // who has picked one of them.
+        scale = ClickableSurfaceDefaults.scale(focusedScale = EnktelFocusScale),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(4.dp, EnktelBlue),
+                border = androidx.compose.foundation.BorderStroke(EnktelFocusRingWidth, EnktelBlue),
                 shape = RoundedCornerShape(14.dp),
             ),
         ),
@@ -262,7 +268,11 @@ fun PosterCard(
                 .background(EnktelSurfaceHigh)
                 .then(
                     if (focused) {
-                        Modifier.shadow(elevation = 18.dp, shape = RoundedCornerShape(14.dp), spotColor = EnktelBlue)
+                        Modifier.shadow(
+                            elevation = EnktelFocusGlowRadius,
+                            shape = RoundedCornerShape(14.dp),
+                            spotColor = EnktelFocusGlow,
+                        )
                     } else Modifier
                 ),
         ) {
