@@ -49,6 +49,8 @@ import java.io.File
 class DownloadHub(
     private val app: Context,
     private val dao: DownloadDao,
+    /** Needed for the line's declared `max_connections` — see [streamsFor]. */
+    private val profiles: tv.enktel.app.data.db.ProfileDao,
     private val settings: SettingsStore,
     private val http: OkHttpClient,
 ) {
@@ -57,6 +59,8 @@ class DownloadHub(
         const val NOTIFICATION_CHANNEL_NAME = "Downloads"
         private const val POLL_INTERVAL_MS = 1_500L
         private const val UA = tv.enktel.app.DEFAULT_UA
+        /** Used when the panel doesn't report a connection cap. */
+        private const val DEFAULT_STREAMS = 4
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -305,16 +309,47 @@ class DownloadHub(
     private fun orCreateSub(parent: DocumentFile, name: String): DocumentFile? =
         parent.findFile(name)?.takeIf { it.isDirectory } ?: parent.createDirectory(name)
 
+    /**
+     * How many concurrent range fetches this profile's line can actually take.
+     *
+     * Xtream panels publish a `max_connections` cap per line and enforce it by
+     * killing the surplus sockets mid-transfer. The downloader used to open
+     * four regardless, so on the very common 1- and 2-connection lines most of
+     * its workers were cut off — surfacing as "the server ended the transfer
+     * early" and a download stuck at a few MB. The cap is already stored on the
+     * profile at setup, so there's no reason to guess.
+     *
+     * One connection is always held back for playback: a download that locks
+     * the user out of watching their own service has traded one problem for a
+     * worse one. A 1-connection line therefore downloads single-stream, which
+     * is the most that line can honestly support anyway.
+     *
+     * 0 means unknown (M3U playlists, or a panel that didn't report it) — those
+     * keep the default, and the adaptive throttle still backs off if the host
+     * turns out to be stricter than advertised.
+     */
+    private suspend fun streamsFor(profileId: Long): Int {
+        val maxConn = try { profiles.byId(profileId)?.maxConnections ?: 0 } catch (_: Throwable) { 0 }
+        return when {
+            maxConn <= 0 -> DEFAULT_STREAMS
+            maxConn == 1 -> 1
+            else -> (maxConn - 1).coerceIn(1, DEFAULT_STREAMS)
+        }
+    }
+
     private fun launchParallel(
         entry: DownloadEntry,
         target: ParallelDownloader.Target,
         resumeState: String = "",
     ) {
         val id = entry.id
+        scope.launch {
+        val streams = streamsFor(entry.profileId)
         val handle = parallel.start(
             url = entry.sourceUrl,
             target = target,
             userAgent = UA,
+            maxStreams = streams,
             resumeState = resumeState,
             onProgress = { downloaded, total, state ->
                 scope.launch {
@@ -353,6 +388,7 @@ class DownloadHub(
             },
         )
         synchronized(jobsLock) { parallelJobs[id] = handle }
+        }
     }
 
     private fun plannedFileFor(entry: DownloadEntry): File {
