@@ -94,7 +94,7 @@ fun MobileScaffold(
     // and while Kids Mode owns the Home route.
     val showBar = !kidsModeActive && currentRoute in setOf(
         "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
-        "speedTest", "manageCategories", "downloads",
+        "speedTest", "manageCategories", "downloads", "sportsFinder", "systemMonitor",
     )
 
     // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can

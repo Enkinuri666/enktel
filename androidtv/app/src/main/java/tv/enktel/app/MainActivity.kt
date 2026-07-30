@@ -930,6 +930,15 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
         }
         composable("sports") { SportsHubScreen(graph, nav) }
+        composable("sportsFinder") { tv.enktel.app.ui.sports.ChannelFinderScreen(graph, nav) }
+        composable("matchCenter?event={event}&title={title}") { back ->
+            tv.enktel.app.ui.sports.MatchCenterScreen(
+                graph, nav,
+                eventId = back.arguments?.getString("event").orEmpty(),
+                fallbackTitle = back.arguments?.getString("title").orEmpty(),
+            )
+        }
+        composable("systemMonitor") { tv.enktel.app.ui.screens.SystemMonitorScreen(graph, nav) }
         composable("watchlist") { WatchlistScreen(graph, nav) }
         composable("multi?left={left}&right={right}") { back ->
             MultiViewScreen(

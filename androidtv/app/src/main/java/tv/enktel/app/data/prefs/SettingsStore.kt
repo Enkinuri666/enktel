@@ -133,6 +133,16 @@ class SettingsStore(private val context: Context) {
     private val DOWNLOAD_ENGINE = stringPreferencesKey("download_engine")
     private val DOWNLOAD_FOLDER_URI = stringPreferencesKey("download_folder_uri")
 
+    // v1.34.0 — Netflix-style hover auto-trailers on the Movies/Series grids.
+    // Needs a TMDB API key (the trailer id comes from the same enrichment
+    // pass); inert without one, so leaving it on costs nothing.
+    private val AUTO_TRAILERS = booleanPreferencesKey("auto_trailers")
+    // v1.34.0 — Sports: live in-play data, official broadcast schedules and
+    // highlights come from TheSportsDB. Off by default (extra network chatter),
+    // shares the existing scoresEnabled toggle's spirit but is separate so a
+    // user can have live scores without the heavier match-centre polling.
+    private val MATCH_CENTER = booleanPreferencesKey("match_center_enabled")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -233,6 +243,10 @@ class SettingsStore(private val context: Context) {
     val downloadFolderUri: Flow<String> = context.dataStore.data.map { it[DOWNLOAD_FOLDER_URI].orEmpty() }
     suspend fun setDownloadFolderUri(v: String) = context.dataStore.edit { it[DOWNLOAD_FOLDER_URI] = v.trim() }
     suspend fun downloadFolderUriNow(): String = downloadFolderUri.first()
+    val autoTrailersEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTO_TRAILERS] ?: true }
+    suspend fun setAutoTrailersEnabled(v: Boolean) = context.dataStore.edit { it[AUTO_TRAILERS] = v }
+    val matchCenterEnabled: Flow<Boolean> = context.dataStore.data.map { it[MATCH_CENTER] ?: true }
+    suspend fun setMatchCenterEnabled(v: Boolean) = context.dataStore.edit { it[MATCH_CENTER] = v }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }

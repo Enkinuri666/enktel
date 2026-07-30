@@ -98,7 +98,13 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             if (running.isNotEmpty()) {
                 item { GroupHeader("In progress · ${running.size}") }
                 items(running, key = { it.id }) { entry ->
-                    DownloadRow(entry, onPlay = null, onDelete = { confirmDelete = entry })
+                    DownloadRow(
+                        entry,
+                        onPlay = null,
+                        onDelete = { confirmDelete = entry },
+                        onPause = { graph.downloads.pause(entry.id) },
+                        onResume = { graph.downloads.resume(entry.id) },
+                    )
                 }
                 item { Spacer(Modifier.height(6.dp)) }
             }
@@ -175,6 +181,8 @@ private fun DownloadRow(
     entry: DownloadEntry,
     onPlay: (() -> Unit)?,
     onDelete: () -> Unit,
+    onPause: (() -> Unit)? = null,
+    onResume: (() -> Unit)? = null,
 ) {
     Row(
         Modifier
@@ -226,13 +234,13 @@ private fun DownloadRow(
             val doneText = entry.downloadedBytes.humanBytes()
             val statusLine = when (status) {
                 "DONE" -> "Saved · $sizeText"
-                "FAILED" -> "Failed · ${entry.errorMessage.ifBlank { "tap to remove" }}"
+                "FAILED" -> "Failed · ${entry.errorMessage.ifBlank { "tap ↻ to resume" }}"
                 "RUNNING" -> "Downloading · $doneText / $sizeText"
-                "PAUSED" -> "Paused · $doneText / $sizeText"
+                "PAUSED" -> "Paused · $doneText / $sizeText · ▶ resumes here"
                 else -> "Queued · $sizeText"
             }
             Text(statusLine, color = statusColor, fontSize = 11.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (status == "RUNNING" || status == "PAUSED" || status == "QUEUED") {
                 Spacer(Modifier.height(6.dp))
                 ProgressBarThin(entry.progressPct / 100f, Modifier.fillMaxWidth())
@@ -246,8 +254,27 @@ private fun DownloadRow(
                     accent = true,
                     onClick = onPlay,
                 )
+                Spacer(Modifier.height(6.dp))
             }
-            Spacer(Modifier.height(6.dp))
+            // In-flight rows get a transport control instead: pause holds the
+            // bytes already on disk, resume picks up from that exact offset.
+            when {
+                entry.status == "RUNNING" || entry.status == "QUEUED" ->
+                    onPause?.let {
+                        FocusButton(text = "⏸", onClick = it)
+                        Spacer(Modifier.height(6.dp))
+                    }
+                entry.status == "PAUSED" ->
+                    onResume?.let {
+                        FocusButton(text = "▶", accent = true, onClick = it)
+                        Spacer(Modifier.height(6.dp))
+                    }
+                entry.status == "FAILED" ->
+                    onResume?.let {
+                        FocusButton(text = "↻", accent = true, onClick = it)
+                        Spacer(Modifier.height(6.dp))
+                    }
+            }
             FocusButton(text = "✕", onClick = onDelete)
         }
     }

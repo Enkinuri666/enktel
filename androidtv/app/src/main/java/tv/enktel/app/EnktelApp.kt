@@ -59,6 +59,7 @@ class AppGraph(app: Application) {
     val watchlist = WatchlistRepository(db.watchlistDao())
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
+    val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
     val downloads = DownloadHub(app, db.downloadDao(), settings, http)
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 
@@ -92,6 +93,9 @@ class EnktelApp : Application() {
         graph = AppGraph(this)
         tv.enktel.app.data.net.ThermalGuard.install(this)
         tv.enktel.app.data.net.NetworkClass.install(this)
+        // Hands the monitor an application Context. It doesn't sample until the
+        // System Monitor screen asks it to — see SystemMonitor.start().
+        tv.enktel.app.data.net.SystemMonitor.install(this)
         tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this)
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = getSystemService(NotificationManager::class.java)

@@ -33,30 +33,81 @@ import kotlinx.coroutines.launch
 class FocusedPosterState internal constructor(
     private val scope: CoroutineScope,
     private val dwellMs: Long = 220L,
+    /**
+     * v1.34.0 — auto-trailers dwell far longer than the backdrop does. Nobody
+     * wants audio-less video flickering under every item a remote sweeps past,
+     * so a title has to hold focus for most of a second before we'll even ask
+     * TMDB whether it has a trailer.
+     */
+    private val trailerDwellMs: Long = 900L,
 ) {
     var currentUrl: String? by mutableStateOf(null)
         private set
 
+    /**
+     * The title that has held focus long enough to earn a background trailer,
+     * or null when nothing qualifies (no TMDB id, focus lost, still dwelling).
+     */
+    var trailerTarget: TrailerTarget? by mutableStateOf(null)
+        private set
+
+    /** Identity of a focused VOD item, enough to look up its trailer. */
+    data class TrailerTarget(val tmdbId: Long, val isSeries: Boolean, val title: String)
+
     private var pending: Job? = null
+    private var pendingTrailer: Job? = null
 
     /**
      * Call from a focus listener. On focus gained, publishes [url] after
      * [dwellMs] of continuous focus. On focus lost, cancels a pending
      * publish (but keeps the last committed URL visible — the brief's
      * "keep the previous backdrop until something else earns it" feel).
+     *
+     * [tmdbId] drives the hover auto-trailer and is optional: poster cards for
+     * content we have no TMDB id for (live channels, un-enriched catalogues)
+     * simply never trigger one.
      */
-    fun report(focused: Boolean, url: String?) {
+    fun report(
+        focused: Boolean,
+        url: String?,
+        tmdbId: Long = 0,
+        isSeries: Boolean = false,
+        title: String = "",
+    ) {
         pending?.cancel()
-        if (!focused) return
-        if (url.isNullOrBlank()) return
-        pending = scope.launch {
-            delay(dwellMs)
-            currentUrl = url
+        pendingTrailer?.cancel()
+        if (!focused) {
+            // Losing focus kills the trailer immediately — the backdrop image
+            // lingers, but video that outlives its poster reads as a bug.
+            trailerTarget = null
+            return
         }
+        if (url.isNullOrBlank() && tmdbId <= 0) return
+        if (!url.isNullOrBlank()) {
+            pending = scope.launch {
+                delay(dwellMs)
+                currentUrl = url
+            }
+        }
+        if (tmdbId > 0) {
+            pendingTrailer = scope.launch {
+                delay(trailerDwellMs)
+                trailerTarget = TrailerTarget(tmdbId, isSeries, title)
+            }
+        } else {
+            trailerTarget = null
+        }
+    }
+
+    /** Stop any playing trailer — used when a screen loses focus or a dialog opens. */
+    fun clearTrailer() {
+        pendingTrailer?.cancel()
+        trailerTarget = null
     }
 
     fun dispose() {
         pending?.cancel()
+        pendingTrailer?.cancel()
         scope.cancel()
     }
 }

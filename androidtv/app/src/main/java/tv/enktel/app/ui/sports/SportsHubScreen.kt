@@ -83,8 +83,14 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var teamFilterOn by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val matchCenterEnabled by graph.settings.matchCenterEnabled.collectAsStateWithLifecycle(initialValue = true)
     var liveScores by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
     val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+    // Official broadcast schedule + published highlight packages. Both come
+    // from TheSportsDB and are independent of the user's EPG, so they still
+    // populate on a playlist with no guide data at all.
+    var todaysFixtures by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
+    var highlightClips by remember { mutableStateOf<List<tv.enktel.app.data.repo.HighlightClip>>(emptyList()) }
 
     LaunchedEffect(refreshTick, sportFilter) {
         loading = true; loadError = null
@@ -101,6 +107,21 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         liveScores = try { if (scoresEnabled) graph.scores.live() else emptyList() }
         catch (ce: kotlinx.coroutines.CancellationException) { throw ce }
         catch (_: Throwable) { emptyList() }
+    }
+    LaunchedEffect(matchCenterEnabled, sportFilter, refreshTick) {
+        if (!matchCenterEnabled) {
+            todaysFixtures = emptyList(); highlightClips = emptyList()
+            return@LaunchedEffect
+        }
+        val sportQuery = sportFilter?.let { sportsDbName(it) }.orEmpty()
+        todaysFixtures = try {
+            graph.scores.scheduleForDay(System.currentTimeMillis(), sportQuery)
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (_: Throwable) { emptyList() }
+        highlightClips = try {
+            graph.scores.highlights(days = 2, sport = sportQuery)
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (_: Throwable) { emptyList() }
     }
 
     val allSports = remember(events) {
@@ -136,6 +157,10 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             Badge("${finished.size} REPLAYS", EnktelOk)
                         }
                     }
+                    // Smart Channel Finder: the "it kicks off in two minutes and
+                    // I can't find the channel" escape hatch.
+                    FocusButton("🔎 On now", accent = true, onClick = { nav.navigate("sportsFinder") })
+                    Spacer(Modifier.width(6.dp))
                     if (followed.isNotEmpty()) {
                         FocusButton(
                             if (teamFilterOn) "★ mine" else "★",
@@ -230,6 +255,11 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     items(liveScores, key = { "${it.home}-${it.away}-${it.league}" }) { s ->
                         LiveScoreChip(
                             score = s,
+                            // A scoreline we can identify opens the Match Centre;
+                            // one we can't still tunes to a matching channel.
+                            onStats = s.eventId.takeIf { it.isNotBlank() && matchCenterEnabled }?.let { id ->
+                                { nav.navigate(matchCenterRoute(id, "${s.home} v ${s.away}")) }
+                            },
                             onTap = {
                                 // Fuzzy channel match by team names appearing in channel titles.
                                 scope.launch {
@@ -252,14 +282,69 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+        // Official broadcast guide — the published schedule for today, straight
+        // from TheSportsDB rather than the user's EPG. It answers "what's on and
+        // where do I tune in" even for fixtures the playlist doesn't carry, and
+        // each row opens the Match Centre where the broadcaster list lives.
+        if (matchCenterEnabled && todaysFixtures.isNotEmpty()) {
+            item { SectionHeader("📡 OFFICIAL SCHEDULE — TODAY", EnktelBlue, padHoriz) }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = padHoriz),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(
+                        todaysFixtures.take(40),
+                        key = { "${it.eventId}-${it.home}-${it.away}" },
+                    ) { f ->
+                        FixtureChip(
+                            fixture = f,
+                            onTap = {
+                                if (f.eventId.isNotBlank()) {
+                                    nav.navigate(matchCenterRoute(f.eventId, "${f.home} v ${f.away}"))
+                                } else {
+                                    toaster.info("No match data published for that fixture yet")
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        // Published highlight packages for fixtures that have already finished.
+        if (matchCenterEnabled && highlightClips.isNotEmpty()) {
+            item { SectionHeader("🎞 HIGHLIGHTS — LATEST PACKAGES", EnktelOk, padHoriz) }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = padHoriz),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(highlightClips.take(30), key = { it.videoUrl }) { clip ->
+                        HighlightCard(
+                            clip = clip,
+                            onPlay = { openHighlight(context, nav, toaster, clip.videoUrl, clip.title) },
+                        )
+                    }
+                }
+            }
+        }
         if (live.isNotEmpty()) {
             item { SectionHeader("🔴 LIVE NOW", EnktelLive, padHoriz) }
             items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
                 val matchedScore = try { if (scoresEnabled) graph.scores.matchByTitle(ev.title, liveScores) else null } catch (_: Throwable) { null }
-                LiveEventCard(ev, score = matchedScore, padHoriz = padHoriz, onTap = {
-                    toaster.info("Tuning to ${ev.channel.name}")
-                    nav.navigate("live?ch=${ev.channel.key}")
-                })
+                LiveEventCard(
+                    ev, score = matchedScore, padHoriz = padHoriz,
+                    onTap = {
+                        toaster.info("Tuning to ${ev.channel.name}")
+                        nav.navigate("live?ch=${ev.channel.key}")
+                    },
+                    // Only offer the Match Centre when we actually resolved this
+                    // programme to a real fixture — an empty stats screen is
+                    // worse than no button.
+                    onStats = matchedScore?.eventId
+                        ?.takeIf { it.isNotBlank() && matchCenterEnabled }
+                        ?.let { id -> { nav.navigate(matchCenterRoute(id, ev.title)) } },
+                )
             }
         }
         if (upcoming.isNotEmpty()) {
@@ -299,7 +384,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         val highlights = finished.filter { nowMs - it.endMs <= highlightWindow }
         val olderReplays = finished.filter { nowMs - it.endMs > highlightWindow }
         if (highlights.isNotEmpty()) {
-            item { SectionHeader("🎬 HIGHLIGHTS — LAST 6 HOURS", EnktelOk, padHoriz) }
+            item { SectionHeader("⏪ CATCH-UP — FINISHED IN THE LAST 6 HOURS", EnktelOk, padHoriz) }
             items(highlights, key = { "H-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
@@ -361,6 +446,7 @@ private fun LiveEventCard(
     score: tv.enktel.app.data.repo.LiveScore?,
     padHoriz: androidx.compose.ui.unit.Dp,
     onTap: () -> Unit,
+    onStats: (() -> Unit)? = null,
 ) {
     val now = System.currentTimeMillis()
     val frac = ((now - ev.startMs).toFloat() / (ev.endMs - ev.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
@@ -387,6 +473,10 @@ private fun LiveEventCard(
                     Spacer(Modifier.height(4.dp))
                     Text(ev.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(ev.channel.name, color = EnktelTextDim, fontSize = 11.sp)
+                }
+                if (onStats != null) {
+                    FocusButton("📊", onClick = onStats)
+                    Spacer(Modifier.width(8.dp))
                 }
                 Text("▶", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
@@ -508,7 +598,11 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
 
 /** Compact live-score chip for the top-of-Sports ticker: HOME 2 - 1 AWAY · 78'. */
 @Composable
-private fun LiveScoreChip(score: tv.enktel.app.data.repo.LiveScore, onTap: () -> Unit) {
+private fun LiveScoreChip(
+    score: tv.enktel.app.data.repo.LiveScore,
+    onTap: () -> Unit,
+    onStats: (() -> Unit)? = null,
+) {
     Row(
         Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -547,7 +641,107 @@ private fun LiveScoreChip(score: tv.enktel.app.data.repo.LiveScore, onTap: () ->
             Spacer(Modifier.width(10.dp))
             Text(score.minute, color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
+        if (onStats != null) {
+            Spacer(Modifier.width(10.dp))
+            FocusButton("📊", onClick = onStats)
+        }
     }
+}
+
+/**
+ * One fixture from the official schedule. Deliberately compact — this row is a
+ * "what's on today" strip, and the detail lives one tap away in the Match
+ * Centre alongside the broadcaster list.
+ */
+@Composable
+private fun FixtureChip(fixture: tv.enktel.app.data.repo.LiveScore, onTap: () -> Unit) {
+    Column(
+        Modifier
+            .widthIn(min = 150.dp, max = 210.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(EnktelSurfaceHigh.copy(0.5f))
+            .border(1.dp, EnktelBlue.copy(0.3f), RoundedCornerShape(12.dp))
+            .tapClick(onTap)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (fixture.minute.isNotBlank()) Badge(fixture.minute, EnktelBlue)
+            if (fixture.sport.isNotBlank()) Badge(fixture.sport, EnktelTextDim)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (fixture.away.isBlank()) fixture.home else "${fixture.home} v ${fixture.away}",
+            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        if (fixture.league.isNotBlank()) {
+            Text(
+                fixture.league, color = EnktelTextDim, fontSize = 11.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** A published highlights package: thumbnail, fixture, and a play affordance. */
+@Composable
+private fun HighlightCard(clip: tv.enktel.app.data.repo.HighlightClip, onPlay: () -> Unit) {
+    Column(
+        Modifier
+            .width(220.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(EnktelSurface.copy(0.6f))
+            .tapClick(onPlay),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().height(124.dp).background(EnktelSurfaceHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (clip.thumb.isNotBlank()) {
+                AsyncImage(
+                    model = clip.thumb, contentDescription = clip.title,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Text("▶", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
+        }
+        Column(Modifier.padding(10.dp)) {
+            Text(
+                clip.title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+            val sub = listOf(clip.league, clip.sport).filter { it.isNotBlank() }.joinToString(" · ")
+            if (sub.isNotBlank()) {
+                Text(sub, color = EnktelTextDim, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/**
+ * Maps our internal sport tags onto the names TheSportsDB uses in its `s=`
+ * query parameter. Anything we don't have a mapping for returns blank, which
+ * the API reads as "all sports" — a wider result set is a better failure than
+ * an empty one.
+ */
+private fun sportsDbName(sport: String): String = when (sport) {
+    "Football" -> "Soccer"
+    "American Football" -> "American Football"
+    "Basketball" -> "Basketball"
+    "Baseball" -> "Baseball"
+    "Hockey" -> "Ice Hockey"
+    "MMA/Boxing", "Combat" -> "Fighting"
+    "Tennis" -> "Tennis"
+    "Cricket" -> "Cricket"
+    "Motor Racing" -> "Motorsport"
+    "Cycling" -> "Cycling"
+    "Golf" -> "Golf"
+    "Rugby" -> "Rugby"
+    "Volleyball" -> "Volleyball"
+    "Handball" -> "Handball"
+    "Esports" -> "ESports"
+    else -> ""
 }
 
 @Composable

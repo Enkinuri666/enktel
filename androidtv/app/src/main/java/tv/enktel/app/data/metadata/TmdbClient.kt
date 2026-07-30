@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tv.enktel.app.data.arr
+import tv.enktel.app.data.bool
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.str
@@ -49,6 +50,56 @@ class TmdbClient(
 
     suspend fun movie(tmdbId: Long): Enrichment? = fetch("movie", tmdbId, isSeries = false)
     suspend fun series(tmdbId: Long): Enrichment? = fetch("tv", tmdbId, isSeries = true)
+
+    /**
+     * YouTube video id of the best trailer for [tmdbId], or null when TMDB has
+     * none. Powers the hover auto-trailer on poster grids.
+     *
+     * Preference order is "what a viewer would call *the* trailer": an official
+     * trailer first, then any trailer, then a teaser, then any YouTube clip at
+     * all. English is tried first and then the unfiltered list, because a lot of
+     * non-US catalogue titles only carry a trailer in their original language.
+     */
+    suspend fun trailerKey(tmdbId: Long, isSeries: Boolean): String? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
+        val kind = if (isSeries) "tv" else "movie"
+        pickTrailer(videos(kind, tmdbId, LANG)) ?: pickTrailer(videos(kind, tmdbId, null))
+    }
+
+    private fun videos(kind: String, tmdbId: Long, language: String?): List<JsonElement> {
+        val useBearer = apiKey.length > 60
+        val params = buildList {
+            if (language != null) add("language=$language")
+            if (!useBearer) add("api_key=$apiKey")
+        }
+        val base = "$BASE/$kind/$tmdbId/videos" + if (params.isEmpty()) "" else "?" + params.joinToString("&")
+        val req = Request.Builder()
+            .url(base)
+            .apply { if (useBearer) header("Authorization", "Bearer $apiKey") }
+            .build()
+        return try {
+            http.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return emptyList()
+                val json = LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                (json as? JsonObject)?.get("results").arr().orEmpty()
+            }
+        } catch (_: Throwable) { emptyList() }
+    }
+
+    private fun pickTrailer(results: List<JsonElement>): String? {
+        if (results.isEmpty()) return null
+        val youtube = results.filter { it.str("site").equals("YouTube", ignoreCase = true) }
+        if (youtube.isEmpty()) return null
+        fun ofType(type: String, officialOnly: Boolean) = youtube.firstOrNull {
+            it.str("type").equals(type, ignoreCase = true) &&
+                (!officialOnly || it.bool("official"))
+        }?.str("key")
+        return ofType("Trailer", officialOnly = true)
+            ?: ofType("Trailer", officialOnly = false)
+            ?: ofType("Teaser", officialOnly = false)
+            ?: ofType("Clip", officialOnly = false)
+            ?: youtube.firstOrNull()?.str("key")
+    }
 
     /**
      * Returns the first YouTube video key from TMDB `/movie/{id}/videos` (or

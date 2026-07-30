@@ -197,6 +197,35 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+/**
+ * Shared backdrop shell for the Movies and Series browsers.
+ *
+ * Installs the [tv.enktel.app.ui.components.FocusedPosterState] every
+ * [PosterCard] reports into, then layers, back to front:
+ *   1. the Ambilight colour wash pulled from the focused poster,
+ *   2. the hover auto-trailer for that poster once focus settles,
+ *   3. the grid itself.
+ *
+ * Both backdrop layers sit below the content in Z order and take no input, so
+ * D-pad focus and touch behave exactly as they did before.
+ */
+@Composable
+private fun VodBrowseShell(graph: AppGraph, content: @Composable () -> Unit) {
+    val focusedPoster = tv.enktel.app.ui.components.rememberFocusedPosterState()
+    androidx.compose.runtime.CompositionLocalProvider(
+        tv.enktel.app.ui.components.LocalFocusedPoster provides focusedPoster,
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            tv.enktel.app.ui.components.AmbilightGlow(
+                imageUrl = focusedPoster.currentUrl,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+            tv.enktel.app.ui.components.AutoTrailerLayer(graph)
+            content()
+        }
+    }
+}
+
 @Composable
 fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
@@ -250,41 +279,43 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
     val cellSize = if (narrow) 104.dp else 118.dp
 
-    if (narrow) {
-        Column(Modifier.fillMaxSize()) {
-            CategoryChipRow(
+    VodBrowseShell(graph) {
+        if (narrow) {
+            Column(Modifier.fillMaxSize()) {
+                CategoryChipRow(
+                    "Movies",
+                    categories.map { it.categoryId to it.name },
+                    cat,
+                    isLocked = gate.isLocked,
+                    onLocked = gate.prompt,
+                ) { cat = it }
+                MoviesGrid(
+                    movies = movies, categories = categories, cat = cat, nav = nav,
+                    cellSize = cellSize, sort = sort, genres = genres,
+                    genreFilter = genreFilter, onGenre = { genreFilter = it },
+                    decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                    onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                    query = query, onQuery = { query = it },
+                )
+            }
+        } else Row(Modifier.fillMaxSize()) {
+            CategorySidebar(
                 "Movies",
                 categories.map { it.categoryId to it.name },
                 cat,
                 isLocked = gate.isLocked,
                 onLocked = gate.prompt,
             ) { cat = it }
-            MoviesGrid(
-                movies = movies, categories = categories, cat = cat, nav = nav,
-                cellSize = cellSize, sort = sort, genres = genres,
-                genreFilter = genreFilter, onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
-                onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                query = query, onQuery = { query = it },
-            )
-        }
-    } else Row(Modifier.fillMaxSize()) {
-        CategorySidebar(
-            "Movies",
-            categories.map { it.categoryId to it.name },
-            cat,
-            isLocked = gate.isLocked,
-            onLocked = gate.prompt,
-        ) { cat = it }
-        Column(Modifier.fillMaxSize()) {
-            MoviesGrid(
-                movies = movies, categories = categories, cat = cat, nav = nav,
-                cellSize = cellSize, sort = sort, genres = genres,
-                genreFilter = genreFilter, onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
-                onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                query = query, onQuery = { query = it },
-            )
+            Column(Modifier.fillMaxSize()) {
+                MoviesGrid(
+                    movies = movies, categories = categories, cat = cat, nav = nav,
+                    cellSize = cellSize, sort = sort, genres = genres,
+                    genreFilter = genreFilter, onGenre = { genreFilter = it },
+                    decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                    onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                    query = query, onQuery = { query = it },
+                )
+            }
         }
     }
     gate.Dialog()
@@ -352,6 +383,10 @@ private fun MoviesGrid(
                         imageUrl = m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else if (m.year > 0) "${m.year}" else "",
                         onClick = { nav.navigate("movie/${m.key}") },
+                        // Enriched rows carry a TMDB id, which is all the hover
+                        // auto-trailer needs to find the clip.
+                        tmdbId = m.tmdbId,
+                        isSeries = false,
                     )
                 }
             }
@@ -423,6 +458,8 @@ private fun SeriesGrid(
                             if (s.rating > 0) { if (isNotEmpty()) append(" · "); append("★ ${"%.1f".format(s.rating)}") }
                         },
                         onClick = { nav.navigate("seriesDetails/${s.key}") },
+                        tmdbId = s.tmdbId,
+                        isSeries = true,
                     )
                 }
             }
@@ -474,41 +511,43 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
     val cellSize = if (narrow) 104.dp else 118.dp
 
-    if (narrow) {
-        Column(Modifier.fillMaxSize()) {
-            CategoryChipRow(
+    VodBrowseShell(graph) {
+        if (narrow) {
+            Column(Modifier.fillMaxSize()) {
+                CategoryChipRow(
+                    "Series",
+                    categories.map { it.categoryId to it.name },
+                    cat,
+                    isLocked = gate.isLocked,
+                    onLocked = gate.prompt,
+                ) { cat = it }
+                SeriesGrid(
+                    series = series, categories = categories, cat = cat, nav = nav,
+                    cellSize = cellSize, sort = sort, genres = genres,
+                    genreFilter = genreFilter, onGenre = { genreFilter = it },
+                    decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                    onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                    query = query, onQuery = { query = it },
+                )
+            }
+        } else Row(Modifier.fillMaxSize()) {
+            CategorySidebar(
                 "Series",
                 categories.map { it.categoryId to it.name },
                 cat,
                 isLocked = gate.isLocked,
                 onLocked = gate.prompt,
             ) { cat = it }
-            SeriesGrid(
-                series = series, categories = categories, cat = cat, nav = nav,
-                cellSize = cellSize, sort = sort, genres = genres,
-                genreFilter = genreFilter, onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
-                onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                query = query, onQuery = { query = it },
-            )
-        }
-    } else Row(Modifier.fillMaxSize()) {
-        CategorySidebar(
-            "Series",
-            categories.map { it.categoryId to it.name },
-            cat,
-            isLocked = gate.isLocked,
-            onLocked = gate.prompt,
-        ) { cat = it }
-        Column(Modifier.fillMaxSize()) {
-            SeriesGrid(
-                series = series, categories = categories, cat = cat, nav = nav,
-                cellSize = cellSize, sort = sort, genres = genres,
-                genreFilter = genreFilter, onGenre = { genreFilter = it },
-                decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
-                onSort = { scope.launch { graph.settings.setVodSort(it) } },
-                query = query, onQuery = { query = it },
-            )
+            Column(Modifier.fillMaxSize()) {
+                SeriesGrid(
+                    series = series, categories = categories, cat = cat, nav = nav,
+                    cellSize = cellSize, sort = sort, genres = genres,
+                    genreFilter = genreFilter, onGenre = { genreFilter = it },
+                    decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
+                    onSort = { scope.launch { graph.settings.setVodSort(it) } },
+                    query = query, onQuery = { query = it },
+                )
+            }
         }
     }
     gate.Dialog()

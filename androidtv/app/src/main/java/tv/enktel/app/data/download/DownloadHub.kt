@@ -83,6 +83,28 @@ class DownloadHub(
     init {
         ensureNotificationChannel()
         registerCompletionReceiver()
+        reconcileOnStart()
+    }
+
+    /**
+     * Downloads don't survive the process dying (app swiped away, box
+     * rebooted, low-memory kill). Rows left claiming RUNNING/QUEUED would
+     * otherwise sit there with a frozen progress bar and no way back, so on
+     * every start we move them to PAUSED — the bytes and the saved segment
+     * offsets are still on disk, so ▶ resumes them exactly where they stopped.
+     */
+    private fun reconcileOnStart() {
+        scope.launch {
+            try {
+                dao.inFlight().forEach { entry ->
+                    dao.markPaused(
+                        entry.id, entry.resumeState, entry.progressPct,
+                        entry.downloadedBytes, entry.sizeBytes,
+                    )
+                }
+                refreshTotals()
+            } catch (_: Throwable) { /* best effort */ }
+        }
     }
 
     /** Enqueue a movie or episode. Idempotent per [entry.id]. */
@@ -109,6 +131,82 @@ class DownloadHub(
             }
         }
     }
+
+    // ---- Pause / resume / retry --------------------------------------------
+
+    /**
+     * Stop a download but keep every byte already on disk.
+     *
+     * The parallel engine stops its range workers cleanly and flushes their
+     * offsets, so resuming continues mid-file. The platform DownloadManager has
+     * no pause API at all — `remove()` is the only stop, and it deletes the
+     * partial file — so a paused system download is handed to the parallel
+     * engine, which restarts it once and is resumable from then on.
+     */
+    fun pause(entryId: String) {
+        scope.launch {
+            val entry = dao.byId(entryId) ?: return@launch
+            if (entry.status == "DONE") return@launch
+
+            val parHandle = synchronized(jobsLock) { parallelJobs[entryId] }
+            if (parHandle != null) {
+                // markPaused lands via the downloader's onPaused callback once
+                // the workers have flushed their offsets.
+                parHandle.pause()
+                return@launch
+            }
+
+            val sysId = synchronized(jobsLock) { sysJobs.remove(entryId) }
+            if (sysId != null) {
+                runCatching { dm.remove(sysId) }
+                runCatching { if (entry.filePath.isNotBlank()) File(entry.filePath).delete() }
+                dao.setEngine(entryId, "parallel")
+                dao.markPaused(entryId, "", 0, 0, entry.sizeBytes)
+            } else {
+                // Nothing in flight (e.g. already reconciled at start-up).
+                dao.markPaused(entryId, entry.resumeState, entry.progressPct, entry.downloadedBytes, entry.sizeBytes)
+            }
+            refreshTotals()
+        }
+    }
+
+    /** Restart a paused or failed download, continuing from the saved offsets. */
+    fun resume(entryId: String) {
+        scope.launch {
+            val entry = dao.byId(entryId) ?: return@launch
+            if (entry.status == "DONE") return@launch
+            val alreadyRunning = synchronized(jobsLock) {
+                parallelJobs.containsKey(entryId) || sysJobs.containsKey(entryId)
+            }
+            if (alreadyRunning) return@launch
+
+            val folderUri = settings.downloadFolderUriNow()
+            val useSaf = folderUri.isNotBlank() && folderUri.startsWith("content://")
+            if (useSaf && entry.filePath.startsWith("content://")) {
+                dao.upsert(entry.copy(status = "RUNNING", errorMessage = ""))
+                val doc = runCatching { DocumentFile.fromSingleUri(app, entry.filePath.toUri()) }.getOrNull()
+                if (doc != null && doc.canWrite()) {
+                    launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc), entry.resumeState)
+                    return@launch
+                }
+                // The picked file vanished (folder permission revoked, user
+                // deleted it) — fall through and start a fresh one.
+                enqueueParallelSaf(entry.copy(resumeState = ""), folderUri)
+                return@launch
+            }
+            val outFile = if (entry.filePath.isNotBlank() && !entry.filePath.startsWith("content://")) {
+                File(entry.filePath)
+            } else plannedFileFor(entry)
+            outFile.parentFile?.mkdirs()
+            // A resume blob is only meaningful while its partial file is intact.
+            val state = if (outFile.exists()) entry.resumeState else ""
+            dao.upsert(entry.copy(status = "RUNNING", errorMessage = "", filePath = outFile.absolutePath))
+            launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile), state)
+        }
+    }
+
+    /** Failed downloads retry from wherever they got to, same as a resume. */
+    fun retry(entryId: String) = resume(entryId)
 
     /** Enqueue many entries at once — used by "Download season" and
      *  "Download entire series". Skips items already saved offline, and
@@ -149,7 +247,7 @@ class DownloadHub(
             return
         }
         synchronized(jobsLock) { sysJobs[entry.id] = sysId }
-        dao.upsert(entry.copy(status = "QUEUED", filePath = outFile.absolutePath))
+        dao.upsert(entry.copy(status = "QUEUED", engine = "system", filePath = outFile.absolutePath))
         startPolling()
     }
 
@@ -158,8 +256,8 @@ class DownloadHub(
     private suspend fun enqueueParallelFile(entry: DownloadEntry) {
         val outFile = plannedFileFor(entry)
         outFile.parentFile?.mkdirs()
-        dao.upsert(entry.copy(status = "RUNNING", filePath = outFile.absolutePath))
-        launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile))
+        dao.upsert(entry.copy(status = "RUNNING", engine = "parallel", filePath = outFile.absolutePath))
+        launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile), entry.resumeState)
     }
 
     // ---- Parallel engine (SAF target) --------------------------------------
@@ -176,8 +274,8 @@ class DownloadHub(
             dao.upsert(entry.copy(status = "FAILED", errorMessage = "Could not create file in chosen folder"))
             return
         }
-        dao.upsert(entry.copy(status = "RUNNING", filePath = doc.uri.toString()))
-        launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc))
+        dao.upsert(entry.copy(status = "RUNNING", engine = "parallel", filePath = doc.uri.toString()))
+        launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc), entry.resumeState)
     }
 
     private fun createSafFile(root: DocumentFile, entry: DownloadEntry): DocumentFile? {
@@ -207,23 +305,33 @@ class DownloadHub(
     private fun orCreateSub(parent: DocumentFile, name: String): DocumentFile? =
         parent.findFile(name)?.takeIf { it.isDirectory } ?: parent.createDirectory(name)
 
-    private fun launchParallel(entry: DownloadEntry, target: ParallelDownloader.Target) {
+    private fun launchParallel(
+        entry: DownloadEntry,
+        target: ParallelDownloader.Target,
+        resumeState: String = "",
+    ) {
         val id = entry.id
         val handle = parallel.start(
             url = entry.sourceUrl,
             target = target,
             userAgent = UA,
-            onProgress = { downloaded, total ->
+            resumeState = resumeState,
+            onProgress = { downloaded, total, state ->
                 scope.launch {
                     val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
-                    dao.updateProgress(id, "RUNNING", pct, downloaded, total)
+                    // Persisting the segment offsets alongside the progress is
+                    // what makes an interrupted download resumable rather than
+                    // restartable — it costs one extra column on a write we
+                    // were already doing.
+                    dao.updateResumeState(id, state, pct, downloaded, total)
                     if (pct % 20 == 0) refreshTotals()
                 }
             },
             onDone = { path ->
                 scope.launch {
                     val e = dao.byId(id) ?: return@launch
-                    dao.updateProgress(id, "DONE", 100, e.sizeBytes.coerceAtLeast(e.downloadedBytes), e.sizeBytes.coerceAtLeast(e.downloadedBytes))
+                    val bytes = e.sizeBytes.coerceAtLeast(e.downloadedBytes)
+                    dao.updateResumeState(id, "", 100, bytes, bytes)
                     dao.markDone(id, path)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
                     refreshTotals()
@@ -233,6 +341,14 @@ class DownloadHub(
                 scope.launch {
                     dao.markFailed(id, msg)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                }
+            },
+            onPaused = { downloaded, total, state ->
+                scope.launch {
+                    val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
+                    dao.markPaused(id, state, pct, downloaded, total)
+                    synchronized(jobsLock) { parallelJobs.remove(id) }
+                    refreshTotals()
                 }
             },
         )

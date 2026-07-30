@@ -162,6 +162,10 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             imageUrl = backdropUrl,
             modifier = Modifier.align(Alignment.TopCenter),
         )
+        // Hover auto-trailer for whichever rail poster the user has settled on.
+        // Sits above the colour wash but below the rails, and no-ops entirely
+        // for cards without a TMDB id (continue-watching, live channels).
+        tv.enktel.app.ui.components.AutoTrailerLayer(graph)
     LazyColumn(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(28.dp),
@@ -272,7 +276,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         ageDays < 7 -> "${ageDays}d ago"
                         else -> if (m.year > 0) "${m.year}" else ""
                     }
-                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") })
+                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -317,7 +321,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                     key = { it.key },
                 ) { m ->
                     PosterCard(m.name, m.poster, subtitle = m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -331,7 +335,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.year > 0) "${m.year} · ${m.genre.take(18)}" else m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -345,7 +349,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.year > 0) "${m.year}" else m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -353,7 +357,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail("Because You Watched", becauseYouWatched, key = { it.key }) { m ->
                     PosterCard(m.name, m.poster, subtitle = m.genre.take(20),
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -366,7 +370,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                     key = { it.key },
                 ) { m ->
                     PosterCard(m.name, m.poster, subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -390,7 +394,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail("New This Week", newThisWeek, key = { it.key }) { m ->
                     PosterCard(m.name, m.poster, subtitle = "New",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -408,7 +412,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -422,7 +426,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -436,7 +440,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -450,7 +454,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -464,7 +468,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 ) { m ->
                     PosterCard(m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") })
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
