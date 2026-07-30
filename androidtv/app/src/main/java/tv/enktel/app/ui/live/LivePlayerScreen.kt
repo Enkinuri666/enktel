@@ -532,46 +532,55 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 }
             }
 
-            if (isLandscape) {
-                Row(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
-                    Box(
-                        Modifier
-                            .fillMaxHeight().weight(0.6f)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.Black)
-                            .tapClick { browseMode = false },
-                        content = videoContent,
-                    )
-                    BrowseDock(
-                        graph = graph, profileId = p.id, currentChannel = current,
-                        onTune = { tune(it) },
-                        onOpenGuide = { nav.navigate("guide") },
-                        onClose = { browseMode = false },
-                        modifier = Modifier.fillMaxHeight().weight(0.4f),
-                    )
-                }
-            } else {
-                Column(Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.Black)
-                            .aspectRatio(16f / 9f)
-                            .tapClick { browseMode = false },
-                        content = videoContent,
-                    )
-                    BrowseDock(
-                        graph = graph, profileId = p.id, currentChannel = current,
-                        onTune = { tune(it) },
-                        onOpenGuide = { nav.navigate("guide") },
-                        onClose = { browseMode = false },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
-                }
+            // v1.36.0 — the video/dock balance is the user's to set. It used to
+            // be a hardcoded 60/40 in landscape and an aspect-locked 16:9 pane in
+            // portrait; neither suited every device, and the portrait lock in
+            // particular left the dock squeezed on tall phones. Both are now a
+            // draggable split, persisted per orientation.
+            val splitScope = androidx.compose.runtime.rememberCoroutineScope()
+            val landSplit by graph.settings.browseSplitLandscape.collectAsStateWithLifecycle(initialValue = 0.6f)
+            val portSplit by graph.settings.browseSplitPortrait.collectAsStateWithLifecycle(initialValue = 0.42f)
+
+            val videoPane: @androidx.compose.runtime.Composable () -> Unit = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.Black)
+                        .tapClick { browseMode = false },
+                    content = videoContent,
+                )
             }
+            val dockPane: @androidx.compose.runtime.Composable () -> Unit = {
+                BrowseDock(
+                    graph = graph, profileId = p.id, currentChannel = current,
+                    onTune = { tune(it) },
+                    onOpenGuide = { nav.navigate("guide") },
+                    onClose = { browseMode = false },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            tv.enktel.app.ui.components.ResizableSplit(
+                fraction = if (isLandscape) landSplit else portSplit,
+                onFractionChange = { f ->
+                    splitScope.launch {
+                        if (isLandscape) graph.settings.setBrowseSplitLandscape(f)
+                        else graph.settings.setBrowseSplitPortrait(f)
+                    }
+                },
+                orientation = if (isLandscape) {
+                    androidx.compose.foundation.gestures.Orientation.Horizontal
+                } else {
+                    androidx.compose.foundation.gestures.Orientation.Vertical
+                },
+                modifier = Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg),
+                minFraction = 0.2f,
+                maxFraction = 0.85f,
+                first = videoPane,
+                second = dockPane,
+            )
         } else {
             AndroidView(
                 factory = { ctx ->
@@ -950,90 +959,106 @@ private fun InfoBar(
     val now = nowNext.now
     val next = nowNext.next
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 18.dp else 48.dp
-    val vPad = if (isMobile) 18.dp else 26.dp
+    val hPad = if (isMobile) 12.dp else 32.dp
+
+    // v1.36.0 — reworked from a full-bleed gradient slab into a floating glass
+    // card, and roughly halved in height.
+    //
+    // The old bar ran edge to edge with a 64 dp logo, 20 sp titles, a two-line
+    // synopsis, a progress bar, an "Up next" line and a control-hints line —
+    // on a phone in landscape that swallowed most of the lower third of the
+    // picture, which is the opposite of what an overlay should do. It also
+    // fought the floating action bar directly beneath it: one full-width
+    // gradient, one inset rounded card.
+    //
+    // What's kept is what someone glances at mid-programme: which channel,
+    // what's on, how far through, what's next. The synopsis is gone (it's a
+    // paragraph nobody reads from the sofa, and it's one tap away in the
+    // guide), the logo is 40 dp, and the times/progress/next collapse onto a
+    // single metadata line. Control hints only show on TV, where the D-pad
+    // mapping isn't discoverable; on touch they were stating the obvious.
     Column(
         modifier
             .fillMaxWidth()
-            // Layered glass: deep scrim underneath so text stays legible over
-            // bright programme frames, then a subtle brand-tinted overlay for
-            // that "premium HUD" feel.  Kept fully opaque along the bottom
-            // edge so the info card never disappears into the video.
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.92f))))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        EnktelBlue.copy(alpha = 0.06f),
-                        Color.Transparent,
-                        Color.Transparent,
-                    )
-                )
-            )
-            .padding(horizontal = hPad, vertical = vPad),
+            .padding(horizontal = hPad, vertical = 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xB012141D), RoundedCornerShape(14.dp))
+            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurface),
+                Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)).background(EnktelSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 if (channel.logo.isNotBlank()) {
                     AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
                 } else {
-                    Text(channel.name.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(channel.name.take(2).uppercase(), color = Color.White,
+                         fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (channel.num > 0) Text("${channel.num}", color = EnktelBlue, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    Text(channel.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    if (channel.hasArchive) Badge("CATCH-UP", EnktelOk)
+                // Line 1 — identity and state. Badges stay on this line so the
+                // programme title below always starts at a predictable place.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (channel.num > 0) {
+                        Text("${channel.num}", color = EnktelBlue, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text(
+                        channel.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     if (recording) Badge("● REC", EnktelLive)
-                    if (shiftedFrom > 0) Badge("⏪ TIMESHIFT ${hhmm(shiftedFrom)}", EnktelLive)
+                    if (shiftedFrom > 0) Badge("⏪ ${hhmm(shiftedFrom)}", EnktelLive)
                     if (sleepUntil > 0) Badge("☾ ${((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)}m")
+                    if (channel.hasArchive) Badge("CATCH-UP", EnktelOk)
                     if (stats.height > 0) Badge("${stats.height}p")
                 }
-                Spacer(Modifier.height(6.dp))
                 if (now != null) {
-                    // Bigger, prominent programme title on its own line.
+                    Spacer(Modifier.height(3.dp))
                     Text(
-                        now.title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+                        now.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
-                    Text(
-                        "${hhmm(now.startMs)}–${hhmm(now.endMs)}",
-                        color = Color.White.copy(0.75f), fontSize = 12.sp,
-                    )
-                    if (now.desc.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            now.desc, color = Color.White.copy(0.75f), fontSize = 12.sp,
-                            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            lineHeight = 16.sp,
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     val frac = ((System.currentTimeMillis() - now.startMs).toFloat() /
                         (now.endMs - now.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                    ProgressBarThin(frac, Modifier.fillMaxWidth(0.6f))
-                    if (next != null) {
-                        Spacer(Modifier.height(6.dp))
-                        Text("Up next · ${hhmm(next.startMs)}  ${next.title}", color = EnktelTextDim, fontSize = 12.sp, maxLines = 1)
-                    }
+                    ProgressBarThin(frac, Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(4.dp))
+                    // One metadata line: elapsed window, minutes left, and what
+                    // follows — the three things worth knowing, in the space the
+                    // old synopsis alone used to take.
+                    val minsLeft = ((now.endMs - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
+                    Text(
+                        buildString {
+                            append("${hhmm(now.startMs)}–${hhmm(now.endMs)}")
+                            append("  ·  ${minsLeft}m left")
+                            if (next != null) append("  ·  Next ${hhmm(next.startMs)} ${next.title}")
+                        },
+                        color = EnktelTextDim, fontSize = 11.sp,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
                 } else {
-                    Text("No guide data — open Settings ▸ Refresh EPG", color = EnktelTextDim, fontSize = 13.sp)
+                    Spacer(Modifier.height(3.dp))
+                    Text("No guide data — Settings ▸ Refresh EPG", color = EnktelTextDim, fontSize = 12.sp)
                 }
             }
-            Spacer(Modifier.width(16.dp))
-            Text(hhmm(System.currentTimeMillis()), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(12.dp))
+            Text(hhmm(System.currentTimeMillis()), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
-                "Tap to hide · long-press for channel list"
-            else "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
-            color = EnktelTextDim.copy(0.8f), fontSize = 11.sp,
-        )
+        if (!isMobile) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "OK channels · ◀ list · ▶ options · ▲▼ zap · 0-9 number",
+                color = EnktelTextDim.copy(0.7f), fontSize = 10.sp,
+            )
+        }
     }
 }
 
@@ -1362,19 +1387,34 @@ private fun BrowseDock(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.weight(1f).fillMaxWidth()) {
-            LazyColumn(
-                Modifier.weight(0.62f).fillMaxHeight(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                items(channels, key = { it.key }) { ch ->
-                    BrowseChannelRow(channel = ch, active = ch.key == currentChannel?.key, onClick = { onTune(ch) })
+        // The guide column was fixed at 38 %, which truncated nearly every
+        // programme title ("Richard Osm…", "Rick Stein's …"). Draggable now,
+        // so a user who wants to read the guide can widen it.
+        val dockScope = androidx.compose.runtime.rememberCoroutineScope()
+        val dockFraction by graph.settings.dockSplit.collectAsStateWithLifecycle(initialValue = 0.55f)
+        tv.enktel.app.ui.components.ResizableSplit(
+            fraction = dockFraction,
+            onFractionChange = { f -> dockScope.launch { graph.settings.setDockSplit(f) } },
+            orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            minFraction = 0.25f,
+            maxFraction = 0.8f,
+            first = {
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(channels, key = { it.key }) { ch ->
+                        BrowseChannelRow(channel = ch, active = ch.key == currentChannel?.key, onClick = { onTune(ch) })
+                    }
                 }
-            }
-            Box(Modifier.width(1.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.08f)))
+            },
+            second = {
             Column(
-                Modifier.weight(0.38f).fillMaxHeight().padding(horizontal = 20.dp, vertical = 4.dp),
+                Modifier.fillMaxSize().padding(start = 8.dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
             ) {
                 Text(
                     if (currentChannel != null) "GUIDE · ${currentChannel.name}" else "GUIDE",
@@ -1414,7 +1454,8 @@ private fun BrowseDock(
                     }
                 }
             }
-        }
+            },
+        )
     }
 }
 
