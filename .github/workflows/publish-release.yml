@@ -1,0 +1,201 @@
+name: Publish GitHub Release
+
+# Builds signed release artifacts and publishes them as a GitHub Release.
+#
+# Kept separate from build-apk.yml on purpose: that workflow verifies every push
+# and can hand you artifacts to download, but its artifacts expire after 90 days
+# and are only reachable by someone with repo access. A Release is the permanent,
+# linkable home for a build people are meant to install.
+#
+# The tag is created at whatever commit this runs from, so always dispatch it
+# against the branch/commit you actually want to ship (normally main).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v1.34.0 (created at the dispatched commit)'
+        type: string
+        required: true
+      name:
+        description: 'Release title. Defaults to the tag.'
+        type: string
+        required: false
+      notes:
+        description: 'Extra notes prepended to the auto-generated changelog.'
+        type: string
+        required: false
+      include_aab:
+        description: 'Also attach the Play Store bundles (.aab). Off by default — end users cannot install an AAB.'
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark as a pre-release'
+        type: boolean
+        default: false
+      draft:
+        description: 'Create as a draft (publish manually afterwards)'
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Required for `gh release create` to push the tag and create the release.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: androidtv
+    env:
+      ENKTEL_KEYSTORE: ${{ github.workspace }}/enktel-release.jks
+      ENKTEL_KEYSTORE_PASS: ${{ secrets.ENKTEL_KEYSTORE_PASS }}
+      ENKTEL_KEY_PASS: ${{ secrets.ENKTEL_KEY_PASS }}
+      ENKTEL_KEY_ALIAS: ${{ secrets.ENKTEL_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so the auto-generated changelog can see previous tags.
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK build-tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;35.0.0 platforms;android-35'
+
+      # Fail before spending seven minutes on a build we can't sign.
+      - name: Decode release keystore
+        run: |
+          if [ -z "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::ENKTEL_KEYSTORE_BASE64 secret is not set. See ENKTEL_BUILD_AUDIT.md section 2." >&2
+            exit 1
+          fi
+          echo "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" | base64 -d > "$ENKTEL_KEYSTORE"
+          test -s "$ENKTEL_KEYSTORE"
+
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Dispatch inputs go through the environment, never straight into the
+          # shell text — interpolating them inline is the standard Actions
+          # script-injection hole.
+          TAG: ${{ inputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Bump versionName or delete the existing release first." >&2
+            exit 1
+          fi
+
+      - name: Lint (both flavors, release variant)
+        run: ./gradlew :app:lintTvRelease :app:lintMobileRelease --no-daemon
+
+      - name: Unit tests
+        run: ./gradlew :app:testTvDebugUnitTest :app:testMobileDebugUnitTest --no-daemon
+
+      - name: Build signed release APKs + AABs (tv + mobile)
+        run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease :app:bundleTvRelease :app:bundleMobileRelease --no-daemon
+
+      # v1 (JAR) signing is not optional: API 21 devices — including the Fire TV
+      # Stick 2nd gen this app explicitly supports — cannot verify v2/v3, so an
+      # APK without a v1 signature is silently uninstallable there. Assert it
+      # rather than trusting the Gradle config stayed correct.
+      - name: Verify APK signatures
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          [ -x "$APKSIGNER" ] || APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          for apk in \
+            app/build/outputs/apk/tv/release/app-tv-release.apk \
+            app/build/outputs/apk/mobile/release/app-mobile-release.apk
+          do
+            echo "== $apk"
+            "$APKSIGNER" verify --verbose "$apk"
+            "$APKSIGNER" verify --verbose "$apk" | grep -q "^Verified using v1 scheme (JAR signing): true$" || {
+              echo "::error::$apk is missing a v1 signature — it would not install on API 21 devices." >&2
+              exit 1
+            }
+          done
+
+      # Named after the version so a downloaded file is identifiable months
+      # later, rather than four generations of "app-tv-release.apk" in a
+      # downloads folder.
+      - name: Stage release assets
+        id: stage
+        env:
+          INCLUDE_AAB: ${{ inputs.include_aab }}
+        run: |
+          VERSION="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/assets"
+          cp app/build/outputs/apk/tv/release/app-tv-release.apk \
+             "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.apk"
+          cp app/build/outputs/apk/mobile/release/app-mobile-release.apk \
+             "$RUNNER_TEMP/assets/enktel-mobile-${VERSION}.apk"
+          if [ "$INCLUDE_AAB" = "true" ]; then
+            cp app/build/outputs/bundle/tvRelease/app-tv-release.aab \
+               "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.aab"
+            cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab \
+               "$RUNNER_TEMP/assets/enktel-mobile-${VERSION}.aab"
+          fi
+          ls -la "$RUNNER_TEMP/assets"
+
+      # Always, so a failed build never leaves the signing key on the runner.
+      - name: Clean up keystore file
+        if: always()
+        run: rm -f "$ENKTEL_KEYSTORE"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          TITLE: ${{ inputs.name }}
+          NOTES: ${{ inputs.notes }}
+          INCLUDE_AAB: ${{ inputs.include_aab }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          DRAFT: ${{ inputs.draft }}
+          VERSION: ${{ steps.stage.outputs.version }}
+        run: |
+          {
+            if [ -n "$NOTES" ]; then
+              printf '%s\n\n' "$NOTES"
+            fi
+            echo "### Downloads"
+            echo
+            echo "| File | Install on |"
+            echo "| :--- | :--- |"
+            echo "| \`enktel-tv-${VERSION}.apk\` | Fire TV / Android TV — sideload |"
+            echo "| \`enktel-mobile-${VERSION}.apk\` | Phone / tablet — sideload |"
+            if [ "$INCLUDE_AAB" = "true" ]; then
+              echo "| \`enktel-tv-${VERSION}.aab\` | Google Play upload only (not installable directly) |"
+              echo "| \`enktel-mobile-${VERSION}.aab\` | Google Play upload only (not installable directly) |"
+            fi
+            echo
+            echo "Both APKs are signed with the release key and carry v1 + v2 + v3 signatures,"
+            echo "so they install on API 21 devices (Fire TV Stick 2nd gen) as well as modern ones,"
+            echo "and upgrade existing installs in place."
+          } > "$RUNNER_TEMP/notes.md"
+
+          FLAGS=()
+          [ "$PRERELEASE" = "true" ] && FLAGS+=(--prerelease)
+          [ "$DRAFT" = "true" ] && FLAGS+=(--draft)
+
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "${TITLE:-$TAG}" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --generate-notes \
+            "${FLAGS[@]}" \
+            "$RUNNER_TEMP"/assets/*
+
+          echo "Released: $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)"
