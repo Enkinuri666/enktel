@@ -143,6 +143,15 @@ class SettingsStore(private val context: Context) {
     // user can have live scores without the heavier match-centre polling.
     private val MATCH_CENTER = booleanPreferencesKey("match_center_enabled")
 
+    // v1.36.0 — user-dragged split positions for Live TV Browse mode, stored
+    // as a percentage of the axis so they survive rotation and device changes.
+    // Landscape and portrait are separate because a good video/dock balance
+    // side-by-side is a bad one stacked. The third is the channel-list vs
+    // guide split inside the dock itself.
+    private val BROWSE_SPLIT_LAND = intPreferencesKey("browse_split_land_pct")
+    private val BROWSE_SPLIT_PORT = intPreferencesKey("browse_split_port_pct")
+    private val DOCK_SPLIT = intPreferencesKey("dock_split_pct")
+
     // v1.11.0: content organisation. Each kind holds:
     //  - `<kind>_category_order` — pipe-separated categoryIds in the user's chosen order
     //  - `<kind>_hidden_categories` — set of categoryIds the user has hidden
@@ -250,6 +259,27 @@ class SettingsStore(private val context: Context) {
     suspend fun setAutoTrailersEnabled(v: Boolean) = context.dataStore.edit { it[AUTO_TRAILERS] = v }
     val matchCenterEnabled: Flow<Boolean> = context.dataStore.data.map { it[MATCH_CENTER] ?: true }
     suspend fun setMatchCenterEnabled(v: Boolean) = context.dataStore.edit { it[MATCH_CENTER] = v }
+
+    // Defaults: 60 % video in landscape (unchanged from the old hardcoded
+    // weight), and 42 % in portrait — a stacked 16:9 video only needs about
+    // that much height, and the old aspect-locked pane left the dock cramped.
+    // 55 % for the channel list, up from the old 62 %, because the guide
+    // column was truncating almost every programme title at 38 %.
+    val browseSplitLandscape: Flow<Float> =
+        context.dataStore.data.map { (it[BROWSE_SPLIT_LAND] ?: 60) / 100f }
+    suspend fun setBrowseSplitLandscape(v: Float) = context.dataStore.edit {
+        it[BROWSE_SPLIT_LAND] = (v * 100).toInt().coerceIn(20, 85)
+    }
+    val browseSplitPortrait: Flow<Float> =
+        context.dataStore.data.map { (it[BROWSE_SPLIT_PORT] ?: 42) / 100f }
+    suspend fun setBrowseSplitPortrait(v: Float) = context.dataStore.edit {
+        it[BROWSE_SPLIT_PORT] = (v * 100).toInt().coerceIn(20, 85)
+    }
+    val dockSplit: Flow<Float> =
+        context.dataStore.data.map { (it[DOCK_SPLIT] ?: 55) / 100f }
+    suspend fun setDockSplit(v: Float) = context.dataStore.edit {
+        it[DOCK_SPLIT] = (v * 100).toInt().coerceIn(20, 85)
+    }
 
     fun categoryOrder(kind: String): Flow<List<String>> = context.dataStore.data.map { prefs ->
         val key = when (kind) { "vod" -> VOD_CAT_ORDER; "series" -> SERIES_CAT_ORDER; else -> LIVE_CAT_ORDER }
