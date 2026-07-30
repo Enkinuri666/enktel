@@ -60,7 +60,7 @@ class AppGraph(app: Application) {
     val recommendations = RecommendationsRepository(content)
     val scores = ScoresRepository(http)
     val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
-    val downloads = DownloadHub(app, db.downloadDao(), settings, http)
+    val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 
     init {

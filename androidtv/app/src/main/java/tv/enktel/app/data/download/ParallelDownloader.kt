@@ -275,6 +275,14 @@ class ParallelDownloader(
         url: String,
         target: Target,
         userAgent: String,
+        /**
+         * Hard ceiling on concurrent range fetches, from the panel's declared
+         * per-line connection cap. Exceeding it doesn't download faster, it
+         * gets the extra sockets killed mid-transfer — which surfaces as
+         * "unexpected end of stream" and a dead download. See
+         * DownloadHub.streamsFor.
+         */
+        maxStreams: Int = MAX_STREAMS,
         resumeState: String = "",
         onProgress: (downloaded: Long, total: Long, state: String) -> Unit,
         onDone: (path: String) -> Unit,
@@ -302,10 +310,11 @@ class ParallelDownloader(
                     probe.acceptsRanges &&
                     onDisk >= (if (target is Target.FileTarget) total else saved.sumOf { it.done })
 
+                val streams = maxStreams.coerceIn(1, MAX_STREAMS)
                 segments = when {
                     resumable -> saved!!
-                    total > 0 && probe.acceptsRanges && total >= PARALLEL_MIN_BYTES ->
-                        planSegments(total, MAX_STREAMS)
+                    total > 0 && probe.acceptsRanges && total >= PARALLEL_MIN_BYTES && streams > 1 ->
+                        planSegments(total, streams)
                     else -> listOf(Segment(0, max(total - 1, 0), 0))
                 }
 
@@ -405,8 +414,17 @@ class ParallelDownloader(
             .build()
         http.newCall(req).execute().use { r ->
             val contentRange = r.header("Content-Range").orEmpty()
-            val acceptsRanges = r.code == 206 ||
-                r.header("Accept-Ranges")?.contains("bytes", true) == true
+            // 206 only — the proof, not the claim.
+            //
+            // This used to also accept an `Accept-Ranges: bytes` header. Plenty
+            // of Xtream panels advertise that header and then serve the whole
+            // file with a 200 for any Range request. Believing the header meant
+            // splitting into four workers that each downloaded the entire file
+            // from byte 0 and wrote it at four different offsets — a silently
+            // corrupt file, which is far worse than a slow one. A 206 with a
+            // Content-Range is the only answer that actually demonstrates
+            // range support, so that's what we require.
+            val acceptsRanges = r.code == 206 && contentRange.isNotBlank()
             val total = when {
                 contentRange.contains('/') ->
                     contentRange.substringAfterLast('/').trim().toLongOrNull() ?: -1L
@@ -441,7 +459,8 @@ class ParallelDownloader(
         val throttle = Throttle(segments.size, this)
         val jobs: List<Deferred<Unit>> = segments.map { seg ->
             async {
-                fetchSegment(url, ua, seg, writer, positional = true, ticker, pause, throttle)
+                fetchSegment(url, ua, seg, writer, positional = true, ticker, pause, throttle,
+                    multiSegment = segments.size > 1)
             }
         }
         jobs.awaitAll()
@@ -519,6 +538,9 @@ class ParallelDownloader(
         pause: PauseFlag,
         throttle: Throttle,
         rangeless: Boolean = false,
+        /** True when this worker is one of several splitting the file, so a
+         *  non-206 response means its bytes would land at the wrong offset. */
+        multiSegment: Boolean = false,
     ) {
         // A rangeless stream can't be resumed: the server would replay from
         // byte 0 and we'd write those bytes over the wrong offsets. One shot
@@ -531,7 +553,7 @@ class ParallelDownloader(
             if (pause.paused) return
             if (seg.complete && !rangeless) return
             try {
-                throttle.withSlot { fetchOnce(url, ua, seg, writer, positional, ticker, pause, rangeless) }
+                throttle.withSlot { fetchOnce(url, ua, seg, writer, positional, ticker, pause, rangeless, multiSegment) }
                 throttle.noteSuccess()
                 return
             } catch (ce: CancellationException) {
@@ -557,7 +579,7 @@ class ParallelDownloader(
     private fun fetchOnce(
         url: String, ua: String, seg: Segment, writer: Writer,
         positional: Boolean, ticker: ProgressTicker, pause: PauseFlag,
-        rangeless: Boolean,
+        rangeless: Boolean, multiSegment: Boolean,
     ) {
         val builder = Request.Builder().url(url)
             .header("User-Agent", ua)
@@ -573,11 +595,19 @@ class ParallelDownloader(
             if (!r.isSuccessful) {
                 throw java.io.IOException("HTTP ${r.code} on bytes ${seg.cursor}-${seg.end}")
             }
-            // A server that ignores Range and replays from byte 0 would corrupt
-            // the file if we wrote its bytes at our cursor. Detect it and, if
-            // we're already part-way in, treat it as fatal for this segment.
-            if (!rangeless && seg.cursor > 0 && r.code != 206) {
-                throw java.io.IOException("Server ignored the resume request (HTTP ${r.code})")
+            // A server that ignores Range and replays from byte 0 corrupts the
+            // file if we write those bytes at our cursor. The probe should have
+            // caught that, but a panel can behave differently on the real
+            // request than on a 0-0 probe, so verify here too.
+            //
+            // Only when it actually matters, though: a lone worker fetching the
+            // whole file from byte 0 gets the right bytes whether the answer is
+            // 200 or 206, and rejecting those would break downloads from every
+            // panel that doesn't do ranges at all. It matters when this worker
+            // is one of several, or when it's resuming part-way in — in both
+            // cases a 200 means the stream starts at the wrong place.
+            if (!rangeless && (multiSegment || seg.cursor > 0) && r.code != 206) {
+                throw java.io.IOException("Server ignored the range request (HTTP ${r.code})")
             }
             val input = r.body?.byteStream() ?: throw java.io.IOException("empty response body")
             val buf = ByteArray(READ_BUFFER_BYTES)
