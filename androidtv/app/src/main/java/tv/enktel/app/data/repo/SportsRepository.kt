@@ -107,7 +107,12 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         "Handball" to listOf("handball", "ehl"),
         "Volleyball" to listOf("volleyball", "cev"),
         "Athletics" to listOf("athletics", "diamond league", "world athletics", "olympic"),
-        "Esports" to listOf("esports", "esl", "cs:go", "cs2", "league of legends", "valorant", "dota"),
+        // Singular stems on purpose: these are substring matches, so "esport"
+        // catches both "ESPORT" and "ESPORTS" while "esports" catches only the
+        // plural. A screenshot of "ARENA ESPORT HD" on Sky Sports Arena landing
+        // in the Other bucket is what caught this — the same trap applies to
+        // any tag whose keyword was written plural-only.
+        "Esports" to listOf("esport", "e-sport", "esl", "cs:go", "cs2", "league of legends", "valorant", "dota"),
     )
 
     /** "Arsenal vs Chelsea", "Lakers v Celtics", "Ajax - PSV". Requires words on

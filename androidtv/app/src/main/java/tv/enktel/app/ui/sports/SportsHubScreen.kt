@@ -454,15 +454,29 @@ private fun LiveEventCard(
         onClick = onTap,
         modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz).tapClick(onTap),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        // Was EnktelLive.copy(0.14f) — a 14 % red wash over the near-black
+        // background, which rendered as muddy maroon on a phone and made a row
+        // of live fixtures look like a row of error states. Live-ness is now
+        // carried by the accent stripe and the ● LIVE badge, against the same
+        // neutral elevated surface every other card in the app uses, so the
+        // red reads as signal instead of tinting the whole panel.
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = EnktelLive.copy(0.14f),
-            focusedContainerColor = EnktelLive.copy(0.4f),
+            containerColor = EnktelSurfaceHigh.copy(0.45f),
+            focusedContainerColor = EnktelLive.copy(0.32f),
             focusedContentColor = Color.White,
             contentColor = Color.White,
         ),
     ) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Left accent stripe — the live marker, matching the section
+                // headers' stripe so the visual language stays consistent.
+                Box(
+                    Modifier
+                        .size(width = 3.dp, height = 44.dp)
+                        .background(EnktelLive, RoundedCornerShape(2.dp)),
+                )
+                Spacer(Modifier.width(10.dp))
                 ChannelLogo(ev.channel.logo, ev.channel.name)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
