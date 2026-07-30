@@ -268,6 +268,14 @@ fun VodPlayerScreen(
     var dragBrightness by remember { mutableStateOf(true) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var boxHeightPx by remember { mutableStateOf(1f) }
+    // Snapshot at drag-start + accumulated Y delta lets us set an absolute target
+    // on each drag event. Per-event nudging via adjustVolume() got truncated to
+    // zero by Android's integer-quantised stream volume API (typically 0-15
+    // steps), so short drags did nothing — this is the same start-snapshot
+    // pattern PlayerGestureLayer already uses.
+    var dragStartVolume by remember { mutableStateOf(0f) }
+    var dragStartBrightness by remember { mutableStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableStateOf(0f) }
 
     Box(
         Modifier
@@ -286,18 +294,24 @@ fun VodPlayerScreen(
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         dragBrightness = off.x < boxWidthPx / 2f
+                        accumulatedFraction = 0f
+                        dragStartVolume = tv.enktel.app.player.PlayerGestures.currentVolumeFraction(context)
+                        dragStartBrightness = (context as? android.app.Activity)
+                            ?.let { tv.enktel.app.player.PlayerGestures.currentBrightness(it) } ?: 0.5f
                     },
                     onVerticalDrag = { _, dy ->
-                        val delta = -dy / boxHeightPx
+                        // 1.5x multiplier so a modest thumb swipe covers the full range —
+                        // matches MX Player / VLC on Android.
+                        accumulatedFraction += -dy / boxHeightPx * 1.5f
                         if (dragBrightness) {
                             (context as? android.app.Activity)?.let { act ->
-                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
-                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
-                                )
+                                val target = (dragStartBrightness + accumulatedFraction).coerceIn(0.05f, 1f)
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(act, target)
                                 gestureLevel = Triple("☀ Brightness", next, true)
                             }
                         } else {
-                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
+                            val target = (dragStartVolume + accumulatedFraction).coerceIn(0f, 1f)
+                            val next = tv.enktel.app.player.PlayerGestures.setVolumeFraction(context, target)
                             gestureLevel = Triple("🔊 Volume", next, false)
                         }
                     },
