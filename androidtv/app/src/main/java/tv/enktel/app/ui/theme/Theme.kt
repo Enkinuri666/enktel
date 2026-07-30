@@ -75,9 +75,10 @@ data class EnktelPalette(
  *    the 2 dp / 12 px-glow focus spec render as specified without any
  *    per-component overrides.
  *
- * Focus geometry follows the brief (2 dp ring, 12 dp glow at 35 % alpha,
- * 1.05× over 150 ms) rather than the v1.30.0 values it supersedes — see
- * the note on [EnktelPalette.focusRingWidth].
+ * Focus geometry: 12 dp glow at 35 % alpha and a 1.05× lift over 150 ms per
+ * the brief, but the ring stays at v1.30.0's 4 dp — the brief's 2 dp did not
+ * survive contact with an actual TV at viewing distance. See the note on
+ * [EnktelPalette.focusRingWidth].
  */
 private val PaletteDeepSpace = EnktelPalette(
     id = "deep_space", label = "Deep Space (Neon)",
@@ -85,7 +86,11 @@ private val PaletteDeepSpace = EnktelPalette(
     text = Color(0xFFF8FAFC), textDim = Color(0xFF94A3B8),
     primary = Color(0xFF00F0FF), primaryDeep = Color(0xFF00A8B5), secondary = Color(0xFF7B2CBF),
     live = Color(0xFFEF4444), ok = Color(0xFF10B981), border = Color(0xFF2A364F),
-    focusRingWidth = 2.dp, focusGlowRadius = 12.dp, focusGlowAlpha = 0.35f, focusScale = 1.05f,
+    // Ring back to 4 dp after checking it on a real panel: the brief's 2 dp
+    // was too thin to read from the couch, which is exactly why v1.30.0
+    // widened it in the first place. Glow radius and scale stay at the Deep
+    // Space values — it was the outline that was hard to see, not the lift.
+    focusRingWidth = 4.dp, focusGlowRadius = 12.dp, focusGlowAlpha = 0.35f, focusScale = 1.05f,
     textFaint = Color(0xFF64748B),
 )
 
