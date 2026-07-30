@@ -63,11 +63,14 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("🩺  Run connection diagnostics", accent = true,
                 onClick = { nav.navigate("speedTest") })
+            FocusButton("📈  System monitor",
+                onClick = { nav.navigate("systemMonitor") })
             FocusButton("🗂  Manage categories",
                 onClick = { nav.navigate("manageCategories") })
         }
         Text(
-            "Diagnostics tests your network + the panel's URL shapes + concurrent-connection cap + HTTP/TLS protocol — all locally, no browser needed.",
+            "Diagnostics tests your network + the panel's URL shapes + concurrent-connection cap + HTTP/TLS protocol — all locally, no browser needed. " +
+                "The system monitor runs live while you watch, so you can see whether a stutter came from the connection, the decoder, or the device overheating.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
@@ -424,6 +427,19 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Free TMDB account → developer.themoviedb.org → API → request access → paste your v3 key or v4 read-only token here. Blank disables enrichment (the themed home rails still work off titles/genres alone).",
             color = EnktelTextDim, fontSize = 11.sp,
         )
+        val autoTrailers by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = true)
+        FocusButton(
+            "Auto-play trailers on hover: ${if (autoTrailers) "ON" else "off"}",
+            accent = autoTrailers,
+            onClick = { scope.launch { graph.settings.setAutoTrailersEnabled(!autoTrailers) } },
+        )
+        Text(
+            if (tmdbKey.isBlank())
+                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Needs the TMDB key above — without one this stays inactive."
+            else
+                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Always muted; move off the poster and it stops.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
 
         Spacer(Modifier.height(10.dp))
         Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
@@ -608,6 +624,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         FocusButton("Live scores (TheSportsDB): ${if (scoresOn) "ON" else "off"}", accent = scoresOn, onClick = {
             scope.launch { graph.settings.setScoresEnabled(!scoresOn) }
         })
+        val matchCenterOn by graph.settings.matchCenterEnabled.collectAsStateWithLifecycle(initialValue = true)
+        FocusButton(
+            "Match Centre, broadcast guide + highlights: ${if (matchCenterOn) "ON" else "off"}",
+            accent = matchCenterOn,
+            onClick = { scope.launch { graph.settings.setMatchCenterEnabled(!matchCenterOn) } },
+        )
+        Text(
+            "Adds in-play stats and timelines for a fixture, the official broadcaster list for it, " +
+                "today's published schedule, and highlight packages for matches that have finished. " +
+                "Turn off to stop the Sports Hub making these lookups.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusButton("🔎  Live sport finder", onClick = { nav.navigate("sportsFinder") })
+            FocusButton("🏟  Sports Hub", onClick = { nav.navigate("sports") })
+        }
         val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
         var newTeam by remember { mutableStateOf("") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

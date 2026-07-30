@@ -215,6 +215,10 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     subtitle: String = "",
     wide: Boolean = false,
+    /** TMDB id, when the catalogue row has been enriched. Non-zero opts this
+     *  card into the hover auto-trailer; 0 leaves it a plain poster. */
+    tmdbId: Long = 0,
+    isSeries: Boolean = false,
 ) {
     val w = if (wide) 240.dp else 150.dp
     val h = if (wide) 135.dp else 210.dp
@@ -230,7 +234,7 @@ fun PosterCard(
             val wasFocused = focused
             focused = it.isFocused
             if (!wasFocused && it.isFocused) NavSounds.click()
-            focusedPoster?.report(it.isFocused, imageUrl)
+            focusedPoster?.report(it.isFocused, imageUrl, tmdbId, isSeries, title)
         },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(

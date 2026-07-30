@@ -229,6 +229,14 @@ data class DownloadEntry(
     val sizeBytes: Long = 0,
     val downloadedBytes: Long = 0,
     val errorMessage: String = "",
+    /** Which engine owns this download: "parallel" (resumable, ranged OkHttp)
+     *  or "system" (platform DownloadManager — no pause API, so pausing one
+     *  hands it over to the parallel engine on the next resume). */
+    val engine: String = "parallel",
+    /** Opaque per-segment byte offsets so a paused / interrupted parallel
+     *  download picks up exactly where it stopped instead of restarting.
+     *  Encoded by ParallelDownloader.encodeState; blank means "start fresh". */
+    val resumeState: String = "",
     val addedAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )

@@ -270,4 +270,26 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = :status, errorMessage = :err, updatedAt = :now WHERE id = :id")
     suspend fun markFailed(id: String, err: String, status: String = "FAILED", now: Long = System.currentTimeMillis())
     @Query("SELECT COALESCE(SUM(downloadedBytes), 0) FROM downloads") suspend fun totalBytes(): Long
+
+    // ---- pause / resume ---------------------------------------------------
+
+    @Query("UPDATE downloads SET status = :status, updatedAt = :now WHERE id = :id")
+    suspend fun setStatus(id: String, status: String, now: Long = System.currentTimeMillis())
+
+    /** Persist the byte offsets each range-worker reached so a resume can pick
+     *  up mid-file. Written on every progress tick and on pause. */
+    @Query("UPDATE downloads SET resumeState = :state, progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, updatedAt = :now WHERE id = :id")
+    suspend fun updateResumeState(id: String, state: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())
+
+    @Query("UPDATE downloads SET status = 'PAUSED', resumeState = :state, progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, errorMessage = '', updatedAt = :now WHERE id = :id")
+    suspend fun markPaused(id: String, state: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())
+
+    @Query("UPDATE downloads SET engine = :engine, updatedAt = :now WHERE id = :id")
+    suspend fun setEngine(id: String, engine: String, now: Long = System.currentTimeMillis())
+
+    /** Everything that was mid-flight — used at process start to move orphaned
+     *  RUNNING/QUEUED rows (killed app, rebooted box) back to PAUSED so the
+     *  user can resume them instead of staring at a frozen progress bar. */
+    @Query("SELECT * FROM downloads WHERE status IN ('RUNNING', 'QUEUED')")
+    suspend fun inFlight(): List<DownloadEntry>
 }

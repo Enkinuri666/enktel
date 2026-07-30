@@ -110,6 +110,13 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         "Esports" to listOf("esports", "esl", "cs:go", "cs2", "league of legends", "valorant", "dota"),
     )
 
+    /** "Arsenal vs Chelsea", "Lakers v Celtics", "Ajax - PSV". Requires words on
+     *  both sides so a stray "v" or dash in a film title doesn't match. */
+    private val FIXTURE_PATTERN = Regex(
+        """\b[\p{L}\d.']{2,}\b\s+(?:vs?\.?|@|-|–)\s+\b[\p{L}\d.']{2,}\b""",
+        RegexOption.IGNORE_CASE,
+    )
+
     private val GENERIC_KEYWORDS = listOf(
         "match", "highlights", "vs ", "vs.", "v.", "playoff", "quarter-final",
         "semi-final", "final", "tournament", "cup", "league", "grand prix", "derby",
@@ -219,6 +226,120 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         )
         return strong.any { it in text }
     }
+
+    // ---- Smart Channel Finder ---------------------------------------------
+
+    /** A channel that is showing a sports fixture *right now*. */
+    data class LiveSportsChannel(
+        val channel: Channel,
+        val program: EpgProgram,
+        val sport: String,
+        /** 0-100: how sure we are this is really a live fixture. */
+        val confidence: Int,
+        /** True when the title mentions one of the user's followed teams. */
+        val followed: Boolean,
+    ) {
+        val startMs: Long get() = program.startMs
+        val endMs: Long get() = program.endMs
+        val title: String get() = program.title
+        /** How far through the fixture we are, 0..1. */
+        val progressFrac: Float
+            get() = ((System.currentTimeMillis() - startMs).toFloat() /
+                (endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+    }
+
+    /**
+     * Smart Channel Finder: which of the user's channels are carrying live
+     * sport at this moment.
+     *
+     * [load] answers "what sport is on this week" by scanning a ten-day EPG
+     * window across sports-category channels. That's the wrong shape for the
+     * question someone actually asks two minutes before kick-off, which is
+     * "which channel, right now". So this scans differently:
+     *
+     *  - **Every channel, not just sports ones.** A World Cup final or a title
+     *    fight lands on a general national broadcaster as often as on a channel
+     *    with "Sports" in its name, and those are precisely the ones a user
+     *    can't find by scrolling.
+     *  - **A one-minute EPG window.** At most one programme per channel is
+     *    airing now, so the query stays cheap even on a 20,000-channel playlist
+     *    — it's bounded by channel count, not by catalogue depth.
+     *  - **Scored, not filtered.** Each candidate gets a confidence from how
+     *    strong the sports signal is (an explicit league name beats a bare
+     *    "Team A vs Team B", which beats "this is a sports channel"), and rows
+     *    the user follows float to the top.
+     *
+     * Results are deduped per channel, highest confidence first.
+     */
+    suspend fun findLiveNow(
+        profileId: Long,
+        followedTeams: List<String> = emptyList(),
+        limit: Int = 120,
+    ): List<LiveSportsChannel> = withContext(Dispatchers.Default) {
+        val now = System.currentTimeMillis()
+        val channels = content.channels(profileId).first()
+        if (channels.isEmpty()) return@withContext emptyList()
+
+        val byEpgId = channels.filter { it.epgId.isNotBlank() }.associateBy { it.epgId }
+        if (byEpgId.isEmpty()) return@withContext emptyList()
+
+        // A 60-second window returns each channel's currently-airing programme
+        // and nothing else, which is all the finder needs.
+        val airing = epg.window(profileId, byEpgId.keys.toList(), now, now + 60_000)
+        val teams = followedTeams.map { it.lowercase() }.filter { it.isNotBlank() }
+
+        val hits = ArrayList<LiveSportsChannel>()
+        for ((epgId, programmes) in airing) {
+            val ch = byEpgId[epgId] ?: continue
+            val prog = programmes.firstOrNull { it.startMs <= now && it.endMs > now } ?: continue
+            val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
+            val followed = teams.isNotEmpty() && teams.any { it in prog.title.lowercase() }
+            hits += LiveSportsChannel(ch, prog, sport, confidence, followed)
+        }
+
+        hits.asSequence()
+            .distinctBy { it.channel.key }
+            .sortedWith(
+                compareByDescending<LiveSportsChannel> { it.followed }
+                    .thenByDescending { it.confidence }
+                    .thenByDescending { it.startMs },
+            )
+            .take(limit)
+            .toList()
+    }
+
+    /**
+     * Scores a currently-airing programme as a live fixture.
+     * @return sport tag to confidence, or null when this isn't sport at all.
+     */
+    private fun scoreAsSport(prog: EpgProgram, ch: Channel): Pair<String, Int>? {
+        val text = (prog.title + " " + prog.desc).lowercase()
+        val chSport = sportFromChannel(ch)
+        val clearlySports = channelIsClearlySports(ch)
+
+        // Strongest signal: the programme names a league or competition.
+        for ((sport, keywords) in SPORT_TAGS) {
+            if (keywords.any { it in text }) {
+                return sport to if (clearlySports) 100 else 90
+            }
+        }
+        // "Arsenal v Chelsea" / "Lakers vs Celtics" — a fixture even when no
+        // league is named. Only trusted on a channel we already believe in,
+        // because "Kramer vs. Kramer" is a film.
+        if (looksLikeFixture(prog.title) && (clearlySports || chSport != null)) {
+            return (chSport ?: "Other") to 80
+        }
+        if (chSport != null && GENERIC_KEYWORDS.any { it in text }) return chSport to 70
+        if (clearlySports && GENERIC_KEYWORDS.any { it in text }) return (chSport ?: "Other") to 60
+        // Nothing in the title to go on, but the channel exists to show sport
+        // and something is on it — worth surfacing, ranked last.
+        if (clearlySports) return (chSport ?: "Other") to 40
+        return null
+    }
+
+    /** Matches the "A vs B" / "A v B" / "A - B" shape of a fixture title. */
+    private fun looksLikeFixture(title: String): Boolean =
+        FIXTURE_PATTERN.containsMatchIn(title)
 
     /** All distinct sport names present across the loaded event set, sorted for stable UI. */
     fun sportsInSet(events: Map<String, List<SportsEvent>>): List<String> {

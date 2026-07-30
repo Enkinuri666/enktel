@@ -296,6 +296,10 @@ class PlayerEngine(
             droppedFrames = dropped,
             bufferAheadMs = (player.totalBufferedDuration).coerceAtLeast(0),
         )
+        // Mirror to the process-wide snapshot the system monitor reads, so
+        // playback health is visible from Settings without this screen being
+        // on top. See PlaybackTelemetry.
+        PlaybackTelemetry.publish(stats.value)
     }
 
     /** Play a single fixed URL — no fallback chain (used for M3U channels,

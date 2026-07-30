@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
         DownloadEntry::class,
     ],
-    version = 6, // v6 adds TMDB enrichment fields (tmdbId, studios, tags, enrichedAt) on movies + series
+    version = 7, // v7 adds resumable-download bookkeeping (engine, resumeState) on downloads
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -118,9 +118,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Resumable downloads: remember which engine owns a row and the
+                // per-segment byte offsets it reached, so pause/resume survives
+                // both a paused download and the process being killed.
+                db.execSQL("ALTER TABLE downloads ADD COLUMN engine TEXT NOT NULL DEFAULT 'parallel'")
+                db.execSQL("ALTER TABLE downloads ADD COLUMN resumeState TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .fallbackToDestructiveMigration()
                 .build()
     }
