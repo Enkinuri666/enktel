@@ -40,7 +40,11 @@ import androidx.compose.ui.graphics.graphicsLayer
  * Each keeps the underlying view laid out at 1× — only the visual scale
  * changes, so scrolling and focus target rects stay stable.
  */
-private const val TARGET_SCALE = 1.05f
+// v1.35.0 — the scale target now comes from the active palette
+// (EnktelFocusScale) rather than a constant here, so a theme owns its own
+// focus language and this modifier can't drift away from PosterCard's ring.
+// Elevation and duration stay fixed: 8 dp is what lifts a card clear of its
+// neighbours, and 150 ms is the brief's decelerate window.
 private const val TARGET_ELEVATION_DP = 8f
 private const val ANIM_MS = 150
 
@@ -53,8 +57,9 @@ fun Modifier.tvFocusScale(
 }
 
 fun Modifier.tvFocusScaleByFlag(focused: Boolean): Modifier = composed {
+    val focusScale = tv.enktel.app.ui.theme.EnktelFocusScale
     val scale by animateFloatAsState(
-        targetValue = if (focused) TARGET_SCALE else 1f,
+        targetValue = if (focused) focusScale else 1f,
         animationSpec = tween(durationMillis = ANIM_MS),
         label = "tv-focus-scale",
     )
