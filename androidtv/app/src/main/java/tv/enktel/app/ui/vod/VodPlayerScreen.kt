@@ -268,6 +268,14 @@ fun VodPlayerScreen(
     var dragBrightness by remember { mutableStateOf(true) }
     var boxWidthPx by remember { mutableStateOf(1f) }
     var boxHeightPx by remember { mutableStateOf(1f) }
+    // Snapshot at drag-start + accumulated Y delta lets us set an absolute target
+    // on each drag event. Per-event nudging via adjustVolume() got truncated to
+    // zero by Android's integer-quantised stream volume API (typically 0-15
+    // steps), so short drags did nothing — this is the same start-snapshot
+    // pattern PlayerGestureLayer already uses.
+    var dragStartVolume by remember { mutableStateOf(0f) }
+    var dragStartBrightness by remember { mutableStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableStateOf(0f) }
 
     Box(
         Modifier
@@ -286,18 +294,24 @@ fun VodPlayerScreen(
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
                         boxHeightPx = size.height.toFloat().coerceAtLeast(1f)
                         dragBrightness = off.x < boxWidthPx / 2f
+                        accumulatedFraction = 0f
+                        dragStartVolume = tv.enktel.app.player.PlayerGestures.currentVolumeFraction(context)
+                        dragStartBrightness = (context as? android.app.Activity)
+                            ?.let { tv.enktel.app.player.PlayerGestures.currentBrightness(it) } ?: 0.5f
                     },
                     onVerticalDrag = { _, dy ->
-                        val delta = -dy / boxHeightPx
+                        // 1.5x multiplier so a modest thumb swipe covers the full range —
+                        // matches MX Player / VLC on Android.
+                        accumulatedFraction += -dy / boxHeightPx * 1.5f
                         if (dragBrightness) {
                             (context as? android.app.Activity)?.let { act ->
-                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(
-                                    act, tv.enktel.app.player.PlayerGestures.currentBrightness(act) + delta,
-                                )
+                                val target = (dragStartBrightness + accumulatedFraction).coerceIn(0.05f, 1f)
+                                val next = tv.enktel.app.player.PlayerGestures.setBrightness(act, target)
                                 gestureLevel = Triple("☀ Brightness", next, true)
                             }
                         } else {
-                            val next = tv.enktel.app.player.PlayerGestures.adjustVolume(context, delta)
+                            val target = (dragStartVolume + accumulatedFraction).coerceIn(0f, 1f)
+                            val next = tv.enktel.app.player.PlayerGestures.setVolumeFraction(context, target)
                             gestureLevel = Triple("🔊 Volume", next, false)
                         }
                     },
@@ -441,7 +455,17 @@ fun VodPlayerScreen(
             ) {
                 Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(12.dp))
-                if (!isLive && durationMs > 0) {
+                // v1.32.0 — the scrubber used to be gated on `durationMs > 0`,
+                // so VOD streams whose HLS manifest hadn't declared a duration
+                // yet (Xtream catch-up, live episode chunks, unended playlists)
+                // rendered the controls without any timeline at all. The user
+                // couldn't drag-seek or see elapsed time. Now: whenever the
+                // caller marked this as VOD (not live), the SeekBar renders.
+                // When we know a real duration, it shows the numeric timestamps
+                // too; when we don't, we still show the drag/tap scrubber and
+                // the elapsed timestamp so ±10 s / drag / DPAD scrub keep
+                // working the moment the media is prepared.
+                if (!isLive) {
                     SeekBar(
                         positionMs = positionMs,
                         durationMs = durationMs,
@@ -456,9 +480,13 @@ fun VodPlayerScreen(
                     Row(Modifier.fillMaxWidth()) {
                         Text(fmtTime(positionMs), color = Color.White, fontSize = 12.sp)
                         Spacer(Modifier.weight(1f))
-                        Text("-${fmtTime(durationMs - positionMs)}", color = EnktelTextDim, fontSize = 12.sp)
-                        Spacer(Modifier.width(14.dp))
-                        Text(fmtTime(durationMs), color = EnktelTextDim, fontSize = 12.sp)
+                        if (durationMs > 0) {
+                            Text("-${fmtTime(durationMs - positionMs)}", color = EnktelTextDim, fontSize = 12.sp)
+                            Spacer(Modifier.width(14.dp))
+                            Text(fmtTime(durationMs), color = EnktelTextDim, fontSize = 12.sp)
+                        } else {
+                            Text("live buffer", color = EnktelTextDim, fontSize = 12.sp)
+                        }
                     }
                     Spacer(Modifier.height(10.dp))
                 }
@@ -564,8 +592,13 @@ private fun SeekBar(
 ) {
     var focused by remember { mutableStateOf(false) }
     var scrubTarget by remember { mutableStateOf<Long?>(null) }
-    val shown = (scrubTarget ?: positionMs).coerceIn(0, durationMs)
-    val frac = shown.toFloat() / durationMs.coerceAtLeast(1)
+    // v1.32.0 — accept durationMs == 0 (media not prepared yet). frac stays
+    // at 0 so the bar just renders as an empty rail until duration lands.
+    // Drag/tap math checks `durationMs > 0` before firing onSeek so we don't
+    // accidentally seek to position 0 during load.
+    val safeDuration = durationMs.coerceAtLeast(1L)
+    val shown = (scrubTarget ?: positionMs).coerceIn(0, safeDuration)
+    val frac = if (durationMs > 0) shown.toFloat() / safeDuration else 0f
 
     Column(Modifier.fillMaxWidth()) {
         if (scrubTarget != null) {
@@ -603,19 +636,25 @@ private fun SeekBar(
                 }
                 .pointerInput(durationMs) {
                     detectTapGestures { offset ->
-                        onSeek((durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs))
+                        if (durationMs > 0) {
+                            onSeek((durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs))
+                        }
                     }
                 }
                 .pointerInput(durationMs) {
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
-                            scrubTarget = (durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                            if (durationMs > 0) {
+                                scrubTarget = (durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                            }
                         },
                         onDragEnd = { scrubTarget?.let(onSeek); scrubTarget = null },
                         onDragCancel = { scrubTarget = null },
                     ) { change, _ ->
-                        scrubTarget = (durationMs * change.position.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
-                        onInteract()
+                        if (durationMs > 0) {
+                            scrubTarget = (durationMs * change.position.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                            onInteract()
+                        }
                     }
                 },
             contentAlignment = Alignment.CenterStart,
