@@ -182,15 +182,39 @@ fun VodPlayerScreen(
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
-    DisposableEffect(Unit) {
+    // Keyed on `engine`, NOT Unit.
+    //
+    // `remember(decoderMode, minBufferMs, companionMode)` above *replaces* the
+    // engine whenever one of those settings resolves — and those come from
+    // collectAsStateWithLifecycle, which emits a placeholder first and the real
+    // DataStore value a moment later. So on any device where a playback setting
+    // differs from the placeholder, a second PlayerEngine gets built during
+    // start-up. remember discards the old value but never disposes it; that is
+    // this effect's job.
+    //
+    // Keyed on Unit, this only ever released whichever engine happened to be
+    // current at exit, leaving the earlier instance decoding in the background
+    // with nothing referencing it — which is why audio kept playing after
+    // leaving the screen. Keying on `engine` runs onDispose for the outgoing
+    // instance as well, so every engine is released exactly once.
+    //
+    // LivePlayerScreen already keys its equivalent effect on `engine`, which is
+    // why the leak was VOD-only.
+    DisposableEffect(engine) {
         tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
+        onDispose {
+            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
+            engine.release()
+        }
+    }
+    // Screen-level teardown stays keyed on Unit: swapping the engine mid-screen
+    // shouldn't reset the display refresh rate or drop the user's presence.
+    DisposableEffect(Unit) {
         onDispose {
             (ctxForRefresh as? android.app.Activity)?.let {
                 tv.enktel.app.player.RefreshRateMatcher.reset(it)
             }
             tv.enktel.app.data.net.PresenceTracker.clear()
-            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
-            engine.release()
         }
     }
 
