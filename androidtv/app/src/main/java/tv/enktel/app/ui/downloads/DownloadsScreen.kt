@@ -63,6 +63,7 @@ import java.io.File
 fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     val entries by graph.downloads.observe().collectAsStateWithLifecycle(initialValue = emptyList())
     val totalBytes by graph.downloads.totalBytes.collectAsStateWithLifecycle()
+    val speeds by graph.downloads.speeds.collectAsStateWithLifecycle()
 
     var confirmDelete by remember { mutableStateOf<DownloadEntry?>(null) }
 
@@ -104,6 +105,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                         onDelete = { confirmDelete = entry },
                         onPause = { graph.downloads.pause(entry.id) },
                         onResume = { graph.downloads.resume(entry.id) },
+                        speedBps = speeds[entry.id] ?: 0L,
                     )
                 }
                 item { Spacer(Modifier.height(6.dp)) }
@@ -157,6 +159,14 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     }
 }
 
+/** "45s" / "12m" / "1h 20m" — coarse on purpose, since the estimate is only
+ *  as good as the current rate and false precision reads as a promise. */
+private fun formatEta(secs: Long): String = when {
+    secs < 60 -> "${secs}s"
+    secs < 3600 -> "${secs / 60}m"
+    else -> "${secs / 3600}h ${(secs % 3600) / 60}m"
+}
+
 @Composable
 private fun GroupHeader(text: String) {
     Text(text, color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Black,
@@ -183,6 +193,8 @@ private fun DownloadRow(
     onDelete: () -> Unit,
     onPause: (() -> Unit)? = null,
     onResume: (() -> Unit)? = null,
+    /** Live transfer rate, bytes/sec. 0 when not moving. */
+    speedBps: Long = 0L,
 ) {
     Row(
         Modifier
@@ -232,11 +244,21 @@ private fun DownloadRow(
             }
             val sizeText = if (entry.sizeBytes > 0) entry.sizeBytes.humanBytes() else "size unknown"
             val doneText = entry.downloadedBytes.humanBytes()
+            // Speed and time-remaining while it's actually moving. A progress
+            // bar alone doesn't answer the question people actually have, which
+            // is "is this worth waiting for or should I come back later".
+            val rateText = if (speedBps > 0) " · ${speedBps.humanBytes()}/s" else ""
+            val etaText = if (speedBps > 0 && entry.sizeBytes > entry.downloadedBytes) {
+                val secsLeft = (entry.sizeBytes - entry.downloadedBytes) / speedBps
+                " · ${formatEta(secsLeft)} left"
+            } else ""
             val statusLine = when (status) {
                 "DONE" -> "Saved · $sizeText"
                 "FAILED" -> "Failed · ${entry.errorMessage.ifBlank { "tap ↻ to resume" }}"
-                "RUNNING" -> "Downloading · $doneText / $sizeText"
-                "PAUSED" -> "Paused · $doneText / $sizeText · ▶ resumes here"
+                "RUNNING" -> "$doneText / $sizeText$rateText$etaText"
+                "PAUSED" -> if (entry.errorMessage.startsWith("Waiting for Wi-Fi")) {
+                    "${entry.errorMessage} · $doneText / $sizeText"
+                } else "Paused · $doneText / $sizeText · ▶ resumes here"
                 else -> "Queued · $sizeText"
             }
             Text(statusLine, color = statusColor, fontSize = 11.sp,

@@ -79,6 +79,52 @@ class DownloadHub(
     private val _totalBytes = MutableStateFlow(0L)
     val totalBytes: kotlinx.coroutines.flow.StateFlow<Long> = _totalBytes.asStateFlow()
 
+    /**
+     * Live transfer rate per download, bytes/sec.
+     *
+     * Deliberately in memory and not on the DownloadEntry row. A rate is only
+     * meaningful while bytes are actually moving — persisting it would leave a
+     * paused or failed download proudly displaying the speed it managed
+     * several hours ago, and would cost a schema migration to store something
+     * that's wrong the moment the app is reopened.
+     */
+    private val _speeds = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val speeds: kotlinx.coroutines.flow.StateFlow<Map<String, Long>> = _speeds.asStateFlow()
+
+    /** Last progress sample per download, for turning deltas into a rate. */
+    private class RateSample(var atMs: Long, var bytes: Long)
+    private val rateSamples = java.util.concurrent.ConcurrentHashMap<String, RateSample>()
+
+    /**
+     * Folds a progress tick into a smoothed bytes/sec figure.
+     *
+     * Exponentially smoothed rather than instantaneous: range workers report in
+     * bursts as their buffers flush, so a raw delta swings wildly between 0 and
+     * several hundred MB/s and is unreadable. The 0.3 weight settles within a
+     * few seconds while still tracking a genuine slowdown.
+     */
+    private fun recordRate(id: String, downloaded: Long) {
+        val now = System.currentTimeMillis()
+        val prev = rateSamples.putIfAbsent(id, RateSample(now, downloaded))
+        if (prev == null) return
+        val dtMs = now - prev.atMs
+        // Ignore ticks closer than half a second — too short to divide by.
+        if (dtMs < 500) return
+        val dBytes = downloaded - prev.bytes
+        prev.atMs = now
+        prev.bytes = downloaded
+        if (dBytes < 0) return // resumed from a lower offset; skip this sample
+        val instant = dBytes * 1000 / dtMs
+        val previous = _speeds.value[id] ?: instant
+        val smoothed = (previous * 0.7 + instant * 0.3).toLong()
+        _speeds.value = _speeds.value + (id to smoothed)
+    }
+
+    private fun clearRate(id: String) {
+        rateSamples.remove(id)
+        _speeds.value = _speeds.value - id
+    }
+
     /** Default root under app-scoped external storage. Used when the user
      *  hasn't picked a folder via SAF (see [settings.downloadFolderUri]). */
     val defaultRoot: File = (app.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
@@ -416,6 +462,7 @@ class DownloadHub(
                     // restartable — it costs one extra column on a write we
                     // were already doing.
                     dao.updateResumeState(id, state, pct, downloaded, total)
+                    recordRate(id, downloaded)
                     if (pct % 20 == 0) refreshTotals()
                 }
             },
@@ -426,6 +473,7 @@ class DownloadHub(
                     dao.updateResumeState(id, "", 100, bytes, bytes)
                     dao.markDone(id, path)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    clearRate(id)
                     refreshTotals()
                 }
             },
@@ -433,6 +481,7 @@ class DownloadHub(
                 scope.launch {
                     dao.markFailed(id, msg)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    clearRate(id)
                 }
             },
             onPaused = { downloaded, total, state ->
@@ -440,6 +489,7 @@ class DownloadHub(
                     val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
                     dao.markPaused(id, state, pct, downloaded, total)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    clearRate(id)
                     refreshTotals()
                 }
             },
@@ -535,6 +585,7 @@ class DownloadHub(
                             dao.markDone(entryId, entry.filePath)
                         }
                         synchronized(jobsLock) { sysJobs.remove(entryId) }
+                        clearRate(entryId)
                     }
                     DownloadManager.STATUS_FAILED -> {
                         val reason = c.getInt(reasonIdx)
@@ -543,7 +594,10 @@ class DownloadHub(
                     }
                     DownloadManager.STATUS_PAUSED -> dao.updateProgress(entryId, "PAUSED", pct, soFar, size)
                     DownloadManager.STATUS_PENDING -> dao.updateProgress(entryId, "QUEUED", pct, soFar, size)
-                    DownloadManager.STATUS_RUNNING -> dao.updateProgress(entryId, "RUNNING", pct, soFar, size)
+                    DownloadManager.STATUS_RUNNING -> {
+                        dao.updateProgress(entryId, "RUNNING", pct, soFar, size)
+                        recordRate(entryId, soFar)
+                    }
                 }
             }
         }

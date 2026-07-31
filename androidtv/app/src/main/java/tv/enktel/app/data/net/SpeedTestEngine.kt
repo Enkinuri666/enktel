@@ -595,10 +595,28 @@ object SpeedTestEngine {
         val req = Request.Builder().url(url)
             .header("Range", "bytes=0-25165824") // 24 MB
             .build()
+        // Timing starts at the first byte, not at the call.
+        //
+        // The old version started the clock before execute(), so DNS, the TCP
+        // handshake, TLS and the panel's time-to-first-byte were all counted as
+        // transfer time. TTFB on a loaded IPTV panel is routinely 1-2 seconds
+        // (the health chip shows exactly that), and against a 5-second window
+        // that alone under-reported throughput by a third or more.
+        //
+        // It also penalised fast lines hardest: a connection that pulls the
+        // whole 24 MB sample in a second was measuring one second of transfer
+        // against one-plus second of fixed setup, roughly halving the figure,
+        // while a slow line amortised the same setup over the full window. So
+        // the number was not merely low, it was least accurate exactly where
+        // people care most.
         var bytes = 0L
-        val start = System.nanoTime()
-        val deadlineNs = start + 5_000_000_000L
+        var firstByteNs = 0L
+        var lastNs = 0L
+        val callStart = System.nanoTime()
+        val hardDeadlineNs = callStart + 15_000_000_000L
         val maxBytes = 24L * 1024 * 1024
+        // How long to keep sampling *after* the first byte lands.
+        val sampleWindowNs = 5_000_000_000L
         http.newCall(req).execute().use { resp ->
             // 206 (ranged) is the expected response; 200 also fine when the
             // panel ignores our Range. Any other code means the URL isn't a
@@ -606,17 +624,29 @@ object SpeedTestEngine {
             if (!(resp.code == 200 || resp.code == 206)) return 0.0
             val source = resp.body?.source() ?: return 0.0
             val buf = okio.Buffer()
-            while (System.nanoTime() < deadlineNs && bytes < maxBytes) {
+            while (bytes < maxBytes) {
+                val now = System.nanoTime()
+                if (now > hardDeadlineNs) break
+                if (firstByteNs != 0L && now - firstByteNs > sampleWindowNs) break
                 val read = try { source.read(buf, 262_144) } catch (_: Exception) { -1L }
                 if (read == -1L) break
+                if (firstByteNs == 0L) {
+                    // Clock starts here. Bytes from this first read are counted
+                    // against the window that begins with them.
+                    firstByteNs = System.nanoTime()
+                }
                 bytes += read
+                lastNs = System.nanoTime()
                 buf.clear()
             }
         }
-        val elapsedS = (System.nanoTime() - start) / 1_000_000_000.0
-        if (elapsedS <= 0 || bytes <= 0) return 0.0
-        val bits = bytes * 8.0
-        return (bits / elapsedS) / 1_000_000.0
+        if (firstByteNs == 0L || bytes <= 0) return 0.0
+        val elapsedS = (lastNs - firstByteNs) / 1_000_000_000.0
+        // A sample too short to be meaningful (a tiny body, or the connection
+        // dying immediately) would divide by near-zero and report an absurd
+        // number. Better to report nothing than something wrong.
+        if (elapsedS < 0.25) return 0.0
+        return (bytes * 8.0 / elapsedS) / 1_000_000.0
     }
 
     private fun recommend(mbps: Double, pingMs: Int, lossPct: Int): String = when {
