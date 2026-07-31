@@ -298,4 +298,9 @@ interface DownloadDao {
      *  user can resume them instead of staring at a frozen progress bar. */
     @Query("SELECT * FROM downloads WHERE status IN ('RUNNING', 'QUEUED')")
     suspend fun inFlight(): List<DownloadEntry>
+
+    /** Downloads parked by the Wi-Fi-only policy, so they can be picked up
+     *  automatically when an unmetered connection returns. */
+    @Query("SELECT * FROM downloads WHERE status = 'PAUSED' AND errorMessage LIKE 'Waiting for Wi-Fi%'")
+    suspend fun waitingForWifi(): List<DownloadEntry>
 }

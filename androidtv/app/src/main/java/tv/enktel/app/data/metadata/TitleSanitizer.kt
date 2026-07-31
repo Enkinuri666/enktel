@@ -55,6 +55,42 @@ object TitleSanitizer {
         return s.trim().ifBlank { raw.trim() }
     }
 
+    /**
+     * A trailing broadcast stamp: an optional `HH:mm` followed by a date, at
+     * the very end of the string. Matches `09:00 28-07-2026`, `28/07/2026`,
+     * `2026-07-28`.
+     *
+     * A date is *required* even though the time is the uglier half. Plenty of
+     * legitimate programmes end in a time — "Sky News At 10:00", "News at Ten"
+     * — and stripping a bare trailing time would quietly rename them. The junk
+     * we're targeting always carries the date, so requiring it is what keeps
+     * this safe.
+     */
+    private val trailingBroadcastStamp = Regex(
+        """[\s\-|·,]*(\d{1,2}:\d{2}(:\d{2})?)?[\s\-|·,]*""" +
+            """(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2})[\s\-|·,]*$""",
+    )
+
+    /**
+     * [clean], plus the broadcast stamps EPG feeds bolt onto programme titles.
+     *
+     * Xtream panels and some XMLTV sources ship titles like
+     * `ARENA ESPORT HD 09:00 28-07-2026` — the channel's own scheduling data
+     * duplicated into the programme name. It's noise everywhere it's shown:
+     * the Sports Hub, the guide, the player's now-playing bar. The start time
+     * is already a structured field on the row, so the copy in the title is
+     * pure redundancy.
+     *
+     * Separate from [clean] because it's only correct for programmes. Applying
+     * the date strip to a VOD title would mangle anything legitimately ending
+     * in a date.
+     */
+    fun cleanProgramme(raw: String): String {
+        if (raw.isBlank()) return raw
+        val stripped = trailingBroadcastStamp.replace(clean(raw), "")
+        return stripped.trim().ifBlank { clean(raw) }
+    }
+
     /** Tokenise into normalised search keywords — lowercased, split on
      *  common separators, blank/very-short tokens dropped. Used by
      *  UfoKeywordScanner + the search index. */

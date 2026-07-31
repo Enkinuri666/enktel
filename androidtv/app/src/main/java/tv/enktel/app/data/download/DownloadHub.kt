@@ -88,6 +88,30 @@ class DownloadHub(
         ensureNotificationChannel()
         registerCompletionReceiver()
         reconcileOnStart()
+        watchForUnmeteredNetwork()
+    }
+
+    /**
+     * Restarts downloads parked by the Wi-Fi-only policy once an unmetered
+     * connection comes back.
+     *
+     * Without this, "Waiting for Wi-Fi" would mean "waiting for you to notice
+     * and press play", which is not what the setting promises. Keyed off
+     * [tv.enktel.app.data.net.NetworkClass]'s transport flow, which is already
+     * maintained for the player's buffer sizing, so this costs one collector
+     * and no extra system callbacks.
+     */
+    private fun watchForUnmeteredNetwork() {
+        scope.launch {
+            tv.enktel.app.data.net.NetworkClass.kind.collect {
+                if (!settings.downloadsWifiOnlyNow()) return@collect
+                if (blockedByMeteredPolicy(true)) return@collect
+                // Unmetered again — pick up anything parked for this reason.
+                try {
+                    dao.waitingForWifi().forEach { e -> resume(e.id) }
+                } catch (_: Throwable) { /* best effort */ }
+            }
+        }
     }
 
     /**
@@ -111,11 +135,44 @@ class DownloadHub(
         }
     }
 
+    /**
+     * True when downloading right now would run over a metered connection the
+     * user has asked us to avoid.
+     *
+     * Deliberately checks the OS's own metered flag rather than just "is this
+     * Wi-Fi": a tethered hotspot reports as Wi-Fi transport but is still the
+     * user's cellular allowance, and that's exactly the case where an
+     * accidental 4 GB download hurts most.
+     */
+    private fun blockedByMeteredPolicy(wifiOnly: Boolean): Boolean {
+        if (!wifiOnly) return false
+        return try {
+            val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            @Suppress("DEPRECATION")
+            cm.isActiveNetworkMetered
+        } catch (_: Throwable) {
+            false // can't tell — don't block the user on a guess
+        }
+    }
+
     /** Enqueue a movie or episode. Idempotent per [entry.id]. */
     fun enqueue(entry: DownloadEntry) {
         scope.launch {
             val existing = dao.byId(entry.id)
             if (existing != null && existing.status == "DONE") return@launch
+
+            // Park rather than fail. A download that silently does nothing is
+            // the worst outcome here — the row states plainly why it's waiting,
+            // and the network watcher below starts it the moment Wi-Fi returns.
+            if (blockedByMeteredPolicy(settings.downloadsWifiOnlyNow())) {
+                dao.upsert(
+                    entry.copy(
+                        status = "PAUSED",
+                        errorMessage = "Waiting for Wi-Fi — connection is metered",
+                    )
+                )
+                return@launch
+            }
 
             val chosenFolderUri = settings.downloadFolderUriNow()
             val engine = settings.downloadEngineNow()

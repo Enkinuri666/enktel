@@ -1318,8 +1318,17 @@ private fun BrowseDock(
     val categories by graph.content.categories(profileId, "live").collectAsStateWithLifecycle(initialValue = emptyList())
     val allChannels by graph.content.channels(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedCat by remember { mutableStateOf<String?>(currentChannel?.categoryId) }
-    val channels = remember(allChannels, selectedCat) {
-        if (selectedCat == null) allChannels else allChannels.filter { it.categoryId == selectedCat }
+    // v1.37.0 — type-to-filter. Category chips alone still leave a lot of
+    // scrolling on a 15k-channel playlist, and the Movies grid already has an
+    // inline search, so this matches an established pattern rather than
+    // inventing one. Matches on channel name or number, because people reach
+    // for a number as readily as a name.
+    var query by remember { mutableStateOf("") }
+    val channels = remember(allChannels, selectedCat, query) {
+        val inCat = if (selectedCat == null) allChannels else allChannels.filter { it.categoryId == selectedCat }
+        val needle = query.trim().lowercase()
+        if (needle.isEmpty()) inCat
+        else inCat.filter { it.name.lowercase().contains(needle) || it.num.toString() == needle }
     }
     var upcoming by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
     LaunchedEffect(currentChannel?.key) {
@@ -1366,6 +1375,22 @@ private fun BrowseDock(
             FocusButton("📅 Full Guide", accent = true, onClick = onOpenGuide)
             Spacer(Modifier.width(6.dp))
             FocusButton("✕", onClick = onClose)
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.weight(1f)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = "🔍 Filter by name or number",
+                )
+            }
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                FocusButton("Clear", onClick = { query = "" })
+            }
         }
         LazyRow(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),

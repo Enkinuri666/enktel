@@ -148,6 +148,12 @@ class SettingsStore(private val context: Context) {
     // Landscape and portrait are separate because a good video/dock balance
     // side-by-side is a bad one stacked. The third is the channel-list vs
     // guide split inside the dock itself.
+    // v1.37.0 — hold downloads back on a metered connection. Defaults ON for
+    // the mobile flavor and OFF for TV: a phone on cellular can silently burn
+    // several GB on one film, whereas a set-top box is on Wi-Fi or Ethernet and
+    // the restriction would only ever get in the way.
+    private val DOWNLOADS_WIFI_ONLY = booleanPreferencesKey("downloads_wifi_only")
+
     private val BROWSE_SPLIT_LAND = intPreferencesKey("browse_split_land_pct")
     private val BROWSE_SPLIT_PORT = intPreferencesKey("browse_split_port_pct")
     private val DOCK_SPLIT = intPreferencesKey("dock_split_pct")
@@ -265,6 +271,12 @@ class SettingsStore(private val context: Context) {
     // that much height, and the old aspect-locked pane left the dock cramped.
     // 55 % for the channel list, up from the old 62 %, because the guide
     // column was truncating almost every programme title at 38 %.
+    val downloadsWifiOnly: Flow<Boolean> = context.dataStore.data.map {
+        it[DOWNLOADS_WIFI_ONLY] ?: (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+    }
+    suspend fun setDownloadsWifiOnly(v: Boolean) = context.dataStore.edit { it[DOWNLOADS_WIFI_ONLY] = v }
+    suspend fun downloadsWifiOnlyNow(): Boolean = downloadsWifiOnly.first()
+
     val browseSplitLandscape: Flow<Float> =
         context.dataStore.data.map { (it[BROWSE_SPLIT_LAND] ?: 60) / 100f }
     suspend fun setBrowseSplitLandscape(v: Float) = context.dataStore.edit {
