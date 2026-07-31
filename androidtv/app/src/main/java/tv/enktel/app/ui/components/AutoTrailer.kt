@@ -117,25 +117,29 @@ fun AutoTrailerLayer(
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun YouTubeSilentPlayer(videoId: String, modifier: Modifier = Modifier) {
-    var webView by remember { mutableStateOf<WebView?>(null) }
     // AndroidView.update runs on every recomposition; reloading the page each
     // time would restart the trailer from frame one whenever anything else on
     // the screen changed. Only a genuinely new video id triggers a load.
     val loaded = remember { arrayOfNulls<String>(1) }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            // Leaving the screen must stop playback, not just hide it.
-            webView?.let { view ->
-                runCatching { view.loadUrl("about:blank") }
-                runCatching { view.destroy() }
-            }
-            webView = null
-        }
-    }
-
     AndroidView(
         modifier = modifier,
+        // Teardown belongs in onRelease, not a DisposableEffect.
+        //
+        // WebView.destroy() must not be called while the view is still attached
+        // to a window — it logs, and on some builds throws. A DisposableEffect
+        // has no ordering guarantee against AndroidView's own teardown, so it
+        // could fire while the view was still in the hierarchy. onRelease is
+        // invoked by Compose *after* the view has been detached, which is
+        // exactly the contract destroy() needs.
+        onRelease = { view ->
+            (view as? WebView)?.let { web ->
+                // Blank the page first so audio/video stops even on the rare
+                // device where destroy() is deferred.
+                runCatching { web.loadUrl("about:blank") }
+                runCatching { web.destroy() }
+            }
+        },
         factory = { ctx ->
             // Some stripped-down TV firmware ships without a WebView provider;
             // constructing one throws, and the whole feature just sits out.
@@ -159,7 +163,6 @@ private fun YouTubeSilentPlayer(videoId: String, modifier: Modifier = Modifier) 
                         useWideViewPort = true
                         cacheMode = WebSettings.LOAD_DEFAULT
                     }
-                    webView = this
                 }
             }.getOrElse { android.view.View(ctx) }
         },

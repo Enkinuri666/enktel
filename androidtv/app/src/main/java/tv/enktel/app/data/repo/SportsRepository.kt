@@ -33,6 +33,31 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     private val PAST_WINDOW = TimeUnit.DAYS.toMillis(3)
     private val FUTURE_WINDOW = TimeUnit.DAYS.toMillis(7)
 
+    /** Ceiling on channels scanned per load — a 20k-channel playlist would
+     *  otherwise pull a ten-day EPG window for every sports-ish channel. */
+    private val CHANNEL_SCAN_CAP = 400
+
+    /**
+     * How much of the playlist the last [load] actually covered.
+     *
+     * The scan is capped for performance, which is fine, but capping silently
+     * is not: a user whose fixture fell outside the limit sees an incomplete
+     * hub and reasonably concludes the match isn't on. Exposing the coverage
+     * lets the UI admit it and point at the sport filter, which narrows the
+     * scan rather than truncating it.
+     */
+    data class ScanCoverage(
+        val channelsMatched: Int = 0,
+        val channelsScanned: Int = 0,
+        val hitsCapped: Boolean = false,
+    ) {
+        val truncated: Boolean get() = hitsCapped || channelsMatched > channelsScanned
+    }
+
+    @Volatile
+    var lastScan: ScanCoverage = ScanCoverage()
+        private set
+
     /** Broad tokens on the channel category/name that always count as sports. Expanded from
      *  the v1.5.0 list to catch more regional broadcasters and the common Xtream naming
      *  patterns ("SPORT | US: NBA", "DE | Sky Sport", "UK ⚽ Premier League HD", etc). */
@@ -146,11 +171,20 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
             val HITS_CAP = 2000
 
             val channels = content.channels(profileId).first()
-            val sportsChannels = channels.filter { ch ->
+            val allSportsChannels = channels.filter { ch ->
                 SPORTS_CATEGORY_TOKENS.any { t ->
                     ch.categoryName.contains(t, true) || ch.name.contains(t, true)
                 }
-            }.take(400)
+            }
+            val sportsChannels = allSportsChannels.take(CHANNEL_SCAN_CAP)
+            // Record what the caps hid so the UI can say so. Silently returning
+            // a partial list is how a user concludes their fixture "isn't on"
+            // when it's simply past the scan limit.
+            lastScan = ScanCoverage(
+                channelsMatched = allSportsChannels.size,
+                channelsScanned = sportsChannels.size,
+                hitsCapped = false,
+            )
             if (sportsChannels.isEmpty()) return@withContext emptyPhases()
 
             // Precompute each sports channel's implied sport from its name/category so we can
@@ -187,7 +221,10 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
                         else -> "UPCOMING"
                     }
                     hits += SportsEvent(prog, ch, sport, phase)
-                    if (hits.size >= HITS_CAP) break@outer
+                    if (hits.size >= HITS_CAP) {
+                        lastScan = lastScan.copy(hitsCapped = true)
+                        break@outer
+                    }
                 }
             }
 

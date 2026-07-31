@@ -92,10 +92,14 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var todaysFixtures by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
     var highlightClips by remember { mutableStateOf<List<tv.enktel.app.data.repo.HighlightClip>>(emptyList()) }
 
+    var scanCoverage by remember {
+        mutableStateOf(tv.enktel.app.data.repo.SportsRepository.ScanCoverage())
+    }
     LaunchedEffect(refreshTick, sportFilter) {
         loading = true; loadError = null
         try {
             events = graph.sports.load(p.id, sportFilter.orEmpty())
+            scanCoverage = graph.sports.lastScan
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (t: Throwable) {
             loadError = t.message ?: "Could not load sports events"
@@ -170,6 +174,30 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         Spacer(Modifier.width(6.dp))
                     }
                     FocusButton("↻", onClick = { refreshTick++ })
+                }
+            }
+        }
+        // Say so when the scan didn't cover the whole playlist, rather than
+        // letting a truncated list read as "your match isn't on". Picking a
+        // sport narrows the scan instead of truncating it, so that's the
+        // actionable advice.
+        if (scanCoverage.truncated && loadError == null) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = padHoriz, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        buildString {
+                            append("Showing a partial scan")
+                            if (scanCoverage.channelsMatched > scanCoverage.channelsScanned) {
+                                append(" — ${scanCoverage.channelsScanned} of ")
+                                append("${scanCoverage.channelsMatched} sports channels")
+                            }
+                            append(". Pick a sport to search the rest.")
+                        },
+                        color = EnktelTextDim, fontSize = 11.sp,
+                    )
                 }
             }
         }

@@ -62,7 +62,14 @@ object XmltvParser {
                         if (keep && title.isNotEmpty()) {
                             batch += EpgProgram(
                                 profileId = profileId, epgId = channelId,
-                                startMs = startMs, endMs = endMs, title = title, desc = desc,
+                                startMs = startMs, endMs = endMs,
+                                // Sanitised once here, at parse time, so every
+                                // reader (guide, Sports Hub, now-playing bar,
+                                // search) gets the clean title without each
+                                // having to strip it again. Mirrors how channel
+                                // and VOD names are handled at sync time.
+                                title = tv.enktel.app.data.metadata.TitleSanitizer.cleanProgramme(title),
+                                desc = desc,
                             )
                             if (batch.size >= batchSize) {
                                 emit(batch.toList()); total += batch.size; batch.clear()

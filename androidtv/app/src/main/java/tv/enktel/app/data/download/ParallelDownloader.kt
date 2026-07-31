@@ -98,6 +98,17 @@ class ParallelDownloader(
         private const val MAX_SEGMENT_ATTEMPTS = 6
         /** Consecutive aborts that trigger dropping one concurrent stream. */
         private const val ABORTS_BEFORE_SHRINK = 3
+        /** Headroom left free after a download, so filling the volume doesn't
+         *  take the rest of the device down with it. */
+        private const val FREE_SPACE_MARGIN_BYTES = 128L * 1024 * 1024
+
+        private fun humanBytes(b: Long): String {
+            if (b <= 0) return "0 B"
+            val units = arrayOf("B", "KB", "MB", "GB", "TB")
+            var v = b.toDouble(); var u = 0
+            while (v >= 1024 && u < units.lastIndex) { v /= 1024; u++ }
+            return if (u == 0) "$b B" else "%.1f %s".format(v, units[u])
+        }
     }
 
     /**
@@ -151,10 +162,18 @@ class ParallelDownloader(
         suspend fun openWrite(sizeBytes: Long, appendFrom: Long): Writer?
         /** Bytes already on disk, for validating a resume. */
         fun existingLength(): Long
+        /** Free bytes on the volume this target writes to, or -1 when unknown
+         *  (SAF providers don't reliably expose it). -1 skips the check. */
+        fun freeSpaceBytes(): Long
 
         data class FileTarget(val file: File) : Target {
             override val displayPath: String get() = file.absolutePath
             override fun existingLength(): Long = if (file.exists()) file.length() else 0L
+            override fun freeSpaceBytes(): Long = try {
+                val dir = file.parentFile ?: return -1L
+                dir.mkdirs()
+                android.os.StatFs(dir.absolutePath).let { it.availableBlocksLong * it.blockSizeLong }
+            } catch (_: Throwable) { -1L }
             override suspend fun openWrite(sizeBytes: Long, appendFrom: Long): Writer {
                 file.parentFile?.mkdirs()
                 return FileWriter(file, sizeBytes)
@@ -164,6 +183,10 @@ class ParallelDownloader(
         data class SafTarget(val ctx: Context, val doc: DocumentFile) : Target {
             override val displayPath: String get() = doc.uri.toString()
             override fun existingLength(): Long = try { doc.length() } catch (_: Throwable) { 0L }
+            // A DocumentsProvider can sit on anything — SD card, USB, a cloud
+            // mount — and there's no portable way to ask it for free space.
+            // Unknown is honest; the write will surface ENOSPC if it comes to it.
+            override fun freeSpaceBytes(): Long = -1L
             override suspend fun openWrite(sizeBytes: Long, appendFrom: Long): Writer? {
                 // "wa" = write-append. Most DocumentsProviders support it; the
                 // ones that don't throw, and returning null tells the caller to
@@ -309,6 +332,22 @@ class ParallelDownloader(
                     total > 0 &&
                     probe.acceptsRanges &&
                     onDisk >= (if (target is Target.FileTarget) total else saved.sumOf { it.done })
+
+                // Fail before the transfer, not two gigabytes into it.
+                //
+                // The probe already told us the file size, and the target knows
+                // its own free space, so there's no excuse for discovering this
+                // at the last write — which surfaces as a cryptic ENOSPC after a
+                // long wait and leaves a large useless partial file behind. The
+                // headroom margin keeps us from filling the volume completely,
+                // which makes the whole device misbehave, not just this app.
+                val free = target.freeSpaceBytes()
+                if (total > 0 && free >= 0 && total + FREE_SPACE_MARGIN_BYTES > free) {
+                    throw java.io.IOException(
+                        "Not enough free storage — needs ${humanBytes(total)}, " +
+                            "${humanBytes(free)} available",
+                    )
+                }
 
                 val streams = maxStreams.coerceIn(1, MAX_STREAMS)
                 segments = when {

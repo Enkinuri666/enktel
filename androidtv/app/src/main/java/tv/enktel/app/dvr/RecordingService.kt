@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.Request
@@ -26,9 +27,33 @@ import java.io.File
 class RecordingService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val jobs = HashMap<Long, Job>()
+
+    // ConcurrentHashMap, not HashMap: onStartCommand touches this on the main
+    // thread while record()'s finally block removes from it on Dispatchers.IO.
+    // Two threads mutating a plain HashMap can corrupt its internal table —
+    // classically an infinite loop on resize, which on a foreground service
+    // means a pinned CPU core and a recording that never ends.
+    private val jobs = java.util.concurrent.ConcurrentHashMap<Long, Job>()
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * Without this the recording coroutine outlives the service.
+     *
+     * The scope was never cancelled anywhere, and `record()`'s copy loop only
+     * checks `scope.isActive` — which stays true forever if nothing cancels it.
+     * So a destroyed service left a coroutine holding an open OkHttp call,
+     * still writing to disk and still updating the database, with no UI and no
+     * way to stop it. On a metered connection that's invisible data burn, and
+     * it holds one of the line's connections open — which on a 1- or
+     * 2-connection Xtream line is enough to break live playback.
+     */
+    override fun onDestroy() {
+        jobs.values.forEach { it.cancel() }
+        jobs.clear()
+        scope.cancel()
+        super.onDestroy()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val app = application as EnktelApp

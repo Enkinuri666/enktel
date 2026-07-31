@@ -358,7 +358,21 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setDownloadEngine("system") } })
         }
         Text(
-            "Auto/Parallel use a 4-way HTTP-Range OkHttp downloader — genuinely faster on Xtream VOD panels that support ranges. System uses Android's DownloadManager (OS notification, single-stream). Custom folder = always Parallel (OS can't write SAF).",
+            "Auto/Parallel use a ranged OkHttp downloader — genuinely faster on Xtream VOD panels that support ranges. Stream count follows your line's connection limit, always leaving one free for playback. System uses Android's DownloadManager (OS notification, single-stream). Custom folder = always Parallel (OS can't write SAF).",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        val wifiOnly by graph.settings.downloadsWifiOnly.collectAsStateWithLifecycle(
+            initialValue = BuildConfig.FLAVOR == "mobile",
+        )
+        FocusButton(
+            "Download on Wi-Fi only: ${if (wifiOnly) "ON" else "off"}",
+            accent = wifiOnly,
+            onClick = { scope.launch { graph.settings.setDownloadsWifiOnly(!wifiOnly) } },
+        )
+        Text(
+            "Holds downloads back while the connection is metered — a single film can be several GB. " +
+                "Queued downloads say \"Waiting for Wi-Fi\" and start on their own once you're back on an " +
+                "unmetered network. Tethered hotspots count as metered, since that's still your mobile data.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
         val dlFolderUri by graph.settings.downloadFolderUri.collectAsStateWithLifecycle(initialValue = "")
