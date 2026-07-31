@@ -248,6 +248,12 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id") suspend fun byId(id: Long): Recording?
     @Query("SELECT * FROM recordings ORDER BY startMs DESC") fun all(): Flow<List<Recording>>
     @Query("UPDATE recordings SET status = :status WHERE id = :id") suspend fun setStatus(id: Long, status: String)
+
+    /** Rows still claiming to be recording — used at start-up to clean up after
+     *  a process death, which otherwise leaves a permanent "● REC" badge on a
+     *  recording that stopped when the app did. */
+    @Query("SELECT * FROM recordings WHERE status = 'RECORDING'")
+    suspend fun inFlight(): List<Recording>
 }
 
 @Dao

@@ -81,6 +81,28 @@ class AppGraph(app: Application) {
                 tv.enktel.app.ui.components.NavSounds.enabled = it
             }
         }
+        // Recordings can't survive the process dying — the foreground service
+        // goes with it. Rows left claiming RECORDING would otherwise show a
+        // permanent "● REC" badge and a Stop button with nothing to stop.
+        // A partial recording with real content is still watchable, so anything
+        // that got past the service's own 5 MB "worth keeping" threshold is
+        // closed as DONE rather than thrown away as FAILED.
+        bgScope.launch {
+            try {
+                val dao = db.recordingDao()
+                dao.inFlight().forEach { rec ->
+                    val bytes = runCatching {
+                        if (rec.filePath.isNotBlank()) java.io.File(rec.filePath).length() else 0L
+                    }.getOrDefault(0L)
+                    dao.update(
+                        rec.copy(
+                            status = if (bytes > 5L shl 20) "DONE" else "FAILED",
+                            sizeBytes = bytes,
+                        )
+                    )
+                }
+            } catch (_: Throwable) { /* best effort — never block start-up */ }
+        }
     }
 }
 
