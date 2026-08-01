@@ -80,6 +80,16 @@ private val DEFAULT_ITEMS = listOf(
 fun TvNavShell(
     currentRoute: String?,
     onSelect: (String) -> Unit,
+    /**
+     * Title of the docked stream, or null when nothing is playing in the mini
+     * window. Non-null puts a "Now playing" entry at the top of the rail.
+     *
+     * The mini window itself is deliberately not focusable on TV — a floating
+     * overlay competing for D-pad focus with the content grid makes both harder
+     * to use — so this is how a remote gets back to full screen.
+     */
+    nowPlayingLabel: String? = null,
+    onNowPlaying: () -> Unit = {},
     items: List<TvNavItem> = DEFAULT_ITEMS,
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -108,6 +118,15 @@ fun TvNavShell(
                 .onFocusChanged { expanded = it.hasFocus },
         ) {
             Spacer(Modifier.height(24.dp))
+            if (nowPlayingLabel != null) {
+                NavRailItem(
+                    item = TvNavItem("nowPlaying", nowPlayingLabel.take(22), "▶", ""),
+                    selected = true,
+                    expanded = expanded,
+                    onClick = onNowPlaying,
+                )
+                Spacer(Modifier.height(14.dp))
+            }
             items.forEach { item ->
                 val selected = currentRoute?.let { it.startsWith(item.route.substringBefore("?")) } == true
                 NavRailItem(item = item, selected = selected, expanded = expanded, onClick = { onSelect(item.route) })

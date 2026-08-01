@@ -118,15 +118,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
     val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
 
-    val engine = remember(p.id, decoderMode, minBufferMs, companionMode) {
-        PlayerEngine(
-            context, graph.http, bufferProfile,
-            decoderMode = decoderMode,
-            minBufferOverrideMs = minBufferMs,
-            lockToTopBitrate = companionMode,
-        )
-    }
-    LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
+    // v1.38.0 — the engine belongs to the process, not to this screen, so
+    // navigating away can dock the stream into the mini window instead of
+    // tearing it down. See PlaybackSession.
+    val session = graph.playback
+    val engine = session.engine()
+    // Coming back from the dock means this screen is re-mounting on top of a
+    // stream that is already running. `expand()` flips the session out of
+    // docked mode so the mini window gets out of the way.
+    LaunchedEffect(Unit) { session.expand() }
     val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
     DisposableEffect(zapPreloader) { onDispose { zapPreloader.cancel() } }
     val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
@@ -139,36 +139,22 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             }
         }
     }
-    val backgroundAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
-    // Keep the OS display awake while the live player is on-screen — otherwise
-    // Android's own screen-off timer fires mid-programme after a few minutes of
-    // no touch input, which is *especially* wrong on TV where the remote is
-    // idle by design.  Cleared on dispose so backgrounding the activity lets
-    // the panel sleep normally.
+    // Leaving this screen ends playback — unless we deliberately docked, which
+    // is the one case where audio without a fullscreen player is legitimate
+    // (the mini window is on screen and can be closed from there).
     //
-    // When the user has opted into "Background audio" (Settings → Playback),
-    // we DO NOT hold the wake flag — playback continues while the screen
-    // sleeps, so news / sports commentary / podcasts can keep going with
-    // the panel dark. Only relevant on live: VOD keeps the flag either way
-    // because a movie without picture is a bug, not a feature.
-    DisposableEffect(backgroundAudio) {
-        val activity = ctxForRefresh as? android.app.Activity
-        if (!backgroundAudio) {
-            activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
+    // Stated as an explicit rule rather than left to fall out of composable
+    // lifetimes: an engine nobody can see is exactly the defect shipped in
+    // v1.35.1, and hoisting the engine out of the screen removes the automatic
+    // teardown that used to mask it.
+    DisposableEffect(Unit) {
         onDispose {
-            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-    DisposableEffect(engine) {
-        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
-        onDispose {
-            (ctxForRefresh as? android.app.Activity)?.let {
-                tv.enktel.app.player.RefreshRateMatcher.reset(it)
+            if (session.mode.value != tv.enktel.app.player.PlaybackSession.Mode.DOCKED) {
+                (ctxForRefresh as? android.app.Activity)?.let {
+                    tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                }
+                session.stop()
             }
-            tv.enktel.app.data.net.PresenceTracker.clear()
-            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
-            engine.release()
         }
     }
 
@@ -202,12 +188,27 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
     val anyOverlay = showChannels || showQuickMenu || trackMenu.isNotEmpty() || pinPrompt
 
+    /** Keeps the dock's label in step with whatever is actually tuned. */
+    fun publishNowPlaying(ch: Channel, programme: String) {
+        session.setNowPlaying(
+            tv.enktel.app.player.PlaybackSession.NowPlaying(
+                kind = tv.enktel.app.player.PlaybackSession.Kind.LIVE,
+                contentId = ch.key,
+                title = ch.name,
+                subtitle = programme,
+                logo = ch.logo,
+                returnRoute = "live?ch=${ch.key}",
+            )
+        )
+    }
+
     fun tune(ch: Channel) {
         current = ch
         showChannels = false
         showInfo = true
         infoTick++
         shiftedFrom = 0L
+        publishNowPlaying(ch, "")
         // Universal URL resolver: try the preferred format first, then walk
         // the fallback chain (other format, extensionless, legacy no-/live/
         // shape) if the panel rejects the primary candidate.  Covers the
@@ -278,18 +279,31 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         zapPreloader.warm(this, urls)
     }
 
-    // Docked-browse state: when true the video shrinks to the top half of the screen and
-    // a rich category / channel / guide browser fills the remaining space.
-    var browseMode by remember { mutableStateOf(false) }
-
     // Initial tune
     LaunchedEffect(channels, p.id) {
         if (current != null || channels.isEmpty()) return@LaunchedEffect
         val lastKey = graph.settings.lastChannel.first()
+        // What the session is already playing, if anything. Expanding the dock
+        // re-mounts this screen on top of a running stream; re-tuning it would
+        // make the programme re-buffer from scratch every time the user came
+        // back from checking a download.
+        val running = session.now.value
+            ?.takeIf {
+                it.kind == tv.enktel.app.player.PlaybackSession.Kind.LIVE &&
+                    session.isLoaded(it.contentId)
+            }
+            ?.contentId
         val target = channels.firstOrNull { it.key == initialChannelKey }
+            ?: channels.firstOrNull { it.key == running }
             ?: channels.firstOrNull { it.key == lastKey }
             ?: channels.first()
-        tune(target)
+        if (target.key == running) {
+            current = target
+            nowNext = graph.epg.nowNext(p.id, target.epgId)
+            publishNowPlaying(target, nowNext.now?.title.orEmpty())
+        } else {
+            tune(target)
+        }
     }
 
     // Favorite state
@@ -302,6 +316,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // now-playing EPG program.
     LaunchedEffect(current?.key, nowNext.now?.title) {
         val ch = current ?: return@LaunchedEffect
+        publishNowPlaying(ch, nowNext.now?.title.orEmpty())
         tv.enktel.app.data.net.PresenceTracker.setLive(
             channelName = ch.name,
             channelLogo = ch.logo,
@@ -353,24 +368,37 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
+    /**
+     * Shrink to the mini window and open [route], so playback keeps running
+     * while the rest of the app is used.
+     *
+     * Docking before navigating is load-bearing: the dispose handler above
+     * reads the session mode to decide whether leaving means "stop", so the
+     * flip has to happen first or the stream dies on the way out.
+     */
+    fun dockAndBrowse(route: String) {
+        if (!session.dock()) { nav.navigate(route) { launchSingleTop = true }; return }
+        showChannels = false
+        showQuickMenu = false
+        trackMenu = ""
+        nav.navigate(route) { launchSingleTop = true }
+    }
+
     val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
             showQuickMenu -> showQuickMenu = false
             showChannels -> showChannels = false
-            browseMode -> browseMode = false
             showInfo -> showInfo = false
             backAction == "pip" -> {
                 val entered = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
                 if (!entered) nav.popBackStack()
             }
-            backAction == "guide_dock" -> {
-                // Docked mini-player over the TV Guide (mini-player itself is a follow-up piece
-                // of work — for now we jump to the guide but keep audio playing thanks to
-                // the shared PlayerEngine surviving until this composable is disposed).
-                nav.navigate("guide")
-            }
+            // v1.38.0 — this used to jump to the guide and drop playback on the
+            // floor. It now docks, so Back gets you out of the player without
+            // getting you out of the programme.
+            backAction == "dock" -> dockAndBrowse("guide")
             else -> nav.popBackStack()
         }
     }
@@ -403,8 +431,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(browseMode) {
-                if (browseMode) return@pointerInput
+            .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragStart = { off ->
                         boxWidthPx = size.width.toFloat().coerceAtLeast(1f)
@@ -475,127 +502,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 }
             },
     ) {
-        if (browseMode) {
-            // Docked layout picks Column (portrait — video top, dock bottom) or Row
-            // (landscape — video left, dock right). The old aspect-locked-16:9 video
-            // pane consumed the whole viewport in landscape which is why the Browse
-            // button looked inert; landscape branch swaps the shape for weight-based
-            // sizing so the dock always has room.
-            val config = androidx.compose.ui.platform.LocalConfiguration.current
-            val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-
-            val videoContent: @androidx.compose.runtime.Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
-                AndroidView(
-                    factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
-                    update = { view -> view.player = engine.player; view.resizeMode = resizeMode },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.Black.copy(0.55f))
-                        .tapClick { browseMode = false }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                ) { Text("⛶ Fullscreen", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                current?.let { ch ->
-                    Column(
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.75f))))
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(Modifier.background(EnktelLive, RoundedCornerShape(2.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) {
-                                Text("● LIVE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                            }
-                            if (ch.num > 0) Text("${ch.num}", color = EnktelBlue, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                            Text(ch.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                 modifier = Modifier.weight(1f, fill = false))
-                            nowNext.now?.let { np ->
-                                Text("·", color = Color.White.copy(0.6f), fontSize = 12.sp)
-                                Text(np.title, color = Color.White.copy(0.9f), fontSize = 12.sp,
-                                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                     modifier = Modifier.weight(1f, fill = false))
-                            }
-                        }
-                        nowNext.now?.let { np ->
-                            Spacer(Modifier.height(4.dp))
-                            val f = ((System.currentTimeMillis() - np.startMs).toFloat() /
-                                (np.endMs - np.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                            ProgressBarThin(f, Modifier.fillMaxWidth(0.85f))
-                        }
-                    }
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    setKeepContentOnPlayerReset(true)
                 }
-            }
-
-            // v1.36.0 — the video/dock balance is the user's to set. It used to
-            // be a hardcoded 60/40 in landscape and an aspect-locked 16:9 pane in
-            // portrait; neither suited every device, and the portrait lock in
-            // particular left the dock squeezed on tall phones. Both are now a
-            // draggable split, persisted per orientation.
-            val splitScope = androidx.compose.runtime.rememberCoroutineScope()
-            val landSplit by graph.settings.browseSplitLandscape.collectAsStateWithLifecycle(initialValue = 0.6f)
-            val portSplit by graph.settings.browseSplitPortrait.collectAsStateWithLifecycle(initialValue = 0.42f)
-
-            val videoPane: @androidx.compose.runtime.Composable () -> Unit = {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color.Black)
-                        .tapClick { browseMode = false },
-                    content = videoContent,
-                )
-            }
-            val dockPane: @androidx.compose.runtime.Composable () -> Unit = {
-                BrowseDock(
-                    graph = graph, profileId = p.id, currentChannel = current,
-                    onTune = { tune(it) },
-                    onOpenGuide = { nav.navigate("guide") },
-                    onClose = { browseMode = false },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
-            tv.enktel.app.ui.components.ResizableSplit(
-                fraction = if (isLandscape) landSplit else portSplit,
-                onFractionChange = { f ->
-                    splitScope.launch {
-                        if (isLandscape) graph.settings.setBrowseSplitLandscape(f)
-                        else graph.settings.setBrowseSplitPortrait(f)
-                    }
-                },
-                orientation = if (isLandscape) {
-                    androidx.compose.foundation.gestures.Orientation.Horizontal
-                } else {
-                    androidx.compose.foundation.gestures.Orientation.Vertical
-                },
-                modifier = Modifier.fillMaxSize().background(tv.enktel.app.ui.theme.EnktelBg),
-                minFraction = 0.2f,
-                maxFraction = 0.85f,
-                first = videoPane,
-                second = dockPane,
-            )
-        } else {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        useController = false
-                        setKeepContentOnPlayerReset(true)
-                    }
-                },
-                update = { view ->
-                    view.player = engine.player
-                    view.resizeMode = resizeMode
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+            },
+            // The surface is handed between this screen and the mini window, so
+            // both sides route through the session rather than assigning
+            // `view.player` directly — see PlaybackSession.bind.
+            update = { view ->
+                session.bind(view)
+                view.resizeMode = resizeMode
+            },
+            onRelease = { view -> session.unbind(view) },
+            modifier = Modifier.fillMaxSize(),
+        )
 
         if (playError != null) {
             Box(Modifier.align(Alignment.Center)) {
@@ -638,7 +561,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             )
         }
 
-        if (showStats && !browseMode) {
+        if (showStats) {
             StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
         }
 
@@ -681,17 +604,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // bubble obstructing content; scoping it to the HUD keeps the
         // diagnostic visible when the user *asks* for it (opens the overlay)
         // without persistently painting over the video.
-        if (showInfo || anyOverlay || browseMode) {
+        if (showInfo || anyOverlay) {
             tv.enktel.app.ui.components.StreamHealthChip(
                 modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 16.dp),
             )
         }
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
-        // the docked Browse mode we hide them so the BrowseDock isn't overlapped from
-        // below — the docked-video ribbon and the dock itself already give the user all
         // the info + actions they need in that mode.
-        if (showInfo && current != null && !browseMode) {
+        if (showInfo && current != null) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 InfoBar(
                     channel = current!!,
@@ -724,7 +645,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    item { FocusButton("▤ Browse", accent = true, onClick = { browseMode = true }) }
+                    item {
+                        FocusButton(
+                            "▤ Browse app", accent = true,
+                            onClick = { dockAndBrowse("guide") },
+                        )
+                    }
                     item { FocusButton("☰ Channels", onClick = { showChannels = true }) }
                     item { FocusButton("EPG", onClick = { nav.navigate("guide") }) }
                     item {
@@ -1298,249 +1224,6 @@ fun TrackPicker(
                 )
             }
             FocusButton("Cancel", onClick = onClose, modifier = Modifier.fillMaxWidth())
-        }
-    }
-}
-
-/** Docked-player browser: sits under the shrunken video and lets the user pick a category,
- *  scroll categorised channels, and preview the current channel's upcoming programmes —
- *  all without leaving playback. */
-@Composable
-private fun BrowseDock(
-    graph: AppGraph,
-    profileId: Long,
-    currentChannel: Channel?,
-    onTune: (Channel) -> Unit,
-    onOpenGuide: () -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val categories by graph.content.categories(profileId, "live").collectAsStateWithLifecycle(initialValue = emptyList())
-    val allChannels by graph.content.channels(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
-    var selectedCat by remember { mutableStateOf<String?>(currentChannel?.categoryId) }
-    // v1.37.0 — type-to-filter. Category chips alone still leave a lot of
-    // scrolling on a 15k-channel playlist, and the Movies grid already has an
-    // inline search, so this matches an established pattern rather than
-    // inventing one. Matches on channel name or number, because people reach
-    // for a number as readily as a name.
-    var query by remember { mutableStateOf("") }
-    val channels = remember(allChannels, selectedCat, query) {
-        val inCat = if (selectedCat == null) allChannels else allChannels.filter { it.categoryId == selectedCat }
-        val needle = query.trim().lowercase()
-        if (needle.isEmpty()) inCat
-        else inCat.filter { it.name.lowercase().contains(needle) || it.num.toString() == needle }
-    }
-    var upcoming by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
-    LaunchedEffect(currentChannel?.key) {
-        upcoming = try { graph.epg.upcoming(profileId, currentChannel?.epgId.orEmpty(), 6) } catch (_: Throwable) { emptyList() }
-    }
-    Column(
-        modifier
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color.Black.copy(alpha = 0.95f), tv.enktel.app.ui.theme.EnktelBg),
-                ),
-            )
-            .border(
-                1.dp,
-                Color.White.copy(alpha = 0.08f),
-                RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-            ),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // v1.28.1 — flex the label Column so a long category name
-            // ("|UK| ✪ BBC GENERAL") ellipses instead of pushing "25 channels"
-            // + "Full Guide" + "✕" off the right edge in landscape.
-            Column(Modifier.weight(1f)) {
-                Text("BROWSE", color = EnktelTextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                Text(
-                    if (selectedCat != null) categories.firstOrNull { it.categoryId == selectedCat }?.name ?: "All Channels"
-                    else "All Channels",
-                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                "${channels.size}",
-                color = EnktelBlue, fontSize = 20.sp, fontWeight = FontWeight.Black,
-            )
-            Text(" channels", color = EnktelTextDim, fontSize = 11.sp)
-            Spacer(Modifier.width(12.dp))
-            // TiVi Mate style colour-remote-button row: quick actions the user's eye
-            // learns as coloured shortcuts (red = full guide, grey = close).
-            FocusButton("📅 Full Guide", accent = true, onClick = onOpenGuide)
-            Spacer(Modifier.width(6.dp))
-            FocusButton("✕", onClick = onClose)
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.weight(1f)) {
-                tv.enktel.app.ui.components.TvTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = "🔍 Filter by name or number",
-                )
-            }
-            if (query.isNotEmpty()) {
-                Spacer(Modifier.width(8.dp))
-                FocusButton("Clear", onClick = { query = "" })
-            }
-        }
-        LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            item {
-                tv.enktel.app.ui.components.GlassChip(
-                    "All", selected = selectedCat == null,
-                    onClick = { selectedCat = null },
-                )
-            }
-            items(categories, key = { it.key }) { c ->
-                tv.enktel.app.ui.components.GlassChip(
-                    c.name, selected = selectedCat == c.categoryId,
-                    onClick = {
-                        selectedCat = if (selectedCat == c.categoryId) null else c.categoryId
-                    },
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        // The guide column was fixed at 38 %, which truncated nearly every
-        // programme title ("Richard Osm…", "Rick Stein's …"). Draggable now,
-        // so a user who wants to read the guide can widen it.
-        val dockScope = androidx.compose.runtime.rememberCoroutineScope()
-        val dockFraction by graph.settings.dockSplit.collectAsStateWithLifecycle(initialValue = 0.55f)
-        tv.enktel.app.ui.components.ResizableSplit(
-            fraction = dockFraction,
-            onFractionChange = { f -> dockScope.launch { graph.settings.setDockSplit(f) } },
-            orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            minFraction = 0.25f,
-            maxFraction = 0.8f,
-            first = {
-                LazyColumn(
-                    Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(channels, key = { it.key }) { ch ->
-                        BrowseChannelRow(channel = ch, active = ch.key == currentChannel?.key, onClick = { onTune(ch) })
-                    }
-                }
-            },
-            second = {
-            Column(
-                Modifier.fillMaxSize().padding(start = 8.dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
-            ) {
-                Text(
-                    if (currentChannel != null) "GUIDE · ${currentChannel.name}" else "GUIDE",
-                    color = EnktelTextDim, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
-                )
-                Spacer(Modifier.height(6.dp))
-                if (upcoming.isEmpty()) {
-                    Text("No guide data for this channel.", color = EnktelTextDim, fontSize = 12.sp)
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(upcoming) { prog ->
-                            val now = System.currentTimeMillis()
-                            val isNow = prog.startMs <= now && prog.endMs > now
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    hhmm(prog.startMs),
-                                    color = if (isNow) EnktelBlue else EnktelTextDim,
-                                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        prog.title, color = Color.White, fontSize = 12.sp,
-                                        fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                    )
-                                    if (isNow && prog.desc.isNotBlank()) {
-                                        Text(
-                                            prog.desc, color = Color.White.copy(0.65f), fontSize = 10.sp,
-                                            maxLines = 2,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            },
-        )
-    }
-}
-
-@Composable
-private fun BrowseChannelRow(channel: Channel, active: Boolean, onClick: () -> Unit) {
-    androidx.tv.material3.Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().tapClick(onClick),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = if (active) EnktelBlue.copy(0.22f) else Color.Transparent,
-            focusedContainerColor = EnktelBlue,
-            focusedContentColor = Color.White,
-            contentColor = Color.White,
-        ),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Left accent stripe (visible when active) — reinforces the selection.
-            Box(
-                Modifier
-                    .width(3.dp)
-                    .height(28.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(if (active) EnktelBlue else Color.Transparent),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (channel.num > 0) "${channel.num}" else "·",
-                color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(30.dp),
-            )
-            Box(
-                Modifier.size(28.dp).clip(RoundedCornerShape(4.dp))
-                    .background(tv.enktel.app.ui.theme.EnktelSurfaceHigh),
-            ) {
-                if (channel.logo.isNotBlank()) {
-                    AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
-                }
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                channel.name, fontSize = 12.sp, maxLines = 1,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            // Live-now dot pulses on the currently-playing row so the user's eye locks on it
-            // instantly when the list is long.
-            if (active) {
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    Modifier
-                        .size(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(EnktelLive),
-                )
-            }
         }
     }
 }

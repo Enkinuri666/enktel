@@ -63,8 +63,31 @@ class AppGraph(app: Application) {
     val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 
+    /**
+     * Owns the ExoPlayer instance for the whole process, so playback survives
+     * navigation and can keep running in the docked mini window while the user
+     * browses the rest of the app. See [tv.enktel.app.player.PlaybackSession].
+     */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    val playback = tv.enktel.app.player.PlaybackSession(
+        app, http, settings,
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+        ),
+    )
+
+    /**
+     * Lives as long as the process. For work that must outlive the composable
+     * that started it — saving a resume point as the player screen goes away,
+     * for instance, where a composition-scoped scope would be cancelled at
+     * exactly the wrong moment.
+     */
+    val appScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+    )
+
     init {
-        val bgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+        val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
         }

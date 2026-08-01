@@ -7,9 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +34,8 @@ import tv.enktel.app.ui.components.ToastHost
 import tv.enktel.app.ui.guide.GuideScreen
 import tv.enktel.app.ui.live.LivePlayerScreen
 import tv.enktel.app.ui.multi.MultiViewScreen
+import tv.enktel.app.ui.player.DockCorner
+import tv.enktel.app.ui.player.MiniPlayer
 import tv.enktel.app.ui.screens.CatchupScreen
 import tv.enktel.app.ui.screens.HomeScreen
 import tv.enktel.app.ui.screens.OnboardingScreen
@@ -950,6 +954,61 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     }
     }
 
+    // ---- Docked playback (v1.38.0) -----------------------------------------
+    //
+    // The mini window is drawn here, above the NavHost, precisely because it
+    // must outlive whatever destination is showing — that is the feature. A
+    // player screen sets the session docked on its way out; this overlay picks
+    // it up and keeps the picture on screen while the user browses.
+    val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
+    val playbackMode by graph.playback.mode.collectAsStateWithLifecycle()
+    val docked = nowPlaying != null &&
+        playbackMode == tv.enktel.app.player.PlaybackSession.Mode.DOCKED
+    val backgroundAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
+    val dockCornerName by graph.settings.dockCorner.collectAsStateWithLifecycle(initialValue = "BOTTOM_END")
+    val dockSizeStep by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)
+
+    // Hold the display awake for as long as *something is playing*, not for as
+    // long as a player screen is mounted. Both screens used to own their own
+    // copy of this flag, which was equivalent while they owned the engine and
+    // wrong the moment playback could outlive them: a docked stream would let
+    // the panel sleep mid-programme.
+    //
+    // "Background audio" opts out deliberately — the point of that setting is
+    // commentary continuing with the screen dark.
+    val playbackActive = nowPlaying != null
+    DisposableEffect(playbackActive, backgroundAudio) {
+        val activity = ctx as? android.app.Activity
+        val flag = android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        if (playbackActive && !backgroundAudio) activity?.window?.addFlags(flag)
+        else activity?.window?.clearFlags(flag)
+        onDispose { activity?.window?.clearFlags(flag) }
+    }
+
+    // Same reasoning for auto-PiP-on-home: it should follow playback, not the
+    // VOD screen that happened to declare it.
+    val pipOn by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val autoPipOnHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
+    DisposableEffect(playbackActive, pipOn, autoPipOnHome) {
+        tv.enktel.app.player.PictureInPicture.playerActive = playbackActive
+        tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = playbackActive && pipOn && autoPipOnHome
+        onDispose {
+            tv.enktel.app.player.PictureInPicture.playerActive = false
+            tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
+        }
+    }
+
+    val expandDock = {
+        nowPlaying?.let { np ->
+            graph.playback.expand()
+            // singleTop, or a dock/expand/dock/expand loop stacks a fresh entry
+            // every round and Back turns into an archaeology dig.
+            nav.navigate(np.returnRoute) { launchSingleTop = true }
+        }
+        Unit
+    }
+
+    val shell = @Composable {
     if (isMobileShell) {
         val kidsModeOnRoot by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
         tv.enktel.app.ui.mobile.MobileScaffold(
@@ -974,6 +1033,12 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         } else {
             tv.enktel.app.ui.components.TvNavShell(
                 currentRoute = currentRoute,
+                // A TV remote can't tap a floating window, and letting the dock
+                // compete for D-pad focus with the grid behind it makes both
+                // worse. The rail is where a TV user already goes to move
+                // around, so that's where "back to what I was watching" lives.
+                nowPlayingLabel = nowPlaying?.takeIf { docked }?.title,
+                onNowPlaying = expandDock,
                 onSelect = { route ->
                     if (currentRoute != route) {
                         nav.navigate(route) { launchSingleTop = true }
@@ -982,6 +1047,28 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             ) { padding ->
                 navHost(padding)
             }
+        }
+    }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        shell()
+        val np = nowPlaying
+        if (docked && np != null) {
+            MiniPlayer(
+                session = graph.playback,
+                now = np,
+                interactive = isMobileShell,
+                sizeStep = dockSizeStep,
+                corner = runCatching {
+                    DockCorner.valueOf(dockCornerName)
+                }.getOrDefault(DockCorner.BOTTOM_END),
+                onCornerChange = { c: DockCorner -> scope.launch { graph.settings.setDockCorner(c.name) } },
+                onExpand = expandDock,
+                onClose = { graph.playback.stop() },
+                // Clear the mobile tab bar rather than sitting behind it.
+                bottomInset = if (isMobileShell) 78.dp else 0.dp,
+            )
         }
     }
 

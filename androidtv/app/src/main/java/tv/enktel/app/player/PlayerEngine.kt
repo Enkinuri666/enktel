@@ -196,6 +196,16 @@ class PlayerEngine(
             // the alternative is "seek always jumps to nearest keyframe
             // 30 s away" on live catch-up TS archives.
             .setConstantBitrateSeekingEnabled(true)
+            // …and take it even when the container claims it can't seek.
+            //
+            // Xtream VOD is routinely a raw .ts or an MP4 whose index the panel
+            // never serves, so the extractor reports "not seekable" and Media3
+            // answers every seek by restarting from position zero. Estimating
+            // the position from the bitrate is approximate — a seek can land a
+            // second or two off on variable-bitrate content — but approximate
+            // seeking is the entire feature, and being thrown back to the start
+            // of a two-hour film is not a rounding error.
+            .setConstantBitrateSeekingAlwaysEnabled(true)
             // Matroska has one flag worth flipping: disable cue-point seeking
             // fallback so ExoPlayer will *fall through* to raw sample-index
             // seeking when the MKV has no Cues element (common on live-DVR
@@ -427,6 +437,43 @@ class PlayerEngine(
     }
 
     private var dialogueFx: android.media.audiofx.DynamicsProcessing? = null
+
+    /**
+     * True when the loaded item can actually be seeked.
+     *
+     * Worth checking before every seek because Media3's failure mode is
+     * actively hostile: `seekTo` on an item whose timeline says it isn't
+     * seekable **seeks to the default position** — the start. So a user who
+     * taps `+30s` on an Xtream MP4 whose panel serves no byte ranges, or a
+     * `.ts` VOD with no index, gets thrown back to the beginning of the film.
+     * That is not a hypothetical; it is what "+30s resets the stream entirely
+     * from the start" means.
+     */
+    val seekable: Boolean
+        get() = try {
+            player.isCurrentMediaItemSeekable
+        } catch (_: Throwable) {
+            false
+        }
+
+    /**
+     * Seek to an absolute position, refusing rather than restarting when the
+     * item isn't seekable.
+     *
+     * @return false when the seek was refused, so the caller can say why
+     *   instead of silently doing something destructive.
+     */
+    fun seekToSafe(positionMs: Long): Boolean {
+        if (!seekable) return false
+        val dur = player.duration
+        val clamped = if (dur > 0) positionMs.coerceIn(0, dur) else positionMs.coerceAtLeast(0)
+        player.seekTo(clamped)
+        return true
+    }
+
+    /** Relative seek — the transport buttons and remote keys route through here. */
+    fun seekBySafe(deltaMs: Long): Boolean =
+        seekToSafe(player.currentPosition.coerceAtLeast(0) + deltaMs)
 
     fun tracksOf(type: Int): List<TrackChoice> {
         val out = ArrayList<TrackChoice>()
