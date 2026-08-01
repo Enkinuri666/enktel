@@ -102,17 +102,50 @@ data class HighlightClip(
  * paying customer's Sports Hub should be able to break. The hub degrades to the
  * EPG-only view whenever this class comes back empty.
  */
-class ScoresRepository(private val http: OkHttpClient) {
-    private companion object {
-        /** "3" is TheSportsDB's public test key — no signup, free tier limits. */
-        const val BASE = "https://www.thesportsdb.com/api/v1/json/3"
+class ScoresRepository(
+    private val http: OkHttpClient,
+    /**
+     * TheSportsDB key. "3" is the public test key — no signup needed, but it
+     * does **not** include `livescore.php`, which is the endpoint the in-play
+     * scoreboard is built on. Users with a Patreon key can enter it in
+     * Settings and get real live scores.
+     */
+    private val apiKey: () -> String = { FREE_KEY },
+) {
+    companion object {
+        const val FREE_KEY = "3"
     }
+
+    private val base: String get() = "https://www.thesportsdb.com/api/v1/json/${apiKey().ifBlank { FREE_KEY }}"
+
+    /**
+     * Why the last call came back empty, or blank when it didn't.
+     *
+     * Every method here is best-effort and swallows failures, which is right
+     * for resilience and useless for diagnosis: a user who turned live scores
+     * on saw an empty panel identical to "no matches on right now" and had no
+     * way to tell the difference. The Sports Hub surfaces this so an
+     * unavailable endpoint reads as unavailable rather than as nothing on.
+     */
+    @Volatile
+    var lastStatus: String = ""
+        private set
+
+    /** True when live scores can't work with the configured key. */
+    val liveScoresNeedKey: Boolean get() = apiKey().ifBlank { FREE_KEY } == FREE_KEY
 
     // ---- in-play scoreboard ------------------------------------------------
 
     /** Every event currently in play, across all sports. */
     suspend fun live(): List<LiveScore> = withContext(Dispatchers.IO) {
-        val events = fetchArray("$BASE/livescore.php?s=all", "events")
+        val events = fetchArray("$base/livescore.php?s=all", "events")
+        lastStatus = when {
+            events.isNotEmpty() -> ""
+            liveScoresNeedKey ->
+                "Live scores need a TheSportsDB Premium key — the free key doesn't " +
+                    "include the in-play endpoint. Add one in Settings → Sports."
+            else -> "TheSportsDB returned no in-play matches right now."
+        }
         events.mapNotNull { e ->
             LiveScore(
                 eventId = e.str("idEvent").orEmpty(),
@@ -142,7 +175,7 @@ class ScoresRepository(private val http: OkHttpClient) {
     /** Full detail for one fixture, or null when the id is unknown. */
     suspend fun matchDetail(eventId: String): MatchDetail? = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext null
-        val e = fetchArray("$BASE/lookupevent.php?id=$eventId", "events").firstOrNull()
+        val e = fetchArray("$base/lookupevent.php?id=$eventId", "events").firstOrNull()
             ?: return@withContext null
         MatchDetail(
             eventId = eventId,
@@ -171,7 +204,7 @@ class ScoresRepository(private val http: OkHttpClient) {
     /** In-play statistics (shots, possession, corners…) for a fixture. */
     suspend fun matchStats(eventId: String): List<MatchStat> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$BASE/lookupeventstats.php?id=$eventId", "eventstats").mapNotNull { s ->
+        fetchArray("$base/lookupeventstats.php?id=$eventId", "eventstats").mapNotNull { s ->
             MatchStat(
                 name = s.str("strStat") ?: return@mapNotNull null,
                 home = s.str("intHome").orEmpty().ifBlank { "–" },
@@ -183,7 +216,7 @@ class ScoresRepository(private val http: OkHttpClient) {
     /** Goals, cards and substitutions in chronological order. */
     suspend fun matchTimeline(eventId: String): List<MatchEvent> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$BASE/lookuptimeline.php?id=$eventId", "timeline").mapNotNull { t ->
+        fetchArray("$base/lookuptimeline.php?id=$eventId", "timeline").mapNotNull { t ->
             MatchEvent(
                 minute = t.str("intTime").orEmpty(),
                 type = t.str("strTimeline") ?: return@mapNotNull null,
@@ -202,7 +235,7 @@ class ScoresRepository(private val http: OkHttpClient) {
      */
     suspend fun broadcasts(eventId: String): List<Broadcast> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$BASE/lookuptv.php?id=$eventId", "tvevent").mapNotNull { b ->
+        fetchArray("$base/lookuptv.php?id=$eventId", "tvevent").mapNotNull { b ->
             Broadcast(
                 channel = b.str("strChannel") ?: return@mapNotNull null,
                 country = b.str("strCountry").orEmpty(),
@@ -219,7 +252,7 @@ class ScoresRepository(private val http: OkHttpClient) {
     suspend fun scheduleForDay(dayMs: Long, sport: String = ""): List<LiveScore> = withContext(Dispatchers.IO) {
         val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(dayMs))
         val url = buildString {
-            append("$BASE/eventsday.php?d=$day")
+            append("$base/eventsday.php?d=$day")
             if (sport.isNotBlank()) append("&s=").append(sport.replace(' ', '_'))
         }
         fetchArray(url, "events").mapNotNull { e ->
@@ -251,7 +284,7 @@ class ScoresRepository(private val http: OkHttpClient) {
         for (i in 0 until days.coerceIn(1, 5)) {
             val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(System.currentTimeMillis() - i * dayMs))
             val url = buildString {
-                append("$BASE/eventshighlights.php?d=$day")
+                append("$base/eventshighlights.php?d=$day")
                 if (sport.isNotBlank()) append("&s=").append(sport.replace(' ', '_'))
             }
             // The endpoint has used both key names across API revisions.

@@ -52,11 +52,23 @@ class MetadataEnrichmentWorker(
         val dao = graph.db.contentDao()
         val xtream = graph.xtream
         val staleBefore = System.currentTimeMillis() - MAX_AGE_MS
+        var enriched = 0
 
         val movies = dao.moviesNeedingEnrichment(profileId, staleBefore, MOVIES_PER_RUN)
         for (m in movies) {
+            // Stamp the attempt before anything can bail out.
+            //
+            // The queries below are ORDER BY … LIMIT n, so a row that fails to
+            // resolve and keeps enrichedAt = 0 comes back at the top of the
+            // very next run. A catalogue whose newest fifty titles have no
+            // tmdb_id — extremely common, panels rarely fill it in — pinned the
+            // worker on those fifty forever and enriched nothing, no matter how
+            // many times the user re-synced. Recording that we tried is what
+            // lets the cursor move on.
+            dao.markMovieEnrichAttempt(m.key, System.currentTimeMillis())
             val tmdbId = lookupTmdbId(xtream, profile, "vod", m.streamId) ?: continue
             val e = client.movie(tmdbId) ?: continue
+            enriched++
             val tags = computeTags(m.name, e.genres, e.keywords)
             val cleanName = TitleSanitizer.clean(m.name)
             dao.enrichMovie(
@@ -80,8 +92,10 @@ class MetadataEnrichmentWorker(
 
         val series = dao.seriesNeedingEnrichment(profileId, staleBefore, SERIES_PER_RUN)
         for (s in series) {
+            dao.markSeriesEnrichAttempt(s.key, System.currentTimeMillis())
             val tmdbId = lookupTmdbId(xtream, profile, "series", s.seriesId) ?: continue
             val e = client.series(tmdbId) ?: continue
+            enriched++
             val tags = computeTags(s.name, e.genres, e.keywords)
             val cleanName = TitleSanitizer.clean(s.name)
             dao.enrichSeries(
@@ -99,6 +113,22 @@ class MetadataEnrichmentWorker(
             delay(RATE_LIMIT_DELAY_MS)
             if (isStopped) return Result.success()
         }
+
+        // Keep going until the backlog is actually gone.
+        //
+        // One run handles 50 movies and 30 series. A typical Xtream catalogue
+        // has tens of thousands of titles, and the worker was only enqueued
+        // once per sync — so a user who entered a TMDB key, re-synced, and
+        // looked for a difference was seeing about 0.4% of their library
+        // enriched and concluding, correctly, that nothing had happened.
+        // Chaining a follow-up run drains the whole catalogue in the
+        // background instead.
+        val remaining = dao.moviesPendingCount(profileId, staleBefore) +
+            dao.seriesPendingCount(profileId, staleBefore)
+        if (remaining > 0 && (movies.isNotEmpty() || series.isNotEmpty())) {
+            enqueueNext(applicationContext, profileId)
+        }
+        android.util.Log.i(TAG, "enrichment run: +$enriched enriched, $remaining still pending")
         return Result.success()
     }
 
@@ -129,6 +159,7 @@ class MetadataEnrichmentWorker(
     }
 
     companion object {
+        private const val TAG = "EnktelEnrich"
         const val WORK_NAME = "enktel_metadata_enrichment"
         private const val KEY_PROFILE_ID = "profile_id"
         private const val MOVIES_PER_RUN = 50
@@ -138,13 +169,30 @@ class MetadataEnrichmentWorker(
         private const val MAX_AGE_MS = 60L * 24 * 3600 * 1000
         private const val RATE_LIMIT_DELAY_MS = 300L
 
-        fun enqueueFor(context: Context, profileId: Long) {
+        fun enqueueFor(context: Context, profileId: Long) =
+            enqueue(context, profileId, delaySeconds = 3, policy = ExistingWorkPolicy.REPLACE)
+
+        /** Continuation run. KEEP, not REPLACE — a REPLACE here would cancel
+         *  the run that is scheduling it and the chain would stop dead. */
+        private fun enqueueNext(context: Context, profileId: Long) =
+            enqueue(context, profileId, delaySeconds = 20, policy = ExistingWorkPolicy.KEEP)
+
+        private fun enqueue(
+            context: Context,
+            profileId: Long,
+            delaySeconds: Long,
+            policy: ExistingWorkPolicy,
+        ) {
             val req = OneTimeWorkRequestBuilder<MetadataEnrichmentWorker>()
                 .setInputData(Data.Builder().putLong(KEY_PROFILE_ID, profileId).build())
-                .setInitialDelay(3, TimeUnit.SECONDS) // let the sync finish committing rows first
+                .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
+                .setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build()
+                )
                 .build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, req)
+            WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, policy, req)
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,15 +52,28 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val isMobile = BuildConfig.FLAVOR == "mobile"
     val hPad = if (isMobile) 20.dp else 48.dp
     val vPad = if (isMobile) 18.dp else 28.dp
+    // One category at a time.
+    //
+    // Settings was a single 780-line Column inside a verticalScroll: every
+    // control, every collectAsStateWithLifecycle subscription and every
+    // DataStore flow composed and stayed live at once. On a Fire TV Stick that
+    // is both why the page crawls and why finding anything means scrolling past
+    // nine sections you didn't want. Rendering one category keeps the tree small
+    // and turns navigation into a choice rather than a hunt.
+    var category by remember { mutableStateOf(CATEGORIES.first()) }
+    // Read by both Parental controls and Kids mode, so it lives above the
+    // category split rather than inside whichever section comes first.
+    val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
+
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = hPad, vertical = vPad),
+        Modifier.fillMaxSize().padding(horizontal = hPad, vertical = vPad),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         SectionTitle("Settings")
         if (status.isNotBlank()) Text(status, color = EnktelOk, fontSize = 13.sp)
 
-        // High-visibility quick-actions at the top of Settings so users don't
-        // have to scroll to find the built-in diagnostics tools.
+        // Quick-actions stay visible in every category — they're the tools
+        // people open Settings to reach.
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("🩺  Run connection diagnostics", accent = true,
                 onClick = { nav.navigate("speedTest") })
@@ -74,6 +88,19 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(CATEGORIES) { c ->
+                FocusButton(c, accent = c == category, onClick = { category = c })
+            }
+        }
+
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+        if (category == "Playlists") {
         Text("PLAYLISTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         profiles.forEach { p ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -175,6 +202,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Recording") {
         Spacer(Modifier.height(10.dp))
         Text("DVR RECORDING PADDING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val recPrefix by graph.settings.recPrefixMin.collectAsStateWithLifecycle(initialValue = 2)
@@ -267,6 +296,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
 
         // v1.26.0 — Discord Watch Party section.
+        }
+        if (category == "Network") {
         Spacer(Modifier.height(10.dp))
         Text("DISCORD WATCH PARTY", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val discordWebhook by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
@@ -306,6 +337,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         // origin host fails an HTTP 403 / 502 / 5xx or times out, the
         // fallback resolver walks this list of alternate host prefixes
         // (one URL per line) before giving up.
+        }
+        if (category == "Network") {
         Spacer(Modifier.height(10.dp))
         Text("BACKUP GATEWAYS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val backupGw by graph.settings.backupGateways.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -346,6 +379,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
 
+        }
+        if (category == "Recording") {
         Spacer(Modifier.height(10.dp))
         Text("DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val dlEngine by graph.settings.downloadEngine.collectAsStateWithLifecycle(initialValue = "auto")
@@ -408,6 +443,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Playlists") {
         Spacer(Modifier.height(10.dp))
         Text("METADATA ENRICHMENT (TMDB)", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val tmdbKey by graph.settings.tmdbApiKey.collectAsStateWithLifecycle(initialValue = "")
@@ -455,9 +492,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Parental") {
         Spacer(Modifier.height(10.dp))
         Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
-        val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
         val lockedCats by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
         var newPin by remember { mutableStateOf("") }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -510,6 +548,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
 
+        }
+        if (category == "Parental") {
         Spacer(Modifier.height(10.dp))
         Text("KIDS MODE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val kidsModeOn by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -537,6 +577,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             },
         )
 
+        }
+        if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
@@ -570,6 +612,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("Clear", onClick = { scope.launch { graph.settings.setExtSubUrl("") } })
         }
 
+        }
+        if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("AUDIO", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val loud by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
@@ -577,6 +621,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             scope.launch { graph.settings.setLoudnessOn(!loud) }
         })
 
+        }
+        if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("PLAYBACK", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val autoplay by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
@@ -617,6 +663,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Sports & Voice") {
         Spacer(Modifier.height(10.dp))
         Text("VOICE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val wakeWord by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -632,8 +680,33 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Sports & Voice") {
         Spacer(Modifier.height(10.dp))
         Text("SPORTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val sportsKey by graph.settings.sportsDbKey.collectAsStateWithLifecycle(initialValue = "")
+        var newSportsKey by remember { mutableStateOf(sportsKey) }
+        androidx.compose.runtime.LaunchedEffect(sportsKey) { if (newSportsKey.isBlank()) newSportsKey = sportsKey }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Box(Modifier.width(280.dp)) {
+                tv.enktel.app.ui.components.TvTextField(
+                    newSportsKey, { newSportsKey = it }, "TheSportsDB key (optional)", password = true,
+                )
+            }
+            FocusButton("Save", onClick = {
+                scope.launch {
+                    graph.settings.setSportsDbKey(newSportsKey)
+                    status = if (newSportsKey.isBlank()) "Using TheSportsDB free key"
+                        else "TheSportsDB key saved"
+                }
+            })
+        }
+        Text(
+            "Schedules, highlights and match detail work on the free key. In-play live scores do " +
+                "not — that endpoint is Premium-only, which is why turning Live scores on can look " +
+                "like nothing happened. A Patreon key at thesportsdb.com unlocks it.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
         val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
         FocusButton("Live scores (TheSportsDB): ${if (scoresOn) "ON" else "off"}", accent = scoresOn, onClick = {
             scope.launch { graph.settings.setScoresEnabled(!scoresOn) }
@@ -679,6 +752,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
 
+        }
+        if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("BACK BUTTON IN PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
@@ -700,6 +775,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("MINI PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val dockSize by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)
@@ -727,6 +804,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        }
+        if (category == "Appearance") {
         Spacer(Modifier.height(10.dp))
         Text("SCREENSAVER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val ss by graph.settings.screensaverMin.collectAsStateWithLifecycle(initialValue = 5)
@@ -734,6 +813,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             scope.launch { graph.settings.setScreensaverMin(when (ss) { 0 -> 3; 3 -> 5; 5 -> 10; 10 -> 20; else -> 0 }) }
         })
 
+        }
+        if (category == "Appearance") {
         Spacer(Modifier.height(10.dp))
         Text("APPEARANCE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
@@ -764,6 +845,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         if (BuildConfig.FLAVOR == "tv") {
+        }
+        if (category == "Appearance") {
             Spacer(Modifier.height(10.dp))
             Text("STARTUP", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
             val sob by graph.settings.startOnBoot.collectAsStateWithLifecycle(initialValue = false)
@@ -778,9 +861,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
 
+        }
+        if (category == "About") {
         Spacer(Modifier.height(10.dp))
         Text("ABOUT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         Text("EnkTel IPTV · Stream Beyond Limits", color = Color.White, fontSize = 13.sp)
         Text("Android TV & Fire TV · Xtream Codes + M3U · EPG · Catch-up · DVR", color = EnktelTextDim, fontSize = 12.sp)
+        Text(
+            "Version ${tv.enktel.app.BuildConfig.VERSION_NAME} (${tv.enktel.app.BuildConfig.VERSION_CODE})",
+            color = EnktelTextDim, fontSize = 12.sp,
+        )
+        }
+        }
     }
 }
+
+private val CATEGORIES = listOf(
+    "Playlists", "Playback", "Recording", "Sports & Voice",
+    "Parental", "Network", "Appearance", "About",
+)
