@@ -6,8 +6,12 @@ import androidx.media3.common.Player
 /**
  * Global handle for whichever player screen is currently on-screen. Voice
  * commands and PiP can talk to the active player without threading a reference
- * through the whole compose tree. Each player screen registers itself with a
- * DisposableEffect when mounted and clears it on dispose.
+ * through the whole compose tree.
+ *
+ * Since v1.38.0 the registration is owned by
+ * [tv.enktel.app.player.PlaybackSession], not by the player screens: playback
+ * now outlives them in the docked mini window, and the media keys have to keep
+ * working there too.
  *
  * [active] is a Compose state so overlays (like the voice mic FAB) can hide
  * themselves during playback without polling.

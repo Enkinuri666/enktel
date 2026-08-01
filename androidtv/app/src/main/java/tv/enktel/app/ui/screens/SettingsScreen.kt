@@ -687,11 +687,43 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setBackAction("exit") } })
             FocusButton("⧉ Standard PiP", accent = backAction == "pip",
                 onClick = { scope.launch { graph.settings.setBackAction("pip") } })
-            FocusButton("▤ TV Guide (docked)", accent = backAction == "guide_dock",
-                onClick = { scope.launch { graph.settings.setBackAction("guide_dock") } })
+            FocusButton("▤ Dock & browse", accent = backAction == "dock",
+                onClick = { scope.launch { graph.settings.setBackAction("dock") } })
         }
         Text(
+            "Dock & browse shrinks playback into a mini window so you can check downloads, " +
+                "the guide, Movies or the Sports Hub without losing what you're watching.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        Text(
             "Pressing HOME on your remote / device always tries Picture-in-Picture regardless of this setting.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Text("MINI PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        val dockSize by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Small" to 0, "Medium" to 1, "Large" to 2).forEach { (label, step) ->
+                FocusButton(label, accent = dockSize == step,
+                    onClick = { scope.launch { graph.settings.setDockSizeStep(step) } })
+            }
+        }
+        val dockCorner by graph.settings.dockCorner.collectAsStateWithLifecycle(initialValue = "BOTTOM_END")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                "↖ Top left" to "TOP_START", "↗ Top right" to "TOP_END",
+                "↙ Bottom left" to "BOTTOM_START", "↘ Bottom right" to "BOTTOM_END",
+            ).forEach { (label, value) ->
+                FocusButton(label, accent = dockCorner == value,
+                    onClick = { scope.launch { graph.settings.setDockCorner(value) } })
+            }
+        }
+        Text(
+            if (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+                "Drag the mini window to move it between corners, or tap it to go full screen."
+            else "While docked, ▶ at the top of the side menu returns you to full screen. " +
+                "The remote's play/pause and channel keys keep working.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 

@@ -58,7 +58,10 @@ class SettingsStore(private val context: Context) {
     private val UI_OPACITY_PCT = intPreferencesKey("ui_opacity_pct") // 60-100
     private val TEXT_SCALE_PCT = intPreferencesKey("text_scale_pct") // 85-140
     private val START_ON_BOOT = booleanPreferencesKey("start_on_boot")
-    private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | guide_dock
+    private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | dock
+    // v1.38.0 docked playback: where the mini window sits and how big it is.
+    private val DOCK_CORNER = stringPreferencesKey("dock_corner")
+    private val DOCK_SIZE_STEP = intPreferencesKey("dock_size_step") // 0 small | 1 medium | 2 large
     private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
     // v1.13.0: newline-separated `host[:port]` list of backup gateways used by
     // StreamHealthInterceptor when the primary throws 403 / times out.
@@ -217,7 +220,20 @@ class SettingsStore(private val context: Context) {
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
-    val backAction: Flow<String> = context.dataStore.data.map { it[BACK_ACTION] ?: "exit" }
+    val backAction: Flow<String> = context.dataStore.data.map {
+        // "guide_dock" was the pre-v1.38.0 name, when Back could only navigate
+        // to the guide and abandon playback. Docking now keeps the stream in a
+        // mini window over any screen, so old preferences map onto the real
+        // thing rather than silently reverting to "exit".
+        when (val v = it[BACK_ACTION] ?: "exit") {
+            "guide_dock" -> "dock"
+            else -> v
+        }
+    }
+    val dockCorner: Flow<String> = context.dataStore.data.map { it[DOCK_CORNER] ?: "BOTTOM_END" }
+    suspend fun setDockCorner(v: String) = context.dataStore.edit { it[DOCK_CORNER] = v }
+    val dockSizeStep: Flow<Int> = context.dataStore.data.map { (it[DOCK_SIZE_STEP] ?: 1).coerceIn(0, 2) }
+    suspend fun setDockSizeStep(v: Int) = context.dataStore.edit { it[DOCK_SIZE_STEP] = v.coerceIn(0, 2) }
     val wakeWordEnabled: Flow<Boolean> = context.dataStore.data.map { it[WAKE_WORD_ENABLED] ?: false }
     suspend fun setWakeWordEnabled(v: Boolean) = context.dataStore.edit { it[WAKE_WORD_ENABLED] = v }
     val backupGateways: Flow<List<String>> = context.dataStore.data.map { prefs ->

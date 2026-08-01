@@ -29,7 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement as LayoutArrangement
@@ -56,6 +57,7 @@ import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.WatchProgress
 import tv.enktel.app.player.PlayerEngine
@@ -102,15 +104,13 @@ fun VodPlayerScreen(
     // Overrides whatever the user set via the min-buffer slider only when
     // that value is lower (respect a user who's already turned it up high).
     val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
-    val engine = remember(decoderMode, minBufferMs, companionMode) {
-        PlayerEngine(
-            context, graph.http, bufferProfile,
-            decoderMode = decoderMode,
-            minBufferOverrideMs = minBufferMs,
-            lockToTopBitrate = companionMode,
-        )
-    }
-    LaunchedEffect(engine, dialogueBoost) { engine.setDialogueBoost(dialogueBoost) }
+    // v1.38.0 — process-owned engine, so leaving this screen can dock the film
+    // into the mini window rather than tearing playback down. See
+    // PlaybackSession, which also owns the engine settings snapshot that used
+    // to rebuild this engine mid-startup as DataStore values resolved.
+    val session = graph.playback
+    val engine = session.engine()
+    LaunchedEffect(Unit) { session.expand() }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
     val loudnessOn by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
@@ -132,8 +132,36 @@ fun VodPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
 
+    /** Position auto-resumed to on entry, or 0. Drives the "Start over" chip. */
+    var resumedFromMs by remember(progressKey) { mutableLongStateOf(0L) }
+
+    // Null until this screen has started something itself. Distinguishes
+    // "mounting over a stream that's already running" (expanding the dock —
+    // adopt it) from "a setting changed under us" (re-play, as before).
+    var startedUrl by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(url, vodForceMp4) {
+        val adopt = startedUrl == null && session.isLoaded(url)
+        startedUrl = url
+        session.setNowPlaying(
+            tv.enktel.app.player.PlaybackSession.NowPlaying(
+                kind = tv.enktel.app.player.PlaybackSession.Kind.VOD,
+                contentId = url,
+                title = title,
+                subtitle = if (isLive) "Live" else "",
+                returnRoute = tv.enktel.app.vodPlayerRoute(url, title, progressKey, isLive),
+            )
+        )
+        // Replaying here would drop the user back to the start of the film and
+        // make it re-buffer, every time they came back from the dock.
+        if (adopt) return@LaunchedEffect
         val resume = if (progressKey.isNotBlank()) graph.content.progress(progressKey)?.positionMs ?: 0L else 0L
+        // Surfaced so the player can tell the user it jumped, and offer the
+        // way back. Auto-resuming silently is right most of the time and
+        // baffling the rest — when it resumes something you'd finished with, or
+        // resumes the wrong episode, there was previously no way to undo it
+        // short of scrubbing back by hand.
+        resumedFromMs = if (!isLive && resume > 60_000) resume else 0L
         // If the user has set an intro-skip length, honour it on the first play (not on resumes).
         val start = if (!isLive && resume <= 0 && skipIntroSec > 0) skipIntroSec * 1000L else resume
         // Force MP4 extractor for VOD only when the user opted in via
@@ -173,52 +201,54 @@ fun VodPlayerScreen(
             }
         }
     }
-    // Keep the OS display awake while a movie/episode is playing — mirrors
-    // what the live player does. Cleared on dispose.
-    DisposableEffect(Unit) {
-        val activity = ctxForRefresh as? android.app.Activity
-        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-    // Keyed on `engine`, NOT Unit.
+    // Leaving this screen ends playback — unless we deliberately docked, which
+    // is the one case where audio with no fullscreen player is legitimate,
+    // because the mini window is on screen and closable.
     //
-    // `remember(decoderMode, minBufferMs, companionMode)` above *replaces* the
-    // engine whenever one of those settings resolves — and those come from
-    // collectAsStateWithLifecycle, which emits a placeholder first and the real
-    // DataStore value a moment later. So on any device where a playback setting
-    // differs from the placeholder, a second PlayerEngine gets built during
-    // start-up. remember discards the old value but never disposes it; that is
-    // this effect's job.
-    //
-    // Keyed on Unit, this only ever released whichever engine happened to be
-    // current at exit, leaving the earlier instance decoding in the background
-    // with nothing referencing it — which is why audio kept playing after
-    // leaving the screen. Keying on `engine` runs onDispose for the outgoing
-    // instance as well, so every engine is released exactly once.
-    //
-    // LivePlayerScreen already keys its equivalent effect on `engine`, which is
-    // why the leak was VOD-only.
-    DisposableEffect(engine) {
-        tv.enktel.app.voice.ActivePlayerRef.register(engine.player)
-        onDispose {
-            tv.enktel.app.voice.ActivePlayerRef.unregister(engine.player)
-            engine.release()
-        }
-    }
-    // Screen-level teardown stays keyed on Unit: swapping the engine mid-screen
-    // shouldn't reset the display refresh rate or drop the user's presence.
+    // The engine now outlives this composable, so the teardown that used to
+    // happen implicitly has to be stated. Getting this wrong is precisely the
+    // v1.35.1 audio-after-exit defect.
     DisposableEffect(Unit) {
         onDispose {
-            (ctxForRefresh as? android.app.Activity)?.let {
-                tv.enktel.app.player.RefreshRateMatcher.reset(it)
+            if (session.mode.value != tv.enktel.app.player.PlaybackSession.Mode.DOCKED) {
+                (ctxForRefresh as? android.app.Activity)?.let {
+                    tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                }
+                session.stop()
             }
-            tv.enktel.app.data.net.PresenceTracker.clear()
         }
     }
 
-    // Position ticker + periodic progress persistence
+    /**
+     * Write (or clear) the resume point for this title.
+     *
+     * Clearing near the end is deliberate: a film you watched to the credits
+     * should not reappear in Continue Watching offering to resume the last
+     * thirty seconds.
+     */
+    suspend fun persistProgress(atMs: Long, totalMs: Long) {
+        if (isLive || progressKey.isBlank() || totalMs <= 0) return
+        if (atMs > totalMs - 30_000) {
+            graph.content.clearProgress(progressKey)
+            return
+        }
+        graph.content.saveProgress(
+            WatchProgress(
+                key = progressKey,
+                profileId = progressKey.substringBefore(':').toLongOrNull() ?: 0,
+                kind = progressKey.split(':').getOrElse(1) { "vod" },
+                refId = progressKey.substringAfterLast(':').toLongOrNull() ?: 0,
+                name = title, url = url,
+                positionMs = atMs, durationMs = totalMs,
+            )
+        )
+    }
+
+    // Position ticker + periodic progress persistence.
+    //
+    // 250 ms rather than 500: the elapsed clock and the scrubber thumb are both
+    // driven from here, and at half-second granularity the bar visibly steps
+    // instead of moving.
     LaunchedEffect(Unit) {
         var lastSave = 0L
         while (true) {
@@ -226,22 +256,30 @@ fun VodPlayerScreen(
             durationMs = engine.player.duration.coerceAtLeast(0)
             playing = engine.player.isPlaying
             val now = System.currentTimeMillis()
-            if (!isLive && progressKey.isNotBlank() && durationMs > 0 && now - lastSave > 10_000) {
+            if (now - lastSave > 10_000) {
                 lastSave = now
-                val nearEnd = positionMs > durationMs - 30_000
-                if (nearEnd) graph.content.clearProgress(progressKey)
-                else graph.content.saveProgress(
-                    WatchProgress(
-                        key = progressKey,
-                        profileId = progressKey.substringBefore(':').toLongOrNull() ?: 0,
-                        kind = progressKey.split(':').getOrElse(1) { "vod" },
-                        refId = progressKey.substringAfterLast(':').toLongOrNull() ?: 0,
-                        name = title, url = url,
-                        positionMs = positionMs, durationMs = durationMs,
-                    )
-                )
+                persistProgress(positionMs, durationMs)
             }
-            delay(500)
+            delay(250)
+        }
+    }
+
+    // Save on the way out as well as on the timer.
+    //
+    // The 10-second tick alone loses up to ten seconds of every session, and
+    // loses the position entirely for anyone who backs out in the first ten
+    // seconds — so "resume where I left off" quietly resumed somewhere else.
+    // This runs before the teardown effect below, because effects dispose in
+    // reverse declaration order and the engine has to still be alive to be
+    // asked where it got to.
+    DisposableEffect(Unit) {
+        onDispose {
+            val at = engine.player.currentPosition.coerceAtLeast(0)
+            val total = engine.player.duration.coerceAtLeast(0)
+            // Application-scoped on purpose: rememberCoroutineScope is
+            // cancelled with the composition, which is precisely the moment
+            // this write happens, so the save would never land.
+            graph.appScope.launch { persistProgress(at, total) }
         }
     }
 
@@ -257,19 +295,21 @@ fun VodPlayerScreen(
     val autoPipOnBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
     val autoPipOnHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
 
-    DisposableEffect(pipOn, autoPipOnHome) {
-        tv.enktel.app.player.PictureInPicture.playerActive = true
-        tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = pipOn && autoPipOnHome
-        onDispose {
-            tv.enktel.app.player.PictureInPicture.playerActive = false
-            tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
-        }
+
+    val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
+
+    /** Shrink to the mini window and open [route] — playback carries on. */
+    fun dockAndBrowse(route: String) {
+        if (!session.dock()) { nav.navigate(route) { launchSingleTop = true }; return }
+        trackMenu = ""
+        nav.navigate(route) { launchSingleTop = true }
     }
 
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
             showControls -> showControls = false
+            backAction == "dock" -> dockAndBrowse("home")
             else -> {
                 val entered = if (pipOn && autoPipOnBack && engine.player.isPlaying) {
                     (context as? android.app.Activity)?.let {
@@ -282,6 +322,28 @@ fun VodPlayerScreen(
     }
 
     fun poke() { showControls = true; controlsTick++ }
+
+    val toaster = tv.enktel.app.ui.components.LocalToaster.current
+
+    /**
+     * Every seek in this screen goes through here.
+     *
+     * Media3 answers a seek on an item it considers unseekable by jumping to
+     * the default position — the start of the film. Xtream VOD hits that
+     * constantly (raw .ts, or an MP4 whose panel serves no byte ranges), which
+     * is why `+30s` could throw you back to the beginning. Refusing the seek
+     * and saying so is the honest outcome; silently restarting is not.
+     */
+    fun seekTo(target: Long) {
+        if (engine.seekToSafe(target)) {
+            positionMs = target.coerceAtLeast(0)
+        } else {
+            toaster.error("This stream can't be seeked — the panel doesn't support it")
+        }
+        poke()
+    }
+
+    fun seekBy(deltaMs: Long) = seekTo(positionMs + deltaMs)
 
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(trackMenu, showControls) { if (trackMenu.isEmpty() && !showControls) rootFocus.requestFocus() }
@@ -347,10 +409,10 @@ fun VodPlayerScreen(
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER,
                     AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_DPAD_DOWN -> { poke(); true }
                     AndroidKeyEvent.KEYCODE_DPAD_LEFT, AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
-                        engine.player.seekBack(); poke(); true
+                        seekBy(-10_000); true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                        engine.player.seekForward(); poke(); true
+                        seekBy(30_000); true
                     }
                     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, AndroidKeyEvent.KEYCODE_MEDIA_PLAY, AndroidKeyEvent.KEYCODE_MEDIA_PAUSE -> {
                         if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
@@ -360,8 +422,7 @@ fun VodPlayerScreen(
                         // Number keys jump straight to 0–90% of the video.
                         if (!isLive && durationMs > 0) {
                             val digit = ev.key.nativeKeyCode - AndroidKeyEvent.KEYCODE_0
-                            engine.player.seekTo(durationMs * digit / 10)
-                            poke()
+                            seekTo(durationMs * digit / 10)
                             true
                         } else false
                     }
@@ -370,14 +431,19 @@ fun VodPlayerScreen(
             },
     ) {
         AndroidView(
-            factory = { ctx -> PlayerView(ctx).apply { useController = false } },
+            factory = { ctx ->
+                PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) }
+            },
+            // Surface ownership is the session's — this screen and the mini
+            // window hand it back and forth with no guaranteed ordering.
             update = { view ->
-                view.player = engine.player
+                session.bind(view)
                 view.resizeMode = resizeMode
                 view.subtitleView?.let { sv ->
                     tv.enktel.app.player.Subtitles.apply(sv, subScalePct, subColor, subEdge, subBgAlpha)
                 }
             },
+            onRelease = { view -> session.unbind(view) },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -427,6 +493,54 @@ fun VodPlayerScreen(
             )
         }
 
+        // ---- Resumed-from chip ----------------------------------------------
+        // Shown briefly after an auto-resume. Says what happened and offers the
+        // one action the user might want instead.
+        var resumeChipDismissed by remember(progressKey) { mutableStateOf(false) }
+        val showResumeChip = resumedFromMs > 0 && !resumeChipDismissed &&
+            positionMs < resumedFromMs + 20_000
+        LaunchedEffect(resumedFromMs) {
+            if (resumedFromMs > 0) { delay(12_000); resumeChipDismissed = true }
+        }
+        if (showResumeChip) {
+            Row(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 32.dp, top = 32.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.Black.copy(alpha = 0.78f))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(
+                    "▶  Resumed from ${fmtTime(resumedFromMs)}",
+                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                )
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(tv.enktel.app.ui.theme.EnktelBlue)
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                seekTo(0)
+                                resumeChipDismissed = true
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text("Start over", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Box(
+                    Modifier
+                        .pointerInput(Unit) { detectTapGestures { resumeChipDismissed = true } }
+                        .padding(horizontal = 4.dp),
+                ) {
+                    Text("✕", color = EnktelTextDim, fontSize = 13.sp)
+                }
+            }
+        }
+
         // ---- Skip Intro pill ------------------------------------------------
         // Netflix-style floating chip.  Shown between 5 s and 90 s into VOD
         // playback so users can bypass series intro sequences with one tap
@@ -444,10 +558,8 @@ fun VodPlayerScreen(
                     .background(Color.Black.copy(alpha = 0.75f))
                     .pointerInput(Unit) {
                         detectTapGestures {
-                            engine.player.seekTo(90_000L)
+                            seekTo(90_000L)
                             skipIntroDismissed = true
-                            showControls = true
-                            controlsTick++
                         }
                     }
                     .padding(horizontal = 22.dp, vertical = 14.dp),
@@ -494,8 +606,7 @@ fun VodPlayerScreen(
                         positionMs = positionMs,
                         durationMs = durationMs,
                         onSeek = { target ->
-                            engine.player.seekTo(target)
-                            positionMs = target
+                            seekTo(target)
                             controlsTick++
                         },
                         onInteract = { controlsTick++ },
@@ -528,8 +639,14 @@ fun VodPlayerScreen(
                             controlsTick++
                         })
                     }
-                    item { FocusButton("−10s", onClick = { engine.player.seekBack(); controlsTick++ }) }
-                    item { FocusButton("+30s", onClick = { engine.player.seekForward(); controlsTick++ }) }
+                    // Reachable with a remote, unlike the resumed-from chip,
+                    // which is a touch affordance. Only offered while the
+                    // resume point is still where you'd want to undo it from.
+                    if (resumedFromMs > 0 && positionMs < resumedFromMs + 20_000) {
+                        item { FocusButton("⟲ Start over", accent = true, onClick = { seekTo(0) }) }
+                    }
+                    item { FocusButton("−10s", onClick = { seekBy(-10_000) }) }
+                    item { FocusButton("+30s", onClick = { seekBy(30_000) }) }
                     item { FocusButton("Quality", onClick = { trackMenu = "video" }) }
                     item { FocusButton("Audio", onClick = { trackMenu = "audio" }) }
                     item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
@@ -633,9 +750,13 @@ private fun SeekBar(
             Spacer(Modifier.height(4.dp))
         }
         Box(
+            // 22 dp was the whole hit area, thumb included — under the ~48 dp
+            // Android asks for and small enough that a thumb press often
+            // missed it entirely. The rail still draws thin; only the target
+            // grew.
             Modifier
                 .fillMaxWidth()
-                .height(22.dp)
+                .height(44.dp)
                 .onFocusChanged {
                     focused = it.isFocused
                     if (!it.isFocused && scrubTarget != null) { onSeek(scrubTarget!!); scrubTarget = null }
@@ -658,26 +779,44 @@ private fun SeekBar(
                         else -> false
                     }
                 }
+                // One gesture handler, not two.
+                //
+                // This used to be a `detectTapGestures` block followed by a
+                // separate `detectHorizontalDragGestures` block on the same
+                // node, and they fought: the drag detector waits for the touch
+                // to travel past the system slop before it reports anything, so
+                // the first ~10 dp of every drag went nowhere, and the tap
+                // detector — which resolves only on *release* — then fired a
+                // seek to wherever the finger happened to lift. The result was
+                // a scrubber that ignored small movements and jumped on
+                // release. Which is what "not responsive" is.
+                //
+                // Awaiting the pointer directly means the thumb latches on
+                // touch-down and tracks the finger from the first pixel, with
+                // no slop and no ambiguity about which detector owns the
+                // gesture. A tap is simply a drag that never moved.
                 .pointerInput(durationMs) {
-                    detectTapGestures { offset ->
-                        if (durationMs > 0) {
-                            onSeek((durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs))
-                        }
-                    }
-                }
-                .pointerInput(durationMs) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { offset ->
-                            if (durationMs > 0) {
-                                scrubTarget = (durationMs * offset.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
-                            }
-                        },
-                        onDragEnd = { scrubTarget?.let(onSeek); scrubTarget = null },
-                        onDragCancel = { scrubTarget = null },
-                    ) { change, _ ->
-                        if (durationMs > 0) {
-                            scrubTarget = (durationMs * change.position.x / size.width.coerceAtLeast(1)).toLong().coerceIn(0, durationMs)
+                    if (durationMs <= 0) return@pointerInput
+                    awaitPointerEventScope {
+                        while (true) {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            fun at(x: Float): Long =
+                                (durationMs * x / size.width.coerceAtLeast(1))
+                                    .toLong().coerceIn(0, durationMs)
+                            scrubTarget = at(down.position.x)
                             onInteract()
+                            var pointer = down
+                            while (pointer.pressed) {
+                                val event = awaitPointerEvent()
+                                pointer = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (pointer.positionChanged()) {
+                                    scrubTarget = at(pointer.position.x)
+                                    onInteract()
+                                }
+                                pointer.consume()
+                            }
+                            scrubTarget?.let(onSeek)
+                            scrubTarget = null
                         }
                     }
                 },
