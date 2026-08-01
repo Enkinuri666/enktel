@@ -61,6 +61,9 @@ class SettingsStore(private val context: Context) {
     private val BACK_ACTION = stringPreferencesKey("back_action") // exit | pip | dock
     // v1.38.0 docked playback: where the mini window sits and how big it is.
     private val DOCK_CORNER = stringPreferencesKey("dock_corner")
+    // v1.38.1: optional TheSportsDB Patreon key. Blank = the public test key,
+    // which works for schedules and highlights but not in-play scores.
+    private val SPORTSDB_KEY = stringPreferencesKey("sportsdb_key")
     private val DOCK_SIZE_STEP = intPreferencesKey("dock_size_step") // 0 small | 1 medium | 2 large
     private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
     // v1.13.0: newline-separated `host[:port]` list of backup gateways used by
@@ -230,6 +233,8 @@ class SettingsStore(private val context: Context) {
             else -> v
         }
     }
+    val sportsDbKey: Flow<String> = context.dataStore.data.map { it[SPORTSDB_KEY].orEmpty() }
+    suspend fun setSportsDbKey(v: String) = context.dataStore.edit { it[SPORTSDB_KEY] = v.trim() }
     val dockCorner: Flow<String> = context.dataStore.data.map { it[DOCK_CORNER] ?: "BOTTOM_END" }
     suspend fun setDockCorner(v: String) = context.dataStore.edit { it[DOCK_CORNER] = v }
     val dockSizeStep: Flow<Int> = context.dataStore.data.map { (it[DOCK_SIZE_STEP] ?: 1).coerceIn(0, 2) }

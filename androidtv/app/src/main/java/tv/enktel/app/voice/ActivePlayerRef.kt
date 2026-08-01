@@ -45,19 +45,40 @@ object ActivePlayerRef {
     fun channelZap(delta: Int) { try { channelZapHandler?.invoke(delta) } catch (_: Throwable) {} }
     fun toggleFavorite() { try { toggleFavHandler?.invoke() } catch (_: Throwable) {} }
 
+    /**
+     * Seek override installed by whichever player screen is up.
+     *
+     * The transport helpers below hold a raw [Player], so they called
+     * `seekTo` directly — which on media Media3 considers unseekable jumps to
+     * the *start*. That is what made the Fire TV remote's fast-forward button
+     * restart a film: `MainActivity.dispatchKeyEvent` intercepts the key before
+     * Compose sees it, so the player screen's own guarded handler never ran.
+     * Screens register a handler here so the remote and the on-screen controls
+     * go through exactly the same path.
+     *
+     * Takes an absolute position; returns false if the seek was refused.
+     */
+    @Volatile var seekHandler: ((Long) -> Boolean)? = null
+
+    private fun seekAbsolute(positionMs: Long) {
+        val target = positionMs.coerceAtLeast(0)
+        val handled = try { seekHandler?.invoke(target) } catch (_: Throwable) { null }
+        if (handled == null) {
+            try { player?.seekTo(target) } catch (_: Throwable) {}
+        }
+    }
+
     fun pause() { try { player?.pause() } catch (_: Throwable) {} }
     fun resume() { try { player?.play() } catch (_: Throwable) {} }
     fun isPlaying(): Boolean = try { player?.isPlaying == true } catch (_: Throwable) { false }
     fun seekForward(seconds: Int) { try {
-        player?.let { it.seekTo((it.currentPosition + seconds * 1000L).coerceAtLeast(0)) }
+        player?.let { seekAbsolute(it.currentPosition + seconds * 1000L) }
     } catch (_: Throwable) {} }
     fun seekBack(seconds: Int) { try {
-        player?.let { it.seekTo((it.currentPosition - seconds * 1000L).coerceAtLeast(0)) }
+        player?.let { seekAbsolute(it.currentPosition - seconds * 1000L) }
     } catch (_: Throwable) {} }
-    fun seekToMinutes(minutes: Int) { try {
-        player?.seekTo((minutes * 60_000L).coerceAtLeast(0))
-    } catch (_: Throwable) {} }
-    fun restart() { try { player?.seekTo(0) } catch (_: Throwable) {} }
+    fun seekToMinutes(minutes: Int) = seekAbsolute(minutes * 60_000L)
+    fun restart() = seekAbsolute(0)
     fun next() { try { player?.seekToNext() } catch (_: Throwable) {} }
     fun previous() { try { player?.seekToPrevious() } catch (_: Throwable) {} }
 

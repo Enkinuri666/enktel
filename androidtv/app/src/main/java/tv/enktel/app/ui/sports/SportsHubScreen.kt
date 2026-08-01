@@ -107,10 +107,15 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         }
         loading = false
     }
+    var scoresStatus by remember { mutableStateOf("") }
     LaunchedEffect(scoresEnabled, refreshTick) {
         liveScores = try { if (scoresEnabled) graph.scores.live() else emptyList() }
         catch (ce: kotlinx.coroutines.CancellationException) { throw ce }
         catch (_: Throwable) { emptyList() }
+        // An empty scoreboard and an unreachable one looked identical, so
+        // "live scores are on and I see no difference" had no explanation
+        // anywhere in the UI. Say which it is.
+        scoresStatus = if (scoresEnabled && liveScores.isEmpty()) graph.scores.lastStatus else ""
     }
     LaunchedEffect(matchCenterEnabled, sportFilter, refreshTick) {
         if (!matchCenterEnabled) {
@@ -273,6 +278,16 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // Live-scores ticker: shows every match currently in progress across all channels,
         // even ones our EPG scan missed. Tap → jump straight to whichever channel is
         // carrying that match if we recognise the team names in a live channel title.
+        if (scoresEnabled && liveScores.isEmpty() && scoresStatus.isNotBlank()) {
+            item {
+                Text(
+                    scoresStatus,
+                    color = EnktelTextDim,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = padHoriz, vertical = 6.dp),
+                )
+            }
+        }
         if (scoresEnabled && liveScores.isNotEmpty()) {
             item { SectionHeader("⚡ LIVE SCORES", EnktelOk, padHoriz) }
             item {

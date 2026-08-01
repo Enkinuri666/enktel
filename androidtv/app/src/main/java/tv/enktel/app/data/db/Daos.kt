@@ -140,6 +140,40 @@ interface ContentDao {
         key: String, tmdbId: Long, studios: String, tags: String,
         genre: String, year: Int, cast: String, director: String, now: Long,
     )
+
+    /**
+     * Stamp an enrichment *attempt* without writing any metadata.
+     *
+     * Needed because a title the panel has no `tmdb_id` for, or that TMDB has
+     * never heard of, would otherwise keep `enrichedAt = 0` forever — and the
+     * "needs enrichment" queries are `ORDER BY … LIMIT n`, so the worker got
+     * handed the same failing rows on every single run and never reached row
+     * n+1. On a catalogue whose first fifty titles don't resolve, enrichment
+     * made exactly zero progress no matter how many times you re-synced.
+     */
+    @Query("UPDATE movies SET enrichedAt = :now WHERE key = :key")
+    suspend fun markMovieEnrichAttempt(key: String, now: Long)
+
+    @Query("UPDATE series SET enrichedAt = :now WHERE key = :key")
+    suspend fun markSeriesEnrichAttempt(key: String, now: Long)
+
+    @Query("SELECT COUNT(*) FROM movies WHERE profileId = :profileId")
+    suspend fun movieCount(profileId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM movies WHERE profileId = :profileId AND tmdbId > 0")
+    suspend fun movieEnrichedCount(profileId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM series WHERE profileId = :profileId")
+    suspend fun seriesCount(profileId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM series WHERE profileId = :profileId AND tmdbId > 0")
+    suspend fun seriesEnrichedCount(profileId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM movies WHERE profileId = :profileId AND (enrichedAt = 0 OR enrichedAt < :staleBefore)")
+    suspend fun moviesPendingCount(profileId: Long, staleBefore: Long): Int
+
+    @Query("SELECT COUNT(*) FROM series WHERE profileId = :profileId AND (enrichedAt = 0 OR enrichedAt < :staleBefore)")
+    suspend fun seriesPendingCount(profileId: Long, staleBefore: Long): Int
 }
 
 @Dao

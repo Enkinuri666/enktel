@@ -3,6 +3,7 @@ package tv.enktel.app.ui.components
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -110,11 +111,17 @@ fun TvNavShell(
                         listOf(Color(0xEA0B0C10), Color(0xEA0A0B0F)),
                     ),
                 )
-                // `hasFocus` on the outer Column covers any descendant, so
-                // the rail flips open the moment D-Pad-Left brings focus onto
-                // any of its buttons. (No `focusGroup()` needed — that
-                // extension isn't in this Compose version and Compose's
-                // focus tree already propagates hasFocus to the parent.)
+                // `hasFocus` on the outer Column covers any descendant, so the
+                // rail flips open the moment D-Pad-Left brings focus onto any
+                // of its buttons.
+                //
+                // focusGroup() keeps the rail a single stop in focus search, so
+                // D-Pad-Left from the content area lands here as a unit instead
+                // of threading between individual buttons. (An earlier comment
+                // here claimed the extension didn't exist in this Compose
+                // version — it does; it lives in androidx.compose.foundation,
+                // not androidx.compose.ui.focus.)
+                .focusGroup()
                 .onFocusChanged { expanded = it.hasFocus },
         ) {
             Spacer(Modifier.height(24.dp))

@@ -58,7 +58,8 @@ class AppGraph(app: Application) {
     val sports = SportsRepository(content, epg)
     val watchlist = WatchlistRepository(db.watchlistDao())
     val recommendations = RecommendationsRepository(content)
-    val scores = ScoresRepository(http)
+    @Volatile private var sportsDbKeySnapshot: String = ScoresRepository.FREE_KEY
+    val scores = ScoresRepository(http) { sportsDbKeySnapshot }
     val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
     val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
@@ -90,6 +91,11 @@ class AppGraph(app: Application) {
         val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
+        }
+        bgScope.launch {
+            settings.sportsDbKey.collect {
+                sportsDbKeySnapshot = it.ifBlank { ScoresRepository.FREE_KEY }
+            }
         }
         // Social presence: pushes PresenceTracker.state to a user-configured
         // Discord webhook — no-op when the URL is blank.  Debounces at 15 s

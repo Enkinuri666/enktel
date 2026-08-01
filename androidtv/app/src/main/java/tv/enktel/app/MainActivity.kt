@@ -18,6 +18,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -115,7 +117,14 @@ class MainActivity : ComponentActivity() {
      */
     @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isCanceled) {
+        // Only claim transport keys while something is actually playing.
+        //
+        // These branches used to return true unconditionally, so play/pause,
+        // rewind and fast-forward were swallowed app-wide even with no player
+        // — the Fire TV remote's dedicated media buttons did nothing anywhere
+        // in the app, and never reached the OS either.
+        val playerLive = tv.enktel.app.voice.ActivePlayerRef.player != null
+        if (playerLive && event.action == android.view.KeyEvent.ACTION_DOWN && !event.isCanceled) {
             when (event.keyCode) {
                 android.view.KeyEvent.KEYCODE_MEDIA_PLAY -> {
                     tv.enktel.app.voice.ActivePlayerRef.resume(); return true
@@ -154,7 +163,8 @@ class MainActivity : ComponentActivity() {
                 android.view.KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                     // Long-press OK on the D-Pad center toggles the current
                     // channel's favorite. Short-press falls through to Compose
-                    // so cards, buttons, etc. still get their normal click.
+                    // so cards, buttons, etc. still get their normal click —
+                    // returning true here would break every button in the app.
                     if (event.isLongPress && tv.enktel.app.voice.ActivePlayerRef.toggleFavHandler != null) {
                         tv.enktel.app.voice.ActivePlayerRef.toggleFavorite()
                         return true
@@ -890,11 +900,31 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     val entry by nav.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route
 
+    // Give every destination a focus origin on TV.
+    //
+    // Nothing outside the player screens requested focus, so Compose started
+    // each destination with no focused node — and a D-pad press with no origin
+    // to search from does nothing at all. That is why the remote felt dead.
+    // Requesting focus on a focusGroup enters the group and lands on its first
+    // focusable child, so this covers every screen at once rather than needing
+    // each one to nominate a control.
+    val contentFocus = tv.enktel.app.ui.components.rememberScreenFocus(currentRoute, isMobileShell)
+
     val navHost = @Composable { padding: androidx.compose.foundation.layout.PaddingValues ->
     NavHost(
         navController = nav,
         startDestination = start,
-        modifier = Modifier.fillMaxSize().background(EnktelBg).padding(padding),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EnktelBg)
+            .padding(padding)
+            .then(
+                // Touch builds must not take focus on mount: it pops the
+                // soft keyboard on text fields and draws focus rings nobody
+                // asked for.
+                if (isMobileShell) Modifier
+                else Modifier.focusRequester(contentFocus).focusGroup()
+            ),
     ) {
         composable("onboarding") { OnboardingScreen(graph, onDone = { nav.navigate("home") { popUpTo(0) } }) }
         composable("home") {

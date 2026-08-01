@@ -345,9 +345,37 @@ fun VodPlayerScreen(
 
     fun seekBy(deltaMs: Long) = seekTo(positionMs + deltaMs)
 
+    // Route the remote's transport keys through the same guarded path as the
+    // on-screen controls. MainActivity intercepts those keys globally, so
+    // without this they reach a raw seekTo and restart unseekable media.
+    DisposableEffect(engine) {
+        tv.enktel.app.voice.ActivePlayerRef.seekHandler = { target ->
+            val ok = engine.seekToSafe(target)
+            if (ok) positionMs = target.coerceAtLeast(0)
+            else toaster.error("This stream can't be seeked — the panel doesn't support it")
+            poke()
+            ok
+        }
+        onDispose { tv.enktel.app.voice.ActivePlayerRef.seekHandler = null }
+    }
+
     val rootFocus = remember { FocusRequester() }
-    LaunchedEffect(trackMenu, showControls) { if (trackMenu.isEmpty() && !showControls) rootFocus.requestFocus() }
-    LaunchedEffect(Unit) { rootFocus.requestFocus() }
+    val seekFocus = remember { FocusRequester() }
+    LaunchedEffect(trackMenu, showControls) {
+        if (trackMenu.isEmpty() && !showControls) {
+            runCatching { rootFocus.requestFocus() }
+        } else if (trackMenu.isEmpty() && showControls && !isLive) {
+            // Put the remote on the scrubber the moment the HUD opens. Nothing
+            // claimed focus here before, so on TV the controls appeared and the
+            // D-pad still had nowhere to go — the scrub bar was reachable in
+            // code and unreachable in practice.
+            repeat(10) {
+                if (runCatching { seekFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                delay(40)
+            }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
 
     var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
     LaunchedEffect(gestureLevel) { if (gestureLevel != null) { delay(900); gestureLevel = null } }
@@ -603,6 +631,7 @@ fun VodPlayerScreen(
                 // working the moment the media is prepared.
                 if (!isLive) {
                     SeekBar(
+                        focusRequester = seekFocus,
                         positionMs = positionMs,
                         durationMs = durationMs,
                         onSeek = { target ->
@@ -726,6 +755,7 @@ fun VodPlayerScreen(
  */
 @Composable
 private fun SeekBar(
+    focusRequester: FocusRequester,
     positionMs: Long,
     durationMs: Long,
     onSeek: (Long) -> Unit,
@@ -733,6 +763,22 @@ private fun SeekBar(
 ) {
     var focused by remember { mutableStateOf(false) }
     var scrubTarget by remember { mutableStateOf<Long?>(null) }
+    // Consecutive held key-repeats, so scrubbing accelerates instead of
+    // crawling. A fixed 15 s step means a two-hour film needs 240 presses to
+    // cross, which is why reaching "the exact moment you want" felt impossible
+    // with a remote.
+    var repeats by remember { mutableStateOf(0) }
+    LaunchedEffect(scrubTarget) {
+        if (scrubTarget == null) { repeats = 0; return@LaunchedEffect }
+        delay(700)
+        repeats = 0 // let go for a moment and the step resets to fine
+    }
+    fun step(): Long = when {
+        repeats > 24 -> 300_000L
+        repeats > 12 -> 60_000L
+        repeats > 5 -> 30_000L
+        else -> 10_000L
+    }
     // v1.32.0 — accept durationMs == 0 (media not prepared yet). frac stays
     // at 0 so the bar just renders as an empty rail until duration lands.
     // Drag/tap math checks `durationMs > 0` before firing onSeek so we don't
@@ -757,6 +803,7 @@ private fun SeekBar(
             Modifier
                 .fillMaxWidth()
                 .height(44.dp)
+                .focusRequester(focusRequester)
                 .onFocusChanged {
                     focused = it.isFocused
                     if (!it.isFocused && scrubTarget != null) { onSeek(scrubTarget!!); scrubTarget = null }
@@ -766,11 +813,14 @@ private fun SeekBar(
                     if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     when (ev.key.nativeKeyCode) {
                         AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
-                            scrubTarget = ((scrubTarget ?: positionMs) - 15_000).coerceAtLeast(0)
+                            repeats++
+                            scrubTarget = ((scrubTarget ?: positionMs) - step()).coerceAtLeast(0)
                             onInteract(); true
                         }
                         AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            scrubTarget = ((scrubTarget ?: positionMs) + 15_000).coerceAtMost(durationMs)
+                            repeats++
+                            scrubTarget = ((scrubTarget ?: positionMs) + step())
+                                .coerceAtMost(durationMs.coerceAtLeast(0))
                             onInteract(); true
                         }
                         AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
