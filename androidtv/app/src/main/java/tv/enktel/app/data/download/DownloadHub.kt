@@ -94,6 +94,7 @@ class DownloadHub(
     /** Last progress sample per download, for turning deltas into a rate. */
     private class RateSample(var atMs: Long, var bytes: Long)
     private val rateSamples = java.util.concurrent.ConcurrentHashMap<String, RateSample>()
+    private val speedsLock = Any()
 
     /**
      * Folds a progress tick into a smoothed bytes/sec figure.
@@ -105,24 +106,34 @@ class DownloadHub(
      */
     private fun recordRate(id: String, downloaded: Long) {
         val now = System.currentTimeMillis()
-        val prev = rateSamples.putIfAbsent(id, RateSample(now, downloaded))
-        if (prev == null) return
-        val dtMs = now - prev.atMs
-        // Ignore ticks closer than half a second — too short to divide by.
-        if (dtMs < 500) return
-        val dBytes = downloaded - prev.bytes
-        prev.atMs = now
-        prev.bytes = downloaded
-        if (dBytes < 0) return // resumed from a lower offset; skip this sample
-        val instant = dBytes * 1000 / dtMs
-        val previous = _speeds.value[id] ?: instant
-        val smoothed = (previous * 0.7 + instant * 0.3).toLong()
-        _speeds.value = _speeds.value + (id to smoothed)
+        val prev = rateSamples.putIfAbsent(id, RateSample(now, downloaded)) ?: return
+        // Progress callbacks are dispatched as independent coroutines, so
+        // several can land at once and out of order. Sampling under the entry's
+        // own lock keeps one pair of (time, bytes) readings together; without
+        // it two threads read the same baseline and both bill the same bytes.
+        val instant = synchronized(prev) {
+            val dtMs = now - prev.atMs
+            // Ignore ticks closer than half a second — too short to divide by.
+            if (dtMs < 500) return
+            val dBytes = downloaded - prev.bytes
+            // A lower figure is a callback that overtook a newer one, or a
+            // resume from an earlier offset. Neither is a slowdown, and folding
+            // it in makes the reading alternate between double and zero.
+            if (dBytes <= 0) return
+            prev.atMs = now
+            prev.bytes = downloaded
+            dBytes * 1000 / dtMs
+        }
+        synchronized(speedsLock) {
+            val previous = _speeds.value[id] ?: instant
+            val smoothed = (previous * 0.7 + instant * 0.3).toLong()
+            _speeds.value = _speeds.value + (id to smoothed)
+        }
     }
 
     private fun clearRate(id: String) {
         rateSamples.remove(id)
-        _speeds.value = _speeds.value - id
+        synchronized(speedsLock) { _speeds.value = _speeds.value - id }
     }
 
     /** Default root under app-scoped external storage. Used when the user

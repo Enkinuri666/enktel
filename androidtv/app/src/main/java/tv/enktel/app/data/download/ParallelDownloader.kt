@@ -87,17 +87,36 @@ class ParallelDownloader(
         private const val MAX_STREAMS = 4
         /** Below this, connection setup costs more than parallelism saves. */
         private const val PARALLEL_MIN_BYTES = 8L * 1024 * 1024
+        /** Target size of one work chunk. See [planSegments] for why the file is
+         *  cut into more chunks than there are workers. */
+        private const val TARGET_CHUNK_BYTES = 16L * 1024 * 1024
+        /** Ceiling on chunks per worker, so a 40 GB file doesn't produce a
+         *  resume blob with a thousand entries in it. */
+        private const val MAX_CHUNKS_PER_STREAM = 8
         /** 256 KB read buffer: syscall overhead is already negligible here and
          *  smaller blocks keep progress (and pause latency) responsive. */
         private const val READ_BUFFER_BYTES = 256 * 1024
         /** Flush progress to the caller at most this often, by bytes… */
-        private const val PROGRESS_TICK_BYTES = 1L * 1024 * 1024
+        private const val PROGRESS_TICK_BYTES = 4L * 1024 * 1024
         /** …and at most this often, by wall clock. */
         private const val PROGRESS_TICK_MS = 900L
-        /** Attempts per range worker before the download is declared failed. */
+        /** Attempts per range worker, counted from its last real progress,
+         *  before the download is declared failed. */
         private const val MAX_SEGMENT_ATTEMPTS = 6
-        /** Consecutive aborts that trigger dropping one concurrent stream. */
+        /** Hard ceiling on retry rounds for one chunk, so a server that keeps
+         *  dribbling a few bytes and hanging up can't loop us forever. */
+        private const val MAX_SEGMENT_ROUNDS = 200
+        /** Aborts within this window of each other that trigger dropping one
+         *  concurrent stream. */
         private const val ABORTS_BEFORE_SHRINK = 3
+        /** Two aborts further apart than this are unrelated events, not a
+         *  pattern — see [Throttle.noteAbort]. */
+        private const val ABORT_WINDOW_MS = 20_000L
+        /** Bytes an attempt must move to count as evidence the line is healthy
+         *  at its current width. */
+        private const val HEALTHY_TRANSFER_BYTES = 2L * 1024 * 1024
+        /** Quiet, productive stretch before a retired stream is handed back. */
+        private const val RECOVER_AFTER_MS = 60_000L
         /** Headroom left free after a download, so filling the volume doesn't
          *  take the rest of the device down with it. */
         private const val FREE_SPACE_MARGIN_BYTES = 128L * 1024 * 1024
@@ -375,16 +394,27 @@ class ParallelDownloader(
                 val ticker = ProgressTicker(total, segments, onProgress) { t, s -> encodeState(t, s) }
 
                 if (useParallel) {
-                    runParallel(url, userAgent, sink, segments, ticker, pauseFlag)
+                    runParallel(url, userAgent, sink, segments, streams, ticker, pauseFlag)
                 } else {
                     runSingle(url, userAgent, sink, segments.first(), total, ticker, pauseFlag)
                 }
 
+                val got = segments.sumOf { it.done }
                 if (pauseFlag.paused) {
-                    onPaused(segments.sumOf { it.done }, total, encodeState(total, segments))
+                    onPaused(got, total, encodeState(total, segments))
+                } else if (total > 0 && segments.any { !it.complete }) {
+                    // Every worker returned without throwing and the file is
+                    // still short. That happens when a relay caps the bytes it
+                    // serves per request and closes the body cleanly, and
+                    // calling it DONE writes a truncated film to disk and tells
+                    // the user it's ready to watch. Fail instead — the bytes and
+                    // the offsets are on disk, so ↻ picks up where it stopped.
+                    throw java.io.IOException(
+                        "Transfer ended early — got ${humanBytes(got)} of ${humanBytes(total)}",
+                    )
                 } else {
                     ticker.flush()
-                    onProgress(total.coerceAtLeast(segments.sumOf { it.done }), total, "")
+                    onProgress(total.coerceAtLeast(got), total, "")
                     onDone(target.displayPath)
                 }
             } catch (ce: CancellationException) {
@@ -477,29 +507,50 @@ class ParallelDownloader(
         }
     }
 
+    /**
+     * Cuts the file into work chunks — deliberately more of them than there are
+     * workers.
+     *
+     * One fixed chunk per worker sounds tidy and behaves badly: the connections
+     * never run at the same speed, so three workers finish their quarter, go
+     * idle, and the last stretch of every film arrives single-stream while the
+     * slowest connection grinds through the rest of its share. Splitting into
+     * smaller chunks that workers pull from a shared queue lets a fast
+     * connection simply take more of them, and keeps every stream busy until
+     * the file is actually finished.
+     */
     private fun planSegments(total: Long, streams: Int): List<Segment> {
         val n = streams.coerceAtLeast(1)
-        val chunk = max(total / n, 1L)
-        return (0 until n).map { i ->
+        val count = (total / TARGET_CHUNK_BYTES)
+            .coerceIn(n.toLong(), (n.toLong() * MAX_CHUNKS_PER_STREAM))
+            .toInt()
+        val chunk = max(total / count, 1L)
+        return (0 until count).map { i ->
             val start = i * chunk
-            val end = if (i == n - 1) total - 1 else min(start + chunk - 1, total - 1)
+            val end = if (i == count - 1) total - 1 else min(start + chunk - 1, total - 1)
             Segment(start, end, 0)
         }.filter { it.start <= it.end }
     }
 
     private suspend fun runParallel(
         url: String, ua: String, writer: Writer, segments: List<Segment>,
-        ticker: ProgressTicker, pause: PauseFlag,
+        workers: Int, ticker: ProgressTicker, pause: PauseFlag,
     ) = withContext(Dispatchers.IO) {
         // Every worker holds a permit while its socket is open. Starts fully
-        // open (one permit per segment) and ratchets down via [Throttle] as
-        // the server hangs up on us, so a panel enforcing a per-IP connection
-        // cap sees fewer sockets instead of the same four being retried.
-        val throttle = Throttle(segments.size, this)
-        val jobs: List<Deferred<Unit>> = segments.map { seg ->
+        // open and ratchets down via [Throttle] as the server hangs up on us,
+        // so a panel enforcing a per-IP connection cap sees fewer sockets
+        // instead of the same four being retried.
+        val throttle = Throttle(workers, this)
+        val next = AtomicInteger(0)
+        val jobs: List<Deferred<Unit>> = (0 until workers).map {
             async {
-                fetchSegment(url, ua, seg, writer, positional = true, ticker, pause, throttle,
-                    multiSegment = segments.size > 1)
+                while (true) {
+                    if (pause.paused) return@async
+                    val seg = segments.getOrNull(next.getAndIncrement()) ?: return@async
+                    if (seg.complete) continue
+                    fetchSegment(url, ua, seg, writer, positional = true, ticker, pause, throttle,
+                        multiSegment = segments.size > 1)
+                }
             }
         }
         jobs.awaitAll()
@@ -522,40 +573,102 @@ class ParallelDownloader(
 
     /**
      * Adaptive concurrency limiter. Workers must hold a permit to have a socket
-     * open; [retireOne] permanently removes one so repeated aborts converge on
-     * however many parallel connections the server is actually willing to serve.
+     * open; [retireOne] withdraws one so repeated aborts converge on however
+     * many parallel connections the server is actually willing to serve.
+     *
+     * ### Why this was rewritten (v1.37.2)
+     *
+     * The original counted *lifetime* aborts and only reset on a fully
+     * completed chunk, so the "consecutive" in [ABORTS_BEFORE_SHRINK] was
+     * fiction: three aborts anywhere in a transfer retired a stream, three more
+     * retired another, and nothing ever gave one back. On the flaky panels this
+     * app exists to talk to, three resets happen in the first few seconds — so
+     * a download that started at four streams was down to one almost
+     * immediately and stayed there, even though every one of those aborts was
+     * retried successfully. That is the "speed drops after a few seconds"
+     * everyone was seeing: not the server throttling us, us throttling
+     * ourselves.
+     *
+     * Three changes make the signal mean what it claims:
+     *  - **Aborts expire.** Two resets twenty seconds apart are weather, not a
+     *    pattern, and the counter resets between them.
+     *  - **Only empty aborts count.** A per-IP connection cap kills the surplus
+     *    socket immediately, before it delivers anything. A reset forty
+     *    megabytes into a chunk is an ordinary mid-transfer hiccup that the
+     *    retry already handled, and it says nothing about how many connections
+     *    the line will carry.
+     *  - **Streams come back.** After a productive minute at the reduced width,
+     *    one retired stream is returned. A single bad patch no longer costs the
+     *    rest of the download.
      */
     private class Throttle(initialPermits: Int, private val scope: CoroutineScope) {
         private val semaphore = kotlinx.coroutines.sync.Semaphore(max(initialPermits, 1))
         private val live = AtomicInteger(max(initialPermits, 1))
         private val aborts = AtomicInteger(0)
+        /** Permits actually withdrawn — only incremented once held, so
+         *  [restoreOne] can never release more than we own. */
+        private val held = AtomicInteger(0)
+        @Volatile private var lastAbortMs = 0L
+        @Volatile private var lastChangeMs = 0L
 
         suspend fun <T> withSlot(block: suspend () -> T): T {
             semaphore.acquire()
             try { return block() } finally { semaphore.release() }
         }
 
-        /** Record an abort; shrinks the stream count once they start piling up. */
+        /**
+         * Record an abort that delivered nothing. Shrinks the stream count once
+         * several land close together.
+         */
         fun noteAbort() {
+            val now = System.currentTimeMillis()
+            if (now - lastAbortMs > ABORT_WINDOW_MS) aborts.set(0)
+            lastAbortMs = now
             if (aborts.incrementAndGet() < ABORTS_BEFORE_SHRINK) return
             aborts.set(0)
-            retireOne()
+            retireOne(now)
         }
 
-        fun noteSuccess() = aborts.set(0)
+        /**
+         * Record an attempt that moved real data. Clears the abort run, and
+         * after a sustained healthy stretch hands back one retired stream.
+         */
+        fun noteHealthy(bytes: Long) {
+            aborts.set(0)
+            if (bytes < HEALTHY_TRANSFER_BYTES) return
+            val now = System.currentTimeMillis()
+            if (now - lastChangeMs < RECOVER_AFTER_MS) return
+            restoreOne(now)
+        }
 
         /**
-         * Swallow one permit for the rest of the download — never dropping
-         * below a single stream. Acquired on a detached coroutine so the
-         * worker that noticed the aborts isn't itself blocked waiting for a
-         * sibling's socket to finish.
+         * Withdraw one permit — never dropping below a single stream. Acquired
+         * on a detached coroutine so the worker that noticed the aborts isn't
+         * itself blocked waiting for a sibling's socket to finish.
          */
-        private fun retireOne() {
+        private fun retireOne(now: Long) {
             while (true) {
                 val cur = live.get()
                 if (cur <= 1) return
                 if (live.compareAndSet(cur, cur - 1)) {
-                    scope.launch { semaphore.acquire() } // never released
+                    lastChangeMs = now
+                    scope.launch {
+                        semaphore.acquire()
+                        held.incrementAndGet()
+                    }
+                    return
+                }
+            }
+        }
+
+        private fun restoreOne(now: Long) {
+            while (true) {
+                val cur = held.get()
+                if (cur <= 0) return
+                if (held.compareAndSet(cur, cur - 1)) {
+                    live.incrementAndGet()
+                    lastChangeMs = now
+                    semaphore.release()
                     return
                 }
             }
@@ -586,29 +699,59 @@ class ParallelDownloader(
         // only — the caller reports the failure and the user can retry, which
         // starts a clean transfer.
         val maxAttempts = if (rangeless) 1 else MAX_SEGMENT_ATTEMPTS
+        // Counted from the last time this worker actually moved data, not from
+        // the start of the chunk: a transfer that keeps making headway through
+        // repeated resets is working, and burning a fixed budget on it fails
+        // downloads that were seconds from finishing.
         var attempt = 0
+        var rounds = 0
         var lastError: Throwable? = null
-        while (attempt < maxAttempts) {
+        while (attempt < maxAttempts && rounds++ < MAX_SEGMENT_ROUNDS) {
             if (pause.paused) return
             if (seg.complete && !rangeless) return
+            val before = seg.done
             try {
                 throttle.withSlot { fetchOnce(url, ua, seg, writer, positional, ticker, pause, rangeless, multiSegment) }
-                throttle.noteSuccess()
-                return
+                val moved = seg.done - before
+                if (rangeless || seg.complete || pause.paused) {
+                    throttle.noteHealthy(moved)
+                    return
+                }
+                // The body ended cleanly but short. Plenty of reseller relays
+                // cap the bytes they'll serve per request and simply close the
+                // stream — no exception, no error code. Treating that as
+                // success is how a truncated film gets written to disk and
+                // marked DONE, so pick up from the cursor instead.
+                if (moved <= 0) {
+                    lastError = java.io.IOException("Server closed the transfer early at byte ${seg.cursor}")
+                    attempt++
+                    if (attempt >= maxAttempts) break
+                    delay(1000L shl min(attempt - 1, 4))
+                    continue
+                }
+                throttle.noteHealthy(moved)
+                attempt = 0
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {
                 if (pause.paused) return
                 lastError = t
-                attempt++
-                // A panel that keeps hanging up is usually enforcing a per-IP
-                // connection cap; competing for it harder makes the download
-                // slower, not faster.
-                if (isAbort(t)) throttle.noteAbort() else if (!isRetryable(t)) throw t
+                val moved = seg.done - before
+                if (isAbort(t)) {
+                    // Only an abort that delivered nothing suggests a per-IP
+                    // connection cap. One that arrives after megabytes of good
+                    // data is an ordinary mid-transfer reset, and shrinking the
+                    // stream count for it is how a healthy four-way download
+                    // ratchets itself down to one.
+                    if (moved >= HEALTHY_TRANSFER_BYTES) throttle.noteHealthy(moved) else throttle.noteAbort()
+                } else if (!isRetryable(t)) {
+                    throw t
+                }
+                attempt = if (moved >= HEALTHY_TRANSFER_BYTES) 0 else attempt + 1
                 if (attempt >= maxAttempts) break
                 // 1s, 2s, 4s, 8s, 16s — long enough for a rate-limited panel to
                 // forgive us, short enough that a blip barely registers.
-                delay(1000L shl min(attempt - 1, 4))
+                delay(1000L shl min(max(attempt - 1, 0), 4))
             }
         }
         throw lastError ?: java.io.IOException("range ${seg.start}-${seg.end} failed")
