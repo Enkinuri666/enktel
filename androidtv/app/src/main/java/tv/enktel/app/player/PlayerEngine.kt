@@ -145,6 +145,34 @@ class PlayerEngine(
      * than erroring. The app-wide read timeout is 180 s, which is three minutes
      * of frozen picture before anything happens.
      */
+    /**
+     * Pick playback back up when the network returns.
+     *
+     * Switching Wi-Fi to mobile, or a router rebooting, kills the socket
+     * underneath a live feed. Depending on timing that surfaces as an error, a
+     * silent ENDED, or an indefinite buffer — and in the last two cases nothing
+     * else here would ever retry. Watching the transport directly covers all
+     * three, and reconnects the moment there is a network to reconnect on
+     * rather than after a backoff that started while there wasn't one.
+     */
+    private fun watchNetwork() {
+        diagScope.launch {
+            var previous = tv.enktel.app.data.net.NetworkClass.kind.value
+            tv.enktel.app.data.net.NetworkClass.kind.collect { now ->
+                val regained = now != previous &&
+                    now != tv.enktel.app.data.net.NetworkClass.Kind.UNKNOWN
+                previous = now
+                if (!regained || !isLiveStream) return@collect
+                val state = try { player.playbackState } catch (_: Throwable) { return@collect }
+                if (state == Player.STATE_READY) return@collect
+                // A fresh network is a fresh chance, so don't let a budget
+                // spent on the old one prevent using it.
+                liveReconnects = 0
+                reconnectLive()
+            }
+        }
+    }
+
     private fun scheduleStallCheck() {
         if (!isLiveStream) return
         playerHandler.postDelayed({
@@ -287,6 +315,28 @@ class PlayerEngine(
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(30_000)
             .setUsePlatformDiagnostics(false) // trims one Google Play Services dep on Fire TV
+            // Hold a partial wake lock + Wi-Fi lock while playing.
+            //
+            // The WAKE_LOCK permission was already declared and never used, so
+            // nothing stopped the device dozing mid-programme: on a Fire TV
+            // Stick the Wi-Fi radio powers down on idle and the stream simply
+            // dies. WAKE_MODE_NETWORK is the setting that keeps a network-fed
+            // player alive, and ExoPlayer drops both locks the moment playback
+            // stops, so it costs nothing while paused.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            // Play nicely with other audio instead of fighting it. Without
+            // focus handling a notification or a second app leaves two streams
+            // talking over each other; with it, playback ducks and resumes.
+            .setAudioAttributes(
+                androidx.media3.common.AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build(),
+                /* handleAudioFocus = */ true,
+            )
+            // Pause when headphones are unplugged rather than switching to the
+            // speaker at full volume.
+            .setHandleAudioBecomingNoisy(true)
             .build()
 
         player.addAnalyticsListener(EventLogger())
@@ -328,6 +378,8 @@ class PlayerEngine(
                 stats.value = stats.value.copy(audioCodec = format.sampleMimeType.orEmpty().substringAfterLast('/'))
             }
         })
+
+        watchNetwork()
 
         player.addListener(object : Player.Listener {
             override fun onPlayerError(err: PlaybackException) {
