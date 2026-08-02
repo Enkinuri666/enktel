@@ -323,6 +323,28 @@ fun VodPlayerScreen(
 
     fun poke() { showControls = true; controlsTick++ }
 
+    val seekSupport by engine.seekSupport.collectAsStateWithLifecycle()
+    val canSeek = seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.CONTAINER &&
+        seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.NO_LENGTH &&
+        seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.NO_RANGES
+
+    // A container with no index, on a panel that does serve ranges, is usually
+    // fixed by asking the same panel for the same film in a different
+    // container — StreamUrlResolver already queues .mp4/.mkv/.ts/.avi. The
+    // chain only ever advanced on a playback *error*, so a title that played
+    // perfectly but couldn't be seeked never got there.
+    //
+    // Only automatic in the first 90 seconds. Past that the user is watching,
+    // and yanking them back to the start to gain a scrub bar is a bad trade.
+    var autoSwitched by remember(url) { mutableStateOf(false) }
+    LaunchedEffect(seekSupport, url) {
+        if (autoSwitched || isLive) return@LaunchedEffect
+        if (seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.CONTAINER) return@LaunchedEffect
+        if (positionMs > 90_000 || !engine.hasAlternateSource) return@LaunchedEffect
+        autoSwitched = true
+        engine.tryNextCandidate()
+    }
+
     val toaster = tv.enktel.app.ui.components.LocalToaster.current
 
     /**
@@ -335,11 +357,11 @@ fun VodPlayerScreen(
      * and saying so is the honest outcome; silently restarting is not.
      */
     fun seekTo(target: Long) {
-        if (engine.seekToSafe(target)) {
-            positionMs = target.coerceAtLeast(0)
-        } else {
-            toaster.error("This stream can't be seeked — the panel doesn't support it")
-        }
+        // No toast on refusal. It fired on every press, and because the toast
+        // host draws over the HUD it covered the very buttons the user was
+        // pressing. Seekability is a property of the title, not of the press,
+        // so it belongs in one persistent line above the controls.
+        if (engine.seekToSafe(target)) positionMs = target.coerceAtLeast(0)
         poke()
     }
 
@@ -352,7 +374,6 @@ fun VodPlayerScreen(
         tv.enktel.app.voice.ActivePlayerRef.seekHandler = { target ->
             val ok = engine.seekToSafe(target)
             if (ok) positionMs = target.coerceAtLeast(0)
-            else toaster.error("This stream can't be seeked — the panel doesn't support it")
             poke()
             ok
         }
@@ -575,7 +596,7 @@ fun VodPlayerScreen(
         // (or by saying "skip intro"). Dismissed once tapped, once the
         // player crosses the 90 s mark, or when it's a live stream.
         var skipIntroDismissed by remember(progressKey) { androidx.compose.runtime.mutableStateOf(false) }
-        val showSkipIntro = !isLive && !skipIntroDismissed &&
+        val showSkipIntro = !isLive && !skipIntroDismissed && canSeek &&
             positionMs in 5_000L..90_000L && durationMs > 180_000L
         if (showSkipIntro) {
             Row(
@@ -629,6 +650,49 @@ fun VodPlayerScreen(
                 // too; when we don't, we still show the drag/tap scrubber and
                 // the elapsed timestamp so ±10 s / drag / DPAD scrub keep
                 // working the moment the media is prepared.
+                // One line, above the controls rather than over them, and only
+                // when seeking genuinely isn't available. Each cause has a
+                // different answer, so each gets its own wording — "not
+                // supported" alone left the user with nothing to do.
+                if (!isLive && !canSeek) {
+                    val (why, offerSwitch) = when (seekSupport) {
+                        tv.enktel.app.player.PlayerEngine.SeekSupport.NO_LENGTH ->
+                            "This panel streams the film without a length, so no player can jump to a time in it." to false
+                        tv.enktel.app.player.PlayerEngine.SeekSupport.NO_RANGES ->
+                            "This panel won't serve partial requests, so seeking isn't possible on it." to false
+                        else ->
+                            "This copy has no seek index. Another version of the same file may." to true
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("⚠", color = EnktelLive, fontSize = 13.sp)
+                        Text(why, color = EnktelTextDim, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        if (offerSwitch && engine.hasAlternateSource) {
+                            FocusButton("Try another source", accent = true, onClick = {
+                                engine.tryNextCandidate(); poke()
+                            })
+                        }
+                        // A downloaded file is a local file, and a local file is
+                        // always seekable — the one reliable answer when the
+                        // panel simply won't cooperate.
+                        FocusButton("⬇ Download to seek", onClick = {
+                            graph.downloads.enqueue(
+                                tv.enktel.app.data.db.DownloadEntry(
+                                    id = progressKey.ifBlank { url.hashCode().toString() },
+                                    profileId = progressKey.substringBefore(':').toLongOrNull() ?: 0L,
+                                    kind = "movie",
+                                    refId = progressKey.substringAfterLast(':').toLongOrNull() ?: 0L,
+                                    title = title,
+                                    sourceUrl = url,
+                                )
+                            )
+                            poke()
+                        })
+                    }
+                }
                 if (!isLive) {
                     SeekBar(
                         focusRequester = seekFocus,

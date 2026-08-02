@@ -322,7 +322,11 @@ class PlayerEngine(
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) { retries = 0; error.value = null }
+                if (state == Player.STATE_READY) {
+                    retries = 0
+                    error.value = null
+                    classifySeekSupport()
+                }
                 buffering.value = state == Player.STATE_BUFFERING
                 push()
             }
@@ -473,6 +477,7 @@ class PlayerEngine(
         retries = 0
         dropped = 0
         error.value = null
+        seekSupport.value = SeekSupport.UNKNOWN
         val builder = MediaItem.Builder().setUri(url).apply {
             // Pin the MIME type when the caller asked us to skip container
             // auto-detection (Force MP4 fallback etc). Media3 uses this
@@ -581,6 +586,87 @@ class PlayerEngine(
         } catch (_: Throwable) {
             false
         }
+
+    /** Why seeking is or isn't available on the loaded item. */
+    enum class SeekSupport {
+        UNKNOWN,
+        OK,
+        /** The server streams without a Content-Length, so nothing can map a
+         *  timestamp to a byte offset. Unfixable client-side. */
+        NO_LENGTH,
+        /** The server won't serve byte ranges — same conclusion. */
+        NO_RANGES,
+        /** Ranges and length are both fine; this container just didn't publish
+         *  an index. A different container from the same panel often will. */
+        CONTAINER,
+    }
+
+    val seekSupport = MutableStateFlow(SeekSupport.UNKNOWN)
+
+    /** True when another container shape is still queued to try. */
+    val hasAlternateSource: Boolean get() = candidateQueue.isNotEmpty()
+
+    /**
+     * Advance to the next candidate on demand — for "try another source" when
+     * the current one plays but can't be seeked.
+     *
+     * @return false when nothing else is left to try.
+     */
+    fun tryNextCandidate(): Boolean {
+        if (candidateQueue.isEmpty()) return false
+        val next = candidateQueue.removeAt(0)
+        triedFallback.value = true
+        retries = 0
+        playInternal(next, candidateLive, candidateStartMs, candidateSubUrl)
+        return true
+    }
+
+    /**
+     * Work out *why* an item can't be seeked, so the UI can say something the
+     * user can act on.
+     *
+     * The distinction matters because the three causes have different answers.
+     * A stream with no Content-Length cannot be seeked by any player ever
+     * written — there is no way to turn a timestamp into a byte offset — so
+     * the honest advice is to download it. A container with no index, on a
+     * panel that does serve ranges, is often fixed by asking the same panel
+     * for the same film as `.mp4` instead of `.ts`.
+     *
+     * The screenshot that prompted this showed a known duration (2:45:34) on
+     * an unseekable item, which is exactly the TS-without-a-length shape.
+     */
+    private fun classifySeekSupport() {
+        if (seekable) { seekSupport.value = SeekSupport.OK; return }
+        if (seekSupport.value != SeekSupport.UNKNOWN) return
+        val target = lastUrl ?: return
+        diagScope.launch {
+            val verdict = try {
+                val req = okhttp3.Request.Builder()
+                    .url(target)
+                    .header("User-Agent", tv.enktel.app.DEFAULT_UA)
+                    .header("Range", "bytes=0-1")
+                    .header("Accept-Encoding", "identity")
+                    .get()
+                    .build()
+                http.newCall(req).execute().use { r ->
+                    val contentRange = r.header("Content-Range").orEmpty()
+                    val totalKnown = contentRange.substringAfterLast('/', "")
+                        .trim().toLongOrNull()?.takeIf { it > 0 } != null ||
+                        (r.header("Content-Length")?.toLongOrNull() ?: 0L) > 2L
+                    // Drain so the socket goes back to the pool clean.
+                    try { r.body?.bytes() } catch (_: Throwable) {}
+                    when {
+                        r.code != 206 -> SeekSupport.NO_RANGES
+                        !totalKnown -> SeekSupport.NO_LENGTH
+                        else -> SeekSupport.CONTAINER
+                    }
+                }
+            } catch (_: Throwable) {
+                SeekSupport.UNKNOWN
+            }
+            seekSupport.value = verdict
+        }
+    }
 
     /**
      * Seek to an absolute position, refusing rather than restarting when the
