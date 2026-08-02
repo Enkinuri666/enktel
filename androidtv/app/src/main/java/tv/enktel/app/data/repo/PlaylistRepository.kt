@@ -8,12 +8,15 @@ import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.data.prefs.SettingsStore
 import tv.enktel.app.data.str
+import tv.enktel.app.data.net.EagleTrialClient
+import tv.enktel.app.data.net.TrialCredentials
 import tv.enktel.app.data.xtream.XtreamClient
 
 class PlaylistRepository(
     private val dao: ProfileDao,
     private val settings: SettingsStore,
     private val xtream: XtreamClient,
+    private val trialClient: EagleTrialClient? = null,
 ) {
     val profiles: Flow<List<Profile>> = dao.all()
 
@@ -51,6 +54,37 @@ class PlaylistRepository(
             settings.setActiveProfile(id)
             saved.copy(id = id)
         }
+
+    /**
+     * Turns a [TrialCredentials] payload into a validated Xtream profile.
+     * Same login-then-persist pattern as [addXtream] so the panel gets a real
+     * auth challenge before we save anything, but we tag the row with
+     * "EnkTel 4K — Free Trial" and let the settings banner style it as a
+     * trial (expiresAt < 24 h from now is the shipping heuristic).
+     */
+    suspend fun addTrial(creds: TrialCredentials): Result<Profile> = runCatching {
+        val normalized = normalizeServer(creds.serverUrl)
+        val candidate = Profile(
+            name = "EnkTel 4K — Free Trial",
+            kind = "xtream",
+            server = normalized,
+            username = creds.username,
+            password = creds.password,
+        )
+        val info = xtream.login(candidate)
+        val user = info.get("user_info")
+        val auth = user.int("auth") ?: 0
+        check(auth == 1) { "Trial credentials were rejected by the panel" }
+        val panelExpires = user.long("exp_date")?.times(1000L) ?: 0L
+        val maxConn = user.int("max_connections") ?: 0
+        // Prefer the panel's exp_date if it came back; fall back to whatever the
+        // trial API returned (which itself defaults to now + 24 h).
+        val expires = if (panelExpires > 0) panelExpires else creds.expiresAt
+        val saved = candidate.copy(expiresAt = expires, maxConnections = maxConn)
+        val id = dao.insert(saved)
+        settings.setActiveProfile(id)
+        saved.copy(id = id)
+    }
 
     suspend fun addM3u(name: String, url: String, epgUrl: String): Result<Profile> = runCatching {
         require(url.startsWith("http")) { "Playlist URL must start with http(s)://" }

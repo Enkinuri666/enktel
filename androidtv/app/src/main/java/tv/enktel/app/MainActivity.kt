@@ -956,6 +956,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         }
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
         composable("settings") { SettingsScreen(graph, nav) }
+        composable("upgrade") { tv.enktel.app.ui.screens.UpgradeScreen(nav) }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }

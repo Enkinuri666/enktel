@@ -14,9 +14,23 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 92
-        versionName = "1.38.5"
+        versionCode = 93
+        versionName = "1.39.0"
         vectorDrawables { useSupportLibrary = true }
+
+        // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
+        // is expected to accept a POST and return JSON with the shape
+        //   { server_url, username, password, expires_at }
+        // Overridable at build time via -PenkTrialUrl / -PenkUpgradeUrl so a
+        // deployer can point at a different panel without editing this file.
+        val trialUrl = (project.findProperty("enkTrialUrl") as? String)
+            ?: System.getenv("ENK_TRIAL_URL")
+            ?: "https://watch.enktel.tv/api/trial"
+        val upgradeUrl = (project.findProperty("enkUpgradeUrl") as? String)
+            ?: System.getenv("ENK_UPGRADE_URL")
+            ?: "https://watch.enktel.tv/upgrade"
+        buildConfigField("String", "EAGLE_TRIAL_URL", "\"$trialUrl\"")
+        buildConfigField("String", "EAGLE_UPGRADE_URL", "\"$upgradeUrl\"")
     }
 
     // Two product flavors so users can install the mobile and TV builds side-by-side.

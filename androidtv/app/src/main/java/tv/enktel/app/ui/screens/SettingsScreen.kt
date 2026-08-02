@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
@@ -86,6 +87,11 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { nav.navigate("systemMonitor") })
             FocusButton("🗂  Manage categories",
                 onClick = { nav.navigate("manageCategories") })
+            // v1.39.0 — companion to the AccountBanner above. Trial or
+            // near-expiry users can jump straight to /upgrade (WebView on
+            // mobile, QR on TV) without hunting for the button per category.
+            FocusButton("⬆  Upgrade account",
+                onClick = { nav.navigate("upgrade") })
         }
         Text(
             "Diagnostics tests your network + the panel's URL shapes + concurrent-connection cap + HTTP/TLS protocol — all locally, no browser needed. " +
@@ -885,3 +891,4 @@ private val CATEGORIES = listOf(
     "Playlists", "Playback", "Recording", "Sports & Voice",
     "Parental", "Network", "Appearance", "About",
 )
+
