@@ -40,6 +40,25 @@ class AppGraph(app: Application) {
         // without credentials. Users who really need a proxy can put it in
         // Settings → Backup gateways which is applied per-request instead.
         .proxy(Proxy.NO_PROXY)
+        // Negotiate with old panels *and* old devices.
+        //
+        // MODERN_TLS alone (OkHttp's default) restricts the cipher list, and
+        // this app supports API 21 — Fire OS 5 on the Fire TV Stick 2nd gen,
+        // whose TLS stack predates most of it. Plenty of IPTV panels sit behind
+        // equally dated nginx builds. Offering COMPATIBLE_TLS as a fallback
+        // widens the overlap at both ends. CLEARTEXT is listed because a great
+        // many panels are http-only.
+        //
+        // This does not weaken certificate verification: the trust manager and
+        // hostname verifier are untouched, only the cipher/protocol menu is
+        // broader.
+        .connectionSpecs(
+            listOf(
+                okhttp3.ConnectionSpec.MODERN_TLS,
+                okhttp3.ConnectionSpec.COMPATIBLE_TLS,
+                okhttp3.ConnectionSpec.CLEARTEXT,
+            )
+        )
         // Send a well-known media UA on every request. Many Cloudflare WAFs +
         // IPTV panels block "okhttp/*" or empty UAs with a proxy challenge
         // (which surfaces here as an unauthenticated 407). VLC's UA is the
@@ -50,6 +69,11 @@ class AppGraph(app: Application) {
                 gateways = { backupGatewaysSnapshot },
             )
         )
+        // Adds ISRG Root X1/X2 as trust anchors on pre-7.1.1 Android, where the
+        // system store predates Let's Encrypt. No-op from API 25 up. See
+        // LegacyTls — system anchors are still tried first, and nothing else
+        // becomes trusted.
+        .let { tv.enktel.app.data.net.LegacyTls.install(it) }
         .build()
     val xtream = XtreamClient(http)
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream)
