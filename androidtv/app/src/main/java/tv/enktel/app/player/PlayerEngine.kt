@@ -115,6 +115,20 @@ class PlayerEngine(
     private val playerHandler by lazy { android.os.Handler(player.applicationLooper) }
 
     /**
+     * Must be declared **above** `init`.
+     *
+     * Kotlin runs property initialisers and init blocks in declaration order,
+     * so a property declared below `init` is still null while `init` executes.
+     * This one is used by [watchNetwork], which `init` calls — with the
+     * declaration further down the file it was dereferenced before it existed
+     * and every PlayerEngine construction died with a NullPointerException,
+     * i.e. the app crashed the moment anyone opened live TV or a film.
+     */
+    private val diagScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+    )
+
+    /**
      * Pick a dropped live feed back up.
      *
      * Backed off, because a panel that just hung up on us is often busy, and a
@@ -140,12 +154,6 @@ class PlayerEngine(
     }
 
     /**
-     * Catches the other way a live feed dies: the socket stays open but the
-     * panel stops sending, so ExoPlayer sits in BUFFERING indefinitely rather
-     * than erroring. The app-wide read timeout is 180 s, which is three minutes
-     * of frozen picture before anything happens.
-     */
-    /**
      * Pick playback back up when the network returns.
      *
      * Switching Wi-Fi to mobile, or a router rebooting, kills the socket
@@ -163,16 +171,28 @@ class PlayerEngine(
                     now != tv.enktel.app.data.net.NetworkClass.Kind.UNKNOWN
                 previous = now
                 if (!regained || !isLiveStream) return@collect
-                val state = try { player.playbackState } catch (_: Throwable) { return@collect }
-                if (state == Player.STATE_READY) return@collect
-                // A fresh network is a fresh chance, so don't let a budget
-                // spent on the old one prevent using it.
-                liveReconnects = 0
-                reconnectLive()
+                // Hop to the player's own thread before reading its state.
+                // ExoPlayer throws on cross-thread access, and the catch that
+                // used to wrap this swallowed the throw — so the check always
+                // bailed out and network recovery never actually ran.
+                playerHandler.post {
+                    val state = try { player.playbackState } catch (_: Throwable) { return@post }
+                    if (state == Player.STATE_READY) return@post
+                    // A fresh network is a fresh chance, so don't let a budget
+                    // spent on the old one prevent using it.
+                    liveReconnects = 0
+                    reconnectLive()
+                }
             }
         }
     }
 
+    /**
+     * Catches the other way a live feed dies: the socket stays open but the
+     * panel stops sending, so ExoPlayer sits in BUFFERING indefinitely rather
+     * than erroring. The app-wide read timeout is 180 s, which is three minutes
+     * of frozen picture before anything happens.
+     */
     private fun scheduleStallCheck() {
         if (!isLiveStream) return
         playerHandler.postDelayed({
@@ -517,10 +537,6 @@ class PlayerEngine(
             error.value = hint
         }
     }
-
-    private val diagScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
-    )
 
     fun push() {
         stats.value = stats.value.copy(
