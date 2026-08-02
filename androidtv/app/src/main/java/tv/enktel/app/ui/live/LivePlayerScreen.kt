@@ -540,10 +540,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
         // Branded animated buffering overlay — shows while ExoPlayer is BUFFERING.
         val isBuffering by engine.buffering.collectAsStateWithLifecycle()
-        if (isBuffering && playError == null) {
+        val isReconnecting by engine.reconnecting.collectAsStateWithLifecycle()
+        if ((isBuffering || isReconnecting) && playError == null) {
             tv.enktel.app.ui.components.BufferingLoader(
                 modifier = Modifier.align(Alignment.Center),
-                label = "Buffering",
+                // A dropped feed being picked back up is a different thing from
+                // a slow one, and takes longer — saying so stops it reading as
+                // a freeze.
+                label = if (isReconnecting) "Reconnecting" else "Buffering",
             )
         }
 

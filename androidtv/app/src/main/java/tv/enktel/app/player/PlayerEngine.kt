@@ -103,6 +103,61 @@ class PlayerEngine(
     /** Surfaced so the UI can show "trying an alternate stream source…"
      *  instead of a flat error while the fallback chain is still working. */
     val triedFallback = MutableStateFlow(false)
+
+    /** True while a dropped live feed is being picked back up, so the UI can
+     *  say "reconnecting" rather than showing a bare spinner. */
+    val reconnecting = MutableStateFlow(false)
+
+    private var isLiveStream = false
+    private var liveReconnects = 0
+    private var playingSinceMs = 0L
+    private var bufferingSinceMs = 0L
+    private val playerHandler by lazy { android.os.Handler(player.applicationLooper) }
+
+    /**
+     * Pick a dropped live feed back up.
+     *
+     * Backed off, because a panel that just hung up on us is often busy, and a
+     * tight reconnect loop is how a client gets its IP throttled.
+     */
+    private fun reconnectLive() {
+        if (liveReconnects >= MAX_LIVE_RECONNECTS) {
+            error.value = "The stream keeps dropping — the panel may be overloaded or the line in use elsewhere"
+            reconnecting.value = false
+            return
+        }
+        liveReconnects++
+        reconnecting.value = true
+        playingSinceMs = 0L
+        val delayMs = (1000L shl minOf(liveReconnects - 1, 4)).coerceAtMost(16_000L)
+        playerHandler.postDelayed({
+            try {
+                player.seekToDefaultPosition()
+                player.prepare()
+                player.play()
+            } catch (_: Throwable) { /* player torn down mid-wait */ }
+        }, delayMs)
+    }
+
+    /**
+     * Catches the other way a live feed dies: the socket stays open but the
+     * panel stops sending, so ExoPlayer sits in BUFFERING indefinitely rather
+     * than erroring. The app-wide read timeout is 180 s, which is three minutes
+     * of frozen picture before anything happens.
+     */
+    private fun scheduleStallCheck() {
+        if (!isLiveStream) return
+        playerHandler.postDelayed({
+            val since = bufferingSinceMs
+            if (since != 0L &&
+                System.currentTimeMillis() - since >= LIVE_STALL_MS &&
+                player.playbackState == Player.STATE_BUFFERING
+            ) {
+                bufferingSinceMs = 0L
+                reconnectLive()
+            }
+        }, LIVE_STALL_MS + 500)
+    }
     /** MIME type to pin on the next MediaItem, bypassing ExoPlayer's own
      *  container auto-detection. Empty = let ExoPlayer figure it out. Set
      *  via [play]'s `forceMimeType` (used by the "Force MP4 fallback (VOD)"
@@ -322,10 +377,41 @@ class PlayerEngine(
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) {
-                    retries = 0
-                    error.value = null
-                    classifySeekSupport()
+                when (state) {
+                    Player.STATE_READY -> {
+                        retries = 0
+                        error.value = null
+                        reconnecting.value = false
+                        bufferingSinceMs = 0L
+                        // A stream that has played for a decent stretch has
+                        // proved itself; forgive its earlier stumbles so a
+                        // multi-hour session doesn't slowly exhaust its
+                        // reconnect budget and die on the last one.
+                        if (playingSinceMs == 0L) playingSinceMs = System.currentTimeMillis()
+                        else if (System.currentTimeMillis() - playingSinceMs > GOOD_RUN_MS) {
+                            liveReconnects = 0
+                            playingSinceMs = System.currentTimeMillis()
+                        }
+                        classifySeekSupport()
+                    }
+                    Player.STATE_BUFFERING -> {
+                        if (bufferingSinceMs == 0L) bufferingSinceMs = System.currentTimeMillis()
+                        scheduleStallCheck()
+                    }
+                    Player.STATE_ENDED -> {
+                        // The one that made live channels "stop after a while".
+                        //
+                        // A live MPEG-TS feed is one long-lived HTTP response.
+                        // When the panel closes it — session rotation, a load
+                        // balancer recycling the backend, an idle timeout — the
+                        // extractor simply sees EOF. ExoPlayer treats that as
+                        // the media having *finished*: STATE_ENDED, no error,
+                        // no listener callback anywhere in this class. So
+                        // nothing reconnected and the picture just stopped,
+                        // with the app convinced everything went fine.
+                        if (isLiveStream) reconnectLive()
+                    }
+                    else -> Unit
                 }
                 buffering.value = state == Player.STATE_BUFFERING
                 push()
@@ -405,6 +491,7 @@ class PlayerEngine(
         candidateQueue = mutableListOf()
         triedFallback.value = false
         forcedMimeType = forceMimeType
+        liveReconnects = 0
         playInternal(Candidate(url, forceMimeType), live, startPositionMs, externalSubUrl)
     }
 
@@ -464,6 +551,7 @@ class PlayerEngine(
         candidateStartMs = startPositionMs
         candidateSubUrl = externalSubUrl
         triedFallback.value = false
+        liveReconnects = 0
         playInternal(expanded.first(), live, startPositionMs, externalSubUrl)
     }
 
@@ -478,6 +566,9 @@ class PlayerEngine(
         dropped = 0
         error.value = null
         seekSupport.value = SeekSupport.UNKNOWN
+        isLiveStream = live
+        playingSinceMs = 0L
+        bufferingSinceMs = 0L
         val builder = MediaItem.Builder().setUri(url).apply {
             // Pin the MIME type when the caller asked us to skip container
             // auto-detection (Force MP4 fallback etc). Media3 uses this
@@ -743,6 +834,7 @@ class PlayerEngine(
     }
 
     fun release() {
+        playerHandler.removeCallbacksAndMessages(null)
         loudness?.release(); loudness = null
         dialogueFx?.release(); dialogueFx = null
         diagScope.cancel()
@@ -750,6 +842,13 @@ class PlayerEngine(
     }
 
     private companion object {
+        /** Reconnect attempts before a live feed is declared dead. */
+        const val MAX_LIVE_RECONNECTS = 8
+        /** Buffering longer than this on live means the feed has stalled. */
+        const val LIVE_STALL_MS = 25_000L
+        /** Play cleanly for this long and the reconnect budget is restored. */
+        const val GOOD_RUN_MS = 120_000L
+
         /**
          * Errors that describe the *content*, not the connection. Retrying the
          * identical URL cannot change the answer, so the fallback chain should
