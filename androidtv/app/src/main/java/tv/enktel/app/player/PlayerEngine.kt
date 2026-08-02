@@ -19,6 +19,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import okhttp3.OkHttpClient
@@ -45,7 +47,7 @@ data class StreamStats(
 @UnstableApi
 class PlayerEngine(
     context: Context,
-    http: OkHttpClient,
+    private val http: OkHttpClient,
     bufferProfile: String,
     /** "hwplus" (default, EXTENSION_RENDERER_MODE_PREFER) | "hw"
      *  (EXTENSION_RENDERER_MODE_OFF, hardware-only) | any other value
@@ -91,7 +93,10 @@ class PlayerEngine(
     // Fallback-chain state: remaining candidate URLs to try (in priority
     // order) if the current one keeps failing.  Populated by
     // playCandidates(); empty when playing a single fixed url via play().
-    private var candidateQueue: MutableList<String> = mutableListOf()
+    private var candidateQueue: MutableList<Candidate> = mutableListOf()
+    /** What is loaded right now, so a container failure can re-read the same
+     *  URL as HLS before giving up on it. */
+    private var currentCandidate: Candidate? = null
     private var candidateLive = false
     private var candidateStartMs = 0L
     private var candidateSubUrl = ""
@@ -271,7 +276,25 @@ class PlayerEngine(
 
         player.addListener(object : Player.Listener {
             override fun onPlayerError(err: PlaybackException) {
-                if (retries < 2 && lastUrl != null) {
+                // A container/manifest error is a statement about the bytes, not
+                // about the network: the same URL will produce the same
+                // unparseable response every time. Retrying it twice before
+                // moving on just makes the user wait ~6 s per candidate — and
+                // with six candidates that is most of a minute staring at a
+                // black screen before anything useful is tried.
+                val deterministic = err.errorCode in DETERMINISTIC_SOURCE_ERRORS
+                val hlsRetry = if (err.errorCode in CONTAINER_ERRORS) {
+                    currentCandidate?.let { asHlsRetry(it) }
+                } else null
+                if (hlsRetry != null) {
+                    // Same URL, read as HLS this time. Reactive rather than
+                    // queued up front: reinterpreting a URL that 404'd is
+                    // pointless, and doubling the candidate list would double
+                    // how long a genuinely dead channel takes to report.
+                    triedFallback.value = true
+                    retries = 0
+                    playInternal(hlsRetry, candidateLive, candidateStartMs, candidateSubUrl)
+                } else if (!deterministic && retries < 2 && lastUrl != null) {
                     // Short in-place retry first — covers transient network
                     // blips without wasting time walking the fallback chain.
                     retries++
@@ -289,6 +312,12 @@ class PlayerEngine(
                     playInternal(next, candidateLive, candidateStartMs, candidateSubUrl)
                 } else {
                     error.value = err.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ')
+                    // Every shape failed. Ask the panel what it is actually
+                    // serving so the user gets a cause instead of a code —
+                    // "PARSING CONTAINER UNSUPPORTED" tells them nothing they
+                    // can act on, and the answer is usually an HTML error page
+                    // about credentials or a connection limit.
+                    diagnose(lastUrl)
                 }
             }
 
@@ -299,6 +328,57 @@ class PlayerEngine(
             }
         })
     }
+
+    /**
+     * Asks the panel what it actually served, and rewrites [error] with a cause.
+     *
+     * "PARSING CONTAINER UNSUPPORTED" is ExoPlayer telling the user it didn't
+     * recognise the bytes, which is true and completely unactionable. In
+     * practice the bytes are nearly always one of three things, and each has a
+     * different answer for the person holding the remote.
+     */
+    private fun diagnose(url: String?) {
+        val target = url ?: return
+        diagScope.launch {
+            val hint = try {
+                val req = okhttp3.Request.Builder()
+                    .url(target)
+                    .header("User-Agent", tv.enktel.app.DEFAULT_UA)
+                    .header("Range", "bytes=0-2047")
+                    .build()
+                http.newCall(req).execute().use { r ->
+                    val head = (r.body?.source()?.peek()?.readUtf8Line() ?: "").trim()
+                    val body = r.body?.string()?.take(512).orEmpty()
+                    val text = (head + " " + body).trim()
+                    when {
+                        r.code == 401 || r.code == 403 ->
+                            "The panel refused this stream (HTTP ${r.code}) — check the account is active and not expired."
+                        r.code >= 500 ->
+                            "The panel returned a server error (HTTP ${r.code}) — it's likely overloaded."
+                        r.code == 404 ->
+                            "The panel has no stream at this address (404) — the channel list may be stale, try re-syncing."
+                        text.startsWith("#EXTM3U", ignoreCase = true) ->
+                            "The panel served an HLS playlist here. EnkTel retried it as HLS and that failed too — the playlist may point at segments the panel isn't serving."
+                        text.startsWith("<", ignoreCase = true) ->
+                            "The panel returned a web page instead of a stream — usually an expired account, " +
+                                "a device/connection limit, or the line being used elsewhere."
+                        text.isBlank() ->
+                            "The panel accepted the request but sent no data — the stream is probably offline."
+                        else ->
+                            "The panel sent data EnkTel couldn't recognise as video. Try switching " +
+                                "Settings → Playback → Stream format, or pick another channel."
+                    }
+                }
+            } catch (_: Throwable) {
+                "Couldn't reach the panel to find out why — check the connection."
+            }
+            error.value = hint
+        }
+    }
+
+    private val diagScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+    )
 
     fun push() {
         stats.value = stats.value.copy(
@@ -321,7 +401,47 @@ class PlayerEngine(
         candidateQueue = mutableListOf()
         triedFallback.value = false
         forcedMimeType = forceMimeType
-        playInternal(url, live, startPositionMs, externalSubUrl)
+        playInternal(Candidate(url, forceMimeType), live, startPositionMs, externalSubUrl)
+    }
+
+    /** A URL plus how to interpret it. See [expand] for why one URL can
+     *  produce more than one candidate. */
+    private data class Candidate(val url: String, val mimeType: String = "")
+
+    /**
+     * Turns each resolver URL into the interpretations actually worth trying.
+     *
+     * ExoPlayer picks a media source from the URL's extension. `.m3u8` routes
+     * to HlsMediaSource; everything else falls to ProgressiveMediaSource, which
+     * identifies the container by sniffing its bytes.
+     *
+     * That is fine until a panel serves an HLS playlist from a URL that doesn't
+     * say `.m3u8` — extensionless `/live/user/pass/12345` is the common shape,
+     * and plenty of panels answer `.ts` with a playlist too. **There is no HLS
+     * extractor.** HLS is a media source, not a container, so sniffing `#EXTM3U`
+     * matches nothing at all and playback fails with
+     * PARSING_CONTAINER_UNSUPPORTED — deterministically, every time, no matter
+     * how often it is retried. The fallback chain never recovered because it
+     * only ever tried each URL once, unhinted.
+     *
+     * So any URL that isn't explicitly `.m3u8` gets a second attempt with the
+     * HLS MIME type pinned, which routes it to HlsMediaSource regardless of
+     * what the path looks like.
+     */
+    private fun asHlsRetry(current: Candidate): Candidate? {
+        if (current.mimeType == androidx.media3.common.MimeTypes.APPLICATION_M3U8) return null
+        val path = current.url.substringBefore('?').substringBefore('#')
+        if (path.endsWith(".m3u8", ignoreCase = true)) return null
+        return current.copy(mimeType = androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+    }
+
+    private fun initialCandidate(url: String): Candidate {
+        val path = url.substringBefore('?').substringBefore('#')
+        return if (path.endsWith(".m3u8", ignoreCase = true)) {
+            Candidate(url, androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        } else {
+            Candidate(url)
+        }
     }
 
     /**
@@ -334,16 +454,22 @@ class PlayerEngine(
      */
     fun playCandidates(urls: List<String>, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
         if (urls.isEmpty()) return
-        candidateQueue = urls.drop(1).toMutableList()
+        val expanded = urls.distinct().map { initialCandidate(it) }
+        candidateQueue = expanded.drop(1).toMutableList()
         candidateLive = live
         candidateStartMs = startPositionMs
         candidateSubUrl = externalSubUrl
         triedFallback.value = false
-        playInternal(urls.first(), live, startPositionMs, externalSubUrl)
+        playInternal(expanded.first(), live, startPositionMs, externalSubUrl)
     }
 
-    private fun playInternal(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+    private fun playInternal(candidate: Candidate, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+        val url = candidate.url
         lastUrl = url
+        currentCandidate = candidate
+        // A candidate's own hint wins over the screen-level force (which only
+        // the "Force MP4 fallback (VOD)" setting sets).
+        if (candidate.mimeType.isNotBlank()) forcedMimeType = candidate.mimeType
         retries = 0
         dropped = 0
         error.value = null
@@ -532,6 +658,31 @@ class PlayerEngine(
 
     fun release() {
         loudness?.release(); loudness = null
+        dialogueFx?.release(); dialogueFx = null
+        diagScope.cancel()
         player.release()
+    }
+
+    private companion object {
+        /**
+         * Errors that describe the *content*, not the connection. Retrying the
+         * identical URL cannot change the answer, so the fallback chain should
+         * move on immediately rather than burning two attempts first.
+         */
+        /** Container/manifest failures specifically — the ones where the same
+         *  URL may still be playable if interpreted as HLS instead. */
+        val CONTAINER_ERRORS = setOf(
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        )
+
+        val DETERMINISTIC_SOURCE_ERRORS = setOf(
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+        )
     }
 }
