@@ -69,6 +69,11 @@ class AppGraph(app: Application) {
                 gateways = { backupGatewaysSnapshot },
             )
         )
+        // Adds ISRG Root X1/X2 as trust anchors on pre-7.1.1 Android, where the
+        // system store predates Let's Encrypt. No-op from API 25 up. See
+        // LegacyTls — system anchors are still tried first, and nothing else
+        // becomes trusted.
+        .let { tv.enktel.app.data.net.LegacyTls.install(it) }
         .build()
     val xtream = XtreamClient(http)
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream)

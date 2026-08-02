@@ -28,7 +28,18 @@ class PlaylistRepository(
     suspend fun addXtream(name: String, server: String, username: String, password: String): Result<Profile> =
         runCatching {
             val normalized = normalizeServer(server)
-            val candidate = Profile(name = name, kind = "xtream", server = normalized, username = username, password = password)
+            // Don't guess the scheme — try it.
+            //
+            // A bare hostname gives no clue whether the panel is HTTP or HTTPS,
+            // and getting it wrong presents as "the panel rejected the
+            // credentials" when the credentials are fine. Rather than pick by
+            // heuristic and be wrong for half of them, attempt the inferred
+            // scheme and fall back to the other. Only when the user didn't
+            // state one: an explicit http:// or https:// is always obeyed.
+            val explicitScheme = server.trim().startsWith("http://", true) ||
+                server.trim().startsWith("https://", true)
+            val resolved = if (explicitScheme) normalized else reachableScheme(normalized, username, password)
+            val candidate = Profile(name = name, kind = "xtream", server = resolved, username = username, password = password)
             val info = xtream.login(candidate)
             val user = info.get("user_info")
             val auth = user.int("auth") ?: 0
@@ -54,6 +65,27 @@ class PlaylistRepository(
     suspend fun delete(id: Long) = dao.delete(id)
 
     suspend fun markSynced(p: Profile) = dao.update(p.copy(lastSync = System.currentTimeMillis()))
+
+    /**
+     * Returns whichever of https:// / http:// the panel actually answers on,
+     * preferring the one already in [normalized]. Falls back to [normalized]
+     * unchanged when neither answers, so the caller still gets the real error.
+     */
+    private suspend fun reachableScheme(normalized: String, user: String, pass: String): String {
+        val alternate = if (normalized.startsWith("https://", true)) {
+            "http://" + normalized.removePrefix("https://").removePrefix("HTTPS://")
+        } else {
+            "https://" + normalized.removePrefix("http://").removePrefix("HTTP://")
+        }
+        for (url in listOf(normalized, alternate)) {
+            val ok = runCatching {
+                val probe = Profile(name = "probe", kind = "xtream", server = url, username = user, password = pass)
+                xtream.login(probe).get("user_info").int("auth") == 1
+            }.getOrDefault(false)
+            if (ok) return url
+        }
+        return normalized
+    }
 
     private fun normalizeServer(raw: String): String {
         var s = raw.trim().trimEnd('/')
