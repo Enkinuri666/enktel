@@ -289,16 +289,12 @@ class PlayerEngine(
             )
             .build()
 
-        // Extractor factory — explicitly registers Matroska + MP4 + TS
-        // extractors and turns on the permissive flags for each. On
-        // DefaultExtractorsFactory the full order is:
+        // Extractor factory. DefaultExtractorsFactory's sniff order is
         //   MP4 → FMP4 → Matroska/WebM → FLV → MPEG-TS → OGG → AAC → …
-        // so MP4-labelled URLs that actually serve MKV on the wire are
-        // picked up on the second attempt. We also explicitly whitelist
-        // video/x-matroska MIME + .mkv extension routing on the media source
-        // factory below so a MediaItem with mimeType = VIDEO_MATROSKA (from
-        // the Force MP4 setting's sibling code path, if extended later)
-        // routes to MatroskaExtractor without sniffing.
+        // so an MP4-labelled URL that actually serves MKV on the wire is
+        // picked up on the third attempt. `initialCandidate` pins the MIME
+        // type for known container extensions so that sniffing is skipped
+        // entirely for .mkv/.webm.
         val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
             // Best-effort seeking inside constant-bitrate MPEG-TS streams —
             // the alternative is "seek always jumps to nearest keyframe
@@ -314,13 +310,29 @@ class PlayerEngine(
             // seeking is the entire feature, and being thrown back to the start
             // of a two-hour film is not a rounding error.
             .setConstantBitrateSeekingAlwaysEnabled(true)
-            // Matroska has one flag worth flipping: disable cue-point seeking
-            // fallback so ExoPlayer will *fall through* to raw sample-index
-            // seeking when the MKV has no Cues element (common on live-DVR
-            // captures). Media3 exposes this as FLAG_DISABLE_SEEK_FOR_CUES.
-            .setMatroskaExtractorFlags(
-                androidx.media3.extractor.mkv.MatroskaExtractor.FLAG_DISABLE_SEEK_FOR_CUES
-            )
+            // Matroska deliberately runs with *no* extra flags.
+            //
+            // This previously set FLAG_DISABLE_SEEK_FOR_CUES, on the belief that
+            // it made the extractor fall through to sample-index seeking when an
+            // MKV had no Cues element. It does the exact opposite. In
+            // MatroskaExtractor the flag clears `seekForCuesEnabled`, and the
+            // branch that reads it goes straight to `SeekMap.Unseekable` when it
+            // is false:
+            //
+            //   seekForCuesEnabled = (flags & FLAG_DISABLE_SEEK_FOR_CUES) == 0
+            //   if (!seekForCuesEnabled || cuesContentPosition == UNSET)
+            //       output.seekMap(new SeekMap.Unseekable(durationUs))
+            //
+            // Almost every MKV writes its Cues at the end of the file, after the
+            // first cluster, so the flag made essentially all Matroska VOD
+            // unseekable — the player answered every seek by restarting from
+            // zero. Nor did the constant-bitrate fallback below rescue it:
+            // DefaultExtractorsFactory only passes the CBR flags to the MP3,
+            // ADTS and AMR extractors, never to Matroska.
+            //
+            // Cleared, the extractor seeks to read the Cues element and emits a
+            // real seek map, which is what turns a scrub into an HTTP range
+            // request for the right byte offset.
             .setTsExtractorFlags(
                 androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
                     androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
@@ -565,7 +577,7 @@ class PlayerEngine(
 
     /** A URL plus how to interpret it. See [expand] for why one URL can
      *  produce more than one candidate. */
-    private data class Candidate(val url: String, val mimeType: String = "")
+    internal data class Candidate(val url: String, val mimeType: String = "")
 
     /**
      * Turns each resolver URL into the interpretations actually worth trying.
@@ -587,21 +599,11 @@ class PlayerEngine(
      * HLS MIME type pinned, which routes it to HlsMediaSource regardless of
      * what the path looks like.
      */
-    private fun asHlsRetry(current: Candidate): Candidate? {
-        if (current.mimeType == androidx.media3.common.MimeTypes.APPLICATION_M3U8) return null
-        val path = current.url.substringBefore('?').substringBefore('#')
-        if (path.endsWith(".m3u8", ignoreCase = true)) return null
-        return current.copy(mimeType = androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-    }
+    // Thin delegates — the logic lives in [Routing] so it can be unit-tested
+    // without a Context.
+    private fun asHlsRetry(current: Candidate): Candidate? = Routing.asHlsRetry(current)
 
-    private fun initialCandidate(url: String): Candidate {
-        val path = url.substringBefore('?').substringBefore('#')
-        return if (path.endsWith(".m3u8", ignoreCase = true)) {
-            Candidate(url, androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-        } else {
-            Candidate(url)
-        }
-    }
+    private fun initialCandidate(url: String): Candidate = Routing.initialCandidate(url)
 
     /**
      * Play the first URL in [urls], falling through to the next candidate
@@ -937,5 +939,53 @@ class PlayerEngine(
             PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
             PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
         )
+    }
+
+    /**
+     * URL → container routing. Pure and stateless, so it is exercised directly
+     * by StreamRoutingTest rather than only through a running player.
+     */
+    internal object Routing {
+        internal fun asHlsRetry(current: Candidate): Candidate? {
+            if (current.mimeType == androidx.media3.common.MimeTypes.APPLICATION_M3U8) return null
+            val path = current.url.substringBefore('?').substringBefore('#')
+            if (path.endsWith(".m3u8", ignoreCase = true)) return null
+            // A URL that names a progressive container is never an HLS playlist.
+            // Xtream VOD is `/movie/user/pass/1234.mkv`, and reinterpreting that as
+            // HLS is guaranteed to fail — it just adds a doomed round trip on top of
+            // whatever the real error was, in the one place (VOD) where the user is
+            // already staring at a black screen.
+            if (containerMimeFor(path) != null) return null
+            return current.copy(mimeType = androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        }
+
+        /**
+         * MIME type for a URL whose extension names its container outright, or null
+         * when the extension says nothing useful.
+         *
+         * Pinning this skips ExoPlayer's sniff chain (MP4 → FMP4 → Matroska → …),
+         * which otherwise reads and rejects the head of the file once per candidate
+         * extractor before reaching the right one. For Matroska that is two wasted
+         * passes on every VOD open.
+         */
+        internal fun containerMimeFor(path: String): String? = when {
+            path.endsWith(".mkv", true) -> androidx.media3.common.MimeTypes.VIDEO_MATROSKA
+            path.endsWith(".webm", true) -> androidx.media3.common.MimeTypes.VIDEO_WEBM
+            path.endsWith(".mp4", true) || path.endsWith(".m4v", true) ->
+                androidx.media3.common.MimeTypes.VIDEO_MP4
+            else -> null
+        }
+
+        internal fun initialCandidate(url: String): Candidate {
+            val path = url.substringBefore('?').substringBefore('#')
+            return when {
+                path.endsWith(".m3u8", ignoreCase = true) ->
+                    Candidate(url, androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                // Deliberately not applied to `.ts`: plenty of panels answer a .ts
+                // URL with an HLS playlist, so that extension has to stay sniffed
+                // and keep its HLS retry.
+                else -> containerMimeFor(path)?.let { Candidate(url, it) } ?: Candidate(url)
+            }
+        }
     }
 }
