@@ -26,6 +26,11 @@ class AppGraph(app: Application) {
     // Volatile so the health interceptor can read the latest without a Flow
     // subscription — updated whenever the setting flow emits (see below).
     @Volatile private var backupGatewaysSnapshot: List<String> = emptyList()
+
+    // Read on every request by UserAgentInterceptor, so changing it in
+    // Settings (or via the Panel Doctor's auto-tune) takes effect immediately
+    // rather than needing the OkHttp client rebuilt.
+    @Volatile private var userAgentOverride: String = ""
     val http: OkHttpClient = OkHttpClient.Builder()
         // Wider timeouts so slower IPTV proxy layers (Cloudflare, IPTV-Editor,
         // reseller relays) don't trip the "unable to measure throughput" or
@@ -63,7 +68,9 @@ class AppGraph(app: Application) {
         // IPTV panels block "okhttp/*" or empty UAs with a proxy challenge
         // (which surfaces here as an unauthenticated 407). VLC's UA is the
         // industry-standard "just let it through" string for IPTV endpoints.
-        .addInterceptor(tv.enktel.app.data.net.UserAgentInterceptor(DEFAULT_UA))
+        .addInterceptor(
+            tv.enktel.app.data.net.UserAgentInterceptor(DEFAULT_UA) { userAgentOverride },
+        )
         .addInterceptor(
             tv.enktel.app.data.net.StreamHealthInterceptor(
                 gateways = { backupGatewaysSnapshot },
@@ -116,6 +123,9 @@ class AppGraph(app: Application) {
         val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
+        }
+        bgScope.launch {
+            settings.customUserAgent.collect { userAgentOverride = it }
         }
         bgScope.launch {
             settings.sportsDbKey.collect {

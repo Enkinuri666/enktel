@@ -114,6 +114,9 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         item {
+            PanelDoctorSection(graph = graph, profile = p, scope = scope)
+        }
+        item {
             val kindLabel = if (p.kind == "xtream") "Xtream Codes API" else "M3U playlist"
             Text(
                 "Tests your live connection against your $kindLabel server — panel host, DNS, latency, real throughput, plus the container + codec the panel actually serves.",
