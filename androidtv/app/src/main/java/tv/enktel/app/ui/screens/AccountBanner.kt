@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
@@ -36,9 +39,6 @@ import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Account state for the active line, pinned to the top of Settings.
@@ -54,13 +54,14 @@ import java.util.Locale
  * minute — so the banner refreshes it on mount and falls back to the values
  * cached on the profile when the panel can't be reached.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modifier) {
     val p = profile ?: return
 
-    var activeConns by remember(p.id) { mutableStateOf(-1) }
-    var maxConns by remember(p.id) { mutableStateOf(p.maxConnections) }
-    var expiresAt by remember(p.id) { mutableStateOf(p.expiresAt) }
+    var activeConns by remember(p.id) { mutableIntStateOf(-1) }
+    var maxConns by remember(p.id) { mutableIntStateOf(p.maxConnections) }
+    var expiresAt by remember(p.id) { mutableLongStateOf(p.expiresAt) }
     var trial by remember(p.id) { mutableStateOf(false) }
     var reachable by remember(p.id) { mutableStateOf<Boolean?>(null) }
 
@@ -127,13 +128,20 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+        // FlowRow, not Row: three fixed columns needed ~500 dp and a phone in
+        // portrait has ~330 dp to give, so the last stat used to run off the
+        // edge. Here they wrap to a second line on a narrow screen and stay on
+        // one on a TV.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Stat(
                 label = "EXPIRES",
                 value = when {
                     expiresAt <= 0 -> "—"
                     expired -> "Expired"
-                    else -> SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(expiresAt))
+                    else -> TimeFormat.format("d MMM yyyy", expiresAt)
                 },
                 note = when {
                     expiresAt <= 0 || expired -> ""
@@ -180,7 +188,7 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
 
 @Composable
 private fun Stat(label: String, value: String, note: String, accent: Color) {
-    Column(Modifier.width(150.dp)) {
+    Column(Modifier.widthIn(min = 132.dp)) {
         Text(label, color = EnktelTextDim, fontSize = 9.sp, fontWeight = FontWeight.Black)
         Text(value, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         if (note.isNotBlank()) {

@@ -14,10 +14,17 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 92
-        versionName = "1.38.5"
+        versionCode = 93
+        versionName = "1.38.6"
         vectorDrawables { useSupportLibrary = true }
     }
+
+    // Room writes the resolved schema for every version under
+    // app/schemas. Those files are committed, so an entity change that has no
+    // matching Migration shows up as an unreviewed schema diff instead of
+    // silently tripping fallbackToDestructiveMigration() on a user's device
+    // and taking their profiles, favourites and watch progress with it.
+    ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
     // Two product flavors so users can install the mobile and TV builds side-by-side.
     // Shared code lives in src/main; each flavor supplies its own manifest + branding.
@@ -93,6 +100,15 @@ android {
         buildConfig = true // used to switch TV vs mobile navigation shells at runtime
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+
+    lint {
+        // The EnkTel mark is a full-bleed emblem by design — it is meant to be
+        // read as a badge, not as a glyph floating on a plate. On API 26+ the
+        // adaptive icon in src/tv/res does the right thing (brand background,
+        // art inset into the safe zone); the legacy PNGs this fires on are the
+        // pre-26 fallback, where a full-bleed icon is the convention anyway.
+        disable += "IconLauncherShape"
+    }
 }
 
 dependencies {
@@ -129,4 +145,6 @@ dependencies {
     // the user can pick a target folder (USB, external SD, NAS via
     // DocumentsUI) and have it treated as a plain folder for writes.
     implementation(libs.documentfile)
+
+    testImplementation(libs.junit)
 }

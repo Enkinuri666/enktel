@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -691,7 +692,7 @@ private fun CategoryHero(
             ),
         )
         Column(
-            Modifier.align(Alignment.CenterStart).padding(24.dp).width(500.dp),
+            Modifier.align(Alignment.CenterStart).padding(24.dp).fillMaxWidth(0.62f).widthIn(max = 500.dp),
         ) {
             Text(
                 subtitle.uppercase(),

@@ -63,9 +63,18 @@ object ActivePlayerRef {
     private fun seekAbsolute(positionMs: Long) {
         val target = positionMs.coerceAtLeast(0)
         val handled = try { seekHandler?.invoke(target) } catch (_: Throwable) { null }
-        if (handled == null) {
-            try { player?.seekTo(target) } catch (_: Throwable) {}
-        }
+        if (handled != null) return
+        // No screen handler — playback is docked to the mini player, or a voice
+        // command arrived between screens. The raw fallback still has to be
+        // guarded: Media3 treats seekTo on an unseekable window as "jump to the
+        // start of it", which is how the remote's fast-forward key used to
+        // restart a film outright. Refusing is the correct answer here.
+        try {
+            val p = player ?: return
+            if (!p.isCurrentMediaItemSeekable) return
+            val dur = p.duration
+            p.seekTo(if (dur > 0) target.coerceAtMost(dur - 1_000L).coerceAtLeast(0) else target)
+        } catch (_: Throwable) {}
     }
 
     fun pause() { try { player?.pause() } catch (_: Throwable) {} }

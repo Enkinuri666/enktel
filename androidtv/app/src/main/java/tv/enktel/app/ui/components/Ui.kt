@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -368,7 +369,7 @@ fun ConfirmDialog(
     ) {
         Surface(
             onClick = {},
-            modifier = Modifier.width(420.dp),
+            modifier = Modifier.padding(horizontal = 24.dp).widthIn(max = 420.dp).fillMaxWidth(),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
             colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh, contentColor = Color.White),
         ) {
@@ -498,7 +499,9 @@ fun PinDialog(
     ) {
         Column(
             Modifier
-                .width(340.dp)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 340.dp)
+                .fillMaxWidth()
                 .background(EnktelSurfaceHigh, RoundedCornerShape(12.dp))
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

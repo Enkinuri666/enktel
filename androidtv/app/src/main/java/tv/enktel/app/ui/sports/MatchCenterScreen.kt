@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -96,7 +97,7 @@ fun MatchCenterScreen(
     var timeline by remember(eventId) { mutableStateOf<List<MatchEvent>>(emptyList()) }
     var broadcasters by remember(eventId) { mutableStateOf<List<Broadcast>>(emptyList()) }
     var loading by remember(eventId) { mutableStateOf(true) }
-    var tick by remember(eventId) { mutableStateOf(0) }
+    var tick by remember(eventId) { mutableIntStateOf(0) }
 
     LaunchedEffect(eventId, tick) {
         if (eventId.isBlank()) { loading = false; return@LaunchedEffect }

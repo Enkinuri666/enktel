@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -72,7 +73,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         if (p.kind == "xtream") value = runCatching { graph.content.movieDetails(p, m.streamId) }.getOrNull()
     }
     val scope = rememberCoroutineScope()
-    var resumeMs by remember { mutableStateOf(0L) }
+    var resumeMs by remember { mutableLongStateOf(0L) }
     val progressKey = "${p.id}:vod:${m.streamId}"
     androidx.compose.runtime.LaunchedEffect(progressKey) {
         resumeMs = graph.content.progress(progressKey)?.positionMs ?: 0L

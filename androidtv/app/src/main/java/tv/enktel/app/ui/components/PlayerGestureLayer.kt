@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,8 +55,8 @@ fun PlayerGestureLayer(
     val density = LocalDensity.current
 
     var showLevel by remember { mutableStateOf<Level?>(null) }
-    var boxHeightPx by remember { mutableStateOf(1f) }
-    var boxWidthPx by remember { mutableStateOf(1f) }
+    var boxHeightPx by remember { mutableFloatStateOf(1f) }
+    var boxWidthPx by remember { mutableFloatStateOf(1f) }
     var dragStartSide by remember { mutableStateOf(Side.None) }
     // Snapshot of the volume/brightness fraction at drag-start plus the
     // cumulative Y delta since then. This lets us set an *absolute* target
@@ -63,9 +64,9 @@ fun PlayerGestureLayer(
     // per-event nudge got truncated to zero by Android's integer-quantised
     // stream volume API, which is why the volume slider felt like it didn't
     // do anything on short drags.
-    var dragStartVolume by remember { mutableStateOf(0f) }
-    var dragStartBrightness by remember { mutableStateOf(0.5f) }
-    var accumulatedFraction by remember { mutableStateOf(0f) }
+    var dragStartVolume by remember { mutableFloatStateOf(0f) }
+    var dragStartBrightness by remember { mutableFloatStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier

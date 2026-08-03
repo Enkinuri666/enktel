@@ -4,7 +4,6 @@ import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
 import tv.enktel.app.data.db.EpgProgram
 import java.io.InputStream
-import java.text.SimpleDateFormat
 import java.util.Locale
 
 /**
@@ -89,10 +88,13 @@ object XmltvParser {
     fun parseTime(value: String?): Long {
         if (value.isNullOrBlank()) return 0
         return try {
+            // Called twice for every programme in the guide, so the formatter
+            // is fetched from the per-thread cache rather than rebuilt — a full
+            // XMLTV runs to six figures of programmes.
             val fmt = if (value.trim().length > 14) {
-                SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US)
+                tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss Z", Locale.US)
             } else {
-                SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+                tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss", Locale.US)
             }
             fmt.parse(value.trim())?.time ?: 0
         } catch (_: Exception) { 0 }

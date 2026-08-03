@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Mobile build: touch-first, portrait+landscape, standard phone/tablet launcher. -->
-    <application>
+    <application
+        android:roundIcon="@mipmap/ic_launcher_round">
 
+        <!--
+            tools:ignore rationale: supportsPictureInPicture and
+            resizeableActivity both need API 24 and minSdk is 21. Older
+            platforms ignore manifest attributes they do not know, and
+            PictureInPicture.kt gates every call behind a version check, so
+            declaring them costs nothing on API 21-23.
+
+            screenOrientation is deliberately absent — "unspecified" is the
+            platform default, so spelling it out changed no behaviour and only
+            tripped the fixed-orientation check. The mobile build rotates
+            freely; the TV flavor is the one that locks to landscape.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:supportsPictureInPicture="true"
-            android:screenOrientation="unspecified"
-            android:resizeableActivity="true">
+            android:resizeableActivity="true"
+            tools:ignore="UnusedAttribute">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

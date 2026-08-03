@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +67,7 @@ class WakeWordListener(
     private val onWake: (payload: String) -> Unit,
 ) {
     val active = mutableStateOf(false)
-    val hearingMeter = mutableStateOf(0f) // 0..1, updates on RMS
+    val hearingMeter = mutableFloatStateOf(0f) // 0..1, updates on RMS
 
     // ---- VAD tuning ----
     private companion object {
@@ -197,7 +198,7 @@ class WakeWordListener(
                 if (n <= 0) break
                 val rms = computeRms(frame, n)
                 // Normalise for the UI meter — coarse but responsive.
-                hearingMeter.value = (rms / 3000f).coerceIn(0f, 1f)
+                hearingMeter.floatValue = (rms / 3000f).coerceIn(0f, 1f)
                 if (rms >= SPEECH_RMS) {
                     speechFrames++
                     if (speechFrames >= SPEECH_FRAMES_TO_TRIGGER) {
@@ -246,7 +247,7 @@ class WakeWordListener(
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {
-                hearingMeter.value = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
+                hearingMeter.floatValue = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
             }
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}

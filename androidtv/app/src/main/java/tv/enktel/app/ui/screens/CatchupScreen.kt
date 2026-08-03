@@ -30,6 +30,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
@@ -41,9 +42,6 @@ import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // Lint false-positive: produceState's vararg-keys overload isn't recognized by the
 // ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
@@ -89,11 +87,11 @@ fun CatchupScreen(graph: AppGraph, nav: NavHostController, channelKey: String) {
                         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.width(130.dp)) {
                                 Text(
-                                    SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(Date(prog.startMs)),
+                                    TimeFormat.format("EEE d MMM", prog.startMs),
                                     fontSize = 12.sp, color = EnktelBlue, fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    "${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(prog.startMs))}–${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(prog.endMs))}",
+                                    "${TimeFormat.format("HH:mm", prog.startMs)}–${TimeFormat.format("HH:mm", prog.endMs)}",
                                     fontSize = 11.sp, color = EnktelTextDim,
                                 )
                             }

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -74,7 +75,7 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
 
     var leftCh by remember { mutableStateOf<Channel?>(null) }
     var rightCh by remember { mutableStateOf<Channel?>(null) }
-    var primary by remember { mutableStateOf(0) } // 0 = left, 1 = right
+    var primary by remember { mutableIntStateOf(0) } // 0 = left, 1 = right
 
     LaunchedEffect(leftKey, rightKey) {
         leftCh = leftKey.takeIf { it.isNotBlank() }?.let { graph.content.channel(it) }

@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -104,7 +105,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         programs = graph.epg.window(p.id, listOf(ch.epgId), dayStart, dayEnd)[ch.epgId].orEmpty()
     }
 
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()

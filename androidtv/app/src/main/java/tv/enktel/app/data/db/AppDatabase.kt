@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class,
     ],
     version = 7, // v7 adds resumable-download bookkeeping (engine, resumeState) on downloads
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
@@ -131,6 +131,11 @@ abstract class AppDatabase : RoomDatabase() {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                // Last resort only. Anything that reaches this line has lost the
+                // user's profiles, favourites, watch progress, recordings and
+                // download bookkeeping, so every version bump that touches an
+                // entity needs a Migration above it. The committed schemas under
+                // app/schemas are what makes a missing one visible in review.
                 .fallbackToDestructiveMigration()
                 .build()
     }
