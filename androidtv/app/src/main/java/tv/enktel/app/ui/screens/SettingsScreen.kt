@@ -72,6 +72,11 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         SectionTitle("Settings")
         if (status.isNotBlank()) Text(status, color = EnktelOk, fontSize = 13.sp)
 
+        // Above the category tabs on purpose. Expiry and the connection cap are
+        // what people open Settings to check, and the v1.38.1 split had filed
+        // them under Playlists where you have to know to look.
+        AccountBanner(graph, profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull())
+
         // Quick-actions stay visible in every category — they're the tools
         // people open Settings to reach.
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
