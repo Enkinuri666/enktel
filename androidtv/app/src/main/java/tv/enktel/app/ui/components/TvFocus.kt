@@ -37,7 +37,7 @@ fun rememberScreenFocus(vararg keys: Any?): FocusRequester {
     val requester = remember { FocusRequester() }
     @Suppress("SpreadOperator")
     LaunchedEffect(keys = keys) {
-        // ~1.5 s of attempts. A Fire TV Stick 2nd gen composing a poster grid
+        // ~1.5 s of attempts. A low-end Fire TV Stick composing a poster grid
         // over a cold Room query can genuinely take that long to place its
         // first focusable, and giving up early is what leaves the remote inert.
         repeat(30) {

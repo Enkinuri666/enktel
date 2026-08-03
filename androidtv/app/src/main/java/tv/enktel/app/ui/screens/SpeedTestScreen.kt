@@ -24,8 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +60,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
 
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
@@ -368,7 +368,15 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FocusButton(
                         "📋 Copy report",
-                        onClick = { clipboard.setText(AnnotatedString(r.toReport())) },
+                        // LocalClipboard's setter suspends, so it goes through
+                        // the screen scope rather than being called inline.
+                        onClick = {
+                            scope.launch {
+                                clipboard.setClipEntry(
+                                    ClipEntry(android.content.ClipData.newPlainText("EnkTel speed test", r.toReport())),
+                                )
+                            }
+                        },
                     )
                     FocusButton("↻ Re-run", onClick = { runTest() })
                 }

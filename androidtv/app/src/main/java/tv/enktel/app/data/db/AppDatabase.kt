@@ -136,7 +136,12 @@ abstract class AppDatabase : RoomDatabase() {
                 // download bookkeeping, so every version bump that touches an
                 // entity needs a Migration above it. The committed schemas under
                 // app/schemas are what makes a missing one visible in review.
-                .fallbackToDestructiveMigration()
+                //
+                // dropAllTables is stated explicitly because Room 2.8 deprecated
+                // the no-arg overload — the argument decides whether tables Room
+                // does not own are dropped too, and defaulting that silently is
+                // exactly the kind of thing that quietly changes under a bump.
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
     }
 }

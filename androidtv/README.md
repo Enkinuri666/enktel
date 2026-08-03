@@ -29,7 +29,7 @@ gradle assembleDebug   # or open in Android Studio
 ```
 APK output: `app/build/outputs/apk/debug/app-debug.apk`
 
-Requires Android SDK 35. `minSdk 21` covers Fire TV Stick (2nd gen+) and Android TV 5+.
+Requires Android SDK 36. `minSdk 23` covers Fire TV Stick (3rd gen / 4K and newer) and Android TV 6+.
 Leanback launcher + banner included; touchscreen not required (Fire TV compliant).
 
 ## Sideload on Fire TV

@@ -43,8 +43,8 @@ class AppGraph(app: Application) {
         // Negotiate with old panels *and* old devices.
         //
         // MODERN_TLS alone (OkHttp's default) restricts the cipher list, and
-        // this app supports API 21 — Fire OS 5 on the Fire TV Stick 2nd gen,
-        // whose TLS stack predates most of it. Plenty of IPTV panels sit behind
+        // this app supports API 23 — Marshmallow-era Fire TV hardware, whose
+        // TLS stack predates most of it. Plenty of IPTV panels sit behind
         // equally dated nginx builds. Offering COMPATIBLE_TLS as a fallback
         // widens the overlap at both ends. CLEARTEXT is listed because a great
         // many panels are http-only.

@@ -19,9 +19,9 @@ import javax.net.ssl.X509TrustManager
  *
  * ISRG Root X1 — the root behind the majority of the certificates IPTV panels
  * present — was added to Android's system trust store in **7.1.1 (API 25)**.
- * This app supports API 21, which includes the Fire TV Stick 2nd gen it
- * explicitly targets. On those devices an HTTPS panel with a Let's Encrypt
- * certificate fails the handshake outright:
+ * This app supports API 23, so devices on 6.0 and 7.0 are still in range.
+ * On those an HTTPS panel with a Let's Encrypt certificate fails the
+ * handshake outright:
  *
  *     SSLHandshakeException: Trust anchor for certification path not found
  *

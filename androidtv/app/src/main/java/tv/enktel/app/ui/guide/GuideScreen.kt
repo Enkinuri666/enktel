@@ -105,6 +105,8 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val hScroll = rememberScrollState()
+    // Observable read, so the day chips re-label if the device language changes.
+    val dayLocale = TimeFormat.currentLocale()
     // Live clock — updates once a minute so the NOW marker on the timeline stays
     // accurate without spinning up a per-second recomposition.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -162,8 +164,9 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             items((1..6).toList()) { d ->
-                val label = SimpleDateFormat("EEE d", Locale.getDefault())
-                    .format(Date(System.currentTimeMillis() + d * 86_400_000L))
+                val label = TimeFormat.format(
+                    "EEE d", System.currentTimeMillis() + d * 86_400_000L, dayLocale,
+                )
                 tv.enktel.app.ui.components.GlassChip(
                     label, selected = dayOffset == d, onClick = { dayOffset = d },
                 )

@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "tv.enktel.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tv.enktel.app"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
-        versionCode = 93
-        versionName = "1.38.6"
+        versionCode = 95
+        versionName = "1.39.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -62,9 +62,9 @@ android {
                 storePassword = envKeystorePass
                 keyAlias = envKeyAlias
                 keyPassword = envKeyPass
-                // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
-                // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
-                // v1 MUST stay enabled or the APK is uninstallable on those devices.
+                // minSdk 23 (Android 6.0) can only verify APK Signature Scheme v1
+                // (JAR signing) — v2 verification requires API 24+. v1 MUST stay
+                // enabled or the APK is uninstallable on Marshmallow.
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -94,7 +94,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    // kotlinOptions is deprecated in the Kotlin 2.2 Gradle plugin; the
+    // compilerOptions DSL is the replacement and takes a typed JvmTarget.
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures {
         compose = true
         buildConfig = true // used to switch TV vs mobile navigation shells at runtime
@@ -108,6 +110,18 @@ android {
         // art inset into the safe zone); the legacy PNGs this fires on are the
         // pre-26 fallback, where a full-bleed icon is the convention anyway.
         disable += "IconLauncherShape"
+
+        // lifecycle 2.10.0 ships lint checks compiled against a newer Kotlin
+        // analysis API than the one bundled with AGP 8.7.3's lint, so
+        // NonNullableMutableLiveDataDetector dies with
+        //   IncompatibleClassChangeError: Found class KaCallableMemberCall,
+        //   but interface was expected
+        // and takes the whole lint run down with it. Nothing to do with this
+        // codebase — and the check is inert here regardless, since the app
+        // uses no LiveData at all (StateFlow + Compose state throughout;
+        // `grep -r LiveData app/src` returns nothing). Revisit when AGP moves
+        // far enough forward to carry a matching lint.
+        disable += "NullSafeMutableLiveData"
     }
 }
 
