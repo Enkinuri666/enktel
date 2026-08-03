@@ -24,13 +24,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.TvTextField
+import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
+import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 @Composable
@@ -43,7 +51,10 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     var m3uUrl by remember { mutableStateOf("") }
     var epgUrl by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var trialBusy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    var trialMessage by remember { mutableStateOf("") }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -56,7 +67,52 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 contentDescription = "EnkTel IPTV",
                 modifier = Modifier.width(360.dp),
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+
+            // ── Free 24 h trial CTA ─────────────────────────────────────
+            // Highest-visibility action on the login screen for anyone
+            // arriving without credentials. Calls the Eagle 4K trial API,
+            // logs the user in on success, kicks off the initial content
+            // sync and drops them on Home — no form to fill.
+            TrialCard(
+                busy = trialBusy,
+                message = trialMessage,
+                onStart = {
+                    if (trialBusy || busy) return@TrialCard
+                    trialBusy = true; error = ""; trialMessage = "Contacting Eagle 4K…"
+                    scope.launch {
+                        val client = graph.trialClient
+                        val credsResult = client.createTrial(ctx)
+                        credsResult.fold(
+                            onSuccess = { creds ->
+                                trialMessage = "Signing in…"
+                                graph.playlists.addTrial(creds).fold(
+                                    onSuccess = { profile ->
+                                        trialMessage = "Loading catalogue…"
+                                        runCatching { graph.content.refreshAll(profile) }
+                                        runCatching { graph.epg.refresh(profile) }
+                                        graph.playlists.markSynced(profile)
+                                        trialBusy = false
+                                        onDone()
+                                    },
+                                    onFailure = {
+                                        trialBusy = false
+                                        trialMessage = ""
+                                        error = it.message ?: "Could not sign in with trial credentials"
+                                    },
+                                )
+                            },
+                            onFailure = {
+                                trialBusy = false
+                                trialMessage = ""
+                                error = it.message ?: "Trial signup failed"
+                            },
+                        )
+                    }
+                },
+            )
+            Spacer(Modifier.height(20.dp))
+
             tv.enktel.app.ui.components.ChipRowLabel("Playlist type")
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,5 +174,54 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 fontSize = 12.sp,
             )
         }
+    }
+}
+
+/**
+ * Prominent free-trial CTA card at the top of the login screen. Owns its own
+ * busy indicator + status line so callers only see start/finish.
+ */
+@Composable
+private fun TrialCard(busy: Boolean, message: String, onStart: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EnktelBlue.copy(alpha = 0.12f))
+            .border(1.dp, EnktelBlue.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("🎁", fontSize = 18.sp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "24-hour free trial",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Full access to live TV, movies & series — no credit card required.",
+            color = EnktelTextDim,
+            fontSize = 12.sp,
+        )
+        Spacer(Modifier.height(12.dp))
+        FocusButton(
+            if (busy) "Setting up your trial…" else "Start free trial",
+            accent = true,
+            onClick = onStart,
+        )
+        if (busy && message.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(message, color = EnktelOk, fontSize = 11.sp)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Trial ends automatically after 24 hours. You'll see an upgrade prompt in Settings.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
     }
 }
