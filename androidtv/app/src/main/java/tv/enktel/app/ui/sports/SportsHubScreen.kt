@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -45,6 +46,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.SportsEvent
 import tv.enktel.app.data.xtream.XtreamClient
@@ -61,9 +63,6 @@ import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Suppress("ProduceStateDoesNotAssignValue")
 @Composable
@@ -79,7 +78,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var loading by remember { mutableStateOf(true) }
     var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
-    var refreshTick by remember { mutableStateOf(0) }
+    var refreshTick by remember { mutableIntStateOf(0) }
     var teamFilterOn by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -591,7 +590,7 @@ private fun UpcomingEventCard(
                 Spacer(Modifier.height(3.dp))
                 Text(ev.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${ev.channel.name}  ·  ${SimpleDateFormat("EEE d MMM · HH:mm", Locale.getDefault()).format(Date(ev.startMs))}",
+                    "${ev.channel.name}  ·  ${TimeFormat.format("EEE d MMM · HH:mm", ev.startMs)}",
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
             }
@@ -630,7 +629,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
                 Spacer(Modifier.height(3.dp))
                 Text(ev.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${ev.channel.name} · ${SimpleDateFormat("EEE d MMM HH:mm", Locale.getDefault()).format(Date(ev.startMs))}",
+                    "${ev.channel.name} · ${TimeFormat.format("EEE d MMM HH:mm", ev.startMs)}",
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
                 Spacer(Modifier.height(6.dp))
@@ -812,4 +811,4 @@ private fun ChannelLogo(url: String, fallback: String) {
     }
 }
 
-private fun hhmm(ms: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
+private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)

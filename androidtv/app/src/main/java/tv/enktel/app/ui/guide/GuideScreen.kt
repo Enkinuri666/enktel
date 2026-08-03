@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -42,6 +44,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
@@ -104,7 +107,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     val hScroll = rememberScrollState()
     // Live clock — updates once a minute so the NOW marker on the timeline stays
     // accurate without spinning up a per-second recomposition.
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
@@ -133,7 +136,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             Spacer(Modifier.weight(1f))
             FocusButton("◀", onClick = { dayOffset-- })
             Text(
-                SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(Date(dayStart)),
+                TimeFormat.format("EEEE d MMMM", dayStart),
                 color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
             )
             FocusButton("▶", onClick = { dayOffset++ })
@@ -272,7 +275,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                     Column(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
                                         Text(prog.title, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal)
                                         Text(
-                                            "${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(prog.startMs))}–${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(prog.endMs))}",
+                                            "${TimeFormat.format("HH:mm", prog.startMs)}–${TimeFormat.format("HH:mm", prog.endMs)}",
                                             fontSize = 10.sp, color = EnktelTextDim, maxLines = 1,
                                         )
                                     }
@@ -330,7 +333,8 @@ private fun ProgramDialog(
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.width(480.dp).background(EnktelSurface, RoundedCornerShape(12.dp)).padding(24.dp),
+            Modifier.padding(horizontal = 24.dp).widthIn(max = 480.dp).fillMaxWidth()
+                .background(EnktelSurface, RoundedCornerShape(12.dp)).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -339,7 +343,7 @@ private fun ProgramDialog(
                 if (canCatchup) Badge("CATCH-UP", EnktelOk)
             }
             Text(
-                "${channel.name} · ${SimpleDateFormat("EEE d MMM HH:mm", Locale.getDefault()).format(Date(prog.startMs))}–${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(prog.endMs))}",
+                "${channel.name} · ${TimeFormat.format("EEE d MMM HH:mm", prog.startMs)}–${TimeFormat.format("HH:mm", prog.endMs)}",
                 color = EnktelTextDim, fontSize = 12.sp,
             )
             if (prog.desc.isNotBlank()) {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    22% inset keeps the emblem inside the adaptive-icon safe zone (the outer
+    ~18dp of the 108dp layer is what masks and parallax can eat).
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_art"
+    android:inset="22%" />

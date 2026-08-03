@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,7 +127,7 @@ fun VodPlayerScreen(
     var showControls by remember { mutableStateOf(true) }
     var controlsTick by remember { mutableIntStateOf(0) }
     var trackMenu by remember { mutableStateOf("") }
-    var speed by remember { mutableStateOf(1f) }
+    var speed by remember { mutableFloatStateOf(1f) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
@@ -260,7 +261,11 @@ fun VodPlayerScreen(
                 lastSave = now
                 persistProgress(positionMs, durationMs)
             }
-            delay(250)
+            // Only worth 250 ms while something is actually moving. Paused (or
+            // docked to the mini player with the scrubber off-screen) the same
+            // rate is four wake-ups a second that write back identical values,
+            // which a Fire TV Stick can ill afford.
+            delay(if (playing) 250 else 1_000)
         }
     }
 
@@ -401,16 +406,16 @@ fun VodPlayerScreen(
     var gestureLevel by remember { mutableStateOf<Triple<String, Float, Boolean>?>(null) }
     LaunchedEffect(gestureLevel) { if (gestureLevel != null) { delay(900); gestureLevel = null } }
     var dragBrightness by remember { mutableStateOf(true) }
-    var boxWidthPx by remember { mutableStateOf(1f) }
-    var boxHeightPx by remember { mutableStateOf(1f) }
+    var boxWidthPx by remember { mutableFloatStateOf(1f) }
+    var boxHeightPx by remember { mutableFloatStateOf(1f) }
     // Snapshot at drag-start + accumulated Y delta lets us set an absolute target
     // on each drag event. Per-event nudging via adjustVolume() got truncated to
     // zero by Android's integer-quantised stream volume API (typically 0-15
     // steps), so short drags did nothing — this is the same start-snapshot
     // pattern PlayerGestureLayer already uses.
-    var dragStartVolume by remember { mutableStateOf(0f) }
-    var dragStartBrightness by remember { mutableStateOf(0.5f) }
-    var accumulatedFraction by remember { mutableStateOf(0f) }
+    var dragStartVolume by remember { mutableFloatStateOf(0f) }
+    var dragStartBrightness by remember { mutableFloatStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableFloatStateOf(0f) }
 
     Box(
         Modifier
@@ -831,7 +836,7 @@ private fun SeekBar(
     // crawling. A fixed 15 s step means a two-hour film needs 240 presses to
     // cross, which is why reaching "the exact moment you want" felt impossible
     // with a remote.
-    var repeats by remember { mutableStateOf(0) }
+    var repeats by remember { mutableIntStateOf(0) }
     LaunchedEffect(scrubTarget) {
         if (scrubTarget == null) { repeats = 0; return@LaunchedEffect }
         delay(700)

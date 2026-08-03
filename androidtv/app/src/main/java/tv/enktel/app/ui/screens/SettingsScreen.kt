@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
@@ -29,13 +30,11 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.BuildConfig
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelTextDim
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
@@ -133,7 +132,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
             if (p.expiresAt > 0) {
                 Text(
-                    "Expires ${SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(p.expiresAt))} · max ${p.maxConnections} connection(s)",
+                    "Expires ${TimeFormat.format("d MMM yyyy", p.expiresAt)} · max ${p.maxConnections} connection(s)",
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
             }
@@ -455,8 +454,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val tmdbKey by graph.settings.tmdbApiKey.collectAsStateWithLifecycle(initialValue = "")
         var newTmdb by remember { mutableStateOf(tmdbKey) }
         androidx.compose.runtime.LaunchedEffect(tmdbKey) { if (newTmdb.isBlank()) newTmdb = tmdbKey }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(Modifier.width(360.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 360.dp)) {
                 tv.enktel.app.ui.components.TvTextField(
                     newTmdb, { newTmdb = it }, "TMDB v3 key or v4 bearer token", password = true,
                 )
@@ -503,8 +506,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val lockedCats by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
         var newPin by remember { mutableStateOf("") }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(Modifier.width(180.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 180.dp)) {
                 tv.enktel.app.ui.components.TvTextField(
                     newPin, { newPin = it.filter(Char::isDigit).take(8) },
                     if (pinHash.isBlank()) "Set PIN (digits)" else "Change PIN", password = true,
@@ -609,8 +616,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
         }
         if (extSub.isNotBlank()) Text("External subtitle: $extSub", color = EnktelTextDim, fontSize = 11.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(Modifier.width(320.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 320.dp)) {
                 tv.enktel.app.ui.components.TvTextField(newSub, { newSub = it }, "Load .srt/.vtt/.ass URL")
             }
             FocusButton("Apply", onClick = { scope.launch { graph.settings.setExtSubUrl(newSub.trim()) } })
@@ -692,8 +703,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val sportsKey by graph.settings.sportsDbKey.collectAsStateWithLifecycle(initialValue = "")
         var newSportsKey by remember { mutableStateOf(sportsKey) }
         androidx.compose.runtime.LaunchedEffect(sportsKey) { if (newSportsKey.isBlank()) newSportsKey = sportsKey }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(Modifier.width(280.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 280.dp)) {
                 tv.enktel.app.ui.components.TvTextField(
                     newSportsKey, { newSportsKey = it }, "TheSportsDB key (optional)", password = true,
                 )
@@ -734,8 +749,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
         var newTeam by remember { mutableStateOf("") }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(Modifier.width(260.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 260.dp)) {
                 tv.enktel.app.ui.components.TvTextField(newTeam, { newTeam = it }, "Follow team or league")
             }
             FocusButton("Add", onClick = {

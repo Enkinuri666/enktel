@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -26,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -61,6 +64,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Category
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.Profile
@@ -86,11 +90,8 @@ import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-private fun hhmm(ms: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
+private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
 
 @UnstableApi
 @Composable
@@ -174,12 +175,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     var trackMenu by remember { mutableStateOf("") } // "" | audio | subs
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var numberBuffer by remember { mutableStateOf("") }
-    var recordingId by remember { mutableStateOf(0L) }
+    var recordingId by remember { mutableLongStateOf(0L) }
     var isFav by remember { mutableStateOf(false) }
     var infoTick by remember { mutableIntStateOf(0) }
     // Time-shift: 0 = watching live, otherwise the archive timestamp playback started from.
-    var shiftedFrom by remember { mutableStateOf(0L) }
-    var sleepUntil by remember { mutableStateOf(0L) }
+    var shiftedFrom by remember { mutableLongStateOf(0L) }
+    var sleepUntil by remember { mutableLongStateOf(0L) }
     var pinPrompt by remember { mutableStateOf(false) }
     var pendingCategory by remember { mutableStateOf<String?>(null) }
     val toaster = tv.enktel.app.ui.components.LocalToaster.current
@@ -416,16 +417,16 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         if (gestureLevel != null) { delay(900); gestureLevel = null }
     }
     var dragBrightness by remember { mutableStateOf(true) }
-    var boxWidthPx by remember { mutableStateOf(1f) }
-    var boxHeightPx by remember { mutableStateOf(1f) }
+    var boxWidthPx by remember { mutableFloatStateOf(1f) }
+    var boxHeightPx by remember { mutableFloatStateOf(1f) }
     // Snapshot at drag-start + accumulated Y delta lets us set an absolute target
     // on each drag event. Per-event nudging via adjustVolume() got truncated to
     // zero by Android's integer-quantised stream volume API (typically 0-15
     // steps), so short drags did nothing — this is the same start-snapshot
     // pattern PlayerGestureLayer already uses.
-    var dragStartVolume by remember { mutableStateOf(0f) }
-    var dragStartBrightness by remember { mutableStateOf(0.5f) }
-    var accumulatedFraction by remember { mutableStateOf(0f) }
+    var dragStartVolume by remember { mutableFloatStateOf(0f) }
+    var dragStartBrightness by remember { mutableFloatStateOf(0.5f) }
+    var accumulatedFraction by remember { mutableFloatStateOf(0f) }
 
     Box(
         Modifier
@@ -1209,7 +1210,9 @@ fun TrackPicker(
     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.6f)), contentAlignment = Alignment.Center) {
         Column(
             Modifier
-                .width(360.dp)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 360.dp)
+                .fillMaxWidth()
                 .background(EnktelSurface, RoundedCornerShape(12.dp))
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

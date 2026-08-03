@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -66,7 +67,9 @@ fun FirstRunTour(onFinish: () -> Unit) {
     ) {
         Column(
             Modifier
-                .width(520.dp)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
                 .background(EnktelSurface, RoundedCornerShape(16.dp))
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

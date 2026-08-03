@@ -3,6 +3,10 @@
     <style name="Theme.Enktel" parent="android:Theme.Material.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@color/enktel_background</item>
         <item name="android:colorPrimary">@color/enktel_blue</item>
+        <!-- Matches PaletteDeepSpace.secondary so platform-drawn chrome (text
+             selection handles, the overscroll glow, system dialogs) picks up
+             the brand violet instead of stock Material blue. -->
+        <item name="android:colorAccent">@color/enktel_purple</item>
         <item name="android:windowAllowReturnTransitionOverlap">true</item>
     </style>
 </resources>

@@ -87,30 +87,36 @@ class PlaylistRepository(
         return normalized
     }
 
-    private fun normalizeServer(raw: String): String {
-        var s = raw.trim().trimEnd('/')
-        // Default to HTTPS, not HTTP.
-        //
-        // A user who types "x-api.cc" rather than the full URL was silently
-        // given http://, and an HTTPS-only panel then either redirects (which
-        // the Xtream API handles badly) or refuses outright — presenting as
-        // "the panel rejected the credentials" when the credentials were fine.
-        // Panels that are HTTP-only still work: they are almost always entered
-        // with an explicit port, and an explicit scheme is always respected.
-        if (!s.startsWith("http://", true) && !s.startsWith("https://", true)) {
-            // A bare host:port on a non-standard port is nearly always plain
-            // HTTP in this ecosystem; a bare hostname is nearly always HTTPS.
-            val hostPart = s.substringBefore('/')
-            val port = hostPart.substringAfterLast(':', "").toIntOrNull()
-            s = if (port != null && port != 443) "http://$s" else "https://$s"
+    companion object {
+        // internal, not private, so PlaylistRepositoryTest can pin the scheme and
+        // path-stripping rules. Getting these wrong presents to the user as "the
+        // panel rejected the credentials", which is the hardest kind of bug to
+        // report, so they are worth a test.
+        internal fun normalizeServer(raw: String): String {
+            var s = raw.trim().trimEnd('/')
+            // Default to HTTPS, not HTTP.
+            //
+            // A user who types "x-api.cc" rather than the full URL was silently
+            // given http://, and an HTTPS-only panel then either redirects (which
+            // the Xtream API handles badly) or refuses outright — presenting as
+            // "the panel rejected the credentials" when the credentials were fine.
+            // Panels that are HTTP-only still work: they are almost always entered
+            // with an explicit port, and an explicit scheme is always respected.
+            if (!s.startsWith("http://", true) && !s.startsWith("https://", true)) {
+                // A bare host:port on a non-standard port is nearly always plain
+                // HTTP in this ecosystem; a bare hostname is nearly always HTTPS.
+                val hostPart = s.substringBefore('/')
+                val port = hostPart.substringAfterLast(':', "").toIntOrNull()
+                s = if (port != null && port != 443) "http://$s" else "https://$s"
+            }
+            // Strip accidental paths — people paste whatever the reseller sent them.
+            s = s.substringBefore("/player_api.php")
+                .substringBefore("/get.php")
+                .substringBefore("/panel_api.php")
+                .substringBefore("/xmltv.php")
+            // …and any query string that came with it.
+            s = s.substringBefore('?').trimEnd('/')
+            return s
         }
-        // Strip accidental paths — people paste whatever the reseller sent them.
-        s = s.substringBefore("/player_api.php")
-            .substringBefore("/get.php")
-            .substringBefore("/panel_api.php")
-            .substringBefore("/xmltv.php")
-        // …and any query string that came with it.
-        s = s.substringBefore('?').trimEnd('/')
-        return s
     }
 }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Movie
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.ContentRail
@@ -52,9 +54,6 @@ import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // Lint false-positive: produceState's vararg-keys overload isn't recognized by the
 // ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
@@ -138,7 +137,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     var clock by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
-            clock = SimpleDateFormat("HH:mm · EEE d MMM", Locale.getDefault()).format(Date())
+            clock = TimeFormat.now("HH:mm · EEE d MMM")
             delay(30_000)
         }
     }
@@ -182,25 +181,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                     Image(painter = painterResource(R.drawable.logo_full), contentDescription = "EnkTel", modifier = Modifier.width(190.dp))
                     Spacer(Modifier.weight(1f))
                     Text(clock, color = EnktelTextDim, fontSize = 14.sp)
-                }
-            }
-        }
-        if (syncing) {
-            item {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 48.dp)
-                        .background(
-                            tv.enktel.app.ui.theme.EnktelBlue.copy(alpha = 0.15f),
-                            androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                        )
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("⟳", color = tv.enktel.app.ui.theme.EnktelBlue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(10.dp))
-                    Text(syncStatus, color = Color.White, fontSize = 13.sp)
                 }
             }
         }
@@ -538,13 +518,17 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         item {
             Text(
-                "Profile: ${p.name} · Synced ${if (p.lastSync > 0) SimpleDateFormat("d MMM HH:mm", Locale.getDefault()).format(Date(p.lastSync)) else "never"}",
+                "Profile: ${p.name} · Synced ${if (p.lastSync > 0) TimeFormat.format("d MMM HH:mm", p.lastSync) else "never"}",
                 color = EnktelTextDim,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 48.dp),
             )
         }
     }
+        // First sync only (the effect above bails out unless lastSync == 0L), so
+        // there is no content behind this yet — a full-screen branded splash
+        // reads better than a thin banner floating over an empty Home.
+        tv.enktel.app.ui.components.RefreshSplash(visible = syncing, status = syncStatus)
     } // close ambilight wrapper Box
     } // close CompositionLocalProvider (FocusedPosterState)
 }
@@ -556,7 +540,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
  */
 @Composable
 private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController, graph: AppGraph, profile: Profile) {
-    var index by remember { mutableStateOf(0) }
+    var index by remember { mutableIntStateOf(0) }
     LaunchedEffect(items) {
         index = 0
         while (items.size > 1) {
