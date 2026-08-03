@@ -218,9 +218,9 @@ val EnktelFocusScale: Float @Composable get() = LocalPalette.current.focusScale
  * Colour of the focus glow — the accent at the palette's glow alpha.
  *
  * Rendered via `Modifier.shadow(spotColor = …)`, which only honours a
- * coloured spot colour on API 28+. On API 21-27 (Fire TV Stick 2nd gen)
- * it degrades to a neutral shadow; the 2 dp ring still reads, so focus
- * is never ambiguous on those devices.
+ * coloured spot colour on API 28+. On API 23-27 it degrades to a neutral
+ * shadow; the 2 dp ring still reads, so focus is never ambiguous on those
+ * devices.
  */
 val EnktelFocusGlow: Color
     @Composable get() = LocalPalette.current.primary.copy(alpha = LocalPalette.current.focusGlowAlpha)

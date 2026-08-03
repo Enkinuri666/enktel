@@ -12,10 +12,10 @@ android {
 
     defaultConfig {
         applicationId = "tv.enktel.app"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
-        versionCode = 93
-        versionName = "1.38.6"
+        versionCode = 94
+        versionName = "1.39.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -62,9 +62,9 @@ android {
                 storePassword = envKeystorePass
                 keyAlias = envKeyAlias
                 keyPassword = envKeyPass
-                // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
-                // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
-                // v1 MUST stay enabled or the APK is uninstallable on those devices.
+                // minSdk 23 (Android 6.0) can only verify APK Signature Scheme v1
+                // (JAR signing) — v2 verification requires API 24+. v1 MUST stay
+                // enabled or the APK is uninstallable on Marshmallow.
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
