@@ -5,6 +5,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.get
+import tv.enktel.app.data.long
 
 /**
  * Runs the panel diagnostics.
@@ -32,6 +34,7 @@ object PanelDoctor {
         vodUrl: String?,
         catchupUrl: String?,
         channelsWithArchive: Int,
+        nowProgrammes: List<Pair<Long, Long>>,
         settings: PlaybackSettings,
         onProgress: (String) -> Unit = {},
     ): PanelReport = withContext(Dispatchers.IO) {
@@ -48,6 +51,9 @@ object PanelDoctor {
         onProgress("Inspecting VOD container…")
         val vod = vodUrl?.let { inspect(client, it) }
 
+        onProgress("Auditing guide alignment…")
+        val epg = auditEpg(profile, xtream, nowProgrammes)
+
         onProgress("Testing catch-up…")
         val catchup = probeCatchup(client, catchupUrl, channelsWithArchive)
 
@@ -58,6 +64,7 @@ object PanelDoctor {
             profileId = profile.id,
             ranAtMs = System.currentTimeMillis(),
             structure = structure,
+            epg = epg,
             live = live,
             vod = vod,
             catchup = catchup,
@@ -65,6 +72,28 @@ object PanelDoctor {
             changes = changes,
             notes = notes,
         )
+    }
+
+    /**
+     * Compares the three clocks the guide depends on: the device, the panel,
+     * and whatever wrote the EPG.
+     */
+    private suspend fun auditEpg(
+        profile: Profile,
+        xtream: tv.enktel.app.data.xtream.XtreamClient?,
+        nowProgrammes: List<Pair<Long, Long>>,
+    ): EpgOffset.Audit {
+        val serverEpoch = if (xtream != null && profile.kind == "xtream") {
+            runCatching {
+                val info = xtream.login(profile).get("server_info")
+                // Panels report this as `timestamp_now` (epoch seconds) and/or
+                // `time_now` (formatted). The epoch form is the usable one.
+                (info.long("timestamp_now") ?: 0L) * 1000L
+            }.getOrDefault(0L)
+        } else 0L
+        return runCatching {
+            EpgOffset.audit(serverEpoch, System.currentTimeMillis(), nowProgrammes)
+        }.getOrElse { EpgOffset.Audit(error = it.message) }
     }
 
     /**
@@ -137,6 +166,7 @@ object PanelDoctor {
             // Left false — the ranged GET below is the real test.
         }
 
+        val startNs = System.nanoTime()
         val head = try {
             http.newCall(
                 Request.Builder()
@@ -172,11 +202,18 @@ object PanelDoctor {
             }
         }
 
+        val ttfbMs = (System.nanoTime() - startNs) / 1_000_000
         val total = contentRange.substringAfterLast('/', "").trim().toLongOrNull()
             ?: contentLength.takeIf { it > 0 } ?: 0L
         val partial = code == 206
 
         val detected = detectContainer(bytes, contentType)
+        // An HLS "container" is a text playlist, so it can be inspected
+        // directly — variants, discontinuities, and audio groups that point
+        // nowhere are all visible without playing anything.
+        val hls = if (detected == "HLS") {
+            runCatching { HlsInspector.parse(String(bytes, Charsets.UTF_8)) }.getOrNull()
+        } else null
         val mkv = if (detected == "MATROSKA" || detected == "WEBM") {
             runCatching { Ebml.parseHead(bytes) }.getOrNull()
         } else null
@@ -207,6 +244,8 @@ object PanelDoctor {
             mimeExpected = if (mimeOk) "" else expectedMime.replace('|', '/'),
             chunked = chunked,
             keepAlive = keepAlive,
+            hls = hls,
+            ttfbMs = ttfbMs,
             matroska = mkv,
             range = RangeSupport(
                 tested = true,

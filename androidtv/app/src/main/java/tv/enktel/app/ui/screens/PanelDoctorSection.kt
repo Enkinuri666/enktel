@@ -72,6 +72,7 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
         decoderMode = graph.settings.decoderMode.first(),
         vodForceMp4 = graph.settings.vodForceMp4.first(),
         liveShiftEnabled = graph.settings.liveShiftEnabled.first(),
+        customUserAgent = graph.settings.customUserAgent.first(),
     )
 
     fun run(force: Boolean) {
@@ -114,6 +115,20 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                     return@launch
                 }
 
+                // Sample what the guide claims is on air right now across a
+                // handful of channels — enough for a median, cheap enough not
+                // to matter. A single channel could be legitimately odd.
+                val nowMs = System.currentTimeMillis()
+                val nowProgrammes = mutableListOf<Pair<Long, Long>>()
+                runCatching {
+                    // Plain loop rather than a sequence: nowNext suspends, and
+                    // a suspending call cannot cross a Sequence boundary.
+                    channels.filter { it.epgId.isNotBlank() }.take(8).forEach { ch ->
+                        graph.db.epgDao().nowNext(profile.id, ch.epgId, nowMs, 1)
+                            .forEach { nowProgrammes += it.startMs to it.endMs }
+                    }
+                }
+
                 val r = PanelDoctor.run(
                     http = graph.http,
                     profile = profile,
@@ -122,6 +137,7 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                     vodUrl = vodUrl,
                     catchupUrl = catchupUrl,
                     channelsWithArchive = archiveChannels.size,
+                    nowProgrammes = nowProgrammes,
                     settings = settings,
                     onProgress = { status = it },
                 )
@@ -158,6 +174,7 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                         "decoderMode" -> graph.settings.setDecoderMode(c.suggested)
                         "vodForceMp4" -> graph.settings.setVodForceMp4(c.suggested == "on")
                         "liveShiftEnabled" -> graph.settings.setLiveShiftEnabled(c.suggested == "on")
+                        "customUserAgent" -> graph.settings.setCustomUserAgent(c.suggested)
                     }
                 }
             } catch (_: Exception) {
@@ -199,6 +216,7 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                 Text("Diagnostics failed: $it", color = EnktelLive, fontSize = 12.sp)
             }
             if (r.structure.queried) StructureCard(r)
+            if (r.epg.measured) EpgCard(r)
             r.live?.let { ContainerCard("LIVE", it) }
             r.vod?.let { ContainerCard("VOD", it) }
             CatchupCard(r)
@@ -296,6 +314,18 @@ private fun ContainerCard(label: String, f: ContainerFacts) {
                 Row2("Size", "%.1f MB".format(rg.totalBytes / 1_048_576.0))
             }
         }
+        f.hls?.let { pl ->
+            Row2("Playlist", pl.kind.name.lowercase() + (if (pl.isLive) " (live)" else ""))
+            if (pl.variants.isNotEmpty()) Row2("Variants", pl.variants.size.toString())
+            if (pl.targetDurationSec > 0) Row2("Target duration", "${pl.targetDurationSec}s")
+            if (pl.discontinuities > 0) {
+                Row2("Discontinuities", pl.discontinuities.toString(), EnktelLive)
+            }
+            if (pl.danglingAudioGroups.isNotEmpty()) {
+                Row2("Missing audio groups", pl.danglingAudioGroups.joinToString(), EnktelLive)
+            }
+        }
+        if (f.ttfbMs > 0) Row2("Time to first byte", "${f.ttfbMs} ms")
         f.matroska?.let { m ->
             Row2("Matroska DocType", m.docType.ifBlank { "unknown" })
             Row2(
@@ -346,6 +376,26 @@ private fun StructureCard(r: PanelReport) {
                 if (agrees) EnktelOk else EnktelLive,
             )
         }
+    }
+}
+
+@Composable
+private fun EpgCard(r: PanelReport) {
+    val a = r.epg
+    Card {
+        Text("GUIDE ALIGNMENT", color = Color_White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Row2("Programmes sampled", a.programmesChecked.toString())
+        Row2(
+            "Panel clock",
+            if (a.serverSkewMs == 0L) "matches device" else "${a.serverSkewMs / 1000}s vs device",
+            if (a.serverNotable) EnktelLive else EnktelOk,
+        )
+        Row2(
+            "EPG data",
+            if (a.guideSkewMs == 0L) "aligned" else "${a.guideSkewMs / 60_000}m vs now",
+            if (a.guideNotable) EnktelLive else EnktelOk,
+        )
+        a.verdict?.let { Text(it, color = EnktelLive, fontSize = 11.sp) }
     }
 }
 

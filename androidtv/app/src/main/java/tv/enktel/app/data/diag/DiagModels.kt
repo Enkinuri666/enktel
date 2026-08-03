@@ -48,6 +48,10 @@ data class ContainerFacts(
     /** `Transfer-Encoding: chunked` — no length, so no scrub bar. */
     val chunked: Boolean = false,
     val keepAlive: Boolean = false,
+    /** Set when [detected] is HLS and the playlist parsed. */
+    val hls: HlsInspector.Playlist? = null,
+    /** Time to first byte, ms. Feeds the before/after comparison. */
+    val ttfbMs: Long = 0,
     val error: String? = null,
 )
 
@@ -103,6 +107,8 @@ data class PlaybackSettings(
     val decoderMode: String = "hwplus",
     val vodForceMp4: Boolean = false,
     val liveShiftEnabled: Boolean = true,
+    /** Blank = app default (VLC). */
+    val customUserAgent: String = "",
 )
 
 /** A complete diagnostic pass. */
@@ -110,6 +116,7 @@ data class PanelReport(
     val profileId: Long = 0,
     val ranAtMs: Long = 0,
     val structure: LineStructure = LineStructure(),
+    val epg: EpgOffset.Audit = EpgOffset.Audit(),
     val live: ContainerFacts? = null,
     val vod: ContainerFacts? = null,
     val catchup: CatchupFacts = CatchupFacts(),

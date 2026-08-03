@@ -16,13 +16,23 @@ import okhttp3.Response
  * Only replaces the header when the request builder didn't set an explicit
  * UA — callers that need to identify themselves (e.g. the Discord webhook
  * publisher) still can.
+ *
+ * [override] lets Settings (or the Panel Doctor's auto-tune) present a
+ * different client entirely. Some panels allow their own app's agent and
+ * nothing else, so the escape hatch has to be configurable rather than fixed.
+ * Read through a supplier on every request so a change takes effect without
+ * rebuilding the OkHttp client.
  */
-class UserAgentInterceptor(private val ua: String) : Interceptor {
+class UserAgentInterceptor(
+    private val ua: String,
+    private val override: () -> String = { "" },
+) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         if (!original.header("User-Agent").isNullOrBlank()) return chain.proceed(original)
+        val effective = override().takeIf { it.isNotBlank() } ?: ua
         val patched = original.newBuilder()
-            .header("User-Agent", ua)
+            .header("User-Agent", effective)
             .build()
         return chain.proceed(patched)
     }

@@ -102,6 +102,7 @@ class SettingsStore(private val context: Context) {
     // extractor gets picked. Off by default — the permissive extractor
     // chain shipped in v1.18.3 handles most mismatches transparently.
     private val VOD_FORCE_MP4 = booleanPreferencesKey("vod_force_mp4")
+    private val CUSTOM_UA = stringPreferencesKey("custom_user_agent")
 
     // v1.20.0: TMDB API key for the metadata enrichment worker. v3 numeric
     // key OR v4 read-only bearer token accepted. Blank = worker no-ops.
@@ -264,6 +265,16 @@ class SettingsStore(private val context: Context) {
     suspend fun setKidsModeEnabled(v: Boolean) = context.dataStore.edit { it[KIDS_MODE_ENABLED] = v }
     val hudAutoHideSec: Flow<Int> = context.dataStore.data.map { it[HUD_AUTOHIDE_SEC] ?: 8 }
     suspend fun setHudAutoHideSec(v: Int) = context.dataStore.edit { it[HUD_AUTOHIDE_SEC] = v.coerceIn(0, 60) }
+    /**
+     * Overrides the outgoing User-Agent. Blank = the app default.
+     *
+     * Providers block unfamiliar agents with 403 far more often than they
+     * block anything else, so being able to present as a different client is
+     * the single highest-yield workaround available.
+     */
+    val customUserAgent: Flow<String> = context.dataStore.data.map { it[CUSTOM_UA] ?: "" }
+    suspend fun setCustomUserAgent(v: String) = context.dataStore.edit { it[CUSTOM_UA] = v.trim() }
+
     val vodForceMp4: Flow<Boolean> = context.dataStore.data.map { it[VOD_FORCE_MP4] ?: false }
     suspend fun setVodForceMp4(v: Boolean) = context.dataStore.edit { it[VOD_FORCE_MP4] = v }
     val tmdbApiKey: Flow<String> = context.dataStore.data.map { it[TMDB_API_KEY].orEmpty() }

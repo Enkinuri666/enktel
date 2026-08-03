@@ -14,6 +14,13 @@ package tv.enktel.app.data.diag
  */
 object SettingsAdvisor {
 
+    /**
+     * A widely-accepted set-top agent. Chosen because panels that filter by
+     * agent almost always allow the clients their own apps ship with.
+     */
+    const val SMART_TV_UA = "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) SamsungBrowser/4.0 Safari/537.36"
+
     fun advise(
         current: PlaybackSettings,
         live: ContainerFacts?,
@@ -61,6 +68,22 @@ object SettingsAdvisor {
                     },
                 )
             }
+        }
+
+        // ---- User-Agent ----------------------------------------------------
+        // A 403 on a stream whose credentials are otherwise fine is nearly
+        // always agent filtering, not authorisation. Presenting as a common
+        // set-top client is the highest-yield workaround there is.
+        val blocked = listOfNotNull(live, vod).any { it.range.httpCode == 403 }
+        if (blocked && current.customUserAgent.isBlank()) {
+            out += SettingChange(
+                key = "customUserAgent",
+                label = "User-Agent",
+                current = "app default",
+                suggested = SMART_TV_UA,
+                reason = "Panel answered 403 to a request that carried valid credentials — " +
+                    "that is agent filtering rather than auth.",
+            )
         }
 
         // ---- Buffer profile ------------------------------------------------
@@ -147,6 +170,32 @@ object SettingsAdvisor {
             if (f.chunked) {
                 out += "$tag is sent with chunked transfer encoding, so no length is advertised " +
                     "and the player cannot draw an accurate scrub bar."
+            }
+        }
+
+        live?.hls?.let { pl ->
+            if (pl.danglingAudioGroups.isNotEmpty()) {
+                out += "Live HLS variants reference audio groups the playlist never declares " +
+                    "(${pl.danglingAudioGroups.joinToString()}). ExoPlayer waits on a rendition " +
+                    "that never arrives — this is the classic 'plays briefly then buffers forever'."
+            }
+            if (pl.discontinuities > 0) {
+                out += "Live playlist carries ${pl.discontinuities} discontinuity marker(s) — " +
+                    "expect a re-buffer at each ad or source switch."
+            }
+            if (pl.kind == HlsInspector.Kind.MASTER) {
+                out += "Live is a master playlist with ${pl.variants.size} variant(s); " +
+                    "ExoPlayer will pick a bitrate adaptively."
+            }
+            if (pl.kind == HlsInspector.Kind.NOT_HLS) {
+                out += "The URL was served as HLS but the body is not a playlist " +
+                    "(${pl.error ?: "unparseable"})."
+            }
+        }
+        vod?.hls?.let { pl ->
+            if (!pl.seekable && pl.kind == HlsInspector.Kind.MEDIA) {
+                out += "VOD HLS playlist has no #EXT-X-ENDLIST and is not marked VOD, so the " +
+                    "player treats it as live and will not offer a scrub bar."
             }
         }
 
