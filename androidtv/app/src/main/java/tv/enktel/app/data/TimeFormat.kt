@@ -1,5 +1,7 @@
 package tv.enktel.app.data
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,4 +40,19 @@ object TimeFormat {
     /** Formats "now" with a cached formatter for [pattern]. */
     fun now(pattern: String, locale: Locale = Locale.getDefault()): String =
         format(pattern, System.currentTimeMillis(), locale)
+
+    /**
+     * The device locale, read so Compose can observe it.
+     *
+     * `Locale.getDefault()` inside a composable is a static read: change the
+     * device language and the already-composed month and weekday names keep
+     * the old one until something unrelated forces a recomposition. Compose's
+     * own Locale is configuration-backed, so reading through it invalidates
+     * properly. (This is what Compose 1.11's NonObservableLocale check is for.)
+     */
+    @Composable
+    fun currentLocale(): Locale {
+        val tag = androidx.compose.ui.text.intl.Locale.current.toLanguageTag()
+        return remember(tag) { Locale.forLanguageTag(tag) }
+    }
 }
