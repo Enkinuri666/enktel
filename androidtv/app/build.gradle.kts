@@ -8,13 +8,13 @@ plugins {
 
 android {
     namespace = "tv.enktel.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 94
+        versionCode = 95
         versionName = "1.39.0"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -94,7 +94,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    // kotlinOptions is deprecated in the Kotlin 2.2 Gradle plugin; the
+    // compilerOptions DSL is the replacement and takes a typed JvmTarget.
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures {
         compose = true
         buildConfig = true // used to switch TV vs mobile navigation shells at runtime

@@ -72,7 +72,7 @@ jobs:
       - name: Set up Android SDK build-tools
         uses: android-actions/setup-android@v3
         with:
-          packages: 'build-tools;35.0.0 platforms;android-35'
+          packages: 'build-tools;36.0.0 platforms;android-36'
 
       # Fail before spending seven minutes on a build we can't sign.
       - name: Decode release keystore
@@ -112,7 +112,7 @@ jobs:
       # than trusting the Gradle config stayed correct.
       - name: Verify APK signatures
         run: |
-          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           [ -x "$APKSIGNER" ] || APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           for apk in \
             app/build/outputs/apk/tv/release/app-tv-release.apk \
