@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,16 +34,18 @@ fun ContextMenu(title: String, actions: List<ContextAction>, onDismiss: () -> Un
     ) {
         Column(
             Modifier
-                .width(320.dp)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 320.dp)
+                .fillMaxWidth()
                 .background(EnktelSurfaceHigh, RoundedCornerShape(12.dp))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             actions.forEach { a ->
-                FocusButton(a.label, accent = a.accent, onClick = a.onClick, modifier = Modifier.fillMaxSize().width(280.dp))
+                FocusButton(a.label, accent = a.accent, onClick = a.onClick, modifier = Modifier.fillMaxWidth())
             }
-            FocusButton("Close", onClick = onDismiss, modifier = Modifier.fillMaxSize().width(280.dp))
+            FocusButton("Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
 }

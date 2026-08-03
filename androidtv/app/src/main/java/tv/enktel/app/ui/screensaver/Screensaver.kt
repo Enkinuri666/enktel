@@ -45,9 +45,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import tv.enktel.app.data.TimeFormat
 
 /** Broadcasts "user just did something" to the ambient screensaver watcher. */
 class IdleTicker {
@@ -113,7 +111,7 @@ private fun Screensaver(graph: AppGraph, onDismiss: () -> Unit) {
     var now by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
-            now = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            now = TimeFormat.now("HH:mm")
             delay(15_000)
         }
     }
@@ -145,7 +143,7 @@ private fun Screensaver(graph: AppGraph, onDismiss: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Text(now, color = Color.White, fontSize = 96.sp, fontWeight = FontWeight.Black)
             Text(
-                SimpleDateFormat("EEEE d MMMM yyyy", Locale.getDefault()).format(Date()),
+                TimeFormat.now("EEEE d MMMM yyyy"),
                 color = Color.White.copy(0.7f), fontSize = 16.sp,
             )
             Spacer(Modifier.height(8.dp))

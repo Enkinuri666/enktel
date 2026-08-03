@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
@@ -88,6 +90,8 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
     }
     val selectedChannel = channels.getOrNull(selectedIdx)
     var dayOffset by remember { mutableIntStateOf(0) }
+    // Observable read, so the day chips re-label if the device language changes.
+    val dayLocale = TimeFormat.currentLocale()
     val dayStart = remember(dayOffset) {
         Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, dayOffset)
@@ -104,7 +108,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         programs = graph.epg.window(p.id, listOf(ch.epgId), dayStart, dayEnd)[ch.epgId].orEmpty()
     }
 
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
@@ -139,8 +143,9 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                 GlassChip("Today", selected = dayOffset == 0, onClick = { dayOffset = 0 })
             }
             items((1..6).toList()) { d ->
-                val label = SimpleDateFormat("EEE d", Locale.getDefault())
-                    .format(Date(System.currentTimeMillis() + d * 86_400_000L))
+                val label = TimeFormat.format(
+                    "EEE d", System.currentTimeMillis() + d * 86_400_000L, dayLocale,
+                )
                 GlassChip(label, selected = dayOffset == d, onClick = { dayOffset = d })
             }
         }

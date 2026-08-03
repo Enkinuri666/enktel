@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +67,7 @@ class WakeWordListener(
     private val onWake: (payload: String) -> Unit,
 ) {
     val active = mutableStateOf(false)
-    val hearingMeter = mutableStateOf(0f) // 0..1, updates on RMS
+    val hearingMeter = mutableFloatStateOf(0f) // 0..1, updates on RMS
 
     // ---- VAD tuning ----
     private companion object {
@@ -172,6 +173,16 @@ class WakeWordListener(
                 AudioFormat.ENCODING_PCM_16BIT,
             )
             if (minBuf <= 0) return@launch
+            // RECORD_AUDIO is a runtime permission. Constructing AudioRecord
+            // without it throws SecurityException on some OEM builds and
+            // silently yields an uninitialised recorder on others, so check
+            // first rather than discovering it in the catch below — the wake
+            // word simply not working is otherwise indistinguishable from a
+            // microphone that never hears anything.
+            val micGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.RECORD_AUDIO,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!micGranted) return@launch
             val ar = try {
                 AudioRecord(
                     MediaRecorder.AudioSource.VOICE_RECOGNITION,
@@ -197,7 +208,7 @@ class WakeWordListener(
                 if (n <= 0) break
                 val rms = computeRms(frame, n)
                 // Normalise for the UI meter — coarse but responsive.
-                hearingMeter.value = (rms / 3000f).coerceIn(0f, 1f)
+                hearingMeter.floatValue = (rms / 3000f).coerceIn(0f, 1f)
                 if (rms >= SPEECH_RMS) {
                     speechFrames++
                     if (speechFrames >= SPEECH_FRAMES_TO_TRIGGER) {
@@ -246,7 +257,7 @@ class WakeWordListener(
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {
-                hearingMeter.value = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
+                hearingMeter.floatValue = (rmsdB.coerceIn(-2f, 10f) / 10f).coerceIn(0f, 1f)
             }
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
@@ -301,9 +312,12 @@ class WakeWordListener(
      */
     private fun createRecognizer(): SpeechRecognizer {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // No null check: the platform annotates this non-null, and newer
+            // SDKs make the old defensive comparison a compile warning. A device
+            // without on-device recognition throws instead, which the catch
+            // already covers.
             try {
-                val svc = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-                if (svc != null) return svc
+                return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
             } catch (_: Throwable) { /* fall through */ }
         }
         return SpeechRecognizer.createSpeechRecognizer(context)

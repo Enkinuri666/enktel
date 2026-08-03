@@ -8,13 +8,13 @@ plugins {
 
 android {
     namespace = "tv.enktel.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tv.enktel.app"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
-        versionCode = 93
+        versionCode = 95
         versionName = "1.39.0"
         vectorDrawables { useSupportLibrary = true }
 
@@ -32,6 +32,13 @@ android {
         buildConfigField("String", "EAGLE_TRIAL_URL", "\"$trialUrl\"")
         buildConfigField("String", "EAGLE_UPGRADE_URL", "\"$upgradeUrl\"")
     }
+
+    // Room writes the resolved schema for every version under
+    // app/schemas. Those files are committed, so an entity change that has no
+    // matching Migration shows up as an unreviewed schema diff instead of
+    // silently tripping fallbackToDestructiveMigration() on a user's device
+    // and taking their profiles, favourites and watch progress with it.
+    ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
     // Two product flavors so users can install the mobile and TV builds side-by-side.
     // Shared code lives in src/main; each flavor supplies its own manifest + branding.
@@ -69,9 +76,9 @@ android {
                 storePassword = envKeystorePass
                 keyAlias = envKeyAlias
                 keyPassword = envKeyPass
-                // minSdk 21 (Android 5.0/5.1, incl. Fire TV Stick 2nd-gen on Fire OS 5) can only
-                // verify APK Signature Scheme v1 (JAR signing) - v2 verification requires API 24+.
-                // v1 MUST stay enabled or the APK is uninstallable on those devices.
+                // minSdk 23 (Android 6.0) can only verify APK Signature Scheme v1
+                // (JAR signing) — v2 verification requires API 24+. v1 MUST stay
+                // enabled or the APK is uninstallable on Marshmallow.
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -101,12 +108,35 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    // kotlinOptions is deprecated in the Kotlin 2.2 Gradle plugin; the
+    // compilerOptions DSL is the replacement and takes a typed JvmTarget.
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures {
         compose = true
         buildConfig = true // used to switch TV vs mobile navigation shells at runtime
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+
+    lint {
+        // The EnkTel mark is a full-bleed emblem by design — it is meant to be
+        // read as a badge, not as a glyph floating on a plate. On API 26+ the
+        // adaptive icon in src/tv/res does the right thing (brand background,
+        // art inset into the safe zone); the legacy PNGs this fires on are the
+        // pre-26 fallback, where a full-bleed icon is the convention anyway.
+        disable += "IconLauncherShape"
+
+        // lifecycle 2.10.0 ships lint checks compiled against a newer Kotlin
+        // analysis API than the one bundled with AGP 8.7.3's lint, so
+        // NonNullableMutableLiveDataDetector dies with
+        //   IncompatibleClassChangeError: Found class KaCallableMemberCall,
+        //   but interface was expected
+        // and takes the whole lint run down with it. Nothing to do with this
+        // codebase — and the check is inert here regardless, since the app
+        // uses no LiveData at all (StateFlow + Compose state throughout;
+        // `grep -r LiveData app/src` returns nothing). Revisit when AGP moves
+        // far enough forward to carry a matching lint.
+        disable += "NullSafeMutableLiveData"
+    }
 }
 
 dependencies {
@@ -143,4 +173,6 @@ dependencies {
     // the user can pick a target folder (USB, external SD, NAS via
     // DocumentsUI) and have it treated as a plain folder for writes.
     implementation(libs.documentfile)
+
+    testImplementation(libs.junit)
 }

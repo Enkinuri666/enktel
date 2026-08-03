@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +40,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.repo.Broadcast
 import tv.enktel.app.data.repo.MatchDetail
 import tv.enktel.app.data.repo.MatchEvent
@@ -90,13 +92,15 @@ fun MatchCenterScreen(
     fallbackTitle: String = "",
 ) {
     val toaster = LocalToaster.current
+    // Observable read, so the kick-off line re-formats if the language changes.
+    val uiLocale = TimeFormat.currentLocale()
     val context = androidx.compose.ui.platform.LocalContext.current
     var detail by remember(eventId) { mutableStateOf<MatchDetail?>(null) }
     var stats by remember(eventId) { mutableStateOf<List<MatchStat>>(emptyList()) }
     var timeline by remember(eventId) { mutableStateOf<List<MatchEvent>>(emptyList()) }
     var broadcasters by remember(eventId) { mutableStateOf<List<Broadcast>>(emptyList()) }
     var loading by remember(eventId) { mutableStateOf(true) }
-    var tick by remember(eventId) { mutableStateOf(0) }
+    var tick by remember(eventId) { mutableIntStateOf(0) }
 
     LaunchedEffect(eventId, tick) {
         if (eventId.isBlank()) { loading = false; return@LaunchedEffect }
@@ -182,8 +186,10 @@ fun MatchCenterScreen(
                             SubHeader("FIXTURE")
                             Spacer(Modifier.height(6.dp))
                             if (d.kickoffMs > 0) {
-                                InfoLine("Kick-off", SimpleDateFormat("EEE d MMM · HH:mm", Locale.getDefault())
-                                    .format(Date(d.kickoffMs)))
+                                InfoLine(
+                                    "Kick-off",
+                                    TimeFormat.format("EEE d MMM · HH:mm", d.kickoffMs, uiLocale),
+                                )
                             }
                             if (d.venue.isNotBlank()) InfoLine("Venue", d.venue)
                             if (d.country.isNotBlank()) InfoLine("Country", d.country)

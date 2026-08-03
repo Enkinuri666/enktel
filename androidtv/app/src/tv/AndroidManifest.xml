@@ -14,13 +14,28 @@
         android:banner="@drawable/tv_banner"
         tools:replace="android:banner">
 
+        <!--
+            tools:ignore rationale:
+              DiscouragedApi   — the fixed landscape lock is the point of this
+                                 flavor. A TV or Fire Stick has no other
+                                 orientation, and letting the activity rotate
+                                 only ever produced a rotated UI on the handful
+                                 of Android TV boxes that report a sensor.
+                                 The mobile flavor is unlocked.
+              UnusedAttribute  — supportsPictureInPicture needs API 24 and
+                                 minSdk is 21. Older platforms ignore unknown
+                                 manifest attributes, and PictureInPicture.kt
+                                 gates every call behind a version check, so
+                                 declaring it costs nothing on API 21-23.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:supportsPictureInPicture="true">
+            android:supportsPictureInPicture="true"
+            tools:ignore="DiscouragedApi,UnusedAttribute">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

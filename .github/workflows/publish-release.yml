@@ -72,7 +72,7 @@ jobs:
       - name: Set up Android SDK build-tools
         uses: android-actions/setup-android@v3
         with:
-          packages: 'build-tools;35.0.0 platforms;android-35'
+          packages: 'build-tools;36.0.0 platforms;android-36'
 
       # Fail before spending seven minutes on a build we can't sign.
       - name: Decode release keystore
@@ -106,13 +106,13 @@ jobs:
       - name: Build signed release APKs + AABs (tv + mobile)
         run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease :app:bundleTvRelease :app:bundleMobileRelease --no-daemon
 
-      # v1 (JAR) signing is not optional: API 21 devices — including the Fire TV
-      # Stick 2nd gen this app explicitly supports — cannot verify v2/v3, so an
-      # APK without a v1 signature is silently uninstallable there. Assert it
-      # rather than trusting the Gradle config stayed correct.
+      # v1 (JAR) signing is not optional: devices below API 24 cannot verify
+      # v2/v3, so an APK without a v1 signature is silently uninstallable on
+      # the Marshmallow/Nougat end of the supported range. Assert it rather
+      # than trusting the Gradle config stayed correct.
       - name: Verify APK signatures
         run: |
-          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           [ -x "$APKSIGNER" ] || APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           for apk in \
             app/build/outputs/apk/tv/release/app-tv-release.apk \
@@ -121,7 +121,7 @@ jobs:
             echo "== $apk"
             "$APKSIGNER" verify --verbose "$apk"
             "$APKSIGNER" verify --verbose "$apk" | grep -q "^Verified using v1 scheme (JAR signing): true$" || {
-              echo "::error::$apk is missing a v1 signature — it would not install on API 21 devices." >&2
+              echo "::error::$apk is missing a v1 signature — it would not install below API 24." >&2
               exit 1
             }
           done
@@ -181,7 +181,7 @@ jobs:
             fi
             echo
             echo "Both APKs are signed with the release key and carry v1 + v2 + v3 signatures,"
-            echo "so they install on API 21 devices (Fire TV Stick 2nd gen) as well as modern ones,"
+            echo "so they install across the whole supported range (see minSdk in app/build.gradle.kts)"
             echo "and upgrade existing installs in place."
           } > "$RUNNER_TEMP/notes.md"
 

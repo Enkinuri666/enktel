@@ -498,7 +498,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
                     val now = System.currentTimeMillis()
                     val lines = upcoming.map { prog ->
                         val isNow = prog.startMs <= now && prog.endMs > now
-                        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(prog.startMs))
+                        val time = tv.enktel.app.data.TimeFormat.format("HH:mm", prog.startMs)
                         tv.enktel.app.voice.VoiceAnswerLine(
                             title = (if (isNow) "🔴  " else "$time  ") + prog.title,
                             subtitle = if (isNow) "Now" else "",
@@ -1023,9 +1023,14 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     DisposableEffect(playbackActive, pipOn, autoPipOnHome) {
         tv.enktel.app.player.PictureInPicture.playerActive = playbackActive
         tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = playbackActive && pipOn && autoPipOnHome
+        // Push the flags to the system. setAutoEnterEnabled only takes effect
+        // once the params are actually handed over, so setting the booleans
+        // without this left auto-enter permanently off.
+        (ctx as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.update(it) }
         onDispose {
             tv.enktel.app.player.PictureInPicture.playerActive = false
             tv.enktel.app.player.PictureInPicture.userWantsPipOnBack = false
+            (ctx as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.update(it) }
         }
     }
 

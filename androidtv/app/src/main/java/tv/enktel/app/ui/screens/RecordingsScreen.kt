@@ -36,6 +36,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Recording
 import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.ui.components.Badge
@@ -53,9 +54,6 @@ import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.max
 
 /**
@@ -237,7 +235,7 @@ private fun RecordingRow(
                     }
                 }
                 Text(
-                    "${rec.channelName} · ${SimpleDateFormat("EEE d MMM HH:mm", Locale.getDefault()).format(Date(rec.startMs))}" +
+                    "${rec.channelName} · ${TimeFormat.format("EEE d MMM HH:mm", rec.startMs)}" +
                         if (rec.sizeBytes > 0) " · ${formatBytes(rec.sizeBytes)}" else "",
                     fontSize = 12.sp, color = EnktelTextDim,
                 )

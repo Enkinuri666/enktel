@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Real display name comes from the resValue "app_name_flavor" defined in build.gradle.kts. -->
-    <string name="tagline">Stream Beyond Limits</string>
 </resources>

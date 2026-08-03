@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -88,7 +89,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     var rows by remember { mutableStateOf<List<SportsRepository.LiveSportsChannel>>(emptyList()) }
     var scores by remember { mutableStateOf<List<LiveScore>>(emptyList()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
-    var refreshTick by remember { mutableStateOf(0) }
+    var refreshTick by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(p.id, refreshTick, followed) {

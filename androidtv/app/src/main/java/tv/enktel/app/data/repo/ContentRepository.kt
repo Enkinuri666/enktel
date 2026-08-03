@@ -251,14 +251,14 @@ class ContentRepository(
         var liveIdx = 0
         playlist.entries.forEachIndexed { i, e ->
             if (e.isVod) {
-                if (!groups.containsKey(e.group)) groups[e.group] = "vod" // minSdk 21: putIfAbsent needs API 24
+                if (!groups.containsKey(e.group)) groups[e.group] = "vod" // minSdk 23: putIfAbsent needs API 24
                 movies += Movie(
                     key = "${p.id}:${i + 1}", profileId = p.id, streamId = (i + 1).toLong(),
                     name = e.name, poster = e.logo, categoryId = e.group, url = e.url,
                     ext = e.url.substringAfterLast('.', "mp4").take(5),
                 )
             } else {
-                if (!groups.containsKey(e.group)) groups[e.group] = "live" // minSdk 21: putIfAbsent needs API 24
+                if (!groups.containsKey(e.group)) groups[e.group] = "live" // minSdk 23: putIfAbsent needs API 24
                 liveIdx++
                 channels += Channel(
                     key = "${p.id}:${i + 1}", profileId = p.id, streamId = (i + 1).toLong(),

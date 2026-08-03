@@ -1,5 +1,6 @@
 package tv.enktel.app.data.net
 
+import android.annotation.SuppressLint
 import android.os.Build
 import okhttp3.OkHttpClient
 import java.security.KeyStore
@@ -18,9 +19,9 @@ import javax.net.ssl.X509TrustManager
  *
  * ISRG Root X1 — the root behind the majority of the certificates IPTV panels
  * present — was added to Android's system trust store in **7.1.1 (API 25)**.
- * This app supports API 21, which includes the Fire TV Stick 2nd gen it
- * explicitly targets. On those devices an HTTPS panel with a Let's Encrypt
- * certificate fails the handshake outright:
+ * This app supports API 23, so devices on 6.0 and 7.0 are still in range.
+ * On those an HTTPS panel with a Let's Encrypt certificate fails the
+ * handshake outright:
  *
  *     SSLHandshakeException: Trust anchor for certification path not found
  *
@@ -76,6 +77,20 @@ object LegacyTls {
             .filterIsInstance<X509TrustManager>()
             .firstOrNull()
     } catch (_: Throwable) { null }
+
+    /**
+     * The bundled roots, parsed. Exposed (internal) so LegacyTlsTest can assert
+     * their SHA-256 fingerprints — a typo in the embedded PEM below would
+     * otherwise only show up as a silent loss of the fallback on old devices.
+     */
+    internal fun bundledAnchors(): List<X509Certificate> {
+        val factory = CertificateFactory.getInstance("X.509")
+        return listOf(ISRG_ROOT_X1, ISRG_ROOT_X2).mapNotNull { pem ->
+            runCatching {
+                pem.byteInputStream().use { factory.generateCertificate(it) as X509Certificate }
+            }.getOrNull()
+        }
+    }
 
     private fun bundledTrustManager(): X509TrustManager? {
       return try {
@@ -160,6 +175,7 @@ object LegacyTls {
      * can only ever widen trust to the two roots above, never narrow or
      * redirect what the platform would have accepted on its own.
      */
+    @SuppressLint("CustomX509TrustManager")
     private class FallbackTrustManager(
         private val system: X509TrustManager,
         private val bundled: X509TrustManager,
