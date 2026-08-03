@@ -83,7 +83,8 @@ class AppGraph(app: Application) {
         .let { tv.enktel.app.data.net.LegacyTls.install(it) }
         .build()
     val xtream = XtreamClient(http)
-    val playlists = PlaylistRepository(db.profileDao(), settings, xtream)
+    val trialClient = tv.enktel.app.data.net.EagleTrialClient(http)
+    val playlists = PlaylistRepository(db.profileDao(), settings, xtream, trialClient)
     val content = ContentRepository(app, db, xtream, http)
     val epg = EpgRepository(db, xtream, http)
     val sports = SportsRepository(content, epg)
