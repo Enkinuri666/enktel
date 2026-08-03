@@ -108,6 +108,18 @@ android {
         // art inset into the safe zone); the legacy PNGs this fires on are the
         // pre-26 fallback, where a full-bleed icon is the convention anyway.
         disable += "IconLauncherShape"
+
+        // lifecycle 2.10.0 ships lint checks compiled against a newer Kotlin
+        // analysis API than the one bundled with AGP 8.7.3's lint, so
+        // NonNullableMutableLiveDataDetector dies with
+        //   IncompatibleClassChangeError: Found class KaCallableMemberCall,
+        //   but interface was expected
+        // and takes the whole lint run down with it. Nothing to do with this
+        // codebase — and the check is inert here regardless, since the app
+        // uses no LiveData at all (StateFlow + Compose state throughout;
+        // `grep -r LiveData app/src` returns nothing). Revisit when AGP moves
+        // far enough forward to carry a matching lint.
+        disable += "NullSafeMutableLiveData"
     }
 }
 
