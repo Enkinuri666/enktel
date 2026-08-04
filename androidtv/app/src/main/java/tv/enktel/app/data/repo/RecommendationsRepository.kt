@@ -59,21 +59,45 @@ class RecommendationsRepository(private val content: ContentRepository) {
     }
 
     /** Latest Releases — freshest additions to the catalogue, refreshed daily by ContentRefreshWorker. */
+    /**
+     * Latest *releases* — newest by release year.
+     *
+     * This sorted by `addedAt`, which is when the title appeared in the
+     * playlist, not when the film came out. That made it a duplicate of
+     * "Recently Added" and of "New This Week" — three rails running the same
+     * query under three names, which is why Home showed the same handful of
+     * titles repeatedly and never actually surfaced new releases.
+     *
+     * Year is the only release signal the catalogue carries. Ties break on
+     * addedAt so that within a year the freshest arrivals lead.
+     */
     suspend fun latestReleases(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
         content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() }
-            .sortedByDescending { it.addedAt }
+            .filter { it.poster.isNotBlank() && it.year > 0 }
+            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
             .take(n)
             .toList()
     }
 
-    /** Coming Soon — movies whose release year is the current year or later, sorted by year desc.
-     *  Xtream/Eagle-style panels don't expose a dedicated "coming-soon" endpoint, so we surface
-     *  the newest year-labelled titles as upcoming/premiere content. */
+    /**
+     * Coming Soon — titles whose release year is still in the future.
+     *
+     * Was `year >= currentYear`, which in any month after January matches every
+     * film released earlier the same year. That is precisely the reported bug:
+     * a rail promising "coming soon" full of things released months ago.
+     *
+     * The catalogue carries a release *year* and no release date, so a title
+     * dated this year cannot be distinguished from one released last week.
+     * Strictly-future years is the only claim the data actually supports.
+     *
+     * This rail is therefore usually empty — panels rarely list next year's
+     * films — and Home already hides it when it is. An empty honest rail beats
+     * a full dishonest one.
+     */
     suspend fun comingSoon(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() && it.year >= currentYear }
+            .filter { it.poster.isNotBlank() && it.year > currentYear }
             .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
             .take(n)
             .toList()
@@ -145,47 +169,64 @@ class RecommendationsRepository(private val content: ContentRepository) {
         )
     }
 
-    // ---- v1.20.0 themed rails (UFO / UAP / Exopolitics) --------------------
-    // Backed by the DB `tags` column which the MetadataEnrichmentWorker
-    // populates from TMDB keywords. Falls back to matching `name` + `genre`
-    // so users see hits even before enrichment runs.
+    // ---- General-interest rails -------------------------------------------
+    // Built from fields every catalogue carries — rating, genre, year — rather
+    // than from enriched keyword tags, so they populate on a fresh sync
+    // instead of waiting for the enrichment worker.
 
-    /** "The Phenomenon" — mixed movies + series matching the broad UFO/UAP
-     *  keyword umbrella (see [tv.enktel.app.data.metadata.UfoKeywords]). */
-    suspend fun phenomenonMovies(profileId: Long, n: Int = 30): List<Movie> =
-        content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
+    /**
+     * Top Rated — the catalogue's best-reviewed titles.
+     *
+     * Distinct from [trending], which floors at 6.5 and then orders by recency:
+     * this orders by rating outright, so it answers "what is genuinely good"
+     * rather than "what is good and new".
+     */
+    suspend fun topRated(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
+        content.movies(profileId).first().asSequence()
+            .filter { it.poster.isNotBlank() && it.rating > 0 }
+            .sortedWith(compareByDescending<Movie> { it.rating }.thenByDescending { it.year })
+            .take(n)
+            .toList()
+    }
 
-    suspend fun phenomenonSeries(profileId: Long, n: Int = 30): List<tv.enktel.app.data.db.Series> =
-        content.seriesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
+    /**
+     * Documentaries — by genre, not by subject keyword.
+     *
+     * Replaces the keyword-matched "Deep Dive Documentaries" rail, which only
+     * surfaced documentaries about one specific topic and so was empty on most
+     * catalogues.
+     */
+    suspend fun documentaries(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
+        content.movies(profileId).first().asSequence()
+            .filter { it.poster.isNotBlank() && it.genre.contains("documentar", ignoreCase = true) }
+            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
+            .take(n)
+            .toList()
+    }
 
-    /** "Deep Dive Documentaries" — documentary genre + phenomenon keywords. */
-    suspend fun deepDiveDocs(profileId: Long, n: Int = 30): List<Movie> =
-        content.moviesDocsMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, n)
-
-    /** "Latest Exopolitics" — narrower exopolitics keyword set, sorted by
-     *  release year descending so the freshest content leads. */
-    suspend fun latestExopolitics(profileId: Long, n: Int = 30): List<Movie> =
-        content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.exopolitics, n)
-
-    // ---- v1.25.0 consolidated home rails -----------------------------------
-    // Everything above is a per-rail query that reads the full movie list
-    // and applies its own filter/sort. When mood/theme keywords overlap
-    // (`crime` hits "Gritty", "Fast-Paced" *and* "Trending"), the same
-    // half-dozen top-rated titles ended up dominating every rail on the
-    // home page. [homeRails] computes the whole set in one pass with
-    // cross-rail dedup so each themed strip has a distinct sample:
-    //
-    //   Continue Watching / Watchlist / Recordings / Favs are user-owned
-    //     rails and stay untouched — they should always contain their
-    //     entries even if those items also match a mood.
-    //   Latest Releases is picked first so newest content is guaranteed
-    //     to appear even when it also fits a mood.
-    //   Trending → New This Week → Because You Watched follow, each
-    //     drawing from the pool minus everything already handed out.
-    //   Mood + themed rails come last, taking the top matches remaining.
-    //
-    // Result: no more "Blade Runner 2049 in every single rail" feel; each
-    // strip surfaces a genuinely different corner of the catalogue.
+    /**
+     * Newest series by release year.
+     *
+     * Home was almost entirely films — every rail but "Favorite Channels" drew
+     * from the movie table — so a catalogue's series content was invisible
+     * unless the user opened the Series tab deliberately.
+     *
+     * Ordered by year rather than by arrival: unlike Movie, the Series entity
+     * carries no `addedAt`, because the Xtream series listing does not publish
+     * an `added` field. Year is the only recency signal available, so the rail
+     * is named for what it can actually show.
+     */
+    suspend fun newSeries(profileId: Long, n: Int = 20): List<tv.enktel.app.data.db.Series> =
+        withContext(Dispatchers.Default) {
+            content.series(profileId).first().asSequence()
+                .filter { it.poster.isNotBlank() && it.year > 0 }
+                .sortedWith(
+                    compareByDescending<tv.enktel.app.data.db.Series> { it.year }
+                        .thenByDescending { it.rating },
+                )
+                .take(n)
+                .toList()
+        }
 
     /** Aggregated home-page rail payload. */
     data class HomeRails(
@@ -200,9 +241,9 @@ class RecommendationsRepository(private val content: ContentRepository) {
         val moodMindBending: List<Movie>,
         val moodLateNight: List<Movie>,
         val moodFeelGood: List<Movie>,
-        val phenomenon: List<Movie>,
-        val deepDiveDocs: List<Movie>,
-        val latestExopolitics: List<Movie>,
+        val topRated: List<Movie>,
+        val documentaries: List<Movie>,
+        val newSeries: List<tv.enktel.app.data.db.Series>,
     )
 
     suspend fun homeRails(profileId: Long): HomeRails = withContext(Dispatchers.Default) {
@@ -314,18 +355,11 @@ class RecommendationsRepository(private val content: ContentRepository) {
         val moodLate = pick(moodPool(listOf("comedy", "sitcom", "family", "romance", "animation"), 5.5), 14)
         val moodGood = pick(moodPool(listOf("animation", "family", "romance", "music", "biography"), 6.0), 14)
 
-        val phen = pick(
-            content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, 60),
-            30,
-        )
-        val docs = pick(
-            content.moviesDocsMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.phenomenon, 60),
-            30,
-        )
-        val exo = pick(
-            content.moviesMatchingKeywords(profileId, tv.enktel.app.data.metadata.UfoKeywords.exopolitics, 60),
-            30,
-        )
+        val topRatedRail = pick(topRated(profileId, 40), 20)
+        val docsRail = pick(documentaries(profileId, 40), 20)
+        // Series are not deduped against the movie pool — different table, no
+        // overlap possible — so they are taken directly.
+        val seriesRail = newSeries(profileId, 20)
 
         HomeRails(
             latestReleases = latest,
@@ -339,9 +373,9 @@ class RecommendationsRepository(private val content: ContentRepository) {
             moodMindBending = moodMind,
             moodLateNight = moodLate,
             moodFeelGood = moodGood,
-            phenomenon = phen,
-            deepDiveDocs = docs,
-            latestExopolitics = exo,
+            topRated = topRatedRail,
+            documentaries = docsRail,
+            newSeries = seriesRail,
         )
     }
 }

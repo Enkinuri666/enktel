@@ -97,9 +97,9 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val moodFastPaced = rails?.moodFastPaced ?: emptyList()
     val moodMindBending = rails?.moodMindBending ?: emptyList()
     val moodFeelGood = rails?.moodFeelGood ?: emptyList()
-    val phenomenonMovies = rails?.phenomenon ?: emptyList()
-    val deepDiveDocs = rails?.deepDiveDocs ?: emptyList()
-    val latestExopolitics = rails?.latestExopolitics ?: emptyList()
+    val topRated = rails?.topRated ?: emptyList()
+    val documentaries = rails?.documentaries ?: emptyList()
+    val newSeries = rails?.newSeries ?: emptyList()
 
     // If the profile has never finished its first sync (e.g. onboarding was interrupted),
     // kick off content + EPG sync in the background. Only key on p.id — depending on
@@ -288,48 +288,61 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        // v1.20.0 themed rails — surfaced above "Because You Watched" so
-        // engaged viewers see the fresh content first. Each is skipped when
-        // its query yields nothing so the home page doesn't render empty
-        // section headers on catalogues that don't overlap the theme.
-        if (phenomenonMovies.isNotEmpty()) {
+        // General-interest rails, surfaced above "Because You Watched" so
+        // engaged viewers meet fresh content first. Each is skipped when its
+        // query yields nothing, so a catalogue that lacks one does not render
+        // an empty section header.
+        //
+        // These replace three keyword-matched UFO/disclosure rails. Those
+        // filtered on one narrow subject, so on most catalogues they were
+        // either empty or repeated the same handful of titles — occupying the
+        // top of Home without earning it.
+        if (topRated.isNotEmpty()) {
             item {
                 ContentRail(
-                    "🛸  The Phenomenon", phenomenonMovies,
-                    accent = tv.enktel.app.ui.theme.EnktelPurple,
-                    subtitle = "UFO / UAP / disclosure — movies + series",
-                    key = { it.key },
-                ) { m ->
-                    PosterCard(m.name, m.poster, subtitle = m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
-                }
-            }
-        }
-        if (deepDiveDocs.isNotEmpty()) {
-            item {
-                ContentRail(
-                    "📚  Deep Dive Documentaries", deepDiveDocs,
-                    accent = tv.enktel.app.ui.theme.EnktelBlue,
-                    subtitle = "long-form documentaries covering the phenomenon",
-                    key = { it.key },
-                ) { m ->
-                    PosterCard(m.name, m.poster,
-                        subtitle = if (m.year > 0) "${m.year} · ${m.genre.take(18)}" else m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
-                }
-            }
-        }
-        if (latestExopolitics.isNotEmpty()) {
-            item {
-                ContentRail(
-                    "🌐  Latest Exopolitics", latestExopolitics,
+                    "★  Top Rated", topRated,
                     accent = tv.enktel.app.ui.theme.EnktelOk,
-                    subtitle = "disclosure / whistleblower / recent releases",
+                    subtitle = "highest rated in your playlist",
                     key = { it.key },
                 ) { m ->
-                    PosterCard(m.name, m.poster,
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else m.genre.take(24),
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId,
+                    )
+                }
+            }
+        }
+        if (newSeries.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "📺  New Series", newSeries,
+                    accent = tv.enktel.app.ui.theme.EnktelPurple,
+                    subtitle = "newest shows in your playlist",
+                    key = { it.key },
+                ) { sr ->
+                    PosterCard(
+                        sr.name, sr.poster,
+                        subtitle = if (sr.year > 0) "${sr.year}" else sr.genre.take(24),
+                        onClick = { nav.navigate("seriesDetails/${sr.key}") },
+                        tmdbId = sr.tmdbId, isSeries = true,
+                    )
+                }
+            }
+        }
+        if (documentaries.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "📚  Documentaries", documentaries,
+                    accent = tv.enktel.app.ui.theme.EnktelBlue,
+                    subtitle = "factual and long-form",
+                    key = { it.key },
+                ) { m ->
+                    PosterCard(
+                        m.name, m.poster,
                         subtitle = if (m.year > 0) "${m.year}" else m.genre.take(24),
-                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId,
+                    )
                 }
             }
         }
