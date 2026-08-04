@@ -940,6 +940,10 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             val kidsMode by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
             if (kidsMode) tv.enktel.app.ui.screens.KidsModeScreen(graph, nav) else HomeScreen(graph, nav)
         }
+        // "channels" is where the nav rail's Live TV entry lands: browse first,
+        // then play. "live?ch=" is the player itself, reached from a card here,
+        // from the guide, or from a deep link.
+        composable("channels") { tv.enktel.app.ui.live.ChannelBrowserScreen(graph, nav) }
         composable("live?ch={ch}") { back ->
             LivePlayerScreen(graph, nav, initialChannelKey = back.arguments?.getString("ch").orEmpty())
         }

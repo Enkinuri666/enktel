@@ -94,7 +94,7 @@ data class TvNavItem(
  */
 private val DEFAULT_ITEMS = listOf(
     TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
-    TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "live?ch="),
+    TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
     TvNavItem("guide", "TV Guide", Icons.Rounded.CalendarMonth, "guide"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
     TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),

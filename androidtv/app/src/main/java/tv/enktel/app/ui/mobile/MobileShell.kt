@@ -65,7 +65,7 @@ data class MobileTab(
 
 val MOBILE_TABS = listOf(
     MobileTab("Home", Icons.Filled.Home, "home"),
-    MobileTab("Live TV", Icons.Filled.LiveTv, "live?ch="),
+    MobileTab("Live TV", Icons.Filled.LiveTv, "channels"),
     MobileTab("Search", Icons.Filled.Search, "search"),
     MobileTab("Enki", Icons.Filled.Mic, "__mic", special = "mic"),
     MobileTab("Sports", Icons.Filled.SportsSoccer, "sports"),
@@ -162,7 +162,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
     ) {
         MOBILE_TABS.forEach { tab ->
             val selected = current == tab.route ||
-                (tab.route == "live?ch=" && current.startsWith("live?ch=")) ||
+                (tab.route == "channels" && current.startsWith("live?ch=")) ||
                 (tab.route == "search" && current == "search")
             Box(
                 Modifier

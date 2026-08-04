@@ -79,7 +79,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
     val profile by androidx.compose.runtime.produceState<tv.enktel.app.data.db.Profile?>(initialValue = null) {
         value = try { graph.playlists.activeProfile() } catch (_: Throwable) { null }
     }
-    var pingMs by remember { mutableStateOf<Int?>(null) }
+    var ping by remember { mutableStateOf<SystemMonitor.Ping?>(null) }
     var pinging by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
@@ -167,20 +167,24 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
                         FocusButton(
                             if (pinging) "Pinging…" else "Ping panel now",
                             onClick = {
-                                val server = profile?.server.orEmpty()
-                                if (server.isBlank() || pinging) return@FocusButton
+                                val p = profile ?: return@FocusButton
+                                if (pinging) return@FocusButton
                                 pinging = true
                                 scope.launch {
-                                    pingMs = SystemMonitor.probeLatency(graph.http, server)
+                                    ping = SystemMonitor.probeLatency(graph.http, pingTarget(p))
                                     pinging = false
                                 }
                             },
                         )
                         Spacer(Modifier.width(10.dp))
-                        pingMs?.let {
+                        ping?.let { r ->
                             Text(
-                                if (it >= 0) "Round trip $it ms" else "Panel did not respond",
-                                color = if (it >= 0) EnktelOk else EnktelLive, fontSize = 12.sp,
+                                when {
+                                    r.ok && r.error != null -> "${r.ms} ms · ${r.error}"
+                                    r.ok -> "Round trip ${r.ms} ms (HTTP ${r.httpCode}, ${r.via})"
+                                    else -> "No reply — ${r.error ?: "unknown"}"
+                                },
+                                color = if (r.ok) EnktelOk else EnktelLive, fontSize = 12.sp,
                             )
                         }
                     }
@@ -379,4 +383,20 @@ private fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Mo
             }
         }
     }
+}
+
+/**
+ * The URL worth pinging for a given line.
+ *
+ * The bare server root is the wrong target: panels routinely answer it with a
+ * redirect to a marketing page, a 403 from the front-end WAF, or nothing at
+ * all, none of which says anything about whether *the API* is up. For an
+ * Xtream line the login endpoint is the thing the app actually depends on, so
+ * that is what gets measured; an M3U line has only its playlist URL.
+ */
+private fun pingTarget(p: tv.enktel.app.data.db.Profile): String = when {
+    p.kind == "xtream" && p.server.isNotBlank() ->
+        p.server.trimEnd('/') + "/player_api.php?username=${p.username}&password=${p.password}"
+    p.m3uUrl.isNotBlank() -> p.m3uUrl
+    else -> p.server
 }

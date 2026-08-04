@@ -369,6 +369,18 @@ class SettingsStore(private val context: Context) {
     suspend fun setRecSuffixMin(v: Int) = context.dataStore.edit { it[REC_SUFFIX_MIN] = v }
     suspend fun setAutoEpgHours(v: Int) = context.dataStore.edit { it[AUTO_EPG_HOURS] = v }
     suspend fun setHiddenChannels(set: Set<String>) = context.dataStore.edit { it[HIDDEN_CHANNELS] = set }
+
+    /**
+     * Hide or unhide one channel.
+     *
+     * Read-modify-write inside a single `edit` block rather than via the
+     * exposed flow: two rapid taps against a flow read would both see the
+     * pre-edit set and the second would undo the first.
+     */
+    suspend fun toggleHiddenChannel(key: String) = context.dataStore.edit { prefs ->
+        val cur = prefs[HIDDEN_CHANNELS] ?: emptySet()
+        prefs[HIDDEN_CHANNELS] = if (key in cur) cur - key else cur + key
+    }
     suspend fun setVodSort(v: String) = context.dataStore.edit { it[VOD_SORT] = v }
     suspend fun pushRecentChannel(key: String) = context.dataStore.edit { prefs ->
         val current = prefs[RECENT_CHANNELS]?.split('|')?.filter(String::isNotBlank).orEmpty()

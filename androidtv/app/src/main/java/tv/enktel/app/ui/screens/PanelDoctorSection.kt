@@ -354,7 +354,24 @@ private fun StructureCard(r: PanelReport) {
         st.error?.let { Text(it, color = EnktelLive, fontSize = 11.sp) }
         Row2("Live streams", st.liveCount.toString())
         Row2("VOD titles", st.vodCount.toString())
-        Row2("Channels with archive", st.archiveCount.toString())
+        // Two cards used to show a row called "Channels with archive" holding
+        // different numbers — this one read the panel live, the catch-up card
+        // counted the synced database. Same label, two sources, and no way for
+        // a reader to tell which to believe. They are named for their source
+        // now, and a real gap between them is called out: it means the local
+        // catalogue has drifted from the panel and wants a re-sync.
+        Row2("Archive channels (panel, live)", st.archiveCount.toString())
+        val synced = r.catchup.channelsWithArchive
+        if (st.queried && st.error == null && st.archiveCount > 0 && synced > 0) {
+            val drift = kotlin.math.abs(st.archiveCount - synced)
+            if (drift > (st.archiveCount / 10).coerceAtLeast(5)) {
+                Row2(
+                    "Synced copy says",
+                    "$synced — re-sync the playlist",
+                    EnktelLive,
+                )
+            }
+        }
         if (st.vodContainers.isNotEmpty()) {
             Row2(
                 "Declared containers",
@@ -404,7 +421,7 @@ private fun CatchupCard(r: PanelReport) {
     val c = r.catchup
     Card {
         Text("CATCH-UP / TIME-SHIFT", color = Color_White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Row2("Channels with archive", c.channelsWithArchive.toString())
+        Row2("Archive channels (synced catalogue)", c.channelsWithArchive.toString())
         if (c.tested) Row2("Scheme", c.scheme.name.lowercase().replace('_', ' '))
         if (!c.tested) {
             Row2("Endpoint", c.error ?: "not tested", EnktelTextDim)
