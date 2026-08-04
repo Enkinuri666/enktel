@@ -277,26 +277,18 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
     Box(Modifier.fillMaxSize()) {
         content()
 
-        // While a player is on-screen we do NOT paint a mic peek/FAB on top
-        // of the video. Voice is still available via the remote's mic key,
-        // the "Hey Enki" wake word (Settings → Voice), and — on mobile — the
-        // bottom-nav Mic tab once the user exits playback. Overlaying an
-        // always-visible mic glyph over the picture was surfaced as an
-        // "obstructing on-screen bubble" complaint, and users watching a
-        // channel or a movie almost never want a persistent tap target
-        // stealing screen space.
-        if (playerActive) {
-            // no-op — see block comment above
-        } else if (!isMobile) {
-            MicFab(
-                listening = listening,
-                onTap = { toggleListening() },
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(start = 14.dp, bottom = 84.dp),
-            )
-        }
+        // No floating mic control is painted on any screen, in either flavor.
+        //
+        // On TV it was worse than clutter: the FAB was anchored bottom-start,
+        // which put it directly on top of the navigation rail, and it was a
+        // pointer-input Box with no focusability — so a Fire TV remote's D-pad
+        // could not reach it at all. An on-screen control a remote cannot
+        // select is not a control, it is an obstruction covering two real menu
+        // items. Voice on TV is reached by the remote's own mic key, the
+        // "Hey Enki" wake word (Settings → Voice) and the Search screen.
+        //
+        // On mobile the mic lives in the bottom nav bar (see MobileShell), and
+        // during playback nothing overlays the picture in either flavor.
 
         if (listening) {
             // While playing, anchor the card to the top-start out of the
@@ -419,28 +411,6 @@ private fun MicEdgePeek(listening: Boolean, onTap: () -> Unit, modifier: Modifie
         Text(
             if (listening) "●" else "🎙",
             fontSize = 12.sp, fontWeight = FontWeight.Black,
-            color = androidx.compose.ui.graphics.Color.White,
-        )
-    }
-}
-
-@Composable
-private fun MicFab(listening: Boolean, onTap: () -> Unit, modifier: Modifier) {
-    Box(
-        modifier
-            .size(if (listening) 56.dp else 44.dp)
-            .background(
-                if (listening) EnktelLive else EnktelBlue.copy(alpha = 0.85f),
-                CircleShape,
-            )
-            .border(2.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.35f), CircleShape)
-            .pointerInput(Unit) { detectTapGestures { onTap() } },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            if (listening) "●" else "🎙",
-            fontSize = if (listening) 20.sp else 22.sp,
-            fontWeight = FontWeight.Black,
             color = androidx.compose.ui.graphics.Color.White,
         )
     }
