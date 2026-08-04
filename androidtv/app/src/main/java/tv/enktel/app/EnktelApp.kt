@@ -93,6 +93,7 @@ class AppGraph(app: Application) {
     @Volatile private var sportsDbKeySnapshot: String = ScoresRepository.FREE_KEY
     val scores = ScoresRepository(http) { sportsDbKeySnapshot }
     val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
+    val feed = tv.enktel.app.data.repo.EnktelFeed(http)
     val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 

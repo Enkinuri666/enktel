@@ -184,6 +184,9 @@ class ContentRepository(
                 hasArchive = e.bool("tv_archive") || (e.int("tv_archive") ?: 0) > 0,
                 archiveDays = e.int("tv_archive_duration") ?: 0,
                 sortIdx = i,
+                // Xtream reports audio-only entries through the same
+                // get_live_streams call, distinguished only by stream_type.
+                isRadio = e.str("stream_type")?.contains("radio", true) == true,
             )
         }
 
@@ -267,6 +270,7 @@ class ContentRepository(
                     epgId = e.tvgId, url = e.url,
                     hasArchive = e.catchupDays > 0, archiveDays = e.catchupDays,
                     sortIdx = liveIdx,
+                    isRadio = e.isRadio, userAgent = e.userAgent,
                 )
             }
         }
