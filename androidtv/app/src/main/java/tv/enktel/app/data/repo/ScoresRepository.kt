@@ -26,7 +26,20 @@ data class LiveScore(
     val league: String,
     val sport: String,
     val status: String = "",
-)
+    /** Team crest URLs — the API supplies them and they cost nothing to carry. */
+    val homeBadge: String = "",
+    val awayBadge: String = "",
+) {
+    /** Not started yet: no score to show, [minute] holds the kick-off time. */
+    val notStarted: Boolean get() = status.equals("NS", true)
+
+    /** Match is over. */
+    val finished: Boolean get() =
+        status.equals("FT", true) || status.equals("AET", true) || status.equals("PEN", true)
+
+    /** Actually in play right now — the only state that deserves a live pulse. */
+    val inPlay: Boolean get() = !notStarted && !finished
+}
 
 /** Everything the Match Centre knows about one fixture. */
 data class MatchDetail(
@@ -114,6 +127,21 @@ class ScoresRepository(
 ) {
     companion object {
         const val FREE_KEY = "3"
+
+        /**
+         * JSON root keys per endpoint.
+         *
+         * Named rather than inlined because getting one wrong fails silently:
+         * the parse succeeds, the array is simply absent, and the feature
+         * reports "nothing right now" forever. That is exactly how live scores
+         * spent several releases looking switched off — `livescore.php`
+         * returns its rows under `livescore`, and the code asked for `events`.
+         */
+        const val ROOT_LIVESCORE = "livescore"
+        const val ROOT_EVENTS = "events"
+        const val ROOT_TIMELINE = "timeline"
+        const val ROOT_EVENTSTATS = "eventstats"
+        const val ROOT_TVEVENT = "tvevent"
     }
 
     private val base: String get() = "https://www.thesportsdb.com/api/v1/json/${apiKey().ifBlank { FREE_KEY }}"
@@ -131,19 +159,31 @@ class ScoresRepository(
     var lastStatus: String = ""
         private set
 
-    /** True when live scores can't work with the configured key. */
-    val liveScoresNeedKey: Boolean get() = apiKey().ifBlank { FREE_KEY } == FREE_KEY
+    /**
+     * True when running on the shared free key.
+     *
+     * Not a blocker — the free key serves live scores fine. It is rate-limited
+     * and shared across every app that uses it, so a personal key is worth
+     * having, but the feature is not gated on one and must not be presented as
+     * though it were.
+     */
+    val usingSharedFreeKey: Boolean get() = apiKey().ifBlank { FREE_KEY } == FREE_KEY
 
     // ---- in-play scoreboard ------------------------------------------------
 
     /** Every event currently in play, across all sports. */
     suspend fun live(): List<LiveScore> = withContext(Dispatchers.IO) {
-        val events = fetchArray("$base/livescore.php?s=all", "events")
+        // The root key is `livescore`, not `events`.
+        //
+        // This is why live scores appeared to do nothing: the endpoint was
+        // being read for an "events" array that its response has never
+        // contained, so the list was always empty — and the empty result was
+        // then blamed on the free key, which was wrong twice over. The free
+        // key serves this endpoint perfectly well; verified returning 30
+        // in-play fixtures across sports.
+        val events = fetchArray("$base/livescore.php?s=all", ROOT_LIVESCORE)
         lastStatus = when {
             events.isNotEmpty() -> ""
-            liveScoresNeedKey ->
-                "Live scores need a TheSportsDB Premium key — the free key doesn't " +
-                    "include the in-play endpoint. Add one in Settings → Sports."
             else -> "TheSportsDB returned no in-play matches right now."
         }
         events.mapNotNull { e ->
@@ -153,12 +193,29 @@ class ScoresRepository(
                 away = e.str("strAwayTeam") ?: return@mapNotNull null,
                 homeScore = e.str("intHomeScore") ?: "–",
                 awayScore = e.str("intAwayScore") ?: "–",
-                minute = e.str("strProgress").orEmpty(),
+                // Not-started fixtures carry no progress string; their
+                // kick-off time is the useful thing to show instead.
+                minute = e.str("strProgress").orEmpty().ifBlank {
+                    if (e.str("strStatus").orEmpty().equals("NS", true)) {
+                        e.str("strEventTime").orEmpty()
+                    } else ""
+                },
                 league = e.str("strLeague").orEmpty(),
                 sport = e.str("strSport").orEmpty(),
                 status = e.str("strStatus").orEmpty(),
+                homeBadge = e.str("strHomeTeamBadge").orEmpty(),
+                awayBadge = e.str("strAwayTeamBadge").orEmpty(),
             )
         }
+            // A ticker exists to surface what is happening now. The endpoint
+            // returns whatever order it likes, which regularly buried the only
+            // in-play match behind a dozen fixtures that had not kicked off.
+            .sortedWith(
+                compareBy(
+                    { if (it.inPlay) 0 else if (it.notStarted) 1 else 2 },
+                    { it.league },
+                ),
+            )
     }
 
     /** Try to find a live score whose two team names both appear in [programmeTitle]. */
@@ -175,7 +232,7 @@ class ScoresRepository(
     /** Full detail for one fixture, or null when the id is unknown. */
     suspend fun matchDetail(eventId: String): MatchDetail? = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext null
-        val e = fetchArray("$base/lookupevent.php?id=$eventId", "events").firstOrNull()
+        val e = fetchArray("$base/lookupevent.php?id=$eventId", ROOT_EVENTS).firstOrNull()
             ?: return@withContext null
         MatchDetail(
             eventId = eventId,
@@ -204,7 +261,7 @@ class ScoresRepository(
     /** In-play statistics (shots, possession, corners…) for a fixture. */
     suspend fun matchStats(eventId: String): List<MatchStat> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$base/lookupeventstats.php?id=$eventId", "eventstats").mapNotNull { s ->
+        fetchArray("$base/lookupeventstats.php?id=$eventId", ROOT_EVENTSTATS).mapNotNull { s ->
             MatchStat(
                 name = s.str("strStat") ?: return@mapNotNull null,
                 home = s.str("intHome").orEmpty().ifBlank { "–" },
@@ -216,7 +273,7 @@ class ScoresRepository(
     /** Goals, cards and substitutions in chronological order. */
     suspend fun matchTimeline(eventId: String): List<MatchEvent> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$base/lookuptimeline.php?id=$eventId", "timeline").mapNotNull { t ->
+        fetchArray("$base/lookuptimeline.php?id=$eventId", ROOT_TIMELINE).mapNotNull { t ->
             MatchEvent(
                 minute = t.str("intTime").orEmpty(),
                 type = t.str("strTimeline") ?: return@mapNotNull null,
@@ -235,7 +292,7 @@ class ScoresRepository(
      */
     suspend fun broadcasts(eventId: String): List<Broadcast> = withContext(Dispatchers.IO) {
         if (eventId.isBlank()) return@withContext emptyList()
-        fetchArray("$base/lookuptv.php?id=$eventId", "tvevent").mapNotNull { b ->
+        fetchArray("$base/lookuptv.php?id=$eventId", ROOT_TVEVENT).mapNotNull { b ->
             Broadcast(
                 channel = b.str("strChannel") ?: return@mapNotNull null,
                 country = b.str("strCountry").orEmpty(),
@@ -266,8 +323,19 @@ class ScoresRepository(
                 league = e.str("strLeague").orEmpty(),
                 sport = e.str("strSport").orEmpty(),
                 status = e.str("strStatus").orEmpty(),
+                homeBadge = e.str("strHomeTeamBadge").orEmpty(),
+                awayBadge = e.str("strAwayTeamBadge").orEmpty(),
             )
         }
+            // A ticker exists to surface what is happening now. The endpoint
+            // returns whatever order it likes, which regularly buried the only
+            // in-play match behind a dozen fixtures that had not kicked off.
+            .sortedWith(
+                compareBy(
+                    { if (it.inPlay) 0 else if (it.notStarted) 1 else 2 },
+                    { it.league },
+                ),
+            )
     }
 
     // ---- Highlights --------------------------------------------------------

@@ -43,15 +43,40 @@ class TrailerRepository(
      * YouTube video id for [tmdbId], or null if there isn't one (or TMDB is
      * unreachable, or no API key is set). Never throws.
      */
-    suspend fun trailerKey(tmdbId: Long, isSeries: Boolean): String? {
-        if (tmdbId <= 0) return null
-        val cacheKey = "${if (isSeries) "tv" else "movie"}:$tmdbId"
+    suspend fun trailerKey(tmdbId: Long, isSeries: Boolean): String? =
+        trailerKey(tmdbId, "", isSeries)
+
+    /**
+     * As above, but resolves the TMDB id from [title] when the row has none.
+     *
+     * Hover trailers were inert for most libraries and this is why: the id is
+     * written by the enrichment worker, the worker could only read it from the
+     * panel, and most panels never publish one — so `tmdbId` stayed 0, the
+     * guard below returned null immediately, and no trailer ever loaded. That
+     * looked like "the toggle does nothing".
+     *
+     * Searching here rather than waiting for the worker also means the feature
+     * works on the first hover of a fresh catalogue, instead of only after
+     * enrichment has ground through thousands of rows at one request per
+     * 250 ms.
+     */
+    suspend fun trailerKey(tmdbId: Long, title: String, isSeries: Boolean): String? {
+        if (tmdbId <= 0 && title.isBlank()) return null
+        // Cache on the title when there is no id, so a miss is remembered too
+        // and a hovered poster does not re-search on every focus.
+        val cacheKey = if (tmdbId > 0) {
+            "${if (isSeries) "tv" else "movie"}:$tmdbId"
+        } else {
+            "${if (isSeries) "tv" else "movie"}:t:${title.lowercase()}"
+        }
         lock.withLock { if (cache.containsKey(cacheKey)) return cache[cacheKey] }
 
         val apiKey = try { settings.tmdbApiKey.first() } catch (_: Throwable) { "" }
         if (apiKey.isBlank()) return null
         val found = try {
-            TmdbClient(http, apiKey).trailerKey(tmdbId, isSeries)
+            val client = TmdbClient(http, apiKey)
+            val id = if (tmdbId > 0) tmdbId else client.search(title, 0, isSeries)
+            if (id == null || id <= 0) null else client.trailerKey(id, isSeries)
         } catch (_: Throwable) { null }
 
         lock.withLock {

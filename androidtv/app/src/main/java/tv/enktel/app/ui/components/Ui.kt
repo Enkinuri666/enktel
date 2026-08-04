@@ -1,5 +1,7 @@
 package tv.enktel.app.ui.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -233,9 +236,44 @@ fun PosterCard(
     // poster the user rests on. Null when no screen has installed the state,
     // so the modifier degrades to a no-op elsewhere in the app.
     val focusedPoster = LocalFocusedPoster.current
+
+    // Depth. The card previously drew on a transparent container with only a
+    // focus ring, so it sat perfectly flat against the background — the ring
+    // told you where focus was, but nothing lifted off the page, which is what
+    // made rails read as a grid of stickers rather than physical cards.
+    //
+    // Both the elevation and the lift are animated rather than switched. A
+    // shadow that appears instantly reads as a rendering artefact; one that
+    // grows over ~180 ms reads as the card rising to meet you. The easing is
+    // deliberately asymmetric — quick to lift, slower to settle — because that
+    // is how weight behaves.
+    val elevation by animateDpAsState(
+        targetValue = if (focused) 18.dp else 3.dp,
+        animationSpec = tween(durationMillis = if (focused) 180 else 260),
+        label = "posterElevation",
+    )
+    val lift by animateDpAsState(
+        targetValue = if (focused) (-6).dp else 0.dp,
+        animationSpec = tween(durationMillis = if (focused) 180 else 260),
+        label = "posterLift",
+    )
+
     Surface(
         onClick = { NavSounds.open(); onClick() },
-        modifier = modifier.width(w).tapClick { NavSounds.open(); onClick() }.onFocusChanged {
+        modifier = modifier
+            .width(w)
+            .offset(y = lift)
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(14.dp),
+                clip = false,
+                ambientColor = Color.Black,
+                // Focus tints the cast shadow with the brand accent, so the
+                // glow reads as light coming off the card rather than a
+                // generic drop shadow.
+                spotColor = if (focused) EnktelBlue else Color.Black,
+            )
+            .tapClick { NavSounds.open(); onClick() }.onFocusChanged {
             val wasFocused = focused
             focused = it.isFocused
             if (!wasFocused && it.isFocused) NavSounds.click()
@@ -402,7 +440,7 @@ fun <T> ContentRail(
         // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 48.dp, end = 48.dp, bottom = 6.dp, top = 4.dp),
         ) {
             Box(
                 Modifier
@@ -432,8 +470,15 @@ fun <T> ContentRail(
             )
         }
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            // Vertical padding is load-bearing, not decoration: a focused card
+            // lifts 6 dp and casts an 18 dp shadow, and a LazyRow clips to its
+            // own bounds — without headroom the glow is sliced off flat along
+            // the rail edge, which looks worse than having no shadow at all.
+            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 14.dp),
+            // 14 dp was tight once cards gained a cast shadow; neighbouring
+            // shadows overlapped and the row read as one mass rather than
+            // separate cards.
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             items(items, key = key) { itemContent(it) }
         }

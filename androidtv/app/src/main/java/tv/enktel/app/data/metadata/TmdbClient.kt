@@ -52,6 +52,54 @@ class TmdbClient(
     suspend fun series(tmdbId: Long): Enrichment? = fetch("tv", tmdbId, isSeries = true)
 
     /**
+     * Resolves a TMDB id from a title, for catalogues whose panel does not
+     * publish one.
+     *
+     * This is not an optional nicety. Enrichment previously read `tmdb_id`
+     * straight off the Xtream `get_vod_info` payload and skipped the row when
+     * it was absent — and most panels never populate that field, so for a
+     * typical line enrichment resolved nothing at all no matter how often the
+     * user re-synced. Searching by title is the only way the feature works for
+     * those catalogues, which is to say: for most of them.
+     *
+     * [year] narrows the search when the catalogue knows it. TMDB ranks by
+     * popularity, so the first hit for a bare title is usually right, but a
+     * year turns "The Thing" from a coin-flip into an exact answer.
+     */
+    suspend fun search(title: String, year: Int, isSeries: Boolean): Long? =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank()) return@withContext null
+            val cleaned = TitleSanitizer.clean(title).trim()
+            if (cleaned.isBlank()) return@withContext null
+
+            val kind = if (isSeries) "tv" else "movie"
+            val useBearer = apiKey.length > 60
+            // TMDB dates the two media types differently.
+            val yearParam = when {
+                year <= 0 -> ""
+                isSeries -> "&first_air_date_year=$year"
+                else -> "&year=$year"
+            }
+            val url = "$BASE/search/$kind?language=$LANG&include_adult=false" +
+                "&query=${java.net.URLEncoder.encode(cleaned, "UTF-8")}$yearParam"
+            val req = Request.Builder()
+                .url(if (useBearer) url else "$url&api_key=$apiKey")
+                .apply { if (useBearer) header("Authorization", "Bearer $apiKey") }
+                .build()
+            val json: JsonElement = try {
+                http.newCall(req).execute().use { r ->
+                    if (!r.isSuccessful) return@withContext null
+                    LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                }
+            } catch (_: Throwable) {
+                return@withContext null
+            }
+            val first = (json as? JsonObject)?.get("results").arr()?.firstOrNull()
+                ?: return@withContext null
+            first.int("id")?.toLong()?.takeIf { it > 0 }
+        }
+
+    /**
      * YouTube video id of the best trailer for [tmdbId], or null when TMDB has
      * none. Powers the hover auto-trailer on poster grids.
      *

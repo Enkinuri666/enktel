@@ -123,6 +123,15 @@ class MainActivity : ComponentActivity() {
         // rewind and fast-forward were swallowed app-wide even with no player
         // — the Fire TV remote's dedicated media buttons did nothing anywhere
         // in the app, and never reached the OS either.
+        // Welcome splash takes precedence over everything: a remote has nothing
+        // to tap, so without this a TV user would have to sit through all ten
+        // seconds with no way out.
+        val skipWelcome = tv.enktel.app.ui.components.WelcomeSplash.skipHandler
+        if (skipWelcome != null && event.action == android.view.KeyEvent.ACTION_DOWN) {
+            skipWelcome.invoke()
+            return true
+        }
+
         val playerLive = tv.enktel.app.voice.ActivePlayerRef.player != null
         if (playerLive && event.action == android.view.KeyEvent.ACTION_DOWN && !event.isCanceled) {
             when (event.keyCode) {
@@ -1087,6 +1096,15 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     }
     }
 
+    // First-run welcome video. Drawn above everything so it covers the shell
+    // while it plays, and dismissed permanently once seen. Reads the flag with
+    // `null` as "not yet known" so the splash never flashes on a later launch
+    // during the moment before DataStore answers.
+    val welcomeSeen by graph.settings.welcomeSeen
+        .collectAsStateWithLifecycle(initialValue = null as Boolean?)
+    var welcomeDone by remember { mutableStateOf(false) }
+    val showWelcome = welcomeSeen == false && !welcomeDone
+
     Box(Modifier.fillMaxSize()) {
         shell()
         val np = nowPlaying
@@ -1108,10 +1126,19 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         }
     }
 
-    if (tourVisible) {
+    // The tour waits for the welcome video — stacking a coach-mark overlay on
+    // top of a playing intro would show neither properly.
+    if (tourVisible && !showWelcome) {
         FirstRunTour(onFinish = {
             tourVisible = false
             scope.launch { graph.settings.setFirstRunDone(true) }
+        })
+    }
+
+    if (showWelcome) {
+        tv.enktel.app.ui.components.WelcomeSplash(onDone = {
+            welcomeDone = true
+            scope.launch { graph.settings.setWelcomeSeen(true) }
         })
     }
 }

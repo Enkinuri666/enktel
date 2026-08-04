@@ -103,6 +103,7 @@ class SettingsStore(private val context: Context) {
     // chain shipped in v1.18.3 handles most mismatches transparently.
     private val VOD_FORCE_MP4 = booleanPreferencesKey("vod_force_mp4")
     private val CUSTOM_UA = stringPreferencesKey("custom_user_agent")
+    private val WELCOME_SEEN = booleanPreferencesKey("welcome_splash_seen")
 
     // v1.20.0: TMDB API key for the metadata enrichment worker. v3 numeric
     // key OR v4 read-only bearer token accepted. Blank = worker no-ops.
@@ -272,6 +273,14 @@ class SettingsStore(private val context: Context) {
      * block anything else, so being able to present as a different client is
      * the single highest-yield workaround available.
      */
+    /**
+     * Whether the welcome video has already played. It is a first-run flourish,
+     * not a loading screen — showing it on every launch would turn a nice
+     * moment into a ten-second toll.
+     */
+    val welcomeSeen: Flow<Boolean> = context.dataStore.data.map { it[WELCOME_SEEN] ?: false }
+    suspend fun setWelcomeSeen(v: Boolean) = context.dataStore.edit { it[WELCOME_SEEN] = v }
+
     val customUserAgent: Flow<String> = context.dataStore.data.map { it[CUSTOM_UA] ?: "" }
     suspend fun setCustomUserAgent(v: String) = context.dataStore.edit { it[CUSTOM_UA] = v.trim() }
 

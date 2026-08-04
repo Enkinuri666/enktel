@@ -70,7 +70,7 @@ fun AutoTrailerLayer(
             return@LaunchedEffect
         }
         videoKey = try {
-            graph.trailers.trailerKey(target.tmdbId, target.isSeries)
+            graph.trailers.trailerKey(target.tmdbId, target.title, target.isSeries)
         } catch (_: Throwable) { null }
     }
 
