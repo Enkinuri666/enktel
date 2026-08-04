@@ -161,8 +161,11 @@ private fun NavRailItem(
     // pinned at 1.0 and the only change was a background alpha step. On a TV,
     // where the D-pad is the whole interaction model, focus needs to be
     // unmistakable — it is the cursor.
+    // 8 dp, not 12: at 12 the brand-tinted spot colour spread far enough past
+    // the item to read as a second rectangle floating behind the first rather
+    // than as depth under it — the other half of the reported "weird box".
     val elevation by animateDpAsState(
-        targetValue = if (focused) 12.dp else 0.dp,
+        targetValue = if (focused) 8.dp else 0.dp,
         animationSpec = tween(if (focused) 160 else 240),
         label = "navItemElevation",
     )
@@ -193,9 +196,22 @@ private fun NavRailItem(
                 shape = RoundedCornerShape(10.dp),
             ),
         ),
-        // A small scale — 1.04 rather than the posters' 1.05+ — because rail
-        // items are stacked and a large one would collide with its neighbours.
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        // Focus must NOT change this item's geometry.
+        //
+        // A focusedScale of 1.04 was producing the misaligned "weird box"
+        // reported on Fire TV: tv-material applies its scale to the surface's
+        // own graphics layer, but our .shadow() below sits outside that layer,
+        // so the blue-tinted shadow kept drawing at 100 % while the bordered
+        // surface drew at 104 %. Two rectangles of different sizes around one
+        // menu item — which is exactly what it looked like. The scaled surface
+        // also grew wider than the row it labels, so the focused item no longer
+        // lined up with the selected item directly above it.
+        //
+        // A stacked, full-width rail item has nowhere to grow into anyway. Focus
+        // is now carried entirely by things that do not move the box: a brighter
+        // fill, the border, the taller stripe, white text and the shadow — all
+        // sharing one set of bounds with the selected state.
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = Modifier
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
