@@ -61,6 +61,21 @@ class PlayerEngine(
      *  Discord viewers don't see quality flapping mid-stream. */
     lockToTopBitrate: Boolean = false,
 ) {
+    private var streamHttpFactory: OkHttpDataSource.Factory? = null
+
+    /**
+     * Per-channel User-Agent, from `#EXTVLCOPT:http-user-agent=`.
+     *
+     * Some sources answer for exactly one User-Agent and 403 everything else,
+     * which the single global UA cannot fix without breaking the rest of the
+     * playlist. Blank restores the app default, so the override cannot leak
+     * from one channel onto the next.
+     */
+    fun setStreamUserAgent(ua: String) {
+        streamHttpFactory?.setUserAgent(ua.ifBlank { tv.enktel.app.DEFAULT_UA })
+    }
+
+
 
     private val bandwidthMeter = DefaultBandwidthMeter.getSingletonInstance(context)
     // Track selection: explicitly pair DefaultTrackSelector with an
@@ -243,6 +258,10 @@ class PlayerEngine(
         // tv.enktel.app.DEFAULT_UA for the rationale (Cloudflare / WAF /
         // Xtream panel bot rules answer OkHttp's default UA with HTTP 407).
         val httpFactory = OkHttpDataSource.Factory(http).setUserAgent(tv.enktel.app.DEFAULT_UA)
+        // Held so a per-channel override can be applied before the next play().
+        // The factory reads its UA when it creates each data source, so setting
+        // it here changes the next stream without rebuilding the player.
+        streamHttpFactory = httpFactory
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
 
         val extMode = when (decoderMode) {

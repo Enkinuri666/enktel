@@ -218,6 +218,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         val candidates = tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
             p, ch, preferHls = streamFormat != "ts",
         )
+        // Applied before the stream opens, not after: the data source reads the
+        // UA when it is created. Blank resets to the app default so one
+        // channel's override never leaks onto the next.
+        engine.setStreamUserAgent(ch.userAgent)
         engine.playCandidates(candidates, live = true)
         scope.launch {
             graph.settings.setLastChannel(ch.key)

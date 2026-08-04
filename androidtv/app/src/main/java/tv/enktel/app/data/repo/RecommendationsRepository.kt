@@ -231,7 +231,6 @@ class RecommendationsRepository(private val content: ContentRepository) {
     /** Aggregated home-page rail payload. */
     data class HomeRails(
         val latestReleases: List<Movie>,
-        val comingSoon: List<Movie>,
         val topPicks: List<Movie>,
         val trending: List<Movie>,
         val newThisWeek: List<Movie>,
@@ -275,16 +274,13 @@ class RecommendationsRepository(private val content: ContentRepository) {
             return out
         }
 
-        // Coming Soon — release year is current year or later. Even the
-        // newest of these is likely already in `latest`; dedup keeps that
-        // rail meaningful when the catalogue has genuine forward-dated stock.
-        val comingSoon = pick(
-            withPoster.asSequence()
-                .filter { it.year >= currentYear }
-                .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
-                .toList(),
-            20,
-        )
+        // Coming Soon is deliberately absent here. It used to be built from
+        // this same catalogue filtered to `year >= currentYear`, which cannot
+        // work: anything in the catalogue is already playable, so the rail
+        // advertised films the user could watch immediately, and a catalogue row
+        // carries only a year so there was nothing to count down to. It now
+        // comes from ComingSoonRepository, which reads a feed of genuinely
+        // unreleased titles with real dates.
 
         // Trending: top-rated. TMDB enrichment fills `rating` from the
         // popular-and-well-reviewed slice; when a lot of titles share the
@@ -363,7 +359,6 @@ class RecommendationsRepository(private val content: ContentRepository) {
 
         HomeRails(
             latestReleases = latest,
-            comingSoon = comingSoon,
             topPicks = topPicks,
             trending = trending,
             newThisWeek = newThis,

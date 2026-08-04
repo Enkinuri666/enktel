@@ -91,7 +91,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val topPicks = rails?.topPicks ?: emptyList()
     val newThisWeek = rails?.newThisWeek ?: emptyList()
     val latestReleases = rails?.latestReleases ?: emptyList()
-    val comingSoon = rails?.comingSoon ?: emptyList()
     val moodGritty = rails?.moodGritty ?: emptyList()
     val moodLateNight = rails?.moodLateNight ?: emptyList()
     val moodFastPaced = rails?.moodFastPaced ?: emptyList()
@@ -132,6 +131,26 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
 
     val heroItems = remember(favMovies, recentMovies) {
         (favMovies + recentMovies).distinctBy { it.key }.filter { it.poster.isNotBlank() }.take(5)
+    }
+    // Titles already given prime placement in the hero should not turn up again
+    // three rows further down. The rails dedupe against each other, but the hero
+    // is built separately, so nothing used to stop it repeating itself.
+    val heroKeys = remember(heroItems) { heroItems.map { it.key }.toHashSet() }
+
+    // enktel.tv publishes the upcoming/latest feeds. Coming Soon in particular
+    // cannot come from the catalogue: anything in there is already playable.
+    val todayEpochDay = remember { tv.enktel.app.data.repo.EnktelFeed.todayEpochDay() }
+    var upcoming by remember { mutableStateOf<List<tv.enktel.app.data.repo.EnktelFeed.Upcoming>>(emptyList()) }
+    var freshMovies by remember { mutableStateOf<List<tv.enktel.app.data.repo.EnktelFeed.Upcoming>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        upcoming = try { graph.feed.upcoming(todayEpochDay, 20) } catch (_: Throwable) { emptyList() }
+        freshMovies = try { graph.feed.latestMovies(20) } catch (_: Throwable) { emptyList() }
+    }
+    // Feed entries are world releases, not your playlist. Matching on a
+    // normalised title lets a card stay clickable when you do have it, and say
+    // so plainly when you do not.
+    val byTitle = remember(latestReleases) {
+        latestReleases.associateBy { it.name.lowercase().filter(Char::isLetterOrDigit) }
     }
 
     var clock by remember { mutableStateOf("") }
@@ -242,48 +261,61 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        if (latestReleases.isNotEmpty()) {
+        if (freshMovies.isNotEmpty() || latestReleases.isNotEmpty()) {
             item {
-                ContentRail(
-                    "🆕  Latest Releases", latestReleases,
-                    accent = tv.enktel.app.ui.theme.EnktelOk,
-                    subtitle = "fresh on EnkTel",
-                    key = { it.key },
-                ) { m ->
-                    val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
-                    val sub = when {
-                        ageDays <= 1 -> "Just added"
-                        ageDays < 7 -> "${ageDays}d ago"
-                        else -> if (m.year > 0) "${m.year}" else ""
+                // Prefer the published feed for ordering (it knows real release
+                // dates); fall back to the catalogue when the feed is
+                // unreachable so the rail never simply vanishes.
+                if (freshMovies.isNotEmpty()) {
+                    ContentRail(
+                        "🆕  Latest Releases", freshMovies,
+                        accent = tv.enktel.app.ui.theme.EnktelOk,
+                        subtitle = "newest films",
+                        key = { it.id },
+                    ) { u ->
+                        val local = byTitle[u.title.lowercase().filter(Char::isLetterOrDigit)]
+                        PosterCard(
+                            u.title,
+                            local?.poster?.takeIf { it.isNotBlank() } ?: u.poster,
+                            subtitle = if (local != null) "In your playlist" else u.releaseDate,
+                            onClick = { local?.let { nav.navigate("movie/${it.key}") } },
+                        )
                     }
-                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
+                } else {
+                    ContentRail(
+                        "🆕  Latest Releases", latestReleases.filterNot { it.key in heroKeys },
+                        accent = tv.enktel.app.ui.theme.EnktelOk,
+                        subtitle = "fresh on EnkTel",
+                        key = { it.key },
+                    ) { m ->
+                        val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
+                        val sub = when {
+                            ageDays <= 1 -> "Just added"
+                            ageDays < 7 -> "${ageDays}d ago"
+                            else -> if (m.year > 0) "${m.year}" else ""
+                        }
+                        PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
+                    }
                 }
             }
         }
-        if (comingSoon.isNotEmpty()) {
+        if (upcoming.isNotEmpty()) {
             item {
                 ContentRail(
-                    "🎬  Coming Soon", comingSoon,
+                    "🎬  Coming Soon", upcoming,
                     accent = tv.enktel.app.ui.theme.EnktelPurple,
-                    subtitle = "counting down",
-                    key = { it.key },
-                ) { m ->
-                    val target = java.util.Calendar.getInstance().apply {
-                        set(java.util.Calendar.YEAR, m.year.coerceAtLeast(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)))
-                        set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
-                        set(java.util.Calendar.DAY_OF_MONTH, 1)
-                        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
-                    }.timeInMillis
-                    val delta = target - System.currentTimeMillis()
-                    val countdown = when {
-                        delta <= 0 -> if (m.year > 0) "${m.year} · available" else "Available"
-                        delta < 86_400_000L -> "in ${delta / 3600_000L}h"
-                        else -> "in ${delta / 86_400_000L}d"
-                    }
+                    subtitle = "not out yet",
+                    key = { it.id },
+                ) { u ->
+                    // Every entry here has a real release date in the future,
+                    // so the countdown counts down to the actual day rather than
+                    // to 1 January of the film's year, which is what made the
+                    // old rail say "available" about things it was advertising
+                    // as upcoming.
                     PosterCard(
-                        m.name, m.poster,
-                        subtitle = countdown,
-                        onClick = { nav.navigate("movie/${m.key}") },
+                        u.title, u.poster,
+                        subtitle = u.countdown(todayEpochDay),
+                        onClick = {},
                     )
                 }
             }

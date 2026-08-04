@@ -37,6 +37,16 @@ data class Channel(
     val hasArchive: Boolean = false,
     val archiveDays: Int = 0,
     val sortIdx: Int = 0,
+    /** Audio-only stream. Xtream reports `stream_type: "radio"`; M3U uses `radio="true"`. */
+    val isRadio: Boolean = false,
+    /**
+     * Per-channel User-Agent from `#EXTVLCOPT:http-user-agent=`.
+     *
+     * Some sources answer only for one specific UA and 403 everything else, so
+     * a single global override cannot fix them without breaking the rest of the
+     * playlist. Empty means "use the app default".
+     */
+    val userAgent: String = "",
 )
 
 @Entity(tableName = "categories")
