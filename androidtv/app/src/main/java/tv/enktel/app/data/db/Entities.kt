@@ -78,6 +78,16 @@ data class Movie(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    /**
+     * When this title first appeared in *this user's* catalogue, ms.
+     *
+     * Distinct from [addedAt], which is the panel's own `added` timestamp:
+     * that is missing entirely on M3U lines and is often the date the
+     * provider ingested the file rather than the date it reached this line.
+     * A re-sync knows exactly which stream ids were not there before, and
+     * that is the only signal that actually answers "what is new to me".
+     */
+    val firstSeenAt: Long = 0,
     // v1.20.0 metadata enrichment — populated first from Xtream (tmdbId), then
     // overwritten by MetadataEnrichmentWorker with the extended TMDB payload.
     val tmdbId: Long = 0,
@@ -106,6 +116,8 @@ data class Series(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    /** See [Movie.firstSeenAt]. */
+    val firstSeenAt: Long = 0,
     val tmdbId: Long = 0,
     val studios: String = "",
     val tags: String = "",

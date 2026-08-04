@@ -230,6 +230,8 @@ class RecommendationsRepository(private val content: ContentRepository) {
 
     /** Aggregated home-page rail payload. */
     data class HomeRails(
+        /** What the most recent sync actually introduced. */
+        val justAdded: List<Movie>,
         val latestReleases: List<Movie>,
         val topPicks: List<Movie>,
         val trending: List<Movie>,
@@ -252,16 +254,36 @@ class RecommendationsRepository(private val content: ContentRepository) {
         val seedIds = history.map { it.refId }.toHashSet()
         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         val week = TimeUnit.DAYS.toSeconds(14)
-        val nowSec = System.currentTimeMillis() / 1000
+        val nowMs = System.currentTimeMillis()
+        val nowSec = nowMs / 1000
 
-        // Latest Releases: freshest additions with a poster. Always at least
-        // 6 items when the catalogue has content, even if `addedAt` is zero
-        // (fall back to year desc).
-        val latest = withPoster
-            .sortedWith(compareByDescending<Movie> { it.addedAt }.thenByDescending { it.year })
+        // Just Added: what *this sync* introduced, newest first.
+        //
+        // This is the rail that answers "show me what turned up in the last
+        // refresh". It runs off firstSeenAt, which is set by diffing one sync
+        // against the previous one (see FreshCatalogue) rather than off the
+        // panel's `added` field, which M3U lines do not carry and Xtream lines
+        // report as the provider's ingest date.
+        val justAdded = withPoster
+            .filter { FreshCatalogue.isNew(it.firstSeenAt, nowMs) }
+            .sortedWith(compareByDescending<Movie> { it.firstSeenAt }.thenByDescending { it.year })
             .take(24)
 
-        val used = HashSet<String>().apply { addAll(latest.map { it.key }) }
+        // Latest Releases: newest by *release year*.
+        //
+        // Kept identical to the standalone latestReleases() helper on purpose.
+        // This used to carry its own inline copy sorted by addedAt, which made
+        // it a third name for the same recently-added query and is why Home
+        // showed the same handful of titles across several rails.
+        val latest = withPoster
+            .filter { it.year > 0 }
+            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
+            .take(24)
+
+        val used = HashSet<String>().apply {
+            addAll(justAdded.map { it.key })
+            addAll(latest.map { it.key })
+        }
 
         fun pick(list: List<Movie>, limit: Int): List<Movie> {
             val out = ArrayList<Movie>(limit)
@@ -358,6 +380,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
         val seriesRail = newSeries(profileId, 20)
 
         HomeRails(
+            justAdded = justAdded,
             latestReleases = latest,
             topPicks = topPicks,
             trending = trending,

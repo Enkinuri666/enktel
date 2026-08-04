@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
         DownloadEntry::class,
     ],
-    version = 8, // v8 adds isRadio + per-channel userAgent on channels
+    version = 9, // v9 adds firstSeenAt on movies + series (what is new to this line)
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -138,11 +138,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // "New to this line" is knowable only by diffing one sync
+                // against the last; the panel's own `added` is missing on M3U
+                // lines entirely and unreliable elsewhere. Existing rows keep
+                // 0, which reads as "was already here" — correct, because it
+                // was.
+                db.execSQL("ALTER TABLE movies ADD COLUMN firstSeenAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE series ADD COLUMN firstSeenAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
-                    MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+                    MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

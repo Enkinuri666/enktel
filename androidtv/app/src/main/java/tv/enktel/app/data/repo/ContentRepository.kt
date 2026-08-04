@@ -2,6 +2,7 @@ package tv.enktel.app.data.repo
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -223,12 +224,22 @@ class ContentRepository(
             )
         }
 
+        // Diff against the catalogue we are about to replace, so "new" means
+        // new *to this line* rather than whatever date the provider stamped on
+        // ingest. Read before the clear, obviously.
+        val prevMovies = content.movies(p.id).first().associate { it.key to it.firstSeenAt }
+        val prevSeries = content.series(p.id).first().associate { it.key to it.firstSeenAt }
+        val movieStamps = FreshCatalogue.stamp(movies.map { it.key }, prevMovies)
+        val seriesStamps = FreshCatalogue.stamp(seriesList.map { it.key }, prevSeries)
+        val stampedMovies = movies.mapIndexed { i, m -> m.copy(firstSeenAt = movieStamps[i]) }
+        val stampedSeries = seriesList.mapIndexed { i, s -> s.copy(firstSeenAt = seriesStamps[i]) }
+
         content.clearCategories(p.id); content.clearChannels(p.id)
         content.clearMovies(p.id); content.clearSeries(p.id)
         content.upsertCategories(categories)
         live.chunked(500).forEach { content.upsertChannels(it) }
-        movies.chunked(500).forEach { content.upsertMovies(it) }
-        seriesList.chunked(500).forEach { content.upsertSeries(it) }
+        stampedMovies.chunked(500).forEach { content.upsertMovies(it) }
+        stampedSeries.chunked(500).forEach { content.upsertSeries(it) }
         // Kick off the TMDB enrichment worker so the themed home rails
         // repopulate as the metadata streams in. Worker no-ops when the
         // user hasn't supplied a TMDB API key, so calling it is always safe.
@@ -278,10 +289,18 @@ class ContentRepository(
             Category(key = "${p.id}:$kind:$name", profileId = p.id, kind = kind, categoryId = name, name = name, sortIdx = i)
         }
 
+        // M3U row keys are positional, so one insertion at the top of a
+        // playlist shifts every key below it. Identity has to come from the
+        // title, or a re-sync would report the entire library as new.
+        val prevM3u = content.movies(p.id).first()
+            .associate { FreshCatalogue.titleId(it.name) to it.firstSeenAt }
+        val m3uStamps = FreshCatalogue.stamp(movies.map { FreshCatalogue.titleId(it.name) }, prevM3u)
+        val stampedM3u = movies.mapIndexed { i, m -> m.copy(firstSeenAt = m3uStamps[i]) }
+
         content.clearCategories(p.id); content.clearChannels(p.id); content.clearMovies(p.id)
         content.upsertCategories(categories)
         channels.chunked(500).forEach { content.upsertChannels(it) }
-        movies.chunked(500).forEach { content.upsertMovies(it) }
+        stampedM3u.chunked(500).forEach { content.upsertMovies(it) }
 
         if (p.epgUrl.isBlank() && playlist.epgUrl.isNotBlank()) {
             db.profileDao().update(p.copy(epgUrl = playlist.epgUrl))

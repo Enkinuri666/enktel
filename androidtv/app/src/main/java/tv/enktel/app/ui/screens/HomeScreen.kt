@@ -90,6 +90,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val trending = rails?.trending ?: emptyList()
     val topPicks = rails?.topPicks ?: emptyList()
     val newThisWeek = rails?.newThisWeek ?: emptyList()
+    val justAdded = rails?.justAdded ?: emptyList()
     val latestReleases = rails?.latestReleases ?: emptyList()
     val moodGritty = rails?.moodGritty ?: emptyList()
     val moodLateNight = rails?.moodLateNight ?: emptyList()
@@ -257,6 +258,34 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                             if (w.kind == "vod") nav.navigate("movie/${w.profileId}:${w.refId}")
                             else nav.navigate("seriesDetails/${w.profileId}:${w.refId}")
                         },
+                    )
+                }
+            }
+        }
+        // Sits above Latest Releases on purpose: this is the one rail that is
+        // literally "what turned up in the last playlist refresh", which is
+        // what people open the app to find. It is empty on a first sync (see
+        // FreshCatalogue) and empty when a refresh added nothing — both of
+        // which are true statements, so it just hides.
+        if (justAdded.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "⚡  Just Added", justAdded.filterNot { it.key in heroKeys },
+                    accent = tv.enktel.app.ui.theme.EnktelBlue,
+                    subtitle = "new since your last sync",
+                    key = { it.key },
+                ) { m ->
+                    val ageDays = ((System.currentTimeMillis() - m.firstSeenAt) / 86_400_000L)
+                        .coerceAtLeast(0)
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = when {
+                            ageDays < 1 -> "Today"
+                            ageDays < 2 -> "Yesterday"
+                            else -> "${ageDays}d ago"
+                        },
+                        onClick = { nav.navigate("movie/${m.key}") },
+                        tmdbId = m.tmdbId,
                     )
                 }
             }
