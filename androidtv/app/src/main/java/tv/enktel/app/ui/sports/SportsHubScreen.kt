@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.sports
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.widthIn
@@ -652,50 +653,97 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
     }
 }
 
-/** Compact live-score chip for the top-of-Sports ticker: HOME 2 - 1 AWAY · 78'. */
+/** Small team crest. Silently absent when the API has no badge for a side. */
+@Composable
+private fun TeamCrest(url: String) {
+    if (url.isBlank()) return
+    coil.compose.AsyncImage(
+        model = url,
+        contentDescription = null,
+        modifier = Modifier.size(18.dp).padding(end = 5.dp),
+    )
+}
+
+/**
+ * Compact live-score chip for the Sports ticker.
+ *
+ * Renders three distinct states — in play, not yet kicked off, finished — so
+ * the live ones are findable at a glance rather than uniform with the rest.
+ */
 @Composable
 private fun LiveScoreChip(
     score: tv.enktel.app.data.repo.LiveScore,
     onTap: () -> Unit,
     onStats: (() -> Unit)? = null,
 ) {
+    // The strip carries three different things — matches in play, kick-offs
+    // still to come, and finished results. Painting them identically made the
+    // live ones impossible to pick out, which defeats the point of a live
+    // ticker. Colour and the pulse are reserved for genuinely in-play games.
+    val accent = when {
+        score.inPlay -> EnktelOk
+        score.notStarted -> EnktelBlue
+        else -> EnktelTextDim
+    }
+
+    // Slow breathing pulse on the live dot. Only for in-play: a blinking dot
+    // on a finished match is a lie.
+    val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "livePulse")
+        .animateFloat(
+            initialValue = 1f,
+            targetValue = 0.35f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable<Float>(
+                androidx.compose.animation.core.tween(900),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "livePulseAlpha",
+        )
+
     Row(
         Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(EnktelSurface.copy(0.7f))
-            .border(1.dp, EnktelOk.copy(0.5f), RoundedCornerShape(20.dp))
+            .border(1.dp, accent.copy(0.5f), RoundedCornerShape(20.dp))
             .tapClick(onTap)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Pulsing live dot so the eye finds live scores instantly in the strip.
         Box(
             Modifier
                 .size(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(EnktelLive),
+                .background(accent.copy(alpha = if (score.inPlay) pulse else 1f)),
         )
         Spacer(Modifier.width(8.dp))
+        TeamCrest(score.homeBadge)
         Text(
             score.home, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 90.dp),
         )
         Spacer(Modifier.width(8.dp))
-        Text(
-            "${score.homeScore}", color = EnktelOk, fontSize = 15.sp, fontWeight = FontWeight.Black,
-        )
-        Text(" – ", color = EnktelTextDim, fontSize = 12.sp)
-        Text(
-            "${score.awayScore}", color = EnktelOk, fontSize = 15.sp, fontWeight = FontWeight.Black,
-        )
+        if (score.notStarted) {
+            // No score exists yet; "– – –" reads as a 0-0 draw, which is wrong.
+            Text("vs", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        } else {
+            Text(score.homeScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(" – ", color = EnktelTextDim, fontSize = 12.sp)
+            Text(score.awayScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Black)
+        }
         Spacer(Modifier.width(8.dp))
+        TeamCrest(score.awayBadge)
         Text(
             score.away, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 90.dp),
         )
         if (score.minute.isNotBlank()) {
             Spacer(Modifier.width(10.dp))
-            Text(score.minute, color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (score.notStarted) "⏱ ${score.minute}" else score.minute,
+                color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+            )
+        } else if (score.finished) {
+            Spacer(Modifier.width(10.dp))
+            Text("FT", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
         if (onStats != null) {
             Spacer(Modifier.width(10.dp))

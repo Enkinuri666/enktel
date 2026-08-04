@@ -66,7 +66,12 @@ class MetadataEnrichmentWorker(
             // many times the user re-synced. Recording that we tried is what
             // lets the cursor move on.
             dao.markMovieEnrichAttempt(m.key, System.currentTimeMillis())
-            val tmdbId = lookupTmdbId(xtream, profile, "vod", m.streamId) ?: continue
+            // Panel id first (authoritative when present), then title search.
+            // Most panels never publish tmdb_id, so without the fallback this
+            // loop resolved nothing at all for a typical catalogue.
+            val tmdbId = lookupTmdbId(xtream, profile, "vod", m.streamId)
+                ?: client.search(m.name, m.year, isSeries = false)
+                ?: continue
             val e = client.movie(tmdbId) ?: continue
             enriched++
             val tags = computeTags(m.name, e.genres, e.keywords)
@@ -93,7 +98,9 @@ class MetadataEnrichmentWorker(
         val series = dao.seriesNeedingEnrichment(profileId, staleBefore, SERIES_PER_RUN)
         for (s in series) {
             dao.markSeriesEnrichAttempt(s.key, System.currentTimeMillis())
-            val tmdbId = lookupTmdbId(xtream, profile, "series", s.seriesId) ?: continue
+            val tmdbId = lookupTmdbId(xtream, profile, "series", s.seriesId)
+                ?: client.search(s.name, s.year, isSeries = true)
+                ?: continue
             val e = client.series(tmdbId) ?: continue
             enriched++
             val tags = computeTags(s.name, e.genres, e.keywords)

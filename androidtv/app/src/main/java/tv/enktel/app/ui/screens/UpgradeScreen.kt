@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,7 +98,13 @@ fun UpgradeScreen(nav: NavHostController) {
             Spacer(Modifier.height(20.dp))
             Box(
                 Modifier
-                    .size(360.dp)
+                    // A fixed 360 dp QR is wider than the usable width of most
+                    // phones in portrait once padding is taken off, so it was
+                    // clipped on exactly the devices meant to scan it. Cap it
+                    // and let it shrink instead.
+                    .widthIn(max = 360.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color.White)
                     .padding(12.dp),
