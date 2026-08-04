@@ -1,5 +1,6 @@
 package tv.enktel.app.data.net
 
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,6 +31,15 @@ import tv.enktel.app.data.str
  * routers and CDNs, producing misleadingly bad numbers).
  */
 object SpeedTestEngine {
+
+    /**
+     * Length of the sustained throughput sample, in seconds.
+     *
+     * Long enough for TCP to leave slow-start on a fast link — five seconds
+     * systematically under-reported anything above ~100 Mbps — and short
+     * enough that the user is not left staring at a progress bar.
+     */
+    const val WINDOW_SEC = 17L
 
     /** Result of a HEAD/GET probe against a single stream URL — used to
      *  identify what the panel actually serves for a live channel or a VOD
@@ -211,6 +221,8 @@ object SpeedTestEngine {
         profile: Profile? = null,
         xtream: tv.enktel.app.data.xtream.XtreamClient? = null,
         onProgress: (String) -> Unit = {},
+        /** Live readings during the throughput phase, for the on-screen meter. */
+        onSpeedSample: (SpeedSample) -> Unit = {},
     ): Result = withContext(Dispatchers.IO) {
         val url = try { URL(serverUrl) } catch (e: Exception) {
             return@withContext Result(
@@ -287,8 +299,13 @@ object SpeedTestEngine {
         else ConnectionCap(0, 0, 0)
 
         onProgress("Measuring download throughput…")
+        // VOD first. A live channel is served at its own bitrate, so measuring
+        // against one reports the channel, not the connection. VOD is a plain
+        // file the panel sends as fast as the line allows, which is the thing
+        // a speed test is actually asking about.
+        val speedUrl = vodSampleUrl ?: streamSampleUrl ?: serverUrl
         val throughput = try {
-            measureThroughputMbps(http, streamSampleUrl ?: serverUrl)
+            measureThroughputMbps(http, speedUrl, onSpeedSample)
         } catch (_: Exception) { 0.0 }
 
         val kind = NetworkClass.kind.value
@@ -524,7 +541,8 @@ object SpeedTestEngine {
         return ct.substring(idx + "codecs=".length).trim().trim('"', ';', ' ')
     }
 
-    private fun buildSuggestions(
+    @VisibleForTesting
+    internal fun buildSuggestions(
         pingMs: Int,
         jitterMs: Int,
         lossPct: Int,
@@ -570,6 +588,17 @@ object SpeedTestEngine {
         if (vod?.container == "MP4" && (live?.container == "MPEG-TS")) {
             out += "Panel serves VOD as MP4 (progressive) and live as MPEG-TS — normal for Xtream."
         }
+        // Never claim health while a headline measurement is missing.
+        //
+        // The report could previously show "Unable to measure throughput" in
+        // the recommendation and "Everything looks healthy" in the suggestions
+        // at the same time, which tells the user nothing except that the tool
+        // does not know what it found.
+        if (mbps <= 0.0) {
+            out += "Throughput could not be measured, so the buffer advice above is a guess. " +
+                "This usually means the panel refused the sample download or closed it early — " +
+                "the other probes in this report succeeded, so it is not general connectivity."
+        }
         if (out.isEmpty()) out += "Everything looks healthy. If a specific stream buffers, use ▶ Retry with alternate source in the player."
         return out
     }
@@ -586,76 +615,124 @@ object SpeedTestEngine {
         return sqrt(variance)
     }
 
-    /** Streams up to ~5 seconds (or 24 MB, whichever first) and computes Mbps.
-     *  Larger window + bigger sample buffer than the old 3 s/8 MB one so
-     *  slow-start Cloudflare / IPTV-Editor proxy paths get past the ramp
-     *  before we take the measurement, and so 206 Partial Content responses
-     *  (the norm for range-fetched panels) count as a healthy read. */
-    private fun measureThroughputMbps(http: OkHttpClient, url: String): Double {
+    /** One live reading during the throughput test, for the on-screen meter. */
+    data class SpeedSample(
+        val elapsedSec: Double,
+        val instantMbps: Double,
+        val averageMbps: Double,
+        val bytes: Long,
+    )
+
+    /**
+     * Measures real download throughput over a sustained window.
+     *
+     * Three things were wrong with the previous version, and the first is the
+     * one that made it report nothing:
+     *
+     *  1. **It measured a live stream.** Panels serve live channels at roughly
+     *     the channel's own bitrate — that is the entire point of a live feed —
+     *     so the figure was the stream's bitrate, not the connection's
+     *     capacity. On a panel that rate-limits hard, or one that closed the
+     *     socket early, the sample came back too short to divide by and the
+     *     function returned 0.0, surfacing as "unable to measure throughput"
+     *     even though every other probe in the report succeeded.
+     *
+     *  2. **It ran straight after the connection-cap detector**, which opens
+     *     eight parallel connections to the same URL. Those sockets sit in
+     *     OkHttp's pool afterwards, so on a line whose cap is small the
+     *     throughput request was competing against the test's own probes.
+     *
+     *  3. **Five seconds is too short.** TCP needs several seconds to leave
+     *     slow-start on a high-bandwidth link, so short samples systematically
+     *     under-report fast connections.
+     *
+     * Now: prefers a VOD asset (served as fast as the line allows), runs for
+     * [WINDOW_SEC] seconds after the first byte, and reports [onSample] about
+     * five times a second so the UI can show the speed as it settles rather
+     * than a single number at the end.
+     */
+    private fun measureThroughputMbps(
+        http: OkHttpClient,
+        url: String,
+        onSample: (SpeedSample) -> Unit = {},
+    ): Double {
         val req = Request.Builder().url(url)
-            .header("Range", "bytes=0-25165824") // 24 MB
+            // 256 MB ceiling: large enough that a gigabit line cannot exhaust
+            // it inside the window and start measuring an idle socket.
+            .header("Range", "bytes=0-268435456")
+            .header("Accept-Encoding", "identity")
             .build()
-        // Timing starts at the first byte, not at the call.
-        //
-        // The old version started the clock before execute(), so DNS, the TCP
-        // handshake, TLS and the panel's time-to-first-byte were all counted as
-        // transfer time. TTFB on a loaded IPTV panel is routinely 1-2 seconds
-        // (the health chip shows exactly that), and against a 5-second window
-        // that alone under-reported throughput by a third or more.
-        //
-        // It also penalised fast lines hardest: a connection that pulls the
-        // whole 24 MB sample in a second was measuring one second of transfer
-        // against one-plus second of fixed setup, roughly halving the figure,
-        // while a slow line amortised the same setup over the full window. So
-        // the number was not merely low, it was least accurate exactly where
-        // people care most.
+
         var bytes = 0L
         var firstByteNs = 0L
         var lastNs = 0L
+        var lastEmitNs = 0L
+        var lastEmitBytes = 0L
         val callStart = System.nanoTime()
-        val hardDeadlineNs = callStart + 15_000_000_000L
-        val maxBytes = 24L * 1024 * 1024
-        // How long to keep sampling *after* the first byte lands.
-        val sampleWindowNs = 5_000_000_000L
-        http.newCall(req).execute().use { resp ->
-            // 206 (ranged) is the expected response; 200 also fine when the
-            // panel ignores our Range. Any other code means the URL isn't a
-            // media asset and the throughput number would be junk anyway.
-            if (!(resp.code == 200 || resp.code == 206)) return 0.0
-            val source = resp.body?.source() ?: return 0.0
-            val buf = okio.Buffer()
-            while (bytes < maxBytes) {
-                val now = System.nanoTime()
-                if (now > hardDeadlineNs) break
-                if (firstByteNs != 0L && now - firstByteNs > sampleWindowNs) break
-                val read = try { source.read(buf, 262_144) } catch (_: Exception) { -1L }
-                if (read == -1L) break
-                if (firstByteNs == 0L) {
-                    // Clock starts here. Bytes from this first read are counted
-                    // against the window that begins with them.
-                    firstByteNs = System.nanoTime()
+        val hardDeadlineNs = callStart + (WINDOW_SEC + 12L) * 1_000_000_000L
+        val windowNs = WINDOW_SEC * 1_000_000_000L
+
+        try {
+            http.newCall(req).execute().use { resp ->
+                if (!(resp.code == 200 || resp.code == 206)) return 0.0
+                val source = resp.body?.source() ?: return 0.0
+                val buf = okio.Buffer()
+                while (true) {
+                    val now = System.nanoTime()
+                    if (now > hardDeadlineNs) break
+                    if (firstByteNs != 0L && now - firstByteNs > windowNs) break
+                    val read = try { source.read(buf, 262_144) } catch (_: Exception) { -1L }
+                    if (read == -1L) break
+                    if (firstByteNs == 0L) {
+                        firstByteNs = System.nanoTime()
+                        lastEmitNs = firstByteNs
+                    }
+                    bytes += read
+                    lastNs = System.nanoTime()
+                    buf.clear()
+
+                    // ~5 readings a second: fast enough to look live, slow
+                    // enough that the instant figure is not pure jitter.
+                    if (lastNs - lastEmitNs >= 200_000_000L) {
+                        val instantSec = (lastNs - lastEmitNs) / 1_000_000_000.0
+                        val totalSec = (lastNs - firstByteNs) / 1_000_000_000.0
+                        onSample(
+                            SpeedSample(
+                                elapsedSec = totalSec,
+                                instantMbps = ((bytes - lastEmitBytes) * 8.0 / instantSec) / 1_000_000.0,
+                                averageMbps = if (totalSec > 0) (bytes * 8.0 / totalSec) / 1_000_000.0 else 0.0,
+                                bytes = bytes,
+                            ),
+                        )
+                        lastEmitNs = lastNs
+                        lastEmitBytes = bytes
+                    }
                 }
-                bytes += read
-                lastNs = System.nanoTime()
-                buf.clear()
             }
+        } catch (_: Exception) {
+            // Fall through — whatever was transferred before the failure is
+            // still a usable measurement if it ran long enough.
         }
+
         if (firstByteNs == 0L || bytes <= 0) return 0.0
         val elapsedS = (lastNs - firstByteNs) / 1_000_000_000.0
-        // A sample too short to be meaningful (a tiny body, or the connection
-        // dying immediately) would divide by near-zero and report an absurd
-        // number. Better to report nothing than something wrong.
-        if (elapsedS < 0.25) return 0.0
+        if (elapsedS < 0.5) return 0.0
         return (bytes * 8.0 / elapsedS) / 1_000_000.0
     }
 
-    private fun recommend(mbps: Double, pingMs: Int, lossPct: Int): String = when {
+    @VisibleForTesting
+    internal fun recommend(mbps: Double, pingMs: Int, lossPct: Int): String = when {
         pingMs < 0 || lossPct >= 50 -> "Connection too unstable to recommend a format — check your network or VPN."
         mbps >= 25 -> "Your network comfortably supports 4K HLS / direct MPEG-TS without buffering."
         mbps >= 12 -> "Your network supports 1080p HLS reliably; 4K may occasionally buffer."
         mbps >= 5 -> "Your network supports 720p reliably. Consider Balanced or Low buffer profile for 1080p."
         mbps >= 2 -> "Your network is best suited to SD (480p) streams; higher bitrates will buffer."
         mbps > 0 -> "Very limited bandwidth detected — expect frequent buffering even at low bitrates."
+        // Only blame connectivity when connectivity actually failed. When the
+        // TCP probes and URL shapes all succeeded, telling the user to "check
+        // the server address" sends them after a problem that is not there.
+        pingMs >= 0 -> "Throughput sample did not complete — the panel refused or cut the download. " +
+            "Connectivity itself is fine (latency and URL probes succeeded)."
         else -> "Unable to measure throughput — check server address and network connection."
     }
 
