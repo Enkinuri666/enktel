@@ -262,3 +262,43 @@ data class DownloadEntry(
     val addedAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )
+
+/**
+ * A user-created themed list — "Kids Saturday", "Footy", "Rainy Sunday".
+ *
+ * Deliberately separate from both favourites and the watchlist. Favourites is
+ * one flat starred set per kind; the watchlist is "things I mean to watch".
+ * Neither can express "these nine channels and four films belong together",
+ * which is what a themed list is for, and which is why it has to span kinds.
+ */
+@Entity(tableName = "user_lists", indices = [Index("profileId")])
+data class UserList(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val profileId: Long,
+    val name: String,
+    /** One emoji shown beside the name. Purely decorative. */
+    val icon: String = "📁",
+    val createdAt: Long = System.currentTimeMillis(),
+    val sortIdx: Int = 0,
+)
+
+/**
+ * One entry in a [UserList].
+ *
+ * Name and poster are denormalised on purpose: a list should survive a
+ * playlist that drops the title. The row still renders, so the user can see
+ * what they lost and remove it, rather than the list silently shrinking.
+ */
+@Entity(tableName = "user_list_items", indices = [Index("listId"), Index("listId", "itemKey")])
+data class UserListItem(
+    /** "$listId:$itemKey" */
+    @PrimaryKey val key: String,
+    val listId: Long,
+    /** "live" | "vod" | "series" */
+    val kind: String,
+    /** The Channel / Movie / Series row key. */
+    val itemKey: String,
+    val name: String,
+    val poster: String = "",
+    val addedAt: Long = System.currentTimeMillis(),
+)

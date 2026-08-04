@@ -130,6 +130,9 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
             }.toMap()
     }
 
+    val userLists by graph.db.userListDao().lists(p.id)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+
     val statuses by ChannelStatus.states.collectAsStateWithLifecycle()
     LaunchedEffect(channels, p.id) {
         ChannelStatus.watch(graph, p, channels.take(ChannelStatus.MAX_WATCHED))
@@ -248,6 +251,17 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
                         scope.launch { graph.content.toggleFavorite(p.id, "live", ch.streamId) }
                     },
                     onToggleHidden = { scope.launch { graph.settings.toggleHiddenChannel(ch.key) } },
+                    lists = userLists,
+                    onAddToList = { listId ->
+                        scope.launch {
+                            graph.db.userListDao().addItem(
+                                tv.enktel.app.data.db.UserListItem(
+                                    key = "$listId:${ch.key}", listId = listId, kind = "live",
+                                    itemKey = ch.key, name = ch.name, poster = ch.logo,
+                                ),
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -271,6 +285,8 @@ private fun ChannelCard(
     onPlay: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleHidden: () -> Unit,
+    lists: List<tv.enktel.app.data.db.UserList>,
+    onAddToList: (Long) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Surface(
@@ -374,6 +390,18 @@ private fun ChannelCard(
                         if (isHidden) "Unhide" else "Hide",
                         Modifier.weight(1f),
                     ) { onToggleHidden(); menuOpen = false }
+                }
+                // Themed lists, when the user has any. No "create list" here on
+                // purpose — a naming field inside a grid tile is a bad place to
+                // type, and My Lists already owns that.
+                if (lists.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    lists.take(4).forEach { l ->
+                        OverflowAction("+ ${l.name}", Modifier.fillMaxWidth()) {
+                            onAddToList(l.id); menuOpen = false
+                        }
+                        Spacer(Modifier.height(3.dp))
+                    }
                 }
             }
         }

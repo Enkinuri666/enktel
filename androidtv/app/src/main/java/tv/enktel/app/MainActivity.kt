@@ -944,6 +944,7 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         // then play. "live?ch=" is the player itself, reached from a card here,
         // from the guide, or from a deep link.
         composable("channels") { tv.enktel.app.ui.live.ChannelBrowserScreen(graph, nav) }
+        composable("lists") { tv.enktel.app.ui.lists.UserListsScreen(graph, nav) }
         composable("live?ch={ch}") { back ->
             LivePlayerScreen(graph, nav, initialChannelKey = back.arguments?.getString("ch").orEmpty())
         }

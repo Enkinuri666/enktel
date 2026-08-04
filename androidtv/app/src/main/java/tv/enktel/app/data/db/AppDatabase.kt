@@ -12,9 +12,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Profile::class, Channel::class, Category::class, Movie::class, Series::class,
         EpgProgram::class, Favorite::class, WatchProgress::class, Recording::class,
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
-        DownloadEntry::class,
+        DownloadEntry::class, UserList::class, UserListItem::class,
     ],
-    version = 9, // v9 adds firstSeenAt on movies + series (what is new to this line)
+    version = 10, // v10 adds user-created themed lists spanning channels + VOD
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun searchDao(): SearchDao
     abstract fun sportsDao(): SportsDao
     abstract fun downloadDao(): DownloadDao
+    abstract fun userListDao(): UserListDao
 
     companion object {
         private val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -150,11 +151,45 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Themed lists. Separate from favourites (one flat starred set
+                // per kind) and from the watchlist ("things I mean to watch"),
+                // because neither can express "these channels and these films
+                // belong together" — which is the whole point, and is why the
+                // item table is keyed on kind + row key rather than on one
+                // content type.
+                db.execSQL("""CREATE TABLE IF NOT EXISTS user_lists (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    profileId INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    icon TEXT NOT NULL DEFAULT '📁',
+                    createdAt INTEGER NOT NULL,
+                    sortIdx INTEGER NOT NULL DEFAULT 0
+                )""".trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_lists_profileId ON user_lists(profileId)")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS user_list_items (
+                    key TEXT NOT NULL PRIMARY KEY,
+                    listId INTEGER NOT NULL,
+                    kind TEXT NOT NULL,
+                    itemKey TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    poster TEXT NOT NULL DEFAULT '',
+                    addedAt INTEGER NOT NULL
+                )""".trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_list_items_listId ON user_list_items(listId)")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_user_list_items_listId_itemKey " +
+                        "ON user_list_items(listId, itemKey)"
+                )
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
-                    MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+                    MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and
