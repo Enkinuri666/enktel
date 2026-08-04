@@ -1,7 +1,10 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,7 +28,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +73,11 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
 
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
+    // Live readings during the throughput phase. Kept as a rolling window so
+    // the sparkline shows the speed settling rather than one averaged number
+    // appearing at the end.
+    var liveSample by remember { mutableStateOf<SpeedTestEngine.SpeedSample?>(null) }
+    val speedHistory = remember { mutableStateListOf<Float>() }
     var result by remember { mutableStateOf<SpeedTestEngine.Result?>(null) }
 
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
@@ -75,6 +89,8 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
         if (running) return
         running = true
         result = null
+        liveSample = null
+        speedHistory.clear()
         scope.launch {
             // Pick a real live channel + real VOD asset so the probes actually
             // reflect what the panel serves — not the panel API JSON. When the
@@ -90,6 +106,13 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 profile = p,
                 xtream = graph.xtream,
                 onProgress = { status = it },
+                onSpeedSample = { sample ->
+                    liveSample = sample
+                    speedHistory += sample.instantMbps.toFloat()
+                    // ~85 points at 5 Hz covers the whole window; trimming keeps
+                    // the sparkline from compressing into a smear.
+                    if (speedHistory.size > 85) speedHistory.removeAt(0)
+                },
             )
             result = r
             running = false
@@ -136,6 +159,11 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     Text(status.ifBlank { "Starting…" }, color = Color.White, fontSize = 14.sp)
                 }
             }
+            // Only appears once the download phase starts producing readings —
+            // before that there is nothing to show but an empty graph.
+            if (liveSample != null) {
+                item { SpeedMeter(liveSample, speedHistory) }
+            }
         }
         result?.let { r ->
             item { GroupHeader("Network") }
@@ -169,6 +197,34 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                         else -> EnktelLive
                     },
                 )
+            }
+            if (speedHistory.size >= 2) {
+                item {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(EnktelSurface)
+                            .padding(14.dp),
+                    ) {
+                        Text(
+                            "Throughput over the ${SpeedTestEngine.WINDOW_SEC}s sample",
+                            color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Sparkline(speedHistory, EnktelBlue)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            // A line that ramps and holds is healthy; one that
+                            // spikes and collapses is being shaped or contended.
+                            "Peak %.1f Mbps · low %.1f Mbps".format(
+                                speedHistory.maxOrNull() ?: 0f, speedHistory.minOrNull() ?: 0f,
+                            ),
+                            color = Color.White.copy(0.85f), fontSize = 12.sp,
+                        )
+                    }
+                }
             }
             item { MetricRow("Connection type", r.connectionType.name) }
 
@@ -397,6 +453,134 @@ private suspend fun pickVodUrl(graph: AppGraph, p: Profile): String? = try {
     val list = graph.content.movies(p.id).first()
     list.firstOrNull()?.let { m -> graph.content.vodUrl(p, m) }
 } catch (_: Throwable) { null }
+
+/**
+ * Live throughput meter, shown while the download phase runs.
+ *
+ * The engine emits roughly five readings a second. This draws the
+ * instantaneous figure large, the running average and transferred volume
+ * underneath, and a sparkline of the whole window — so a line that starts
+ * fast and then collapses looks visibly different from one that is simply
+ * slow. That distinction is the whole reason a single averaged number at the
+ * end was not enough to diagnose buffering.
+ */
+@Composable
+private fun SpeedMeter(sample: SpeedTestEngine.SpeedSample?, history: List<Float>) {
+    val instant = (sample?.instantMbps ?: 0.0).toFloat()
+    // Smoothing the displayed figure only — the sparkline plots raw readings,
+    // so nothing is hidden, the headline number just stops flickering.
+    val shown by animateFloatAsState(targetValue = instant, label = "instantMbps")
+    val elapsed = sample?.elapsedSec ?: 0.0
+    val progress = (elapsed / SpeedTestEngine.WINDOW_SEC).coerceIn(0.0, 1.0).toFloat()
+    val animatedProgress by animateFloatAsState(targetValue = progress, label = "speedProgress")
+    val accent = EnktelBlue
+    val peak = history.maxOrNull() ?: 0f
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(EnktelSurfaceHigh)
+            .padding(18.dp),
+    ) {
+        Text(
+            "MEASURING DOWNLOAD SPEED",
+            color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                "%.1f".format(shown),
+                color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Black,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "Mbps",
+                color = EnktelTextDim, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            Spacer(Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "avg %.1f · peak %.1f Mbps".format(sample?.averageMbps ?: 0.0, peak),
+                    color = Color.White.copy(0.9f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "%.1f MB in %.0fs of %ds".format(
+                        (sample?.bytes ?: 0L) / 1_000_000.0, elapsed, SpeedTestEngine.WINDOW_SEC,
+                    ),
+                    color = EnktelTextDim, fontSize = 11.sp,
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Sparkline(history, accent)
+        Spacer(Modifier.height(12.dp))
+        // Elapsed-time bar, so the user knows how much longer this takes.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White.copy(0.10f)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(animatedProgress)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.horizontalGradient(listOf(accent, EnktelOk))),
+            )
+        }
+    }
+}
+
+/**
+ * Plots the readings as a filled line, scaled to the highest reading seen so
+ * far. The vertical scale is deliberately relative rather than absolute: on a
+ * 400 Mbps line a 0-1000 axis would render every real fluctuation as a flat
+ * line, and the shape of the curve is the diagnostic signal here.
+ */
+@Composable
+private fun Sparkline(history: List<Float>, accent: Color) {
+    val faint = Color.White.copy(0.08f)
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(78.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(0.25f)),
+    ) {
+        // Three horizontal guides so the eye has something to judge against.
+        repeat(3) { i ->
+            val y = size.height * (i + 1) / 4f
+            drawLine(faint, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+        }
+        if (history.size < 2) return@Canvas
+
+        val peak = (history.maxOrNull() ?: 0f).coerceAtLeast(0.001f)
+        val stepX = size.width / (history.size - 1).toFloat()
+        // Keep the peak just off the top edge so the line never clips.
+        fun yFor(v: Float) = size.height - (v / peak).coerceIn(0f, 1f) * size.height * 0.88f
+
+        val line = Path().apply {
+            moveTo(0f, yFor(history[0]))
+            for (i in 1 until history.size) lineTo(i * stepX, yFor(history[i]))
+        }
+        val fill = Path().apply {
+            addPath(line)
+            lineTo((history.size - 1) * stepX, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(
+            fill,
+            Brush.verticalGradient(listOf(accent.copy(0.35f), Color.Transparent)),
+        )
+        drawPath(line, accent, style = Stroke(width = 2.5f))
+    }
+}
 
 @Composable
 private fun GroupHeader(text: String) {
