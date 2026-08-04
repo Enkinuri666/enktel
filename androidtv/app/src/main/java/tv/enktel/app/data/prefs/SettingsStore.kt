@@ -221,7 +221,10 @@ class SettingsStore(private val context: Context) {
     // v1.35.0 default flipped to "deep_space" — the Deep Space & Neon Accent
     // token set. As with every previous default change, the ?: only fires when
     // the pref is absent, so anyone who has picked a theme keeps it.
-    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "deep_space" }
+    // v1.46.0 default is "enktel_neon" — the OLED-native palette. The `?:`
+    // only applies when the pref is absent, so anyone who has explicitly
+    // picked a theme keeps it across the upgrade.
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "enktel_neon" }
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
