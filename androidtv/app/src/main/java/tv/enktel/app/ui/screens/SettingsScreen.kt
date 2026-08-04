@@ -32,6 +32,7 @@ import tv.enktel.app.AppGraph
 import tv.enktel.app.BuildConfig
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -88,20 +89,20 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             // v1.39.0 — companion to the AccountBanner above. Trial or
             // near-expiry users can jump straight to /upgrade (WebView on
             // mobile, QR on TV) without hunting for the button per category.
-            FocusButton("⬆  Upgrade account",
+            FocusButton("💳  Upgrade account",
                 onClick = { nav.navigate("upgrade") })
         }
         Text(
-            "Diagnostics tests your network + the panel's URL shapes + concurrent-connection cap + HTTP/TLS protocol — all locally, no browser needed. " +
-                "The system monitor runs live while you watch, so you can see whether a stutter came from the connection, the decoder, or the device overheating.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            "Diagnostics tests your network, the panel's URL shapes, your connection cap and the HTTP/TLS path — locally, no browser needed.",
+            color = EnktelTextDim, fontSize = 11.sp, maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
 
         androidx.compose.foundation.lazy.LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(CATEGORIES) { c ->
-                FocusButton(c, accent = c == category, onClick = { category = c })
+                GlassChip(c, selected = c == category, onClick = { category = c })
             }
         }
 
