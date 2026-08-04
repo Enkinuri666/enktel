@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -171,12 +172,24 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                 contentAlignment = Alignment.Center,
             ) {
                 if (tab.special == "mic") {
-                    // Centered brand-color mic FAB — bigger, glowing, visually anchors the bar.
+                    // Brand assistant button.
+                    //
+                    // Was a stock Material mic glyph on a flat gradient disc,
+                    // which read as a generic voice-input affordance dropped
+                    // into the bar rather than part of the product. Now a
+                    // softer squircle carrying the brand mark, with a real
+                    // shadow so it sits above the bar instead of on it.
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
                             Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
+                                .size(48.dp)
+                                .shadow(
+                                    elevation = 10.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    spotColor = EnktelBlue,
+                                    clip = false,
+                                )
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(EnktelBlue, EnktelPurple),
@@ -184,11 +197,11 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            androidx.compose.foundation.Image(
-                                imageVector = tab.icon,
-                                contentDescription = tab.label,
-                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-                                modifier = Modifier.height(24.dp),
+                            Text(
+                                "E",
+                                color = Color.White,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
                             )
                         }
                         Text(

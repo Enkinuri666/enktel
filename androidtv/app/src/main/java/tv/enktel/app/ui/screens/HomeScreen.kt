@@ -333,6 +333,31 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+        // Newest additions lead the page.
+        //
+        // This rail existed all along as "Latest Movies", ninth down the
+        // screen under three other rails — so the single most common reason to
+        // open the app, "what's new since last time", required scrolling past
+        // everything else to answer. It is sorted by addedAt DESC, which is
+        // exactly the question being asked; it just wasn't where anyone would
+        // look, and "Latest" read as a genre rather than a recency.
+        if (recentMovies.isNotEmpty()) {
+            item {
+                ContentRail(
+                    "Recently Added",
+                    recentMovies,
+                    key = { it.key },
+                    subtitle = "new in your playlist",
+                ) { m ->
+                    PosterCard(
+                        title = m.name,
+                        imageUrl = m.poster,
+                        onClick = { nav.navigate("movie/${m.key}") },
+                        tmdbId = m.tmdbId,
+                    )
+                }
+            }
+        }
         if (becauseYouWatched.isNotEmpty()) {
             item {
                 ContentRail("Because You Watched", becauseYouWatched, key = { it.key }) { m ->
@@ -479,17 +504,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         subtitle = if (ch.num > 0) "CH ${ch.num}" else "",
                         wide = true,
                         onClick = { nav.navigate("live?ch=${ch.key}") },
-                    )
-                }
-            }
-        }
-        if (recentMovies.isNotEmpty()) {
-            item {
-                ContentRail("Latest Movies", recentMovies, key = { it.key }) { m ->
-                    PosterCard(
-                        title = m.name,
-                        imageUrl = m.poster,
-                        onClick = { nav.navigate("movie/${m.key}") },
                     )
                 }
             }
