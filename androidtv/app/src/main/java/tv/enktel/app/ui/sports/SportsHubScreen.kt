@@ -1,9 +1,14 @@
 package tv.enktel.app.ui.sports
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -483,6 +488,43 @@ private fun SectionHeader(text: String, color: Color, padHoriz: androidx.compose
     }
 }
 
+/**
+ * Shared focus treatment for the Sports cards.
+ *
+ * These three are the only list cards in the app that do not go through
+ * PosterCard, so they missed the depth pass and stayed flat: a Surface with a
+ * container colour, no shadow, no scale, no focus border. Against rails that
+ * now lift and glow, they read as a different, cheaper app.
+ *
+ * Kept as one modifier rather than copied into each card so the language stays
+ * identical — the whole point is that Sports should feel like the same product
+ * as Home.
+ */
+@Composable
+private fun Modifier.sportsCardFocus(
+    focused: Boolean,
+    accent: Color,
+): Modifier {
+    val elevation by animateDpAsState(
+        targetValue = if (focused) 14.dp else 2.dp,
+        animationSpec = tween(if (focused) 170 else 250),
+        label = "sportsCardElevation",
+    )
+    val lift by animateDpAsState(
+        targetValue = if (focused) (-4).dp else 0.dp,
+        animationSpec = tween(if (focused) 170 else 250),
+        label = "sportsCardLift",
+    )
+    return this
+        .offset(y = lift)
+        .shadow(
+            elevation = elevation,
+            shape = RoundedCornerShape(14.dp),
+            clip = false,
+            spotColor = if (focused) accent else Color.Black,
+        )
+}
+
 @Composable
 private fun LiveEventCard(
     ev: SportsEvent,
@@ -493,9 +535,12 @@ private fun LiveEventCard(
 ) {
     val now = System.currentTimeMillis()
     val frac = ((now - ev.startMs).toFloat() / (ev.endMs - ev.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+    var cardFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onTap,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz).tapClick(onTap),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
+            .sportsCardFocus(cardFocused, EnktelLive)
+            .onFocusChanged { cardFocused = it.isFocused }.tapClick(onTap),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         // Was EnktelLive.copy(0.14f) — a 14 % red wash over the near-black
         // background, which rendered as muddy maroon on a phone and made a row
@@ -569,9 +614,12 @@ private fun UpcomingEventCard(
         inMs < 24 * 3600_000L -> "in ${inMs / 3600_000L}h ${inMs / 60_000L % 60}m"
         else -> "in ${inMs / 86_400_000L}d"
     }
+    var cardFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onOpen,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz).tapClick(onOpen),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
+            .sportsCardFocus(cardFocused, EnktelBlue)
+            .onFocusChanged { cardFocused = it.isFocused }.tapClick(onOpen),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurfaceHigh.copy(0.5f),
@@ -607,9 +655,12 @@ private fun UpcomingEventCard(
 @Composable
 private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.unit.Dp, onReplay: () -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    var cardFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onReplay,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz).tapClick(onReplay),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
+            .sportsCardFocus(cardFocused, EnktelOk)
+            .onFocusChanged { cardFocused = it.isFocused }.tapClick(onReplay),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurface.copy(0.5f),

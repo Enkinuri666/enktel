@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
@@ -153,6 +155,29 @@ private fun NavRailItem(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
+    var focused by remember { mutableStateOf(false) }
+
+    // The rail read as cheap because focus barely moved anything: scale was
+    // pinned at 1.0 and the only change was a background alpha step. On a TV,
+    // where the D-pad is the whole interaction model, focus needs to be
+    // unmistakable — it is the cursor.
+    val elevation by animateDpAsState(
+        targetValue = if (focused) 12.dp else 0.dp,
+        animationSpec = tween(if (focused) 160 else 240),
+        label = "navItemElevation",
+    )
+    // The selection stripe grows into place rather than blinking on, and
+    // focus extends it further, so moving through the rail feels continuous.
+    val stripeHeight by animateDpAsState(
+        targetValue = when {
+            focused -> 30.dp
+            selected -> 24.dp
+            else -> 0.dp
+        },
+        animationSpec = tween(200),
+        label = "navStripeHeight",
+    )
+
     Surface(
         onClick = { NavSounds.click(); onClick() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
@@ -168,10 +193,19 @@ private fun NavRailItem(
                 shape = RoundedCornerShape(10.dp),
             ),
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
+        // A small scale — 1.04 rather than the posters' 1.05+ — because rail
+        // items are stacked and a large one would collide with its neighbours.
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
         modifier = Modifier
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(10.dp),
+                clip = false,
+                spotColor = EnktelBlue,
+            )
+            .onFocusChanged { focused = it.isFocused }
             .focusable(),
     ) {
         Row(
@@ -183,9 +217,15 @@ private fun NavRailItem(
             Box(
                 Modifier
                     .width(3.dp)
-                    .height(24.dp)
+                    .height(stripeHeight)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (selected) EnktelBlue else Color.Transparent),
+                    .background(
+                        if (selected || focused) {
+                            Brush.verticalGradient(listOf(EnktelBlue, EnktelPurple))
+                        } else {
+                            Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                        },
+                    ),
             )
             Spacer(Modifier.width(10.dp))
             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
