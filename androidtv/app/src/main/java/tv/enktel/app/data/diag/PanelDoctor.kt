@@ -5,8 +5,11 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tv.enktel.app.data.db.Profile
+import kotlinx.serialization.json.JsonElement
 import tv.enktel.app.data.get
+import tv.enktel.app.data.int
 import tv.enktel.app.data.long
+import tv.enktel.app.data.str
 
 /**
  * Runs the panel diagnostics.
@@ -114,15 +117,24 @@ object PanelDoctor {
             val vod = runCatching { xtream.vodStreams(profile) }.getOrNull()
             val containers = mutableMapOf<String, Int>()
             var archive = 0
+            // Read through the lenient JSON helpers, not raw Map casts.
+            //
+            // These rows are JsonObjects. A JsonObject *is* a Map, so the casts
+            // succeeded and the counts looked plausible — but the values come
+            // back as JsonElement, so `as? String` returned null and
+            // `toString()` on a string primitive yields the quoted form
+            // ("\"7\"" rather than 7), which toIntOrNull rejects. The result:
+            // container stats always empty, and "channels with archive" always
+            // 0 — while the catch-up section, which counts the same thing from
+            // the synced database, correctly reported 626 in the same report.
             (vod as? List<*>)?.forEach { row ->
-                val m = row as? Map<*, *> ?: return@forEach
-                val ext = (m["container_extension"] as? String).orEmpty().lowercase()
+                val ext = (row as? JsonElement).str("container_extension")
+                    .orEmpty().lowercase()
                 if (ext.isNotBlank()) containers[ext] = (containers[ext] ?: 0) + 1
             }
             (live as? List<*>)?.forEach { row ->
-                val m = row as? Map<*, *> ?: return@forEach
-                val days = (m["tv_archive_duration"] ?: m["tv_archive"])?.toString()
-                    ?.toIntOrNull() ?: 0
+                val e = row as? JsonElement
+                val days = e.int("tv_archive_duration") ?: e.int("tv_archive") ?: 0
                 if (days > 0) archive++
             }
             LineStructure(
