@@ -1086,14 +1086,28 @@ private fun PanelRow(text: String, selected: Boolean, onClick: () -> Unit) {
     androidx.tv.material3.Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        // Square corners and a flat fill made this list the one place in the app
+        // that still looked like a plain listview. Same 8 dp radius and the same
+        // translucent-fill-plus-ring focus treatment as everything else.
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue.copy(0.25f) else Color.Transparent,
-            focusedContainerColor = EnktelBlue,
+            focusedContainerColor = EnktelBlue.copy(0.32f),
             focusedContentColor = Color.White,
             contentColor = if (selected) Color.White else EnktelTextDim,
         ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, EnktelBlue),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        ),
     ) {
-        Text(text, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp))
+        Text(
+            text, fontSize = 13.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+        )
     }
 }
 
@@ -1105,11 +1119,23 @@ private fun ChannelRow(ch: Channel, active: Boolean, graph: AppGraph, profileId:
     }
     androidx.tv.material3.Surface(
         onClick = onClick,
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = if (active) EnktelBlue.copy(0.2f) else Color.Transparent,
-            focusedContainerColor = EnktelBlue,
+            // Was a fully saturated EnktelBlue fill. The channel number below is
+            // painted EnktelBlue too, so a focused row rendered the number
+            // blue-on-blue and it effectively vanished — on the one row the user
+            // is actually looking at. A translucent fill plus a ring reads as
+            // focus just as strongly and keeps every element legible.
+            focusedContainerColor = EnktelBlue.copy(0.32f),
             focusedContentColor = Color.White,
             contentColor = Color.White,
+        ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, EnktelBlue),
+                shape = RoundedCornerShape(8.dp),
+            ),
         ),
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
     ) {
@@ -1122,13 +1148,45 @@ private fun ChannelRow(ch: Channel, active: Boolean, graph: AppGraph, profileId:
                 color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(38.dp),
             )
-            Box(Modifier.size(30.dp).clip(RoundedCornerShape(4.dp)).background(EnktelSurface)) {
-                if (ch.logo.isNotBlank()) AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
+            Box(
+                Modifier.size(30.dp).clip(RoundedCornerShape(6.dp)).background(EnktelSurface),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (ch.logo.isNotBlank()) {
+                    AsyncImage(
+                        model = ch.logo,
+                        contentDescription = null,
+                        // Logos arrive at wildly different aspect ratios. Fit with a
+                        // little breathing room stops wide wordmarks being cropped
+                        // to an unreadable middle slice.
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(2.dp),
+                    )
+                } else {
+                    // Plenty of channels ship no logo at all, and an empty grey
+                    // square repeated down the list looked like a loading failure.
+                    // The initial is at least identifying.
+                    Text(
+                        ch.name.trimStart().firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•",
+                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Black,
+                    )
+                }
             }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text(ch.name, fontSize = 13.sp, maxLines = 1, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
-                if (nowTitle.isNotBlank()) Text(nowTitle, fontSize = 11.sp, color = EnktelTextDim, maxLines = 1)
+                Text(
+                    ch.name, fontSize = 13.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                )
+                if (nowTitle.isNotBlank()) {
+                    Text(
+                        nowTitle, fontSize = 11.sp, color = EnktelTextDim, maxLines = 1,
+                        // Without this a long programme title was chopped through
+                        // the middle of a glyph rather than ellipsised.
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

@@ -82,14 +82,22 @@ class FocusedPosterState internal constructor(
             trailerTarget = null
             return
         }
-        if (url.isNullOrBlank() && tmdbId <= 0) return
+        if (url.isNullOrBlank() && tmdbId <= 0 && title.isBlank()) return
         if (!url.isNullOrBlank()) {
             pending = scope.launch {
                 delay(dwellMs)
                 currentUrl = url
             }
         }
-        if (tmdbId > 0) {
+        // A title alone is enough.
+        //
+        // This gate used to be `tmdbId > 0`, which is why hover trailers played
+        // for nobody. The id is stamped by the enrichment worker, the worker can
+        // only copy it from the panel, and most panels never publish one — so
+        // tmdbId stayed 0 and no target was ever published. TrailerRepository
+        // was taught to resolve an id by searching TMDB for the title, but that
+        // path was unreachable from here: the caller refused to ask.
+        if (tmdbId > 0 || title.isNotBlank()) {
             pendingTrailer = scope.launch {
                 delay(trailerDwellMs)
                 trailerTarget = TrailerTarget(tmdbId, isSeries, title)

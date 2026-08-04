@@ -18,6 +18,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SportsSoccer
+import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +43,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -61,22 +76,34 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 data class TvNavItem(
     val id: String,
     val label: String,
-    val glyph: String,
+    val icon: ImageVector,
     val route: String,
 )
 
+/**
+ * The rail used emoji for its icons, and that was the single biggest reason it
+ * read as cheap: a system emoji font renders roughly half of them as full-colour
+ * pictures (🏠 📺 🗓 🎬 🎞 ⚽ 🔍) and the rest as hairline monochrome text glyphs
+ * (☆ ⬇ ⏺ ⚙). One column, two completely different drawing styles, mismatched
+ * weights and optical sizes, and no way to tint any of them with the theme —
+ * so the accent colour stopped at the label and never reached the icon.
+ *
+ * Material icons are one family at one weight, they scale cleanly at 10-foot
+ * distance, and they inherit `contentColor`, so the whole row (icon, label and
+ * stripe) now moves together between the dim, selected and focused states.
+ */
 private val DEFAULT_ITEMS = listOf(
-    TvNavItem("home", "Home", "🏠", "home"),
-    TvNavItem("live", "Live TV", "📺", "live?ch="),
-    TvNavItem("guide", "TV Guide", "🗓", "guide"),
-    TvNavItem("movies", "Movies", "🎬", "movies"),
-    TvNavItem("series", "Series", "🎞", "series"),
-    TvNavItem("sports", "Sports", "⚽", "sports"),
-    TvNavItem("watchlist", "Watchlist", "☆", "watchlist"),
-    TvNavItem("downloads", "Downloads", "⬇", "downloads"),
-    TvNavItem("recordings", "Recordings", "⏺", "recordings"),
-    TvNavItem("search", "Search", "🔍", "search"),
-    TvNavItem("settings", "Settings", "⚙", "settings"),
+    TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
+    TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "live?ch="),
+    TvNavItem("guide", "TV Guide", Icons.Rounded.CalendarMonth, "guide"),
+    TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
+    TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
+    TvNavItem("sports", "Sports", Icons.Rounded.SportsSoccer, "sports"),
+    TvNavItem("watchlist", "Watchlist", Icons.Rounded.BookmarkBorder, "watchlist"),
+    TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
+    TvNavItem("recordings", "Recordings", Icons.Rounded.FiberManualRecord, "recordings"),
+    TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
+    TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
 )
 
 @Composable
@@ -129,7 +156,7 @@ fun TvNavShell(
             Spacer(Modifier.height(24.dp))
             if (nowPlayingLabel != null) {
                 NavRailItem(
-                    item = TvNavItem("nowPlaying", nowPlayingLabel.take(22), "▶", ""),
+                    item = TvNavItem("nowPlaying", nowPlayingLabel.take(22), Icons.Rounded.PlayArrow, ""),
                     selected = true,
                     expanded = expanded,
                     onClick = onNowPlaying,
@@ -245,7 +272,10 @@ private fun NavRailItem(
             )
             Spacer(Modifier.width(10.dp))
             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                Text(item.glyph, fontSize = 18.sp)
+                // No explicit tint: the Surface's contentColor already carries
+                // dim / selected / focused, so the icon tracks the label instead
+                // of staying a fixed colour the way an emoji had to.
+                Icon(item.icon, contentDescription = null, modifier = Modifier.size(21.dp))
             }
             if (expanded) {
                 Spacer(Modifier.width(12.dp))
