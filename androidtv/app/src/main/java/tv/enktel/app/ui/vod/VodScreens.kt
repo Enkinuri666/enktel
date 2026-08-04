@@ -249,13 +249,7 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
         val needle = query.trim().lowercase()
         raw.asSequence()
             .filter { m -> genreFilter == null || m.genre.contains(genreFilter!!, ignoreCase = true) }
-            .filter { m ->
-                when (decadeFilter) {
-                    null -> true
-                    -1 -> m.year in 1900..1989
-                    else -> m.year in decadeFilter!!..(decadeFilter!! + 9)
-                }
-            }
+            .filter { m -> tv.enktel.app.data.repo.VodFilters.matchesYear(m.year, decadeFilter) }
             .filter { m ->
                 if (needle.isEmpty()) true
                 else m.name.lowercase().contains(needle) ||
@@ -266,7 +260,11 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                 when (sort) {
                     "rating" -> seq.sortedByDescending { it.rating }
                     "added" -> seq.sortedByDescending { it.addedAt }
-                    "year" -> seq.sortedByDescending { it.year }
+                    // Year alone left every title the panel gave no year for in
+                    // one undifferentiated block in query order; ingest time
+                    // breaks the tie.
+                    "year" -> tv.enktel.app.data.repo.VodFilters
+                        .newest(seq.toList(), { it.year }, { it.addedAt }).asSequence()
                     else -> seq.sortedBy { it.name.lowercase() }
                 }
             }.toList()
@@ -491,13 +489,7 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
         val needle = query.trim().lowercase()
         raw.asSequence()
             .filter { s -> genreFilter == null || s.genre.contains(genreFilter!!, ignoreCase = true) }
-            .filter { s ->
-                when (decadeFilter) {
-                    null -> true
-                    -1 -> s.year in 1900..1989
-                    else -> s.year in decadeFilter!!..(decadeFilter!! + 9)
-                }
-            }
+            .filter { s -> tv.enktel.app.data.repo.VodFilters.matchesYear(s.year, decadeFilter) }
             .filter { s -> needle.isEmpty() || s.name.lowercase().contains(needle) }
             .let { seq ->
                 when (sort) {
@@ -639,19 +631,15 @@ private fun FilterBar(
                     onClick = { onDecade(null) },
                 )
             }
-            items(listOf(2026, 2025, 2020, 2010, 2000, 1990)) { d ->
+            // Chips and their captions both come from VodFilters, which is also
+            // what evaluates them — the old code drew "2026+" here and matched a
+            // ten-year window there, and nothing connected the two.
+            items(tv.enktel.app.data.repo.VodFilters.YEAR_CHIPS) { d ->
                 tv.enktel.app.ui.components.GlassChip(
-                    if (d >= 2025) "$d+" else "${d}s",
+                    tv.enktel.app.data.repo.VodFilters.label(d),
                     selected = decadeFilter == d,
                     accent = EnktelOk,
                     onClick = { onDecade(if (decadeFilter == d) null else d) },
-                )
-            }
-            item {
-                tv.enktel.app.ui.components.GlassChip(
-                    "Older", selected = decadeFilter == -1,
-                    accent = EnktelOk,
-                    onClick = { onDecade(if (decadeFilter == -1) null else -1) },
                 )
             }
         }
