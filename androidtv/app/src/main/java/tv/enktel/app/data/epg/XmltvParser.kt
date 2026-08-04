@@ -84,19 +84,48 @@ object XmltvParser {
         return total
     }
 
-    /** XMLTV time: `20260716203000 +0000` (zone optional). */
+    /**
+     * XMLTV time: `20260716203000 +0000` (zone optional).
+     *
+     * Three legal spellings used to return 0, which is worse than it sounds: a
+     * programme timestamped 0 lands in January 1970, so it silently disappears
+     * from the guide instead of failing loudly. All three came from deciding the
+     * format on string length and handing the rest straight to SimpleDateFormat:
+     *
+     *  - `20260716203000 Z` and `20260716203000Z` — `Z` is XMLTV's spelling of
+     *    UTC, but the `Z` *pattern* letter means an RFC-822 offset like `+0000`
+     *    and rejects a literal `Z`.
+     *  - `20260716203000+0000` — no space. Longer than 14 characters, so the
+     *    zoned pattern was chosen, and that pattern demands a literal space.
+     *
+     * Normalising the string first means one pattern handles every shape, and
+     * named zones (`GMT`, `UTC`) keep working through the general-timezone path.
+     */
     fun parseTime(value: String?): Long {
         if (value.isNullOrBlank()) return 0
+        val raw = value.trim()
+        // 14 digits, optionally followed by a zone that may or may not have a
+        // space in front of it.
+        val m = TIME_RE.matchEntire(raw) ?: return 0
+        val stamp = m.groupValues[1]
+        val zone = m.groupValues[2].trim().let { if (it.equals("Z", true)) "+0000" else it }
+
         return try {
             // Called twice for every programme in the guide, so the formatter
             // is fetched from the per-thread cache rather than rebuilt — a full
             // XMLTV runs to six figures of programmes.
-            val fmt = if (value.trim().length > 14) {
+            val fmt = if (zone.isEmpty()) {
+                tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss", Locale.US)
+            } else if (zone.first() == '+' || zone.first() == '-') {
                 tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss Z", Locale.US)
             } else {
-                tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss", Locale.US)
+                // Named zone — GMT, UTC, CET. General-timezone pattern.
+                tv.enktel.app.data.TimeFormat.formatter("yyyyMMddHHmmss z", Locale.US)
             }
-            fmt.parse(value.trim())?.time ?: 0
+            val text = if (zone.isEmpty()) stamp else "$stamp $zone"
+            fmt.parse(text)?.time ?: 0
         } catch (_: Exception) { 0 }
     }
+
+    private val TIME_RE = Regex("""^(\d{14})\s*([+-]\d{4}|[A-Za-z]{1,5})?$""")
 }
