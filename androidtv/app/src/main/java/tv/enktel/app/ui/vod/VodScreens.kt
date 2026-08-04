@@ -349,6 +349,7 @@ private fun MoviesGrid(
             onDecade = onDecade,
             query = query,
             onQuery = onQuery,
+            resultCount = movies.size,
         )
         if (movies.isEmpty()) {
             CenterMessage("No movies in this category.")
@@ -422,6 +423,7 @@ private fun SeriesGrid(
             onDecade = onDecade,
             query = query,
             onQuery = onQuery,
+            resultCount = series.size,
         )
         if (series.isEmpty()) {
             CenterMessage("No series match these filters.")
@@ -559,6 +561,7 @@ private fun FilterBar(
     onDecade: (Int?) -> Unit,
     query: String,
     onQuery: (String) -> Unit,
+    resultCount: Int,
 ) {
     Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp)) {
         // v1.25.0 — inline title search. Filters the visible grid live
@@ -583,18 +586,28 @@ private fun FilterBar(
                 FocusButton("Clear", onClick = { onQuery("") })
             }
         }
-        tv.enktel.app.ui.components.ChipRowLabel(
-            "Sort by",
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(sortOptions) { (id, label) ->
-                tv.enktel.app.ui.components.GlassChip(
-                    label, selected = sort == id, accent = EnktelBlue,
-                    onClick = { onSort(id) },
-                )
-            }
+        // Sort is a *mode*, not a filter — exactly one applies and it reorders
+        // the same set — so it gets a segmented control rather than another row
+        // of chips indistinguishable from the genre and decade rows below it.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            tv.enktel.app.ui.components.SegmentedControl(
+                segments = sortOptions.map { (id, label) ->
+                    tv.enktel.app.ui.components.Segment(id, label)
+                },
+                selectedId = sort,
+                onSelect = onSort,
+            )
+            Spacer(Modifier.weight(1f))
+            // The count next to the grid is what makes a filter that returns
+            // nothing legible: "0 titles" is a fact, an empty grid is a
+            // mystery. Same reasoning as the category chips in Live TV.
+            Text(
+                if (resultCount == 1) "1 title" else "$resultCount titles",
+                color = tv.enktel.app.ui.theme.EnktelTextDim,
+                fontSize = 12.sp,
+            )
         }
+        Spacer(Modifier.height(4.dp))
         if (genres.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
             tv.enktel.app.ui.components.ChipRowLabel(

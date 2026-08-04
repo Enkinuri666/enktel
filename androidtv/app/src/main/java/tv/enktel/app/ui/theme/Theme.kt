@@ -95,6 +95,57 @@ private val PaletteDeepSpace = EnktelPalette(
 )
 
 /**
+ * v1.46.0 — "EnkTel Neon", the OLED-native default.
+ *
+ * ## True black, and what that actually costs
+ *
+ * The background is `#000000`. On an OLED panel that is not a colour, it is
+ * the pixel switched off: no backlight bleed behind the poster art, infinite
+ * contrast against it, and measurably less power drawn on a screen that is
+ * mostly background. That is the whole reason for this palette; every other
+ * choice here follows from it.
+ *
+ * Two consequences worth writing down, because they are what makes a naive
+ * "just set the background to black" theme look wrong on real hardware:
+ *
+ *  - **The first surface above black cannot be nearly black.** OLED panels
+ *    are badly non-linear at the bottom of their range, and several crush
+ *    everything under roughly 4 % luminance into the same off state — so a
+ *    `#080A0F` card on a `#000000` page renders as *no card at all*, and the
+ *    layout loses its structure entirely. [surface] sits at `#0C111C`, high
+ *    enough to survive that crush on the panels that do it while still
+ *    reading as black in a dark room.
+ *  - **Pure white body text on pure black smears** on OLED during scroll,
+ *    because the pixel transition from fully off is the slowest one the panel
+ *    makes. [text] is `#F2F6FF` rather than `#FFFFFF` — imperceptible as a
+ *    colour, visibly cleaner in motion on a scrolling rail.
+ *
+ * ## The neon
+ *
+ * Accents are the EnkTel brand blue pushed to the top of sRGB rather than a
+ * different hue: `#3B9DFF` becomes `#29B6FF`. Against true black a saturated
+ * accent reads as emissive without any glow effect doing the work, which is
+ * what "neon" means on a self-lit panel. The violet secondary and mint
+ * success sit at the same saturation so no one accent dominates.
+ *
+ * Focus keeps a 4 dp ring — the same lesson Deep Space learned, that a 2 dp
+ * outline does not survive a 10-foot viewing distance — but carries a wider,
+ * stronger glow than any other palette, because a glow bleeding into true
+ * black is the one place the effect is genuinely free.
+ */
+private val PaletteEnktelNeon = EnktelPalette(
+    id = "enktel_neon", label = "EnkTel Neon (OLED)",
+    bg = Color(0xFF000000),
+    surface = Color(0xFF0C111C),
+    surfaceHigh = Color(0xFF161E30),
+    text = Color(0xFFF2F6FF), textDim = Color(0xFF8FA2C0),
+    primary = Color(0xFF29B6FF), primaryDeep = Color(0xFF0A72D0), secondary = Color(0xFFB14DFF),
+    live = Color(0xFFFF3B5C), ok = Color(0xFF00E5A0), border = Color(0xFF1E2A44),
+    focusRingWidth = 4.dp, focusGlowRadius = 22.dp, focusGlowAlpha = 0.55f, focusScale = 1.06f,
+    textFaint = Color(0xFF5A6B87),
+)
+
+/**
  * v1.27.0 — "Cinematic" theme. Midnight Charcoal base with Electric
  * Indigo D-Pad focus and Cyber Cyan live/quality accents. Colour tokens
  * from the TV brief; sits alongside Obsidian as the new default premium
@@ -169,12 +220,12 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
 )
 
 val ALL_PALETTES = listOf(
-    PaletteDeepSpace, PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald,
+    PaletteEnktelNeon, PaletteDeepSpace, PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald,
     PaletteAmber, PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteDeepSpace
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteEnktelNeon
 
-private val LocalPalette = compositionLocalOf { PaletteDeepSpace }
+private val LocalPalette = compositionLocalOf { PaletteEnktelNeon }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 
@@ -227,7 +278,7 @@ val EnktelFocusGlow: Color
 
 @Composable
 fun EnktelTheme(
-    themeId: String = "deep_space",
+    themeId: String = "enktel_neon",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
     content: @Composable () -> Unit,

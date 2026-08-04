@@ -38,7 +38,10 @@ import tv.enktel.app.ui.components.ContentRail
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
+import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.Segment
+import tv.enktel.app.ui.components.SegmentedControl
 import tv.enktel.app.ui.components.TvTextField
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelOk
@@ -70,18 +73,42 @@ fun SearchScreen(
     var epg by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
     val history by graph.db.searchDao().recent(20).collectAsStateWithLifecycle(initialValue = emptyList())
 
+    // Live channels come from the synced catalogue and are matched in-process
+    // rather than by the DAO's `name LIKE '%q%'`. That query cannot find
+    // "AU| SEVEN MATE HD" from "seven mate" (the space breaks the infix), nor
+    // from "73" (its number), nor from "mate seven". See ChannelFilters.
+    val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val hidden by graph.settings.hiddenChannels.collectAsStateWithLifecycle(initialValue = emptySet())
+
     LaunchedEffect(query) {
         if (query.length < 2) {
             channels = emptyList(); movies = emptyList(); series = emptyList(); epg = emptyList()
             return@LaunchedEffect
         }
         delay(300)
-        channels = graph.content.searchChannels(p.id, query)
         movies = graph.db.searchDao().searchMoviesDeep(p.id, query)
         series = graph.db.searchDao().searchSeriesDeep(p.id, query)
         epg = try { graph.db.epgDao().searchUpcoming(p.id, query, System.currentTimeMillis()) }
               catch (_: Throwable) { emptyList() }
     }
+    LaunchedEffect(query, allChannels, hidden) {
+        channels = if (query.length < 2) emptyList()
+        else ChannelFilters.apply(allChannels, query = query, hidden = hidden).take(60)
+    }
+
+    // Scope switch. "All" stays the default — a search that silently excluded
+    // three of the four content types would be worse than no scoping at all.
+    var scope0 by remember { mutableStateOf("all") }
+    val segments = remember(channels, movies, series, epg) {
+        listOf(
+            Segment("all", "All", channels.size + movies.size + series.size + epg.size),
+            Segment("live", "Live TV", channels.size),
+            Segment("movies", "Movies", movies.size),
+            Segment("series", "Series", series.size),
+            Segment("guide", "Guide", epg.size),
+        )
+    }
+    fun show(id: String) = scope0 == "all" || scope0 == id
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -94,9 +121,13 @@ fun SearchScreen(
                 Spacer(Modifier.height(12.dp))
                 TvTextField(
                     query, { query = it },
-                    "Title, cast, director, genre…",
+                    "Title, cast, director, genre, channel name or number…",
                     Modifier.width(520.dp),
                 )
+                if (query.length >= 2) {
+                    Spacer(Modifier.height(12.dp))
+                    SegmentedControl(segments, scope0, onSelect = { scope0 = it })
+                }
             }
         }
         if (query.isBlank() && history.isNotEmpty()) {
@@ -132,7 +163,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (channels.isNotEmpty()) {
+        if (channels.isNotEmpty() && show("live")) {
             item {
                 ContentRail("Channels", channels, accent = EnktelBlue, key = { it.key }) { ch ->
                     PosterCard(ch.name, ch.logo, wide = true, subtitle = ch.categoryName,
@@ -143,7 +174,7 @@ fun SearchScreen(
         // Master-search EPG rail: upcoming programs matching the query
         // across every channel, sorted by earliest start.  Tap to open the
         // guide anchored on that program's channel + time.
-        if (epg.isNotEmpty()) {
+        if (epg.isNotEmpty() && show("guide")) {
             item {
                 val epgWithChan = remember(epg, channels) {
                     epg.map { p -> p to channels.firstOrNull { it.epgId == p.epgId } }
@@ -163,7 +194,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (movies.isNotEmpty()) {
+        if (movies.isNotEmpty() && show("movies")) {
             item {
                 ContentRail("Movies", movies, accent = EnktelOk, key = { it.key }) { m ->
                     PosterCard(
@@ -174,7 +205,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (series.isNotEmpty()) {
+        if (series.isNotEmpty() && show("series")) {
             item {
                 ContentRail("Series", series, accent = EnktelPurple, key = { it.key }) { s ->
                     PosterCard(s.name, s.poster, subtitle = if (s.year > 0) "${s.year}" else "",

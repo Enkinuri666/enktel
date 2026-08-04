@@ -221,7 +221,10 @@ class SettingsStore(private val context: Context) {
     // v1.35.0 default flipped to "deep_space" — the Deep Space & Neon Accent
     // token set. As with every previous default change, the ?: only fires when
     // the pref is absent, so anyone who has picked a theme keeps it.
-    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "deep_space" }
+    // v1.46.0 default is "enktel_neon" — the OLED-native palette. The `?:`
+    // only applies when the pref is absent, so anyone who has explicitly
+    // picked a theme keeps it across the upgrade.
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "enktel_neon" }
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }
@@ -369,6 +372,18 @@ class SettingsStore(private val context: Context) {
     suspend fun setRecSuffixMin(v: Int) = context.dataStore.edit { it[REC_SUFFIX_MIN] = v }
     suspend fun setAutoEpgHours(v: Int) = context.dataStore.edit { it[AUTO_EPG_HOURS] = v }
     suspend fun setHiddenChannels(set: Set<String>) = context.dataStore.edit { it[HIDDEN_CHANNELS] = set }
+
+    /**
+     * Hide or unhide one channel.
+     *
+     * Read-modify-write inside a single `edit` block rather than via the
+     * exposed flow: two rapid taps against a flow read would both see the
+     * pre-edit set and the second would undo the first.
+     */
+    suspend fun toggleHiddenChannel(key: String) = context.dataStore.edit { prefs ->
+        val cur = prefs[HIDDEN_CHANNELS] ?: emptySet()
+        prefs[HIDDEN_CHANNELS] = if (key in cur) cur - key else cur + key
+    }
     suspend fun setVodSort(v: String) = context.dataStore.edit { it[VOD_SORT] = v }
     suspend fun pushRecentChannel(key: String) = context.dataStore.edit { prefs ->
         val current = prefs[RECENT_CHANNELS]?.split('|')?.filter(String::isNotBlank).orEmpty()

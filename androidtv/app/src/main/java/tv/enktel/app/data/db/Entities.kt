@@ -78,6 +78,16 @@ data class Movie(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    /**
+     * When this title first appeared in *this user's* catalogue, ms.
+     *
+     * Distinct from [addedAt], which is the panel's own `added` timestamp:
+     * that is missing entirely on M3U lines and is often the date the
+     * provider ingested the file rather than the date it reached this line.
+     * A re-sync knows exactly which stream ids were not there before, and
+     * that is the only signal that actually answers "what is new to me".
+     */
+    val firstSeenAt: Long = 0,
     // v1.20.0 metadata enrichment — populated first from Xtream (tmdbId), then
     // overwritten by MetadataEnrichmentWorker with the extended TMDB payload.
     val tmdbId: Long = 0,
@@ -106,6 +116,8 @@ data class Series(
     val year: Int = 0,
     val cast: String = "",
     val director: String = "",
+    /** See [Movie.firstSeenAt]. */
+    val firstSeenAt: Long = 0,
     val tmdbId: Long = 0,
     val studios: String = "",
     val tags: String = "",
@@ -249,4 +261,44 @@ data class DownloadEntry(
     val resumeState: String = "",
     val addedAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+)
+
+/**
+ * A user-created themed list — "Kids Saturday", "Footy", "Rainy Sunday".
+ *
+ * Deliberately separate from both favourites and the watchlist. Favourites is
+ * one flat starred set per kind; the watchlist is "things I mean to watch".
+ * Neither can express "these nine channels and four films belong together",
+ * which is what a themed list is for, and which is why it has to span kinds.
+ */
+@Entity(tableName = "user_lists", indices = [Index("profileId")])
+data class UserList(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val profileId: Long,
+    val name: String,
+    /** One emoji shown beside the name. Purely decorative. */
+    val icon: String = "📁",
+    val createdAt: Long = System.currentTimeMillis(),
+    val sortIdx: Int = 0,
+)
+
+/**
+ * One entry in a [UserList].
+ *
+ * Name and poster are denormalised on purpose: a list should survive a
+ * playlist that drops the title. The row still renders, so the user can see
+ * what they lost and remove it, rather than the list silently shrinking.
+ */
+@Entity(tableName = "user_list_items", indices = [Index("listId"), Index("listId", "itemKey")])
+data class UserListItem(
+    /** "$listId:$itemKey" */
+    @PrimaryKey val key: String,
+    val listId: Long,
+    /** "live" | "vod" | "series" */
+    val kind: String,
+    /** The Channel / Movie / Series row key. */
+    val itemKey: String,
+    val name: String,
+    val poster: String = "",
+    val addedAt: Long = System.currentTimeMillis(),
 )

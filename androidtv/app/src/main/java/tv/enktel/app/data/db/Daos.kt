@@ -338,3 +338,30 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE status = 'PAUSED' AND errorMessage LIKE 'Waiting for Wi-Fi%'")
     suspend fun waitingForWifi(): List<DownloadEntry>
 }
+
+@Dao
+interface UserListDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun createList(l: UserList): Long
+    @Update suspend fun updateList(l: UserList)
+    @Query("DELETE FROM user_lists WHERE id = :id") suspend fun deleteList(id: Long)
+    // No foreign key on user_list_items, so the children have to go explicitly.
+    // A cascade would be tidier but would mean a schema-level FK on a table
+    // whose parent rows users delete casually.
+    @Query("DELETE FROM user_list_items WHERE listId = :id") suspend fun deleteItemsOf(id: Long)
+
+    @Query("SELECT * FROM user_lists WHERE profileId = :profileId ORDER BY sortIdx, createdAt")
+    fun lists(profileId: Long): Flow<List<UserList>>
+
+    @Query("SELECT * FROM user_list_items WHERE listId = :listId ORDER BY addedAt DESC")
+    fun items(listId: Long): Flow<List<UserListItem>>
+
+    @Query("SELECT COUNT(*) FROM user_list_items WHERE listId = :listId")
+    fun itemCount(listId: Long): Flow<Int>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun addItem(i: UserListItem)
+    @Query("DELETE FROM user_list_items WHERE key = :key") suspend fun removeItem(key: String)
+
+    /** Which lists already hold [itemKey], so the UI can render a toggle. */
+    @Query("SELECT listId FROM user_list_items WHERE itemKey = :itemKey")
+    fun listsHolding(itemKey: String): Flow<List<Long>>
+}

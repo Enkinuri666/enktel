@@ -257,22 +257,76 @@ object SystemMonitor {
         pct
     } catch (_: Throwable) { 0 }
 
+    /** Outcome of [probeLatency]. */
+    data class Ping(
+        /** Round-trip in ms, or -1 when nothing came back at all. */
+        val ms: Int = -1,
+        /** HTTP status the panel answered with. 0 when it never answered. */
+        val httpCode: Int = 0,
+        /** Which request finally got through — "HEAD" or "GET". */
+        val via: String = "",
+        /** Why it failed, when it did. */
+        val error: String? = null,
+    ) {
+        val ok: Boolean get() = ms >= 0
+    }
+
     /**
-     * One active round-trip against [url], for the "test now" button. Returns
-     * the latency in ms, or -1 if the request failed. Deliberately not on the
-     * sampling path — passive measurement is what keeps the monitor free.
+     * One active round-trip against [url], for the "test now" button.
+     * Deliberately not on the sampling path — passive measurement is what
+     * keeps the monitor free.
+     *
+     * This used to send a single HEAD and collapse *every* failure to -1,
+     * which the UI rendered as "Panel did not respond" — even while the
+     * card above it showed a working latency figure from real traffic. Two
+     * reasons it lied:
+     *
+     *  - **HEAD is not universally served.** Plenty of Xtream panels and the
+     *    WAFs in front of them answer HEAD with 405, or drop it, while
+     *    answering GET on the same URL perfectly well.
+     *  - **OkHttp throws on a 407 received without a configured proxy**
+     *    (`ProtocolException`) rather than returning the response, so a panel
+     *    behind a bot rule never reached the `it.code` line at all.
+     *
+     * A reply is a reply: any HTTP status proves the panel is reachable and
+     * answering, so 403 and 404 are successful round trips here, not
+     * failures. Only a transport error is silence, and now it says which.
      */
-    suspend fun probeLatency(http: OkHttpClient, url: String): Int {
-        if (url.isBlank()) return -1
-        return try {
-            val client = http.newBuilder()
-                .connectTimeout(8, TimeUnit.SECONDS)
-                .readTimeout(8, TimeUnit.SECONDS)
-                .callTimeout(10, TimeUnit.SECONDS)
-                .build()
+    suspend fun probeLatency(http: OkHttpClient, url: String): Ping {
+        if (url.isBlank()) return Ping(error = "No panel address configured")
+        val client = http.newBuilder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS)
+            .build()
+
+        var firstError: String? = null
+        for (method in listOf("HEAD", "GET")) {
             val started = System.nanoTime()
-            client.newCall(Request.Builder().url(url).head().build()).execute().use { it.code }
-            ((System.nanoTime() - started) / 1_000_000).toInt()
-        } catch (_: Throwable) { -1 }
+            try {
+                val req = Request.Builder().url(url)
+                    .apply { if (method == "HEAD") head() else get() }
+                    .build()
+                val code = client.newCall(req).execute().use { it.code }
+                val ms = ((System.nanoTime() - started) / 1_000_000).toInt()
+                // 405/501 mean "not this verb" — worth retrying as GET rather
+                // than reporting a round trip the user cannot act on.
+                if (method == "HEAD" && (code == 405 || code == 501)) {
+                    firstError = firstError ?: "HEAD rejected (HTTP $code)"
+                    continue
+                }
+                return Ping(ms = ms, httpCode = code, via = method)
+            } catch (e: Throwable) {
+                // See the 407 note above: OkHttp reports it as a thrown
+                // ProtocolException, but the panel demonstrably answered.
+                val msg = e.message.orEmpty()
+                if (msg.contains("HTTP_PROXY_AUTH", true) || msg.contains("407")) {
+                    val ms = ((System.nanoTime() - started) / 1_000_000).toInt()
+                    return Ping(ms = ms, httpCode = 407, via = method, error = "Blocked by a bot rule")
+                }
+                firstError = firstError ?: (e.message ?: e.javaClass.simpleName)
+            }
+        }
+        return Ping(error = firstError ?: "No response")
     }
 }
