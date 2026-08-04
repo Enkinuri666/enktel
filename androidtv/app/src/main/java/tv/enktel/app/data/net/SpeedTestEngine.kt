@@ -295,7 +295,10 @@ object SpeedTestEngine {
         // rejecting. Tells the user their real per-IP connection allotment.
         onProgress("Detecting connection cap…")
         val cap = if (streamSampleUrl != null)
-            detectConnectionCap(http, streamSampleUrl)
+            // Pass the line's stated cap so the probe cannot exceed it. The
+            // server-info call above has already run, so on an Xtream profile
+            // this is known by now.
+            detectConnectionCap(http, streamSampleUrl, server.maxConnections)
         else ConnectionCap(0, 0, 0)
 
         onProgress("Measuring download throughput…")
@@ -400,9 +403,21 @@ object SpeedTestEngine {
         return UrlShapeSimulation(liveShapes = results, bestLive = best)
     }
 
-    private suspend fun detectConnectionCap(http: OkHttpClient, sampleUrl: String): ConnectionCap =
+    private suspend fun detectConnectionCap(
+        http: OkHttpClient,
+        sampleUrl: String,
+        /** The line's own cap from user_info, or 0 when the panel didn't say. */
+        reportedMax: Int = 0,
+    ): ConnectionCap =
         kotlinx.coroutines.coroutineScope {
-            val target = 8
+            // Never open more sockets than the line is allowed.
+            //
+            // On a 1-connection line, firing eight parallel GETs is not a
+            // measurement — it is seven guaranteed rejections, and on panels
+            // that count failed auth attempts it can get the line temporarily
+            // blocked by the very test meant to diagnose it. Probe one past the
+            // stated cap so the boundary is still confirmed, and no further.
+            val target = if (reportedMax > 0) (reportedMax + 1).coerceAtMost(8) else 8
             // kotlinx.coroutines.async replaces CompletableFuture.supplyAsync
             // here — supplyAsync requires API 24 but the app supports 21.
             // Dispatchers.IO gives the same "run these concurrently on
@@ -509,12 +524,55 @@ object SpeedTestEngine {
                 )
             }
         } catch (e: Exception) {
-            StreamProbe(
+            // A ranged GET is not universally accepted. Panels that reject it
+            // answer 407, and OkHttp turns a 407 received without a configured
+            // proxy into a thrown ProtocolException rather than a response — so
+            // the probe reported "HTTP 0 / UNKNOWN" for a live URL that Panel
+            // Doctor, which issues a plain GET, reads perfectly well. Two
+            // sections of the same report disagreeing about the same URL.
+            //
+            // Retry without the Range header before giving up, and if that
+            // fails too, say 407 rather than 0.
+            if (isProxyAuthArtifact(e)) retryPlainGet(http, url) else StreamProbe(
                 url = url, ok = false, httpCode = 0, contentType = "",
                 container = "UNKNOWN", codecHint = "",
                 serverHeader = "", transcoderHint = "", error = e.message,
             )
         }
+    }
+
+    /**
+     * OkHttp raises this instead of returning the response, so the real status
+     * never reaches the caller. Matched on the message because the library
+     * throws a plain ProtocolException with no dedicated type.
+     */
+    private fun isProxyAuthArtifact(e: Exception): Boolean =
+        e.message?.contains("HTTP_PROXY_AUTH", ignoreCase = true) == true ||
+            e.message?.contains("407") == true
+
+    /** Second attempt with no Range header — what Panel Doctor does, and what works. */
+    private fun retryPlainGet(http: OkHttpClient, url: String): StreamProbe = try {
+        http.newCall(Request.Builder().url(url).get().build()).execute().use { r ->
+            val ct = r.header("Content-Type").orEmpty()
+            StreamProbe(
+                url = url, ok = r.isSuccessful, httpCode = r.code,
+                contentType = ct,
+                container = containerFromContentType(ct, url),
+                codecHint = codecHintFromContentType(ct),
+                serverHeader = r.header("Server").orEmpty(),
+                transcoderHint = r.header("X-Transcoder").orEmpty(),
+                error = if (r.isSuccessful) null
+                else "Ranged GET was refused (407); a plain GET returned ${r.code}",
+            )
+        }
+    } catch (e2: Exception) {
+        StreamProbe(
+            url = url, ok = false, httpCode = 407, contentType = "",
+            container = "UNKNOWN", codecHint = "", serverHeader = "", transcoderHint = "",
+            error = "Panel answered 407 Proxy Authentication Required to a ranged GET " +
+                "and did not answer a plain GET either. Usually a WAF or bot rule rather " +
+                "than a real proxy — check Settings → Custom User-Agent.",
+        )
     }
 
     private fun containerFromContentType(ct: String, url: String): String {
