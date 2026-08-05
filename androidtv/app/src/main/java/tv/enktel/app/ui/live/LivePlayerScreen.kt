@@ -621,7 +621,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
         // the info + actions they need in that mode.
-        if (showInfo && current != null) {
+        // The TV overlay is a full-bleed cinematic layout; mobile keeps the
+        // compact glass card, which is the right shape for a phone in
+        // landscape where the picture is most of the screen. Both show the
+        // same facts.
+        if (showInfo && current != null && tv.enktel.app.BuildConfig.FLAVOR != "mobile") {
+            LiveInfoOverlay(
+                channel = current!!,
+                nowNext = nowNext,
+                stats = stats,
+                playlistName = p.name,
+                recording = recordingId != 0L,
+                shiftedFrom = shiftedFrom,
+                sleepUntil = sleepUntil,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+        if (showInfo && current != null && tv.enktel.app.BuildConfig.FLAVOR == "mobile") {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 InfoBar(
                     channel = current!!,
@@ -1224,6 +1240,42 @@ private fun QuickMenu(
 ) {
     val sleepLabel = if (sleepUntil <= 0) "Sleep timer: off"
     else "Sleep in ${((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)} min"
+
+    // On a television this is a strip along the bottom rather than a drawer
+    // down the right-hand edge. The drawer covered a third of the picture and
+    // stacked fifteen equally-weighted buttons in a column, which on a D-pad
+    // means counting presses to reach anything. A strip leaves the programme
+    // visible and puts the common actions one left/right move apart.
+    //
+    // Mobile keeps the drawer: a bottom strip would land on top of the
+    // compact info bar and the touch action row that already live there.
+    if (tv.enktel.app.BuildConfig.FLAVOR != "mobile") {
+        val actions = buildList {
+            add(QuickAction("☰", "Channels", onClose))
+            add(QuickAction("🗓", "TV Guide", onGuide))
+            if (shifted) add(QuickAction("🔴", "Back to live", onBackToLive, active = true))
+            if (canShift) {
+                add(QuickAction("⏮", "Restart", onRestartProgram))
+                add(QuickAction("⏪", "Back 5 min", onRewindLive))
+            }
+            add(QuickAction(if (isFav) "★" else "☆", "Favourite", onFavorite, active = isFav))
+            add(QuickAction(if (recording) "■" else "●", if (recording) "Stop rec" else "Record", onRecord, active = recording))
+            if (channel.hasArchive) add(QuickAction("🗂", "Catch-up", onCatchup))
+            add(QuickAction("🎞", "Video", onVideo))
+            add(QuickAction("🔊", "Audio", onAudio))
+            add(QuickAction("💬", "Subtitles", onSubs))
+            add(QuickAction("⛶", "Aspect", onAspect))
+            add(QuickAction("⧉", "PiP", onPip))
+            add(QuickAction("▤", "Multi-view", onMultiView))
+            add(QuickAction("☾", sleepLabel.substringBefore(':').ifBlank { "Sleep" }, onSleep, active = sleepUntil > 0))
+            add(QuickAction("📊", "Stats", onStats, active = showStats))
+        }
+        Box(Modifier.fillMaxSize()) {
+            QuickMenuBar(actions, Modifier.align(Alignment.BottomCenter))
+        }
+        return
+    }
+
     val menuScroll = rememberScrollState()
     Box(Modifier.fillMaxSize()) {
         Column(
