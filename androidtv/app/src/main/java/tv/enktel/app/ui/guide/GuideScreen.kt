@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,12 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -90,6 +94,10 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     var dayOffset by remember { mutableIntStateOf(0) }
     var programs by remember { mutableStateOf<Map<String, List<EpgProgram>>>(emptyMap()) }
     var selected by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
+    // What the dock above the grid is describing. Driven by *focus*, not by
+    // clicking: on a D-pad the highlight is the cursor, so the detail panel
+    // should follow it as you travel. Clicking still opens the full dialog.
+    var highlighted by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
 
     val dayStart = remember(dayOffset) {
         Calendar.getInstance().apply {
@@ -179,6 +187,19 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             return
         }
 
+        // The dock: a live preview and the highlighted programme's detail,
+        // above the grid. Without it the guide is a wall of two-line blocks
+        // and the only way to read a synopsis is to open a dialog, which
+        // means losing your place in the grid to find out whether a
+        // programme is worth stopping on.
+        GuideDock(
+            graph = graph,
+            highlighted = highlighted,
+            playlistName = p.name,
+            modifier = Modifier.padding(horizontal = 48.dp),
+        )
+        Spacer(Modifier.height(14.dp))
+
         // Timeline header with a live NOW marker: red vertical line at current time
         // if we're viewing today. Scrolls with hScroll so it always aligns.
         val nowOffsetDp = if (dayOffset == 0 && now in dayStart..dayEnd) {
@@ -223,7 +244,18 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().height(56.dp).padding(vertical = 2.dp)) {
                     Surface(
                         onClick = { nav.navigate("live?ch=${ch.key}") },
-                        modifier = Modifier.width(210.dp).fillMaxSize().tapClick { nav.navigate("live?ch=${ch.key}") },
+                        modifier = Modifier.width(210.dp).fillMaxSize()
+                            // Landing on the channel name should describe what
+                            // is on it right now, not leave the dock showing
+                            // whatever row you came from.
+                            .onFocusChanged { f ->
+                                if (f.isFocused) {
+                                    val nowProg = programs[ch.epgId].orEmpty()
+                                        .firstOrNull { it.startMs <= now && it.endMs > now }
+                                    if (nowProg != null) highlighted = ch to nowProg
+                                }
+                            }
+                            .tapClick { nav.navigate("live?ch=${ch.key}") },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = EnktelSurface,
@@ -266,6 +298,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 Surface(
                                     onClick = { selected = ch to prog },
                                     modifier = Modifier.width(w - 2.dp).fillMaxSize().padding(end = 2.dp)
+                                        .onFocusChanged { if (it.isFocused) highlighted = ch to prog }
                                         .tapClick { selected = ch to prog },
                                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                                     colors = ClickableSurfaceDefaults.colors(
@@ -357,6 +390,127 @@ private fun ProgramDialog(
             if (canCatchup) FocusButton("⏪ Play from start (catch-up)", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
             if (isFuture || isNow) FocusButton("● Record${if (isFuture) " (scheduled)" else ""}", onClick = onRecord, modifier = Modifier.fillMaxWidth())
             FocusButton("Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * Live preview plus the highlighted programme's detail, docked above the grid.
+ *
+ * The preview binds the shared [tv.enktel.app.player.PlaybackSession] surface
+ * rather than starting a second player. There is only ever one ExoPlayer in
+ * the process and only one view may hold its surface, so the session hands it
+ * between whoever is on screen — the fullscreen player, the floating mini
+ * window, and now this. Binding here takes the picture over while the guide is
+ * open and `unbind` returns it on the way out; starting an independent player
+ * would double the decode load and fight the dock for the same stream.
+ *
+ * When nothing is playing there is no surface to show, so the panel falls back
+ * to the highlighted channel's own artwork.
+ */
+@Composable
+private fun GuideDock(
+    graph: AppGraph,
+    highlighted: Pair<Channel, EpgProgram>?,
+    playlistName: String,
+    modifier: Modifier = Modifier,
+) {
+    val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
+    val ch = highlighted?.first
+    val prog = highlighted?.second
+    Row(modifier.fillMaxWidth().height(184.dp)) {
+        Box(
+            Modifier
+                .width(320.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (nowPlaying != null) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            useController = false
+                            setKeepContentOnPlayerReset(true)
+                        }
+                    },
+                    update = { view -> graph.playback.bind(view) },
+                    onRelease = { view -> graph.playback.unbind(view) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (ch != null && ch.logo.isNotBlank()) {
+                AsyncImage(
+                    model = ch.logo, contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(34.dp),
+                )
+            } else {
+                Text("Nothing playing", color = EnktelTextDim, fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.width(18.dp))
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            if (prog == null || ch == null) {
+                Text(
+                    "Move through the guide to see programme details here.",
+                    color = EnktelTextDim, fontSize = 13.sp,
+                )
+                return@Column
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    prog.title, color = Color.White, fontSize = 23.sp,
+                    fontWeight = FontWeight.Black, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    TimeFormat.now("HH:mm") + "  |  " + TimeFormat.now("EEE, d MMM yyyy"),
+                    color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${TimeFormat.format("HH:mm", prog.startMs)} – ${TimeFormat.format("HH:mm", prog.endMs)}" +
+                    "   ·   ${ch.name}" +
+                    if (ch.categoryName.isNotBlank()) "   ·   $playlistName, Group: ${ch.categoryName}" else "",
+                color = EnktelTextDim, fontSize = 12.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(9.dp))
+            // Progress only means anything for something currently airing;
+            // on a programme three days out a half-full bar would be a lie.
+            val nowMs = System.currentTimeMillis()
+            if (prog.startMs <= nowMs && prog.endMs > nowMs) {
+                val frac = ((nowMs - prog.startMs).toFloat() /
+                    (prog.endMs - prog.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.width(260.dp).height(5.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color.White.copy(0.18f)),
+                    ) {
+                        Box(
+                            Modifier.fillMaxWidth(frac).height(5.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(EnktelBlue),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "${((prog.endMs - nowMs) / 60_000).coerceAtLeast(0)} Minutes Left",
+                        color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Spacer(Modifier.height(9.dp))
+            }
+            if (prog.desc.isNotBlank()) {
+                Text(
+                    prog.desc, color = Color.White.copy(0.78f), fontSize = 12.5.sp,
+                    maxLines = 4, overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
