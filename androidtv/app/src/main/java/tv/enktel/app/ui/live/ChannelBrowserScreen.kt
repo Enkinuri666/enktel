@@ -100,13 +100,44 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
     var radioOnly by remember { mutableStateOf<Boolean?>(false) }
     var showHidden by remember { mutableStateOf(false) }
 
-    val categories = remember(allChannels) { ChannelFilters.categoriesOf(allChannels) }
-    val counts = remember(allChannels, hidden) { ChannelFilters.categoryCounts(allChannels, hidden) }
+    // Internet radio, fetched the first time the Radio view is opened.
+    //
+    // Most lines carry a token handful of radio streams, so this view used to
+    // be all but empty. The directory supplies real stations already tagged
+    // with a genre and a country, which is what the category chips group by.
+    // Kept out of the channels table on purpose: a playlist refresh clears
+    // that for the profile, and these have nothing to do with the playlist.
+    var directoryRadio by remember { mutableStateOf<List<tv.enktel.app.data.db.Channel>>(emptyList()) }
+    var radioLoading by remember { mutableStateOf(false) }
+    var radioError by remember { mutableStateOf("") }
+    LaunchedEffect(radioOnly, p.id) {
+        if (radioOnly != true || directoryRadio.isNotEmpty() || radioLoading) return@LaunchedEffect
+        radioLoading = true
+        radioError = ""
+        tv.enktel.app.data.net.RadioDirectory.fetch(graph.http).fold(
+            onSuccess = { stations ->
+                directoryRadio = with(tv.enktel.app.data.net.RadioDirectory) {
+                    stations.mapIndexed { i, s -> s.toChannel(p.id, i) }
+                }
+            },
+            onFailure = { radioError = it.message ?: "Could not reach the radio directory" },
+        )
+        radioLoading = false
+    }
+
+    // The line's own radio streams come first — they are what the subscription
+    // paid for — with the directory appended behind them.
+    val sourceChannels = remember(allChannels, directoryRadio, radioOnly) {
+        if (radioOnly == true) allChannels + directoryRadio else allChannels
+    }
+
+    val categories = remember(sourceChannels) { ChannelFilters.categoriesOf(sourceChannels) }
+    val counts = remember(sourceChannels, hidden) { ChannelFilters.categoryCounts(sourceChannels, hidden) }
     val channels = remember(
-        allChannels, categoryId, query, favouriteKeys, hidden, favouritesOnly, radioOnly, showHidden,
+        sourceChannels, categoryId, query, favouriteKeys, hidden, favouritesOnly, radioOnly, showHidden,
     ) {
         ChannelFilters.apply(
-            channels = allChannels,
+            channels = sourceChannels,
             categoryId = categoryId,
             query = query,
             favourites = favouriteKeys,
@@ -220,6 +251,13 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         if (channels.isEmpty()) {
             CenterMessage(
                 when {
+                    // Radio has a network step the other views do not, so it
+                    // gets to say which of the three states it is in rather
+                    // than showing "nothing here" while a fetch is running.
+                    radioOnly == true && radioLoading -> "Loading radio stations…"
+                    radioOnly == true && radioError.isNotBlank() ->
+                        "Your line's radio channels are shown here. The station directory " +
+                            "could not be reached — $radioError"
                     showHidden -> "Nothing hidden."
                     query.isNotBlank() -> "No channel matches \"$query\" in this filter."
                     favouritesOnly -> "No favourites yet — press and hold a channel to star it."
