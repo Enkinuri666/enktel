@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -442,7 +444,22 @@ fun <T> ContentRail(
     itemContent: @Composable (T) -> Unit,
 ) {
     if (items.isEmpty()) return
-    Column(modifier.fillMaxWidth()) {
+    // focusGroup() is what makes DOWN work on this screen.
+    //
+    // Without it, every card in every rail is a flat peer in one focus
+    // search. Compose then picks the best candidate in the requested
+    // direction by geometry — and because a rail is far wider than it is
+    // tall, a card down-and-to-the-side routinely scores better than the one
+    // directly below. The visible result is a DOWN press that moves
+    // sideways, which is exactly what it looked like. Holding DOWN
+    // eventually escaped only because the repeat drove the list to scroll and
+    // compose a fresh rail.
+    //
+    // Grouping makes the rail a single stop: the parent search sees one
+    // target per rail and steps between them vertically. focusRestorer() then
+    // returns to the card you were last on when you come back up, instead of
+    // snapping to the start of the row.
+    Column(modifier.fillMaxWidth().focusGroup()) {
         // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -476,6 +493,7 @@ fun <T> ContentRail(
             )
         }
         LazyRow(
+            modifier = Modifier.focusRestorer(),
             // Vertical padding is load-bearing, not decoration: a focused card
             // lifts 6 dp and casts an 18 dp shadow, and a LazyRow clips to its
             // own bounds — without headroom the glow is sliced off flat along

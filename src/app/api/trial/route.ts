@@ -41,21 +41,42 @@ function getClientIp(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null);
+
+  // Two callers, two payload shapes.
+  //
+  // The website posts { name, email, device, fp } from a form. The TV and
+  // mobile apps post { device_id, duration_hours, client, version } and have
+  // no form at all — a no-keyboard, one-button signup is the whole point of
+  // the in-app trial card. This route only ever understood the first shape,
+  // so every request from an app failed the name/email check and came back
+  // 400 "Please provide a valid name and email." The button could not
+  // succeed, on any device, since it shipped.
+  const deviceId = typeof body?.device_id === "string" ? body.device_id.trim() : "";
+  const isAppClient = deviceId.length > 0;
+
+  // The cookie gate is browser-only. An app sends no cookies, and its
+  // per-device limit is enforced on device_id below.
   const trialCookie = req.cookies.get(TRIAL_COOKIE)?.value;
-  if (trialCookie) {
+  if (!isAppClient && trialCookie) {
     return NextResponse.json(
       { error: "You've already used your free trial on this device. Log in to your dashboard or contact us on WhatsApp to upgrade." },
       { status: 403 }
     );
   }
 
-  const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-  const device = typeof body?.device === "string" ? body.device.trim() : "";
-  const fingerprint = typeof body?.fp === "string" ? body.fp.trim() : "";
+  const device = typeof body?.device === "string"
+    ? body.device.trim()
+    : typeof body?.client === "string" ? body.client.trim() : "";
+  // An app has no email to key the limit on, so its stable install id plays
+  // the part the browser fingerprint plays for the web form.
+  const fingerprint = isAppClient
+    ? deviceId
+    : typeof body?.fp === "string" ? body.fp.trim() : "";
 
-  if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isAppClient && (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     return NextResponse.json({ error: "Please provide a valid name and email." }, { status: 400 });
   }
 
@@ -115,7 +136,26 @@ export async function POST(req: NextRequest) {
   }
 
   const subscription = { ...result.subscription, device };
-  sendWelcomeEmail({ to: email, name, subscription: result.subscription, device }).catch(() => {});
+  // No email to send to when the caller is an app — the credentials are
+  // handed straight back and used in place.
+  if (email) {
+    sendWelcomeEmail({ to: email, name, subscription: result.subscription, device }).catch(() => {});
+  }
+
+  // Apps read a flat payload: server_url + username + password + expires_at.
+  // The nested { subscription } envelope is what the website expects, and
+  // carried no server field at all — so even once a request got past the
+  // name/email gate the app would have failed on "Trial response missing
+  // server URL". Both shapes are returned; each caller reads its own.
+  if (isAppClient) {
+    return NextResponse.json({
+      server_url: result.subscription.serverUrl,
+      username: result.subscription.username,
+      password: result.subscription.password,
+      expires_at: new Date(result.subscription.endDate).getTime(),
+      subscription,
+    });
+  }
 
   const res = NextResponse.json({ subscription });
   res.cookies.set(TRIAL_COOKIE, "1", {

@@ -200,6 +200,10 @@ export interface ProvisionedSubscription {
   endDate: string;
   username: string;
   password: string;
+  // The bare panel host, without credentials. The apps log in with
+  // server + username + password (Xtream style) rather than an m3u URL, and
+  // this was previously only reachable by parsing it back out of m3uUrl.
+  serverUrl: string;
   m3uUrl: string;
   epgUrl: string;
   panelSync: boolean;
@@ -250,6 +254,7 @@ export async function provisionSubscription(
       endDate: endDate.toISOString(),
       username,
       password,
+      serverUrl: serverUrl.replace(/\/$/, ""),
       m3uUrl: buildM3U(serverUrl, username, password),
       epgUrl: buildEPG(serverUrl, username, password),
       panelSync: true,
