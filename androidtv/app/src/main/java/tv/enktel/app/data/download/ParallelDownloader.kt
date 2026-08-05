@@ -370,7 +370,12 @@ class ParallelDownloader(
 
                 val streams = maxStreams.coerceIn(1, MAX_STREAMS)
                 segments = when {
-                    resumable -> saved!!
+                    // No `!!` needed: `resumable` is a val derived from
+                    // `saved != null`, and Kotlin 2.3 propagates that through
+                    // to smart-cast `saved` here. Under 2.2 this needed the
+                    // assertion, which is the sort of thing that quietly turns
+                    // into a crash when the surrounding logic is edited.
+                    resumable -> saved
                     total > 0 && probe.acceptsRanges && total >= PARALLEL_MIN_BYTES && streams > 1 ->
                         planSegments(total, streams)
                     else -> listOf(Segment(0, max(total - 1, 0), 0))
@@ -502,7 +507,7 @@ class ParallelDownloader(
             // Drain the single probe byte so the connection returns to the pool
             // clean; abandoning an unread body forces a socket teardown, which
             // some panels log (and then punish) as a client-side abort.
-            try { r.body?.bytes() } catch (_: Throwable) {}
+            try { r.body.bytes() } catch (_: Throwable) {}
             Probe(contentLength = total.coerceAtLeast(0), acceptsRanges = acceptsRanges)
         }
     }
@@ -791,7 +796,7 @@ class ParallelDownloader(
             if (!rangeless && (multiSegment || seg.cursor > 0) && r.code != 206) {
                 throw java.io.IOException("Server ignored the range request (HTTP ${r.code})")
             }
-            val input = r.body?.byteStream() ?: throw java.io.IOException("empty response body")
+            val input = r.body.byteStream()
             val buf = ByteArray(READ_BUFFER_BYTES)
             while (true) {
                 if (pause.paused) return

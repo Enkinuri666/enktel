@@ -13,7 +13,7 @@ class VoiceSpeaker(context: Context) {
     private var ready: Boolean = false
     private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         ready = status == TextToSpeech.SUCCESS
-        if (ready) tts?.language = Locale.getDefault()
+        if (ready) tts.language = Locale.getDefault()
     }
 
     fun speak(text: String) {

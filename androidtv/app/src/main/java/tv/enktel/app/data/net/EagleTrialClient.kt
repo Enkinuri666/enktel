@@ -56,7 +56,7 @@ class EagleTrialClient(private val http: OkHttpClient) {
             }.toString().toRequestBody(jsonType)
             val req = Request.Builder().url(url).post(body).build()
             http.newCall(req).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string().orEmpty()
                 if (!resp.isSuccessful) {
                     throw IOException(errorMessage(resp.code, text))
                 }

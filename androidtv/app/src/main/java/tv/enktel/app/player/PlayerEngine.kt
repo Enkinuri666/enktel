@@ -541,8 +541,8 @@ class PlayerEngine(
                     .header("Range", "bytes=0-2047")
                     .build()
                 http.newCall(req).execute().use { r ->
-                    val head = (r.body?.source()?.peek()?.readUtf8Line() ?: "").trim()
-                    val body = r.body?.string()?.take(512).orEmpty()
+                    val head = (r.body.source().peek().readUtf8Line() ?: "").trim()
+                    val body = r.body.string().take(512)
                     val text = (head + " " + body).trim()
                     when {
                         r.code == 401 || r.code == 403 ->
@@ -835,7 +835,7 @@ class PlayerEngine(
                         .trim().toLongOrNull()?.takeIf { it > 0 } != null ||
                         (r.header("Content-Length")?.toLongOrNull() ?: 0L) > 2L
                     // Drain so the socket goes back to the pool clean.
-                    try { r.body?.bytes() } catch (_: Throwable) {}
+                    try { r.body.bytes() } catch (_: Throwable) {}
                     when {
                         r.code != 206 -> SeekSupport.NO_RANGES
                         !totalKnown -> SeekSupport.NO_LENGTH

@@ -28,6 +28,15 @@
                                  gates every call behind a version check, so
                                  declaring it costs nothing on API 21-23.
         -->
+        <!--
+            windowSoftInputMode: without it the default is stateUnspecified,
+            and the system's decision when a window contains a text input is
+            routinely to raise the IME as the activity appears. On a first run
+            that put the soft keyboard on top of the still-playing welcome
+            video. stateAlwaysHidden is the TV-correct choice: the IME on a
+            television is a full-screen takeover driven by a D-pad, so it
+            should only ever appear because the user asked for it.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -35,6 +44,7 @@
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:supportsPictureInPicture="true"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize"
             tools:ignore="DiscouragedApi,UnusedAttribute">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

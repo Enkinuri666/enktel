@@ -25,7 +25,7 @@ class XtreamClient(private val http: OkHttpClient) {
             extra.forEach { (k, v) -> url.append('&').append(k).append('=').append(v) }
             http.newCall(Request.Builder().url(url.toString()).build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw IOException("Panel returned HTTP ${resp.code}")
-                LenientJson.parseToJsonElement(resp.body?.string() ?: "null")
+                LenientJson.parseToJsonElement(resp.body.string().ifBlank { "null" })
             }
         }
 

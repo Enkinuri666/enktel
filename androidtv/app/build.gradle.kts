@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -14,8 +13,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 35
-        versionCode = 105
-        versionName = "1.46.1"
+        versionCode = 107
+        versionName = "1.47.0"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -114,6 +113,9 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true // used to switch TV vs mobile navigation shells at runtime
+        // AGP 9 turns resValue off by default. Both flavors declare
+        // app_name_flavor through it, so it has to be opted back in.
+        resValues = true
     }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 

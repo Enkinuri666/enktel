@@ -208,7 +208,7 @@ object PanelDoctor {
             chunked = r.header("Transfer-Encoding").orEmpty().contains("chunked", true)
             keepAlive = !r.header("Connection").orEmpty().equals("close", true)
             bytes = try {
-                r.body?.byteStream()?.use { s -> s.readNBytesCompat(HEAD_BYTES) } ?: ByteArray(0)
+                r.body.byteStream().use { s -> s.readNBytesCompat(HEAD_BYTES) }
             } catch (_: Exception) {
                 ByteArray(0)
             }
@@ -291,7 +291,7 @@ object PanelDoctor {
                     .build(),
             ).execute().use { r ->
                 val cr = r.header("Content-Range").orEmpty()
-                try { r.body?.bytes() } catch (_: Exception) {}
+                try { r.body.bytes() } catch (_: Exception) {}
                 r.code == 206 && parseRangeStart(cr) == start
             }
         } catch (_: Exception) {
@@ -396,7 +396,7 @@ object PanelDoctor {
                     .get()
                     .build(),
             ).execute().use { r ->
-                try { r.body?.bytes() } catch (_: Exception) {}
+                try { r.body.bytes() } catch (_: Exception) {}
                 CatchupFacts(
                     tested = true,
                     scheme = detectCatchupScheme(null, url),

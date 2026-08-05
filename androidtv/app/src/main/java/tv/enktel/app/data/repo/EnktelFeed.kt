@@ -120,7 +120,7 @@ class EnktelFeed(private val http: OkHttpClient) {
         val req = Request.Builder().url(url).header("Accept", "application/json").build()
         val body = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return emptyList()
-            resp.body?.string().orEmpty()
+            resp.body.string().orEmpty()
         }
         if (body.isBlank()) return emptyList()
         val items = LenientJson.parseToJsonElement(body).get(arrayKey).arr() ?: return emptyList()

@@ -254,7 +254,7 @@ class ContentRepository(
             .build()
         val playlist = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
-            val raw = resp.body!!.byteStream()
+            val raw = resp.body.byteStream()
             val stream = maybeGunzipStream(raw, p.m3uUrl, resp.header("Content-Encoding"))
             stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
         }
