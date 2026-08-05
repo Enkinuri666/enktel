@@ -41,7 +41,7 @@ class EpgRepository(
         val req = Request.Builder().url(url).build()
         val total = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("EPG returned HTTP ${resp.code}")
-            val raw = resp.body!!.byteStream()
+            val raw = resp.body.byteStream()
             val stream = maybeGunzip(raw, url, resp.header("Content-Type"), resp.header("Content-Encoding"))
             epg.clear(p.id)
             XmltvParser.parse(stream, p.id, wanted, from, to) { batch -> epg.insertAll(batch) }

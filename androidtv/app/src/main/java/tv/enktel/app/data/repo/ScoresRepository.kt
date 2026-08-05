@@ -382,7 +382,7 @@ class ScoresRepository(
     /** GET [url], pull [key] out of the JSON object, return it as a list. */
     private fun fetchArray(url: String, key: String): List<JsonElement> = try {
         val body = http.newCall(Request.Builder().url(url).build()).execute()
-            .use { if (it.isSuccessful) it.body?.string() else null }.orEmpty()
+            .use { if (it.isSuccessful) it.body.string() else null }.orEmpty()
         if (body.isBlank()) emptyList()
         else {
             val root = LenientJson.parseToJsonElement(body) as? JsonObject

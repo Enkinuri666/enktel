@@ -91,7 +91,7 @@ class RecordingService : Service() {
             val call = app.graph.http.newCall(Request.Builder().url(rec.streamUrl).build())
             call.execute().use { resp ->
                 check(resp.isSuccessful) { "HTTP ${resp.code}" }
-                resp.body!!.byteStream().use { input ->
+                resp.body.byteStream().use { input ->
                     file.outputStream().buffered(256 * 1024).use { out ->
                         val buf = ByteArray(64 * 1024)
                         val stopAt = rec.endMs

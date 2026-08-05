@@ -89,7 +89,7 @@ class TmdbClient(
             val json: JsonElement = try {
                 http.newCall(req).execute().use { r ->
                     if (!r.isSuccessful) return@withContext null
-                    LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                    LenientJson.parseToJsonElement(r.body.string().ifBlank { "null" })
                 }
             } catch (_: Throwable) {
                 return@withContext null
@@ -128,7 +128,7 @@ class TmdbClient(
         return try {
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) return emptyList()
-                val json = LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                val json = LenientJson.parseToJsonElement(r.body.string().ifBlank { "null" })
                 (json as? JsonObject)?.get("results").arr().orEmpty()
             }
         } catch (_: Throwable) { emptyList() }
@@ -167,7 +167,7 @@ class TmdbClient(
         val json: JsonElement = try {
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) return@withContext null
-                LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                LenientJson.parseToJsonElement(r.body.string().ifBlank { "null" })
             }
         } catch (_: Throwable) { return@withContext null }
         if (json !is JsonObject) return@withContext null
@@ -200,7 +200,7 @@ class TmdbClient(
         val json: JsonElement = try {
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) return@withContext null
-                LenientJson.parseToJsonElement(r.body?.string() ?: "null")
+                LenientJson.parseToJsonElement(r.body.string().ifBlank { "null" })
             }
         } catch (_: Throwable) {
             return@withContext null

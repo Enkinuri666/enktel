@@ -20,6 +20,15 @@ import okhttp3.OkHttpClient
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
+/**
+ * AGP 9 ships a newer lint that flags the *type* of an exposed property, not
+ * only the call that builds it. [playback] is a `PlaybackSession`, which is
+ * itself `@UnstableApi`, so opting in at the assignment was no longer enough —
+ * the declaration exposing that type has to opt in too. Marked here rather
+ * than baselined: AppGraph really is the thing consuming media3's unstable
+ * surface, and saying so is the point of the annotation.
+ */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AppGraph(app: Application) {
     val db = AppDatabase.build(app)
     val settings = SettingsStore(app)
@@ -102,7 +111,6 @@ class AppGraph(app: Application) {
      * navigation and can keep running in the docked mini window while the user
      * browses the rest of the app. See [tv.enktel.app.player.PlaybackSession].
      */
-    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     val playback = tv.enktel.app.player.PlaybackSession(
         app, http, settings,
         kotlinx.coroutines.CoroutineScope(

@@ -733,7 +733,7 @@ object SpeedTestEngine {
         try {
             http.newCall(req).execute().use { resp ->
                 if (!(resp.code == 200 || resp.code == 206)) return 0.0
-                val source = resp.body?.source() ?: return 0.0
+                val source = resp.body.source()
                 val buf = okio.Buffer()
                 while (true) {
                     val now = System.nanoTime()
