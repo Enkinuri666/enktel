@@ -31,12 +31,25 @@ import kotlinx.coroutines.delay
  * [androidx.compose.ui.focus.focusGroup] container (focus enters the group and
  * lands on its first focusable child) or directly on the control that should
  * start focused.
+ *
+ * ### Why [enabled] exists
+ *
+ * The request has to be suppressed while something is covering the shell. On a
+ * first run the welcome video plays over a freshly-composed Onboarding screen,
+ * whose first focusable child is a text field — so this would reach through the
+ * video, focus the field, and raise the soft keyboard on top of the playing
+ * intro. Focus belongs to whatever the user can actually see.
  */
 @Composable
-fun rememberScreenFocus(vararg keys: Any?): FocusRequester {
+fun rememberScreenFocus(vararg keys: Any?, enabled: Boolean = true): FocusRequester {
     val requester = remember { FocusRequester() }
+    // `enabled` has to be part of the key set, or flipping it false→true when
+    // the splash ends would not restart the effect and the screen would stay
+    // focusless.
+    val allKeys: Array<Any?> = arrayOf(*keys, enabled)
     @Suppress("SpreadOperator")
-    LaunchedEffect(keys = keys) {
+    LaunchedEffect(keys = allKeys) {
+        if (!enabled) return@LaunchedEffect
         // ~1.5 s of attempts. A low-end Fire TV Stick composing a poster grid
         // over a cold Room query can genuinely take that long to place its
         // first focusable, and giving up early is what leaves the remote inert.

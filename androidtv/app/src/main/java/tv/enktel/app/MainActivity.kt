@@ -917,7 +917,24 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     // Requesting focus on a focusGroup enters the group and lands on its first
     // focusable child, so this covers every screen at once rather than needing
     // each one to nominate a control.
-    val contentFocus = tv.enktel.app.ui.components.rememberScreenFocus(currentRoute, isMobileShell)
+    // First-run welcome video. Drawn above everything so it covers the shell
+    // while it plays, and dismissed permanently once seen. Reads the flag with
+    // `null` as "not yet known" so the splash never flashes on a later launch
+    // during the moment before DataStore answers.
+    //
+    // Declared here rather than beside the splash itself because the focus
+    // request below has to know about it: on a first run the shell underneath
+    // is Onboarding, whose first focusable is a text field, and focusing that
+    // raises the soft keyboard on top of the playing video.
+    val welcomeSeen by graph.settings.welcomeSeen
+        .collectAsStateWithLifecycle(initialValue = null as Boolean?)
+    var welcomeDone by remember { mutableStateOf(false) }
+    val showWelcome = welcomeSeen == false && !welcomeDone
+
+    val contentFocus = tv.enktel.app.ui.components.rememberScreenFocus(
+        currentRoute, isMobileShell,
+        enabled = !showWelcome,
+    )
 
     val navHost = @Composable { padding: androidx.compose.foundation.layout.PaddingValues ->
     NavHost(
@@ -1100,15 +1117,6 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         }
     }
     }
-
-    // First-run welcome video. Drawn above everything so it covers the shell
-    // while it plays, and dismissed permanently once seen. Reads the flag with
-    // `null` as "not yet known" so the splash never flashes on a later launch
-    // during the moment before DataStore answers.
-    val welcomeSeen by graph.settings.welcomeSeen
-        .collectAsStateWithLifecycle(initialValue = null as Boolean?)
-    var welcomeDone by remember { mutableStateOf(false) }
-    val showWelcome = welcomeSeen == false && !welcomeDone
 
     Box(Modifier.fillMaxSize()) {
         shell()

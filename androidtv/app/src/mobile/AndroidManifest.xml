@@ -18,6 +18,12 @@
             tripped the fixed-orientation check. The mobile build rotates
             freely; the TV flavor is the one that locks to landscape.
         -->
+        <!--
+            stateHidden so the keyboard never greets the user on launch (see
+            the TV manifest for the full note); adjustResize so that when they
+            do tap a field the layout makes room instead of the keyboard
+            covering the thing being typed into.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,6 +31,7 @@
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden|adjustResize"
             tools:ignore="UnusedAttribute">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
