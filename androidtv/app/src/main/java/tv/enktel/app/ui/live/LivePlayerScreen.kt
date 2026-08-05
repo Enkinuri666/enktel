@@ -50,6 +50,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.BackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -621,7 +622,23 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
         // InfoBar + action strip are for fullscreen playback only. When the user opens
         // the info + actions they need in that mode.
-        if (showInfo && current != null) {
+        // The TV overlay is a full-bleed cinematic layout; mobile keeps the
+        // compact glass card, which is the right shape for a phone in
+        // landscape where the picture is most of the screen. Both show the
+        // same facts.
+        if (showInfo && current != null && tv.enktel.app.BuildConfig.FLAVOR != "mobile") {
+            LiveInfoOverlay(
+                channel = current!!,
+                nowNext = nowNext,
+                stats = stats,
+                playlistName = p.name,
+                recording = recordingId != 0L,
+                shiftedFrom = shiftedFrom,
+                sleepUntil = sleepUntil,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+        if (showInfo && current != null && tv.enktel.app.BuildConfig.FLAVOR == "mobile") {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 InfoBar(
                     channel = current!!,
@@ -1029,6 +1046,9 @@ private fun ChannelPanel(
     onClose: () -> Unit,
 ) {
     var selectedCat by remember { mutableStateOf<String?>(null) }
+    // Whatever the highlight is resting on, which is what the EPG pane
+    // describes. Distinct from currentKey: that is what is playing.
+    var previewed by remember { mutableStateOf<Channel?>(null) }
     val filtered = remember(channels, selectedCat) {
         if (selectedCat == null) channels else channels.filter { it.categoryId == selectedCat }
     }
@@ -1078,7 +1098,123 @@ private fun ChannelPanel(
             Spacer(Modifier.height(10.dp))
             LazyColumn(state = listState) {
                 items(filtered, key = { it.key }) { ch ->
-                    ChannelRow(ch, active = ch.key == currentKey, graph = graph, profileId = profileId) { onPick(ch) }
+                    ChannelRow(
+                        ch, active = ch.key == currentKey, graph = graph, profileId = profileId,
+                        onFocused = { previewed = ch },
+                    ) { onPick(ch) }
+                }
+            }
+        }
+        // The EPG side panel. Browsing a line of several hundred channels off
+        // names alone means tuning each one to find out what is on it — and
+        // every tune costs a connection slot and a few seconds of buffering.
+        // Showing the schedule for whatever the highlight is resting on turns
+        // that into reading.
+        (previewed ?: filtered.firstOrNull { it.key == currentKey })?.let { ch ->
+            ChannelEpgPane(ch, graph, profileId, Modifier.width(360.dp).fillMaxHeight())
+        }
+    }
+}
+
+/**
+ * Right-hand detail pane for the channel browser: what is on the highlighted
+ * channel now, how far through it is, and what follows it today.
+ */
+@Composable
+private fun ChannelEpgPane(
+    channel: Channel,
+    graph: AppGraph,
+    profileId: Long,
+    modifier: Modifier = Modifier,
+) {
+    var schedule by remember(channel.key) { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
+    LaunchedEffect(channel.key) {
+        if (channel.epgId.isBlank()) { schedule = emptyList(); return@LaunchedEffect }
+        val from = System.currentTimeMillis() - 30 * 60_000L
+        schedule = runCatching {
+            graph.epg.window(profileId, listOf(channel.epgId), from, from + 12 * 3_600_000L)[channel.epgId]
+                .orEmpty().sortedBy { it.startMs }
+        }.getOrDefault(emptyList())
+    }
+    val nowMs = System.currentTimeMillis()
+    val current = schedule.firstOrNull { it.startMs <= nowMs && it.endMs > nowMs }
+    val upcoming = schedule.filter { it.startMs > nowMs }.take(6)
+
+    Column(
+        modifier
+            .background(Color.Black.copy(0.92f))
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(7.dp)).background(EnktelSurface),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (channel.logo.isNotBlank()) {
+                    AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(3.dp))
+                } else {
+                    Text(channel.name.take(2).uppercase(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                TimeFormat.now("HH:mm"),
+                color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                TimeFormat.now("EEE d MMM"),
+                color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            channel.name, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black,
+            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+        if (current != null) {
+            Text(
+                "${hhmm(current.startMs)} – ${hhmm(current.endMs)}",
+                color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                current.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
+            val frac = ((nowMs - current.startMs).toFloat() /
+                (current.endMs - current.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+            ProgressBarThin(frac, Modifier.fillMaxWidth())
+            if (current.desc.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    current.desc, color = Color.White.copy(0.72f), fontSize = 11.5.sp,
+                    maxLines = 6, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        } else {
+            Text(
+                if (channel.epgId.isBlank()) "No guide data for this channel"
+                else "Nothing scheduled right now",
+                color = EnktelTextDim, fontSize = 12.sp,
+            )
+        }
+        if (upcoming.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Text("LATER TODAY", color = EnktelTextDim, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            Spacer(Modifier.height(6.dp))
+            upcoming.forEach { prog ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                    Text(
+                        hhmm(prog.startMs), color = EnktelTextDim, fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold, modifier = Modifier.width(46.dp),
+                    )
+                    Text(
+                        prog.title, color = Color.White.copy(0.85f), fontSize = 11.sp,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -1116,7 +1252,14 @@ private fun PanelRow(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChannelRow(ch: Channel, active: Boolean, graph: AppGraph, profileId: Long, onClick: () -> Unit) {
+private fun ChannelRow(
+    ch: Channel,
+    active: Boolean,
+    graph: AppGraph,
+    profileId: Long,
+    onFocused: () -> Unit = {},
+    onClick: () -> Unit,
+) {
     var nowTitle by remember(ch.key) { mutableStateOf("") }
     LaunchedEffect(ch.key) {
         nowTitle = graph.epg.nowNext(profileId, ch.epgId).now?.title.orEmpty()
@@ -1141,7 +1284,10 @@ private fun ChannelRow(ch: Channel, active: Boolean, graph: AppGraph, profileId:
                 shape = RoundedCornerShape(8.dp),
             ),
         ),
-        modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { if (it.isFocused) onFocused() }
+            .tapClick(onClick),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
@@ -1224,6 +1370,42 @@ private fun QuickMenu(
 ) {
     val sleepLabel = if (sleepUntil <= 0) "Sleep timer: off"
     else "Sleep in ${((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)} min"
+
+    // On a television this is a strip along the bottom rather than a drawer
+    // down the right-hand edge. The drawer covered a third of the picture and
+    // stacked fifteen equally-weighted buttons in a column, which on a D-pad
+    // means counting presses to reach anything. A strip leaves the programme
+    // visible and puts the common actions one left/right move apart.
+    //
+    // Mobile keeps the drawer: a bottom strip would land on top of the
+    // compact info bar and the touch action row that already live there.
+    if (tv.enktel.app.BuildConfig.FLAVOR != "mobile") {
+        val actions = buildList {
+            add(QuickAction("☰", "Channels", onClose))
+            add(QuickAction("🗓", "TV Guide", onGuide))
+            if (shifted) add(QuickAction("🔴", "Back to live", onBackToLive, active = true))
+            if (canShift) {
+                add(QuickAction("⏮", "Restart", onRestartProgram))
+                add(QuickAction("⏪", "Back 5 min", onRewindLive))
+            }
+            add(QuickAction(if (isFav) "★" else "☆", "Favourite", onFavorite, active = isFav))
+            add(QuickAction(if (recording) "■" else "●", if (recording) "Stop rec" else "Record", onRecord, active = recording))
+            if (channel.hasArchive) add(QuickAction("🗂", "Catch-up", onCatchup))
+            add(QuickAction("🎞", "Video", onVideo))
+            add(QuickAction("🔊", "Audio", onAudio))
+            add(QuickAction("💬", "Subtitles", onSubs))
+            add(QuickAction("⛶", "Aspect", onAspect))
+            add(QuickAction("⧉", "PiP", onPip))
+            add(QuickAction("▤", "Multi-view", onMultiView))
+            add(QuickAction("☾", sleepLabel.substringBefore(':').ifBlank { "Sleep" }, onSleep, active = sleepUntil > 0))
+            add(QuickAction("📊", "Stats", onStats, active = showStats))
+        }
+        Box(Modifier.fillMaxSize()) {
+            QuickMenuBar(actions, Modifier.align(Alignment.BottomCenter))
+        }
+        return
+    }
+
     val menuScroll = rememberScrollState()
     Box(Modifier.fillMaxSize()) {
         Column(

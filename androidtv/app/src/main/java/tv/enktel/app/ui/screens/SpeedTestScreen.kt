@@ -166,37 +166,40 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         result?.let { r ->
-            item { GroupHeader("Network") }
-            item { MetricRow("Resolved IP", r.resolvedIp ?: "unresolved") }
-            item { MetricRow("DNS lookup", "${r.dnsLookupMs} ms") }
+            // The verdict, before any of the detail. Forty individual metric
+            // rows do not answer "is my connection the problem?" — this does,
+            // and everything below it is the working.
+            item { VerdictBanner(r) }
             item {
-                MetricRow(
-                    "Ping (TCP connect)",
-                    if (r.pingMs >= 0) "${r.pingMs} ms" else "failed",
-                    color = when {
-                        r.pingMs < 0 -> EnktelLive
-                        r.pingMs < 80 -> EnktelOk
-                        r.pingMs < 200 -> Color(0xFFFBBF24)
-                        else -> EnktelLive
-                    },
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ScoreTile(
+                        "Download", "%.1f".format(r.downloadMbps), "Mbps",
+                        rate(r.downloadMbps, good = 15.0, fair = 5.0),
+                        Modifier.weight(1f),
+                    )
+                    ScoreTile(
+                        "Ping", if (r.pingMs >= 0) "${r.pingMs}" else "—", "ms",
+                        if (r.pingMs < 0) Grade.BAD else rateLower(r.pingMs.toDouble(), good = 80.0, fair = 200.0),
+                        Modifier.weight(1f),
+                    )
+                    ScoreTile(
+                        "Jitter", "${r.jitterMs}", "ms",
+                        rateLower(r.jitterMs.toDouble(), good = 20.0, fair = 60.0),
+                        Modifier.weight(1f),
+                    )
+                    ScoreTile(
+                        "Loss", "${r.packetLossPct}", "%",
+                        rateLower(r.packetLossPct.toDouble(), good = 0.5, fair = 5.0),
+                        Modifier.weight(1f),
+                    )
+                }
             }
-            item { MetricRow("Jitter", "${r.jitterMs} ms") }
             item {
-                MetricRow(
-                    "Packet loss", "${r.packetLossPct}%",
-                    color = if (r.packetLossPct >= 20) EnktelLive else if (r.packetLossPct > 0) Color(0xFFFBBF24) else EnktelOk,
-                )
-            }
-            item {
-                MetricRow(
-                    "Download throughput", "%.2f Mbps".format(r.downloadMbps),
-                    color = when {
-                        r.downloadMbps >= 15 -> EnktelOk
-                        r.downloadMbps >= 5 -> Color(0xFFFBBF24)
-                        else -> EnktelLive
-                    },
-                )
+                DiagCard("Network") {
+                    MetricRow("Resolved IP", r.resolvedIp ?: "unresolved")
+                    MetricRow("DNS lookup", "${r.dnsLookupMs} ms")
+                    MetricRow("Connection type", r.connectionType.name)
+                }
             }
             if (speedHistory.size >= 2) {
                 item {
@@ -226,67 +229,64 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     }
                 }
             }
-            item { MetricRow("Connection type", r.connectionType.name) }
-
             if (!r.server.isEmpty()) {
-                item { GroupHeader("Panel · Xtream Codes API") }
-                if (r.server.url.isNotBlank()) item { MetricRow("URL", r.server.url) }
-                if (r.server.protocol.isNotBlank() || r.server.port.isNotBlank()) {
-                    item {
-                        MetricRow(
-                            "Protocol / port",
-                            "${r.server.protocol.uppercase()}  ${r.server.port}${if (r.server.httpsPort.isNotBlank()) " · https ${r.server.httpsPort}" else ""}",
-                        )
-                    }
-                }
-                if (r.server.serverSoftware.isNotBlank()) item { MetricRow("Server software", r.server.serverSoftware) }
-                if (r.server.transcoderProcess.isNotBlank()) item { MetricRow("Transcoder", r.server.transcoderProcess) }
-                if (r.server.timezone.isNotBlank()) item { MetricRow("Timezone / clock", "${r.server.timezone} · ${r.server.timeNow}") }
-                if (r.server.maxConnections > 0) {
-                    item {
-                        MetricRow(
-                            "Connections used",
-                            "${r.server.activeConnections} / ${r.server.maxConnections}${if (r.server.trial) " (trial)" else ""}",
-                            color = if (r.server.activeConnections >= r.server.maxConnections && r.server.maxConnections > 0) EnktelLive else Color.White,
-                        )
+                item {
+                    DiagCard("Panel · Xtream Codes API") {
+                        if (r.server.url.isNotBlank()) MetricRow("URL", r.server.url)
+                        if (r.server.protocol.isNotBlank() || r.server.port.isNotBlank()) {
+                            MetricRow(
+                                "Protocol / port",
+                                "${r.server.protocol.uppercase()}  ${r.server.port}${if (r.server.httpsPort.isNotBlank()) " · https ${r.server.httpsPort}" else ""}",
+                            )
+                        }
+                        if (r.server.serverSoftware.isNotBlank()) MetricRow("Server software", r.server.serverSoftware)
+                        if (r.server.transcoderProcess.isNotBlank()) MetricRow("Transcoder", r.server.transcoderProcess)
+                        if (r.server.timezone.isNotBlank()) MetricRow("Timezone / clock", "${r.server.timezone} · ${r.server.timeNow}")
+                        if (r.server.maxConnections > 0) {
+                            MetricRow(
+                                "Connections used",
+                                "${r.server.activeConnections} / ${r.server.maxConnections}${if (r.server.trial) " (trial)" else ""}",
+                                color = if (r.server.activeConnections >= r.server.maxConnections && r.server.maxConnections > 0) EnktelLive else Color.White,
+                            )
+                        }
                     }
                 }
             }
 
             r.liveProbe?.let { probe ->
-                item { GroupHeader("Live stream probe") }
-                item { MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive) }
-                item { MetricRow("Container", probe.container) }
-                if (probe.contentType.isNotBlank()) item { MetricRow("Content-Type", probe.contentType) }
-                if (probe.codecHint.isNotBlank()) item { MetricRow("Codec (hint)", probe.codecHint) }
-                if (probe.serverHeader.isNotBlank()) item { MetricRow("Server", probe.serverHeader) }
-                item { MetricRow("Transcoder in path", probe.transcoderHint.ifBlank { "direct / unknown" }) }
-                probe.error?.let { item { MetricRow("Error", it, color = EnktelLive) } }
+                item {
+                    DiagCard("Live stream probe", ok = probe.ok) {
+                        MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive)
+                        MetricRow("Container", probe.container)
+                        if (probe.contentType.isNotBlank()) MetricRow("Content-Type", probe.contentType)
+                        if (probe.codecHint.isNotBlank()) MetricRow("Codec (hint)", probe.codecHint)
+                        if (probe.serverHeader.isNotBlank()) MetricRow("Server", probe.serverHeader)
+                        MetricRow("Transcoder in path", probe.transcoderHint.ifBlank { "direct / unknown" })
+                        probe.error?.let { MetricRow("Error", it, color = EnktelLive) }
+                    }
+                }
             }
             r.vodProbe?.let { probe ->
-                item { GroupHeader("VOD stream probe") }
-                item { MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive) }
-                item { MetricRow("Container", probe.container) }
-                if (probe.contentType.isNotBlank()) item { MetricRow("Content-Type", probe.contentType) }
-                if (probe.codecHint.isNotBlank()) item { MetricRow("Codec (hint)", probe.codecHint) }
+                item {
+                    DiagCard("VOD stream probe", ok = probe.ok) {
+                        MetricRow("HTTP", "${probe.httpCode}", color = if (probe.ok) EnktelOk else EnktelLive)
+                        MetricRow("Container", probe.container)
+                        if (probe.contentType.isNotBlank()) MetricRow("Content-Type", probe.contentType)
+                        if (probe.codecHint.isNotBlank()) MetricRow("Codec (hint)", probe.codecHint)
+                    }
+                }
             }
 
             // v1.23 additions — protocol / TLS + URL-shape simulation + cap
             if (r.protocol.httpVersion.isNotBlank() || r.protocol.tlsVersion.isNotBlank()) {
-                item { GroupHeader("HTTP + TLS") }
-                if (r.protocol.httpVersion.isNotBlank()) item { MetricRow("HTTP version", r.protocol.httpVersion) }
-                if (r.protocol.tlsVersion.isNotBlank()) item { MetricRow("TLS version", r.protocol.tlsVersion) }
-                if (r.protocol.handshakeMs > 0) item { MetricRow("Handshake", "${r.protocol.handshakeMs} ms") }
-                if (r.protocol.redirectChain.isNotEmpty()) {
-                    item {
-                        Column(
-                            Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(EnktelSurface)
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                        ) {
+                item {
+                    DiagCard("HTTP + TLS") {
+                        if (r.protocol.httpVersion.isNotBlank()) MetricRow("HTTP version", r.protocol.httpVersion)
+                        if (r.protocol.tlsVersion.isNotBlank()) MetricRow("TLS version", r.protocol.tlsVersion)
+                        if (r.protocol.handshakeMs > 0) MetricRow("Handshake", "${r.protocol.handshakeMs} ms")
+                        if (r.protocol.redirectChain.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
                             Text("Redirect chain", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                            Spacer(Modifier.height(4.dp))
                             r.protocol.redirectChain.forEach {
                                 Text(it, color = Color.White.copy(0.9f), fontSize = 12.sp,
                                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -341,18 +341,19 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             }
 
             if (r.connectionCap.attempted > 0) {
-                item { GroupHeader("Concurrent connection cap") }
                 val cap = r.connectionCap
                 item {
-                    MetricRow(
-                        "Parallel probes",
-                        "${cap.succeeded} / ${cap.attempted} succeeded" + if (cap.rejectedAt > 0) " · panel rejected at slot ${cap.rejectedAt}" else "",
-                        color = when {
-                            cap.succeeded == cap.attempted -> EnktelOk
-                            cap.succeeded >= 4 -> Color(0xFFFBBF24)
-                            else -> EnktelLive
-                        },
-                    )
+                    DiagCard("Concurrent connection cap") {
+                        MetricRow(
+                            "Parallel probes",
+                            "${cap.succeeded} / ${cap.attempted} succeeded" + if (cap.rejectedAt > 0) " · panel rejected at slot ${cap.rejectedAt}" else "",
+                            color = when {
+                                cap.succeeded == cap.attempted -> EnktelOk
+                                cap.succeeded >= 4 -> Color(0xFFFBBF24)
+                                else -> EnktelLive
+                            },
+                        )
+                    }
                 }
             }
 
@@ -441,6 +442,168 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+    }
+}
+
+/**
+ * How a single reading scored.
+ *
+ * The colour is resolved by [gradeColor] rather than held here: the palette
+ * colours are theme-aware composable properties, so they cannot be read from
+ * an enum constructor.
+ */
+private enum class Grade(val label: String) {
+    GOOD("Good"),
+    FAIR("Fair"),
+    BAD("Poor"),
+}
+
+@Composable
+private fun gradeColor(g: Grade): Color = when (g) {
+    Grade.GOOD -> EnktelOk
+    Grade.FAIR -> Color(0xFFFBBF24)
+    Grade.BAD -> EnktelLive
+}
+
+/** Higher is better (throughput). */
+private fun rate(v: Double, good: Double, fair: Double): Grade =
+    if (v >= good) Grade.GOOD else if (v >= fair) Grade.FAIR else Grade.BAD
+
+/** Lower is better (latency, jitter, loss). */
+private fun rateLower(v: Double, good: Double, fair: Double): Grade =
+    if (v <= good) Grade.GOOD else if (v <= fair) Grade.FAIR else Grade.BAD
+
+/**
+ * One-line answer to the only question this screen is really asked: is the
+ * connection good enough to stream, and if not, which part is failing?
+ *
+ * The worst of the four headline readings decides it. A line that is fast but
+ * dropping packets is not "good" — averaging would say it was, which is how a
+ * screen full of green numbers can sit above a channel that keeps buffering.
+ */
+@Composable
+private fun VerdictBanner(r: SpeedTestEngine.Result) {
+    val grades = listOf(
+        rate(r.downloadMbps, 15.0, 5.0),
+        if (r.pingMs < 0) Grade.BAD else rateLower(r.pingMs.toDouble(), 80.0, 200.0),
+        rateLower(r.jitterMs.toDouble(), 20.0, 60.0),
+        rateLower(r.packetLossPct.toDouble(), 0.5, 5.0),
+    )
+    val worst = when {
+        grades.any { it == Grade.BAD } -> Grade.BAD
+        grades.any { it == Grade.FAIR } -> Grade.FAIR
+        else -> Grade.GOOD
+    }
+    val worstColor = gradeColor(worst)
+    val headline = when (worst) {
+        Grade.GOOD -> "Your connection is in good shape"
+        Grade.FAIR -> "Workable, but there is a weak link"
+        Grade.BAD -> "This connection will struggle"
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(worstColor.copy(alpha = 0.22f), worstColor.copy(alpha = 0.05f)),
+                ),
+            )
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .width(4.dp)
+                .height(38.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(worstColor),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                worst.label.uppercase(),
+                color = worstColor, fontSize = 11.sp,
+                fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(headline, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+/** One headline reading: big number, unit, and its grade. */
+@Composable
+private fun ScoreTile(
+    label: String,
+    value: String,
+    unit: String,
+    grade: Grade,
+    modifier: Modifier = Modifier,
+) {
+    val c = gradeColor(grade)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(EnktelSurface)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Text(
+            label.uppercase(),
+            color = EnktelTextDim, fontSize = 10.sp,
+            fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(value, color = c, fontSize = 26.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.width(3.dp))
+            Text(
+                unit, color = c.copy(alpha = 0.75f), fontSize = 11.sp,
+                fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        Text(grade.label, color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * A titled group of metric rows.
+ *
+ * This screen used to emit every reading as its own item in one flat list —
+ * roughly forty rows under bare headings, with nothing to say where one
+ * section ended and the next began. Grouping them into cards is the whole
+ * difference between a report and a dump.
+ */
+@Composable
+private fun DiagCard(
+    title: String,
+    ok: Boolean? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(EnktelSurface)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(13.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (ok == false) EnktelLive else EnktelBlue),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                title.uppercase(),
+                color = if (ok == false) EnktelLive else EnktelBlue,
+                fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        content()
     }
 }
 
