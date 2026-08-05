@@ -206,7 +206,7 @@ object Ebml {
             val bodyStart = pos + id.second + size.second
             val bodyEnd = bodyStart + size.first.toInt()
             if (id.first == 0x4282L && bodyEnd <= end) {
-                return String(buf, bodyStart, size.first.toInt(), Charsets.US_ASCII).trim { it <= ' ' }
+                return String(buf, bodyStart, size.first.toInt(), Charsets.US_ASCII).trim()
             }
             if (bodyEnd <= pos) break
             pos = bodyEnd

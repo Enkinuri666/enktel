@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.sports
 
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -289,7 +290,7 @@ internal fun openHighlight(
 ) {
     val isYouTube = url.contains("youtube.com", true) || url.contains("youtu.be", true)
     if (isYouTube) {
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url.toUri())
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             context.startActivity(intent)

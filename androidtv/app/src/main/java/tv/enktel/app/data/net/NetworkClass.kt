@@ -75,12 +75,6 @@ object NetworkClass {
     }
 
     private fun classify(cm: ConnectivityManager): Kind {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            // Pre-M devices — activeNetwork / getNetworkCapabilities aren't
-            // available.  Leave the classification unknown; auto-mode
-            // fallback in the getter picks "balanced" as a safe default.
-            return Kind.UNKNOWN
-        }
         val active = try { cm.activeNetwork } catch (_: Throwable) { null } ?: return Kind.UNKNOWN
         val caps = try { cm.getNetworkCapabilities(active) } catch (_: Throwable) { null } ?: return Kind.UNKNOWN
         return fromCaps(caps)

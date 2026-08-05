@@ -1,6 +1,7 @@
 package tv.enktel.app.ui.components
 
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.AnimatedVisibility
@@ -82,7 +83,7 @@ fun WelcomeSplash(onDone: () -> Unit) {
             ExoPlayer.Builder(context).build().apply {
                 setMediaItem(
                     MediaItem.fromUri(
-                        Uri.parse("android.resource://${context.packageName}/${R.raw.welcome}"),
+                        "android.resource://${context.packageName}/${R.raw.welcome}".toUri(),
                     ),
                 )
                 repeatMode = Player.REPEAT_MODE_OFF

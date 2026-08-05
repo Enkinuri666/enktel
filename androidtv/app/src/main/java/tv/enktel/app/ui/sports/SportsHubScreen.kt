@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.sports
 
+import androidx.core.net.toUri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -516,7 +518,9 @@ private fun Modifier.sportsCardFocus(
         label = "sportsCardLift",
     )
     return this
-        .offset(y = lift)
+        // See PosterCard: the lambda overload keeps an animated offset in the
+        // layout phase rather than recomposing on every frame.
+        .offset { IntOffset(0, lift.roundToPx()) }
         .shadow(
             elevation = elevation,
             shape = RoundedCornerShape(14.dp),
@@ -690,7 +694,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
                 // YouTube app on TV / phones when available.
                 FocusButton("🎬 Highlights", onClick = {
                     val query = "${ev.title} highlights"
-                    val webUri = android.net.Uri.parse("https://www.youtube.com/results?search_query=" + java.net.URLEncoder.encode(query, "UTF-8"))
+                    val webUri = ("https://www.youtube.com/results?search_query=" + java.net.URLEncoder.encode(query, "UTF-8")).toUri()
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
                     runCatching { ctx.startActivity(intent) }
                 })
