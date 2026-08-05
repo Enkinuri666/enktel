@@ -408,6 +408,11 @@ private fun ProgramDialog(
  * When nothing is playing there is no surface to show, so the panel falls back
  * to the highlighted channel's own artwork.
  */
+// PlaybackSession is @UnstableApi (it owns an ExoPlayer), and lint flags the
+// property read, not just the construction — the same rule that caught
+// AppGraph.playback during the AGP 9 move. Opting in here rather than
+// baselining: this really is the thing consuming media3's unstable surface.
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun GuideDock(
     graph: AppGraph,
