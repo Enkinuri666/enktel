@@ -95,7 +95,33 @@ class EagleTrialClient(private val http: OkHttpClient) {
         return if (serverMessage.isNullOrBlank()) friendly else "$friendly · $serverMessage"
     }
 
-    private fun deviceId(ctx: Context): String = try {
-        Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
-    } catch (_: Throwable) { "" }.ifBlank { "unknown-${System.currentTimeMillis()}" }
+    /**
+     * A stable identifier for this device, used only to bound free trials to
+     * one per device.
+     *
+     * `ANDROID_ID` is the right primitive for that: it is scoped per app
+     * signing key and per user, resets on factory reset, and is not a hardware
+     * serial — so it identifies an *install*, not a person, and cannot be
+     * correlated with any other app's copy. Lint flags every use of it because
+     * the API is widely abused for tracking; this is the sanctioned exception,
+     * hence the suppression rather than a workaround.
+     *
+     * The fallback is memoised. It used to be
+     * `"unknown-${System.currentTimeMillis()}"` evaluated per call, which
+     * returned a *different* id every time — so on any device where
+     * ANDROID_ID is unavailable the trial limit it exists to enforce did not
+     * apply at all, and an ordinary network retry counted as a second device.
+     * Memoising makes it stable for the life of the process, which is as long
+     * as a single signup flow lasts.
+     */
+    @android.annotation.SuppressLint("HardwareIds")
+    private fun deviceId(ctx: Context): String {
+        val androidId = try {
+            Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
+        } catch (_: Throwable) { "" }
+        if (androidId.isNotBlank()) return androidId
+        return fallbackId ?: "unknown-${System.currentTimeMillis()}".also { fallbackId = it }
+    }
+
+    @Volatile private var fallbackId: String? = null
 }

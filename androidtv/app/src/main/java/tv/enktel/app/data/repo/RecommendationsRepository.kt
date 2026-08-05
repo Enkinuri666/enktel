@@ -4,13 +4,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import tv.enktel.app.data.db.Movie
-import java.util.concurrent.TimeUnit
 
 /**
  * Simple on-device recommender: uses the user's watch history + favorites to score movies
  * by shared genre/decade. Zero external calls — everything stays local.
  */
 class RecommendationsRepository(private val content: ContentRepository) {
+
+    /**
+     * The catalogue, minus anything that cannot be rendered on a rail.
+     *
+     * Every single-rail helper loads this the same way, so it lives here
+     * rather than being spelled out eight times. [homeRails] deliberately does
+     * *not* use it — it loads once and computes every rail from that one read,
+     * which is the whole reason it exists.
+     */
+    private suspend fun pool(profileId: Long): List<Movie> =
+        MovieRails.renderable(content.movies(profileId).first())
 
     /** Top N movies sharing genres with recently watched items, minus the ones already watched. */
     suspend fun becauseYouWatched(profileId: Long, n: Int = 15): List<Movie> = withContext(Dispatchers.Default) {
@@ -39,26 +49,23 @@ class RecommendationsRepository(private val content: ContentRepository) {
             .toList()
     }
 
-    /** Movies added in the last 14 days, most recent first. */
+    /** Movies the panel marked as added recently — see [MovieRails.newThisWeek]. */
     suspend fun newThisWeek(profileId: Long, n: Int = 15): List<Movie> = withContext(Dispatchers.Default) {
-        val cutoff = (System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14)) / 1000
-        content.movies(profileId).first().asSequence()
-            .filter { it.addedAt > cutoff }
-            .sortedByDescending { it.addedAt }
-            .take(n)
-            .toList()
+        MovieRails.newThisWeek(pool(profileId), System.currentTimeMillis() / 1000).take(n)
     }
 
-    /** Trending = top-rated with strong catalog volume signals (rating floor 6.5). */
+    /**
+     * Trending — see [MovieRails.trending].
+     *
+     * This used to order by `rating + addedAt / 1_000_000` while the Trending
+     * rail on Home ordered by rating then year, so the voice assistant's
+     * "what's trending" answered with a different list from the rail under
+     * that name. One rule now, in MovieRails.
+     */
     suspend fun trending(profileId: Long, n: Int = 15): List<Movie> = withContext(Dispatchers.Default) {
-        content.movies(profileId).first().asSequence()
-            .filter { it.rating >= 6.5 && it.poster.isNotBlank() }
-            .sortedByDescending { it.rating + it.addedAt / 1_000_000.0 }
-            .take(n)
-            .toList()
+        MovieRails.trending(pool(profileId)).take(n)
     }
 
-    /** Latest Releases — freshest additions to the catalogue, refreshed daily by ContentRefreshWorker. */
     /**
      * Latest *releases* — newest by release year.
      *
@@ -72,11 +79,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
      * addedAt so that within a year the freshest arrivals lead.
      */
     suspend fun latestReleases(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
-        content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() && it.year > 0 }
-            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
-            .take(n)
-            .toList()
+        MovieRails.latestReleases(pool(profileId)).take(n)
     }
 
     /**
@@ -96,77 +99,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
      */
     suspend fun comingSoon(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-        content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() && it.year > currentYear }
-            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
-            .take(n)
-            .toList()
-    }
-
-    // ---- Mood / vibe rails --------------------------------------------------
-    // Genre metadata is often patchy in IPTV feeds, so mood filters cast a wide
-    // keyword net rather than expecting exact tag matches.  Each rail scores
-    // by matching genre keywords + a minimum rating floor + poster availability
-    // so the home dashboard doesn't render empty tiles.
-
-    private fun moodRail(
-        movies: List<Movie>,
-        keywords: List<String>,
-        minRating: Double,
-        n: Int,
-    ): List<Movie> = movies.asSequence()
-        .filter { it.poster.isNotBlank() && it.rating >= minRating }
-        .filter { m ->
-            val g = m.genre.lowercase()
-            keywords.any { it in g }
-        }
-        .sortedByDescending { it.rating }
-        .take(n)
-        .toList()
-
-    /** "Gritty & Tension-Filled" — crime/thriller/noir/drama with a strong rating. */
-    suspend fun moodGritty(profileId: Long, n: Int = 12): List<Movie> = withContext(Dispatchers.Default) {
-        moodRail(
-            content.movies(profileId).first(),
-            listOf("crime", "thriller", "noir", "mystery", "drama"),
-            minRating = 6.8, n = n,
-        )
-    }
-
-    /** "Late Night Background Watch" — comfort viewing: comedy / feel-good with lower rating floor. */
-    suspend fun moodLateNight(profileId: Long, n: Int = 12): List<Movie> = withContext(Dispatchers.Default) {
-        moodRail(
-            content.movies(profileId).first(),
-            listOf("comedy", "sitcom", "family", "romance", "animation"),
-            minRating = 5.5, n = n,
-        )
-    }
-
-    /** "Fast-Paced Thrillers" — action + high stakes with strong ratings. */
-    suspend fun moodFastPaced(profileId: Long, n: Int = 12): List<Movie> = withContext(Dispatchers.Default) {
-        moodRail(
-            content.movies(profileId).first(),
-            listOf("action", "adventure", "thriller", "war", "crime"),
-            minRating = 6.5, n = n,
-        )
-    }
-
-    /** "Mind-Bending Plots" — sci-fi / mystery with well-received storytelling. */
-    suspend fun moodMindBending(profileId: Long, n: Int = 12): List<Movie> = withContext(Dispatchers.Default) {
-        moodRail(
-            content.movies(profileId).first(),
-            listOf("sci-fi", "science", "mystery", "thriller", "fantasy"),
-            minRating = 7.0, n = n,
-        )
-    }
-
-    /** "Feel-Good Warm-Fuzzy" — animation / family / romance with a decent floor. */
-    suspend fun moodFeelGood(profileId: Long, n: Int = 12): List<Movie> = withContext(Dispatchers.Default) {
-        moodRail(
-            content.movies(profileId).first(),
-            listOf("animation", "family", "romance", "music", "biography"),
-            minRating = 6.0, n = n,
-        )
+        MovieRails.comingSoon(pool(profileId), currentYear).take(n)
     }
 
     // ---- General-interest rails -------------------------------------------
@@ -182,11 +115,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
      * rather than "what is good and new".
      */
     suspend fun topRated(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
-        content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() && it.rating > 0 }
-            .sortedWith(compareByDescending<Movie> { it.rating }.thenByDescending { it.year })
-            .take(n)
-            .toList()
+        MovieRails.topRated(pool(profileId)).take(n)
     }
 
     /**
@@ -197,11 +126,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
      * catalogues.
      */
     suspend fun documentaries(profileId: Long, n: Int = 20): List<Movie> = withContext(Dispatchers.Default) {
-        content.movies(profileId).first().asSequence()
-            .filter { it.poster.isNotBlank() && it.genre.contains("documentar", ignoreCase = true) }
-            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
-            .take(n)
-            .toList()
+        MovieRails.documentaries(pool(profileId)).take(n)
     }
 
     /**
@@ -249,11 +174,9 @@ class RecommendationsRepository(private val content: ContentRepository) {
 
     suspend fun homeRails(profileId: Long): HomeRails = withContext(Dispatchers.Default) {
         val allMovies = content.movies(profileId).first()
-        val withPoster = allMovies.filter { it.poster.isNotBlank() }
+        val withPoster = MovieRails.renderable(allMovies)
         val history = content.continueWatching(profileId, 30).first()
         val seedIds = history.map { it.refId }.toHashSet()
-        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-        val week = TimeUnit.DAYS.toSeconds(14)
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000
 
@@ -269,16 +192,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
             .sortedWith(compareByDescending<Movie> { it.firstSeenAt }.thenByDescending { it.year })
             .take(24)
 
-        // Latest Releases: newest by *release year*.
-        //
-        // Kept identical to the standalone latestReleases() helper on purpose.
-        // This used to carry its own inline copy sorted by addedAt, which made
-        // it a third name for the same recently-added query and is why Home
-        // showed the same handful of titles across several rails.
-        val latest = withPoster
-            .filter { it.year > 0 }
-            .sortedWith(compareByDescending<Movie> { it.year }.thenByDescending { it.addedAt })
-            .take(24)
+        val latest = MovieRails.latestReleases(withPoster).take(24)
 
         val used = HashSet<String>().apply {
             addAll(justAdded.map { it.key })
@@ -307,34 +221,15 @@ class RecommendationsRepository(private val content: ContentRepository) {
         // Trending: top-rated. TMDB enrichment fills `rating` from the
         // popular-and-well-reviewed slice; when a lot of titles share the
         // same rating we tie-break on year desc.
-        val trending = pick(
-            withPoster.asSequence()
-                .filter { it.rating >= 6.5 }
-                .sortedWith(compareByDescending<Movie> { it.rating }.thenByDescending { it.year })
-                .toList(),
-            18,
-        )
+        val trending = pick(MovieRails.trending(withPoster), 18)
 
         // Top Picks: TMDB-enriched titles ranked by rating regardless of
         // recency — the "curated by the algorithm" cut. Lets us guarantee
         // a rail full of quality when a fresh catalogue hasn't landed
         // many high-rated items in the last two weeks.
-        val topPicks = pick(
-            withPoster.asSequence()
-                .filter { it.enrichedAt > 0 && it.rating >= 7.0 }
-                .sortedByDescending { it.rating }
-                .toList(),
-            18,
-        )
+        val topPicks = pick(MovieRails.topPicks(withPoster), 18)
 
-        // New This Week: added in the last 14 days.
-        val newThis = pick(
-            withPoster.asSequence()
-                .filter { it.addedAt > nowSec - week }
-                .sortedByDescending { it.addedAt }
-                .toList(),
-            18,
-        )
+        val newThis = pick(MovieRails.newThisWeek(withPoster, nowSec), 18)
 
         // Because You Watched: keep the existing scoring but exclude
         // anything we've already surfaced.
@@ -357,24 +252,20 @@ class RecommendationsRepository(private val content: ContentRepository) {
             pick(scored, 15)
         } else emptyList()
 
-        fun moodPool(keywords: List<String>, minRating: Double): List<Movie> =
-            withPoster.asSequence()
-                .filter { it.rating >= minRating }
-                .filter { m ->
-                    val hay = (m.genre + " " + m.tags).lowercase()
-                    keywords.any { it in hay }
-                }
-                .sortedByDescending { it.rating }
-                .toList()
+        fun mood(keywords: List<String>, minRating: Double) =
+            pick(MovieRails.mood(withPoster, keywords, minRating), 14)
 
-        val moodFast = pick(moodPool(listOf("action", "adventure", "thriller", "war", "crime"), 6.5), 14)
-        val moodGrit = pick(moodPool(listOf("crime", "thriller", "noir", "mystery", "drama"), 6.8), 14)
-        val moodMind = pick(moodPool(listOf("sci-fi", "science", "mystery", "thriller", "fantasy"), 7.0), 14)
-        val moodLate = pick(moodPool(listOf("comedy", "sitcom", "family", "romance", "animation"), 5.5), 14)
-        val moodGood = pick(moodPool(listOf("animation", "family", "romance", "music", "biography"), 6.0), 14)
+        val moodFast = mood(MovieRails.MOOD_FAST_PACED, 6.5)
+        val moodGrit = mood(MovieRails.MOOD_GRITTY, 6.8)
+        val moodMind = mood(MovieRails.MOOD_MIND_BENDING, 7.0)
+        val moodLate = mood(MovieRails.MOOD_LATE_NIGHT, 5.5)
+        val moodGood = mood(MovieRails.MOOD_FEEL_GOOD, 6.0)
 
-        val topRatedRail = pick(topRated(profileId, 40), 20)
-        val docsRail = pick(documentaries(profileId, 40), 20)
+        // Computed from the catalogue already in hand, not by calling the
+        // single-rail helpers — those each re-read the whole movie table, and
+        // avoiding a dozen such reads is the entire point of homeRails.
+        val topRatedRail = pick(MovieRails.topRated(withPoster), 20)
+        val docsRail = pick(MovieRails.documentaries(withPoster), 20)
         // Series are not deduped against the movie pool — different table, no
         // overlap possible — so they are taken directly.
         val seriesRail = newSeries(profileId, 20)

@@ -1,6 +1,7 @@
 package tv.enktel.app.player
 
 import android.content.Context
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
@@ -673,7 +674,7 @@ class PlayerEngine(
                     else -> androidx.media3.common.MimeTypes.APPLICATION_SUBRIP
                 }
                 setSubtitleConfigurations(listOf(
-                    MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
+                    MediaItem.SubtitleConfiguration.Builder(externalSubUrl.toUri())
                         .setMimeType(mime)
                         .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                         .build()

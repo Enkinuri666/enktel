@@ -2,6 +2,7 @@ package tv.enktel.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +64,7 @@ fun UpgradeScreen(nav: NavHostController) {
         LaunchedEffect(Unit) {
             runCatching {
                 ctx.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(upgradeUrl))
+                    Intent(Intent.ACTION_VIEW, upgradeUrl.toUri())
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }

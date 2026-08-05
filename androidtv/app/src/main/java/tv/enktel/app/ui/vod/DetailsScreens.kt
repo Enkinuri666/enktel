@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.vod
 
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -177,8 +178,8 @@ private fun MovieDetailsBody(
         }
         trailerKey?.let { key ->
             FocusButton("🎬 Trailer", onClick = {
-                val youtubeAppUri = android.net.Uri.parse("vnd.youtube:$key")
-                val webUri = android.net.Uri.parse("https://www.youtube.com/watch?v=$key")
+                val youtubeAppUri = "vnd.youtube:$key".toUri()
+                val webUri = "https://www.youtube.com/watch?v=$key".toUri()
                 val youtubeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, youtubeAppUri)
                     .setPackage("com.google.android.youtube.tv")
                 val fallback = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)

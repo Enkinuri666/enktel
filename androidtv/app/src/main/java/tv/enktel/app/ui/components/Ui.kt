@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
@@ -262,7 +263,12 @@ fun PosterCard(
         onClick = { NavSounds.open(); onClick() },
         modifier = modifier
             .width(w)
-            .offset(y = lift)
+            // Lambda overload on purpose: `lift` is an animated state, and the
+            // non-lambda `offset(y =)` reads it during composition, so every
+            // frame of a focus animation recomposes the card. The lambda is
+            // read in the layout phase instead, which on a rail of thirty
+            // posters is the difference between a smooth lift and a stutter.
+            .offset { IntOffset(0, lift.roundToPx()) }
             .shadow(
                 elevation = elevation,
                 shape = RoundedCornerShape(14.dp),

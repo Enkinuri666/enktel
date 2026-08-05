@@ -44,8 +44,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun AmbilightGlow(
     imageUrl: String?,
-    fallback: Color = Color(0xFF3B9DFF),
     modifier: Modifier = Modifier,
+    fallback: Color = Color(0xFF3B9DFF),
 ) {
     val ctx = LocalContext.current
     var target by remember { mutableStateOf(fallback) }

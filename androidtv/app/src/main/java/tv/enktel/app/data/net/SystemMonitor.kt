@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
-import android.os.Build
 import android.os.StatFs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -189,7 +188,6 @@ object SystemMonitor {
     }
 
     private fun networkCaps(ctx: Context): NetworkCapabilities? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
         return try {
             val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             cm.getNetworkCapabilities(cm.activeNetwork)

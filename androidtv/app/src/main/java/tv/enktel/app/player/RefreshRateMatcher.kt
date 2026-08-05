@@ -43,26 +43,20 @@ object RefreshRateMatcher {
                     .defaultDisplay
             }
             val targetHz = idealHz(sourceFps)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val modes = display.supportedModes
-                if (modes.isEmpty()) return
-                val current = display.mode
-                // Prefer a mode with the same resolution as the current one to
-                // avoid a jarring aspect-ratio flash when the panel resyncs.
-                val best = modes
-                    .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
-                    .minByOrNull { abs(it.refreshRate - targetHz) }
-                    ?: modes.minByOrNull { abs(it.refreshRate - targetHz) }
-                    ?: return
-                if (best.modeId == current.modeId) return
-                val lp = window.attributes
-                lp.preferredDisplayModeId = best.modeId
-                window.attributes = lp
-            } else {
-                val lp = window.attributes
-                lp.preferredRefreshRate = targetHz
-                window.attributes = lp
-            }
+            val modes = display.supportedModes
+            if (modes.isEmpty()) return
+            val current = display.mode
+            // Prefer a mode with the same resolution as the current one to
+            // avoid a jarring aspect-ratio flash when the panel resyncs.
+            val best = modes
+                .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+                .minByOrNull { abs(it.refreshRate - targetHz) }
+                ?: modes.minByOrNull { abs(it.refreshRate - targetHz) }
+                ?: return
+            if (best.modeId == current.modeId) return
+            val lp = window.attributes
+            lp.preferredDisplayModeId = best.modeId
+            window.attributes = lp
         } catch (_: Throwable) { /* no-op — display swap is best-effort */ }
     }
 
@@ -72,9 +66,7 @@ object RefreshRateMatcher {
         try {
             val window = activity.window ?: return
             val lp = window.attributes
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                lp.preferredDisplayModeId = 0
-            }
+            lp.preferredDisplayModeId = 0
             lp.preferredRefreshRate = 0f
             window.attributes = lp
         } catch (_: Throwable) {}
