@@ -60,11 +60,20 @@ jobs:
           # Full history so the auto-generated changelog can see previous tags.
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Install Android SDK 37.1
+        # The runner image ships an older platform set. core-ktx 1.19 and
+        # lifecycle 2.11 refuse to be consumed below API 37, so the compile
+        # target has to be present before Gradle resolves anything.
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-37.1" "build-tools;37.0.0"
+        working-directory: .
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

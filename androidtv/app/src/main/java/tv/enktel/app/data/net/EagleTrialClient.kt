@@ -65,12 +65,23 @@ class EagleTrialClient(private val http: OkHttpClient) {
         }
     }
 
-    private fun parseTrialResponse(text: String): TrialCredentials {
+    internal fun parseTrialResponse(text: String): TrialCredentials {
         require(text.isNotBlank()) { "Empty response from trial endpoint" }
         val root = LenientJson.parseToJsonElement(text) as? JsonObject
             ?: throw IOException("Unrecognised trial response")
-        val payload = (root["data"] as? JsonObject) ?: root
+        // `subscription` is what enktel.tv's own web signup returns; `data` is
+        // what a bare panel wraps things in. Accepting both means the app
+        // keeps working against an older deployment of the site rather than
+        // failing with "missing server URL" on a response that plainly
+        // contains one.
+        val payload = (root["data"] as? JsonObject)
+            ?: (root["subscription"] as? JsonObject)?.takeIf { root.str("server_url") == null }
+            ?: root
         val serverUrl = payload.str("server_url") ?: payload.str("server") ?: payload.str("panel")
+            ?: payload.str("serverUrl")
+            // Last resort: every payload carries an m3u URL, and the panel
+            // host is the part of it before /get.php.
+            ?: payload.str("m3uUrl")?.substringBefore("/get.php")?.takeIf { it.startsWith("http") }
             ?: throw IOException("Trial response missing server URL")
         val username = payload.str("username") ?: throw IOException("Trial response missing username")
         val password = payload.str("password") ?: throw IOException("Trial response missing password")
