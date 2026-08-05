@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.DownloadEntry
 import tv.enktel.app.data.download.humanBytes

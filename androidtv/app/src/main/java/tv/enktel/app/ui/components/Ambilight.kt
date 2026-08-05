@@ -16,9 +16,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
-import coil.ImageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -56,7 +58,11 @@ fun AmbilightGlow(
         }
         val extracted = withContext(Dispatchers.IO) {
             try {
-                val loader = ImageLoader(ctx)
+                // The shared loader, not a fresh one: it is the only loader
+                // configured with the app's OkHttp client (see EnktelApp),
+                // and it already holds the poster in cache from whatever
+                // rail is on screen, so this costs no second fetch.
+                val loader = SingletonImageLoader.get(ctx)
                 val req = ImageRequest.Builder(ctx)
                     .data(imageUrl)
                     .allowHardware(false)
@@ -64,8 +70,11 @@ fun AmbilightGlow(
                     .build()
                 val result = loader.execute(req)
                 if (result !is SuccessResult) return@withContext null
-                val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                    ?: return@withContext null
+                // Coil 3 hands back its own Image rather than a Drawable, so
+                // the old BitmapDrawable cast has nothing to match on — it
+                // would compile away to null and leave the glow permanently
+                // on the fallback blue. toBitmap() is the supported bridge.
+                val bitmap = result.image.toBitmap()
                 val palette = Palette.from(bitmap).clearFilters().maximumColorCount(16).generate()
                 val rgb = palette.vibrantSwatch?.rgb
                     ?: palette.dominantSwatch?.rgb

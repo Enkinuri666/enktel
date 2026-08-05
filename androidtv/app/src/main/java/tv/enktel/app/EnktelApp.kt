@@ -4,6 +4,10 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import tv.enktel.app.data.db.AppDatabase
 import tv.enktel.app.data.download.DownloadHub
 import tv.enktel.app.data.prefs.SettingsStore
@@ -179,9 +183,34 @@ class AppGraph(app: Application) {
     }
 }
 
-class EnktelApp : Application() {
+/**
+ * [SingletonImageLoader.Factory] so Coil's shared loader is built here rather
+ * than discovered.
+ *
+ * Coil 3 splits the network fetcher into its own artifact and finds it
+ * through a `META-INF/services` entry. That works, but R8 renames both the
+ * interface and the file, and a fetcher that fails to register does not throw
+ * — every poster and channel logo simply resolves to nothing, in release
+ * builds only. Registering it explicitly takes that whole question off the
+ * table.
+ *
+ * Handing it [AppGraph.http] matters for its own sake: that client carries
+ * the VLC user agent panels are whitelisted against, the NO_PROXY setting
+ * that avoids 407 loops, and the TLS list that keeps API 23 hardware
+ * working. A Coil-built client would have none of it, and artwork hosted on
+ * the same panel as the streams would fail for reasons nothing in the app
+ * could explain.
+ */
+class EnktelApp : Application(), SingletonImageLoader.Factory {
     lateinit var graph: AppGraph
         private set
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { graph.http }))
+            }
+            .build()
 
     override fun onCreate() {
         super.onCreate()

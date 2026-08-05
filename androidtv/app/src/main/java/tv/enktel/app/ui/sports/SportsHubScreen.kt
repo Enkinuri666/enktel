@@ -51,7 +51,7 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
@@ -712,7 +712,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
 @Composable
 private fun TeamCrest(url: String) {
     if (url.isBlank()) return
-    coil.compose.AsyncImage(
+    coil3.compose.AsyncImage(
         model = url,
         contentDescription = null,
         modifier = Modifier.size(18.dp).padding(end = 5.dp),

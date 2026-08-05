@@ -7,14 +7,19 @@ plugins {
 
 android {
     namespace = "tv.enktel.app"
-    compileSdk = 36
+    // core-ktx 1.19 and lifecycle 2.11 both refuse to be consumed below API
+    // 37, so the compile target moves with them. This only widens the set of
+    // APIs available at compile time — what the app opts into at runtime is
+    // targetSdk, which is deliberately a step behind.
+    compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "tv.enktel.app"
         minSdk = 23
-        targetSdk = 35
-        versionCode = 107
-        versionName = "1.47.0"
+        targetSdk = 36
+        versionCode = 108
+        versionName = "1.48.0"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -127,17 +132,11 @@ android {
         // pre-26 fallback, where a full-bleed icon is the convention anyway.
         disable += "IconLauncherShape"
 
-        // lifecycle 2.10.0 ships lint checks compiled against a newer Kotlin
-        // analysis API than the one bundled with AGP 8.7.3's lint, so
-        // NonNullableMutableLiveDataDetector dies with
-        //   IncompatibleClassChangeError: Found class KaCallableMemberCall,
-        //   but interface was expected
-        // and takes the whole lint run down with it. Nothing to do with this
-        // codebase — and the check is inert here regardless, since the app
-        // uses no LiveData at all (StateFlow + Compose state throughout;
-        // `grep -r LiveData app/src` returns nothing). Revisit when AGP moves
-        // far enough forward to carry a matching lint.
-        disable += "NullSafeMutableLiveData"
+        // NullSafeMutableLiveData used to be disabled here: lifecycle 2.10's
+        // lint checks were compiled against a newer Kotlin analysis API than
+        // AGP's bundled lint, and the detector took the whole run down with
+        // an IncompatibleClassChangeError. AGP 9.3 and lifecycle 2.11 agree,
+        // and lint passes with the check enabled, so the suppression is gone.
     }
 }
 
@@ -169,6 +168,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    // Coil 3 ships no network fetcher by default — without this every
+    // remote poster and channel logo silently resolves to nothing.
+    implementation(libs.coil.network.okhttp)
     implementation(libs.palette.ktx)
     implementation(libs.work.runtime.ktx)
     // Storage Access Framework helpers — used by the download manager so

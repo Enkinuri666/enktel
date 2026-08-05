@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import tv.enktel.app.BuildConfig
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.theme.EnktelBlue
