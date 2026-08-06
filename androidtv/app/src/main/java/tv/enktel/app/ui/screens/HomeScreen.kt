@@ -198,33 +198,21 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        item {
-            // Premium "hub tiles" — glass pill cards with an icon glyph and
-            // brand-color gradient sheen. Acts as the one-stop-shop entry to
-            // every content type the app carries (live, VOD, sports, watchlist,
-            // downloads, recordings, guide, search, settings).
-            androidx.compose.foundation.lazy.LazyRow(
-                // Same grouping the content rails get (see ContentRail): ten
-                // tiles side by side otherwise compete with the rail below
-                // whenever DOWN is pressed, and geometry sometimes picks a
-                // neighbouring tile instead.
-                modifier = Modifier.focusGroup().focusRestorer(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item { HubTile("📺", "Live TV", accent = true, onClick = { nav.navigate("live?ch=") }) }
-                item { HubTile("🗓", "TV Guide", onClick = { nav.navigate("guide") }) }
-                item { HubTile("🎬", "Movies", onClick = { nav.navigate("movies") }) }
-                item { HubTile("🎞", "Series", onClick = { nav.navigate("series") }) }
-                item { HubTile("⚽", "Sports", onClick = { nav.navigate("sports") }) }
-                item { HubTile("☆", "Watchlist", onClick = { nav.navigate("watchlist") }) }
-                item { HubTile("⬇", "Downloads", onClick = { nav.navigate("downloads") }) }
-                item { HubTile("⏺", "Recordings", onClick = { nav.navigate("recordings") }) }
-                item { HubTile("⏪", "Catch-Up", onClick = { nav.navigate("catchup") }) }
-                item { HubTile("🔍", "Search", onClick = { nav.navigate("search") }) }
-                item { HubTile("⚙", "Settings", onClick = { nav.navigate("settings") }) }
-            }
-        }
+        // The hub-tile row that used to sit here has gone.
+        //
+        // It was eleven pill cards — Live TV, TV Guide, Movies, Series, Sports,
+        // Watchlist, Downloads, Recordings, Catch-Up, Search, Settings — and
+        // every single one of them is already a permanent entry in the shell's
+        // navigation: the rail on TV, the tab bar plus its More sheet on mobile.
+        // So Home opened with a complete second copy of the menu that was
+        // visible three centimetres to its left, and the first thing a D-pad
+        // met on the screen was a row of shortcuts rather than the user's
+        // content.
+        //
+        // Nothing is lost by removing it (the nav reaches all eleven from every
+        // screen, not just this one) and two things are gained: Home starts on
+        // Continue Watching, and a screenful of vertical space comes back —
+        // which is most of what made Home feel cramped in landscape.
         if (continueWatching.isNotEmpty()) {
             item {
                 ContentRail(

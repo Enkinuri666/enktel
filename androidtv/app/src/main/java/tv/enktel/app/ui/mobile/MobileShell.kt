@@ -1,6 +1,8 @@
 package tv.enktel.app.ui.mobile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,10 +97,24 @@ fun MobileScaffold(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding)
     // and while Kids Mode owns the Home route.
-    val showBar = !kidsModeActive && currentRoute in setOf(
-        "home", "movies", "series", "sports", "search", "watchlist", "recordings", "settings", "guide",
-        "speedTest", "manageCategories", "downloads", "catchup", "sportsFinder", "systemMonitor",
-    )
+    //
+    // Deny-list, not allow-list. This used to enumerate every screen that
+    // *should* show the bar, which meant any destination nobody remembered to
+    // add lost its navigation entirely — and several had: tapping the Live TV
+    // tab went to "channels", which was not in the list, so the bar the user
+    // had just tapped vanished and left them with no way anywhere except Back.
+    // "lists" was in the same state. Naming the handful of screens that are
+    // genuinely immersive is a list that stays correct as destinations are
+    // added, because a new screen defaults to *having* navigation.
+    val immersive = currentRoute == null ||
+        currentRoute.startsWith("live?") ||
+        currentRoute.startsWith("vodPlayer") ||
+        currentRoute.startsWith("trailer") ||
+        currentRoute.startsWith("multi") ||
+        currentRoute.startsWith("onboard") ||
+        currentRoute.startsWith("setup") ||
+        currentRoute.startsWith("upgrade")
+    val showBar = !kidsModeActive && !immersive
 
     // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can
     // sit above it instead of getting overlapped, and how tall the status bar is so screen
@@ -150,25 +168,71 @@ fun MobileScaffold(
     }
 }
 
+/**
+ * Which tab owns [route].
+ *
+ * The bar used to light up only on an exact route match, so it went blank the
+ * moment you were anywhere real — a film's detail page, a channel, the guide —
+ * and stopped telling the user where they were, which is the one job a tab bar
+ * has. Sub-routes now roll up to their tab, and everything the More sheet
+ * offers marks More.
+ */
+internal fun activeTabRoute(route: String): String = when {
+    route == "home" -> "home"
+    route.startsWith("channels") || route.startsWith("live") -> "channels"
+    route.startsWith("search") -> "search"
+    route.startsWith("sports") || route.startsWith("matchCenter") -> "sports"
+    MORE_ROUTES.any { route.startsWith(it) } -> "__more"
+    else -> ""
+}
+
+/** Everything reachable from the More sheet, including its detail sub-routes. */
+private val MORE_ROUTES = listOf(
+    "movies", "movie/", "series", "guide", "watchlist", "downloads",
+    "recordings", "catchup", "settings", "lists", "speedTest",
+    "manageCategories", "systemMonitor",
+)
+
 @Composable
 private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: Modifier) {
-    Row(
+    val active = activeTabRoute(current)
+    Column(
         modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .background(EnktelSurface),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .background(
+                // A flat surface with no separation read as part of the page.
+                // A hairline plus a short lift gradient is what makes the bar
+                // sit above the content instead of in it.
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(0.35f), EnktelSurface, EnktelSurface),
+                ),
+            ),
     ) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(0.07f)))
+        Row(
+            Modifier.fillMaxWidth().height(71.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
         MOBILE_TABS.forEach { tab ->
-            val selected = current == tab.route ||
-                (tab.route == "channels" && current.startsWith("live?ch=")) ||
-                (tab.route == "search" && current == "search")
+            val selected = active == tab.route
             Box(
                 Modifier
                     .fillMaxWidth().weight(1f)
                     .padding(vertical = 6.dp)
-                    .pointerInput(tab) { detectTapGestures { onTab(tab) } },
+                    // `selectable`, not a bare pointerInput.
+                    //
+                    // detectTapGestures answers a finger and nothing else: no
+                    // ripple, no pressed state, no focus, no accessibility role,
+                    // and — the reason this was reported as "doesn't function" —
+                    // nothing at all for a D-pad. The mobile build gets
+                    // sideloaded onto Fire TV sticks, where the entire bar was
+                    // simply unreachable.
+                    .selectable(
+                        selected = selected,
+                        role = Role.Tab,
+                        onClick = { onTab(tab) },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (tab.special == "mic") {
@@ -213,14 +277,29 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                     }
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        androidx.compose.foundation.Image(
-                            imageVector = tab.icon,
-                            contentDescription = tab.label,
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                                if (selected) EnktelBlue else EnktelTextDim,
-                            ),
-                            modifier = Modifier.padding(bottom = 2.dp).height(22.dp),
-                        )
+                        // A brand pill behind the active icon. Colour alone was
+                        // carrying the whole selected state, at 10 sp, which is
+                        // most of why the bar read as unfinished next to the
+                        // apps this is compared against.
+                        Box(
+                            Modifier
+                                .height(30.dp)
+                                .width(if (selected) 52.dp else 30.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(
+                                    if (selected) EnktelBlue.copy(alpha = 0.18f) else Color.Transparent,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            androidx.compose.foundation.Image(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                    if (selected) EnktelBlue else EnktelTextDim,
+                                ),
+                                modifier = Modifier.height(21.dp),
+                            )
+                        }
                         Text(
                             tab.label,
                             fontSize = 10.sp,
@@ -230,6 +309,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                     }
                 }
             }
+        }
         }
     }
 }
@@ -282,10 +362,18 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .height(52.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .pointerInput(route) {
-                            detectTapGestures {
-                                onDismiss()
-                                nav.navigate(route)
+                        // clickable, so the row ripples, takes focus and reads
+                        // as a button to a screen reader and a D-pad alike —
+                        // the sheet had the same finger-only problem the bar did.
+                        .clickable(role = Role.Button) {
+                            onDismiss()
+                            nav.navigate(route) {
+                                // Without this, opening the same entry twice
+                                // stacked two copies on the back stack and Back
+                                // appeared to do nothing the first press.
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo("home") { inclusive = false; saveState = true }
                             }
                         }
                         .padding(horizontal = 12.dp),
