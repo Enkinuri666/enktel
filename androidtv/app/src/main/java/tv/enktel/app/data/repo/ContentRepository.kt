@@ -13,8 +13,10 @@ import tv.enktel.app.data.db.Category
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.Favorite
 import tv.enktel.app.data.db.Movie
+import tv.enktel.app.data.db.MovieFts
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.db.Series
+import tv.enktel.app.data.db.SeriesFts
 import tv.enktel.app.data.db.WatchProgress
 import tv.enktel.app.data.double
 import tv.enktel.app.data.get
@@ -63,6 +65,56 @@ class ContentRepository(
     private val http: OkHttpClient,
 ) {
     private val content get() = db.contentDao()
+    private val searchIndex get() = db.searchDao()
+
+    /**
+     * Rebuilds the full-text index for [profileId] from what is now in the
+     * catalogue tables.
+     *
+     * Called at the end of a sync, which is the only moment the catalogue can
+     * change wholesale — so the index cannot drift the way an external-content
+     * FTS table would without triggers Room does not generate.
+     *
+     * The body is everything worth matching on, flattened. FTS4 tokenises it,
+     * which is what lets "bat man" find "The Batman": the old LIKE query
+     * compared the whole phrase and returned nothing for any two-word search
+     * that was not a literal substring.
+     */
+    private suspend fun rebuildSearchIndex(profileId: Long) {
+        searchIndex.clearMovieIndex(profileId)
+        searchIndex.clearSeriesIndex(profileId)
+        content.movies(profileId).first().chunked(500).forEach { chunk ->
+            searchIndex.indexMovies(
+                chunk.map { m ->
+                    MovieFts(
+                        rowId = 0L,
+                        itemKey = m.key,
+                        profileId = profileId,
+                        body = listOf(
+                            m.name, m.genre, m.cast, m.director, m.studios, m.tags,
+                            if (m.year > 0) m.year.toString() else "",
+                        ).filter { it.isNotBlank() }.joinToString(" "),
+                    )
+                },
+            )
+        }
+        content.series(profileId).first().chunked(500).forEach { chunk ->
+            searchIndex.indexSeries(
+                chunk.map { sRow ->
+                    SeriesFts(
+                        rowId = 0L,
+                        itemKey = sRow.key,
+                        profileId = profileId,
+                        body = listOf(
+                            sRow.name, sRow.genre, sRow.cast, sRow.director, sRow.studios,
+                            sRow.tags, sRow.plot,
+                            if (sRow.year > 0) sRow.year.toString() else "",
+                        ).filter { it.isNotBlank() }.joinToString(" "),
+                    )
+                },
+            )
+        }
+    }
     private val user get() = db.userDao()
 
     fun channels(profileId: Long) = content.channels(profileId)
@@ -84,6 +136,33 @@ class ContentRepository(
     suspend fun searchChannels(profileId: Long, q: String) = content.searchChannels(profileId, q)
     suspend fun searchMovies(profileId: Long, q: String) = content.searchMovies(profileId, q)
     suspend fun searchSeries(profileId: Long, q: String) = content.searchSeries(profileId, q)
+
+    /**
+     * Deep catalogue search — FTS4 where the index exists, LIKE where it does
+     * not yet.
+     *
+     * The fallback is not belt-and-braces: the index is built by a catalogue
+     * sync, so between installing an upgrade and the next sync the FTS tables
+     * are empty. Without it, search would silently return nothing for every
+     * query — the exact silent-empty failure this codebase keeps having to fix.
+     */
+    suspend fun searchDeep(profileId: Long, q: String): Pair<List<Movie>, List<Series>> =
+        withContext(Dispatchers.IO) {
+            val dao = db.searchDao()
+            val match = FtsQuery.toMatch(q)
+            val indexed = match != null && dao.movieIndexSize(profileId) > 0
+            if (indexed) {
+                // MATCH throws on malformed syntax rather than returning
+                // nothing, so a stray quote in a search box would crash the
+                // screen. FtsQuery.toMatch is what stops that, and this catch
+                // is the second line in case a token still upsets SQLite.
+                val hit = runCatching {
+                    dao.searchMoviesFts(profileId, match!!) to dao.searchSeriesFts(profileId, match)
+                }.getOrNull()
+                if (hit != null) return@withContext hit
+            }
+            dao.searchMoviesDeep(profileId, q) to dao.searchSeriesDeep(profileId, q)
+        }
 
     // ---- v1.20.0 metadata + themed rails ----------------------------------
 
@@ -240,6 +319,9 @@ class ContentRepository(
         live.chunked(500).forEach { content.upsertChannels(it) }
         stampedMovies.chunked(500).forEach { content.upsertMovies(it) }
         stampedSeries.chunked(500).forEach { content.upsertSeries(it) }
+        // The catalogue has just been replaced wholesale, which is the one
+        // moment the search index can be rebuilt without risk of drift.
+        rebuildSearchIndex(p.id)
         // Kick off the TMDB enrichment worker so the themed home rails
         // repopulate as the metadata streams in. Worker no-ops when the
         // user hasn't supplied a TMDB API key, so calling it is always safe.
@@ -302,6 +384,7 @@ class ContentRepository(
         content.upsertCategories(categories)
         channels.chunked(500).forEach { content.upsertChannels(it) }
         stampedM3u.chunked(500).forEach { content.upsertMovies(it) }
+        rebuildSearchIndex(p.id)
 
         if (p.epgUrl.isBlank() && playlist.epgUrl.isNotBlank()) {
             db.profileDao().update(p.copy(epgUrl = playlist.epgUrl))

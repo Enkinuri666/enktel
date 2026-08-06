@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -120,43 +121,61 @@ fun MobileScaffold(
     // sit above it instead of getting overlapped, and how tall the status bar is so screen
     // headers don't run under the notch/status area.
     val sysNavPad = WindowInsets.navigationBars.asPaddingValues()
-    val bottomPad = if (showBar) 72.dp + sysNavPad.calculateBottomPadding() else sysNavPad.calculateBottomPadding()
+
+    // A rail on the side once there is width for one.
+    //
+    // A bottom bar spends a strip of *height* on navigation, and height is the
+    // scarce axis on the layouts that get one: a tablet in landscape, or a
+    // foldable opened out. On a 900 dp-wide viewport the bar was 72 dp of
+    // vertical room given up so that six icons could sit in the middle of an
+    // otherwise empty line. Moving the same destinations to a vertical rail
+    // gives the height back and puts them within a thumb's reach of where the
+    // hand already is on a held tablet.
+    //
+    // 600 dp is the same threshold ScreenShape already uses to mean "not a
+    // phone", so the two agree rather than each having their own idea.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val useRail = showBar && !shape.narrow
+    val bottomPad = if (showBar && !useRail) {
+        72.dp + sysNavPad.calculateBottomPadding()
+    } else {
+        sysNavPad.calculateBottomPadding()
+    }
+
+    val onTab: (MobileTab) -> Unit = { tab ->
+        when {
+            tab.special == "mic" ->
+                voiceBus?.let { bus -> scope.launch { bus.micActivate.emit(Unit) } }
+            tab.route == "__more" -> showMore = true
+            tab.route == "home" -> {
+                nav.popBackStack("home", inclusive = false)
+                if (currentRoute != "home") nav.navigate("home") {
+                    popUpTo("home") { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+            else -> nav.navigate(tab.route) {
+                popUpTo("home") { inclusive = false; saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(EnktelBg).statusBarsPadding()) {
-        Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize()) {
+            if (useRail) {
+                SideNavRail(current = currentRoute.orEmpty(), onTab = onTab)
+            }
             Box(Modifier.weight(1f)) {
                 content(PaddingValues(bottom = bottomPad))
             }
         }
 
-        if (showBar) {
+        if (showBar && !useRail) {
             BottomTabBar(
                 current = currentRoute.orEmpty(),
-                onTab = { tab ->
-                    when {
-                        tab.special == "mic" -> {
-                            // Fire mic activation on the bus; VoiceHost's collector
-                            // toggles listening.  No navigation.
-                            voiceBus?.let { bus -> scope.launch { bus.micActivate.emit(Unit) } }
-                        }
-                        tab.route == "__more" -> showMore = true
-                        // Home tap: pop everything back to the start destination so it
-                        // works from any depth (previous popUpTo(home)+saveState combo
-                        // could look inert when a channel had been opened via an intent).
-                        tab.route == "home" -> {
-                            nav.popBackStack("home", inclusive = false)
-                            if (currentRoute != "home") nav.navigate("home") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        }
-                        else -> nav.navigate(tab.route) {
-                            popUpTo("home") { inclusive = false; saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
+                onTab = onTab,
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
             )
         }
@@ -165,6 +184,77 @@ fun MobileScaffold(
             nav = nav,
             onDismiss = { showMore = false },
         )
+    }
+}
+
+/**
+ * Vertical navigation rail for tablets and opened foldables.
+ *
+ * The same destinations as [BottomTabBar] and the same selection logic — only
+ * the axis changes. Labels stay: at this width there is room for them, and an
+ * icon-only rail makes people guess.
+ */
+@Composable
+private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
+    val active = activeTabRoute(current)
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .width(84.dp)
+            .background(EnktelSurface)
+            .navigationBarsPadding()
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        MOBILE_TABS.forEach { tab ->
+            val selected = active == tab.route
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onTab(tab) })
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (tab.special == "mic") {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .shadow(8.dp, RoundedCornerShape(15.dp), spotColor = EnktelBlue, clip = false)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    }
+                } else {
+                    Box(
+                        Modifier
+                            .height(30.dp)
+                            .width(if (selected) 48.dp else 30.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(if (selected) EnktelBlue.copy(alpha = 0.18f) else Color.Transparent),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.compose.foundation.Image(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                if (selected) EnktelBlue else EnktelTextDim,
+                            ),
+                            modifier = Modifier.height(21.dp),
+                        )
+                    }
+                }
+                Text(
+                    tab.label,
+                    fontSize = 10.sp,
+                    color = if (selected || tab.special == "mic") EnktelBlue else EnktelTextDim,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 

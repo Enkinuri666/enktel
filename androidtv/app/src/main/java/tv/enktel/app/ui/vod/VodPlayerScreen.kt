@@ -76,6 +76,14 @@ private fun fmtTime(ms: Long): String {
     else String.format(Locale.US, "%d:%02d", s / 60, s % 60)
 }
 
+/**
+ * How long before the end the "next episode" card appears.
+ *
+ * Thirty seconds is roughly one set of closing credits: long enough to read the
+ * card and decide, short enough that it does not cover the last scene.
+ */
+private const val NEXT_UP_WINDOW_MS = 30_000L
+
 /** Full-featured VOD / catch-up / recording player with DPAD seeking. */
 @UnstableApi
 @Composable
@@ -86,6 +94,10 @@ fun VodPlayerScreen(
     title: String,
     progressKey: String,
     isLive: Boolean,
+    /** Route for the following episode, or empty. See vodPlayerRoute. */
+    nextRoute: String = "",
+    /** "S2 E4 · The Bells" — what the countdown card announces. */
+    nextLabel: String = "",
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
@@ -130,6 +142,10 @@ fun VodPlayerScreen(
     var speed by remember { mutableFloatStateOf(1f) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var positionMs by remember { mutableLongStateOf(0L) }
+    /** Seconds left on the countdown card, or null when it is not showing. */
+    var nextUpSecs by remember { mutableStateOf<Int?>(null) }
+    /** Set when the viewer dismisses the card, so it stays dismissed. */
+    var nextUpCancelled by remember { mutableStateOf(false) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
 
@@ -255,6 +271,27 @@ fun VodPlayerScreen(
         while (true) {
             positionMs = engine.player.currentPosition.coerceAtLeast(0)
             durationMs = engine.player.duration.coerceAtLeast(0)
+            // Binge countdown.
+            //
+            // Driven off position rather than STATE_ENDED: closing credits are
+            // part of the runtime, so waiting for the stream to actually end
+            // means the card appears after the picture has already gone black,
+            // which is too late to be the thing that keeps someone watching.
+            //
+            // Not shown when the user has scrubbed backwards into the last
+            // thirty seconds on purpose — they are looking at something, and a
+            // countdown over it is an interruption rather than a convenience.
+            if (nextRoute.isNotBlank() && durationMs > 0 && !isLive) {
+                val leftMs = durationMs - positionMs
+                if (leftMs in 1..NEXT_UP_WINDOW_MS && engine.player.isPlaying) {
+                    nextUpSecs = ((leftMs + 999) / 1000).toInt().coerceAtMost((NEXT_UP_WINDOW_MS / 1000).toInt())
+                } else if (leftMs > NEXT_UP_WINDOW_MS) {
+                    // Scrubbing back out of the window dismisses it, and a
+                    // later approach shows it again.
+                    nextUpSecs = null
+                    nextUpCancelled = false
+                }
+            }
             playing = engine.player.isPlaying
             val now = System.currentTimeMillis()
             if (now - lastSave > 10_000) {
@@ -500,6 +537,61 @@ fun VodPlayerScreen(
             onRelease = { view -> session.unbind(view) },
             modifier = Modifier.fillMaxSize(),
         )
+
+        // Next-episode card, bottom right over the closing credits.
+        nextUpSecs?.takeIf { !nextUpCancelled }?.let { secs ->
+            val go = {
+                nextUpCancelled = true
+                // popUpTo the current entry so a binged season does not build a
+                // back stack twenty episodes deep — Back should return to the
+                // series, not walk backwards through everything just watched.
+                nav.navigate(nextRoute) {
+                    popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}") {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+                Unit
+            }
+            // Auto-advance only at zero, and only if it was never dismissed.
+            androidx.compose.runtime.LaunchedEffect(secs, nextUpCancelled) {
+                if (secs <= 0 && !nextUpCancelled) go()
+            }
+            Column(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(32.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.88f))
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+            ) {
+                Text(
+                    "UP NEXT", color = tv.enktel.app.ui.theme.EnktelBlue, fontSize = 10.sp,
+                    fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    nextLabel.ifBlank { "Next episode" }, color = Color.White,
+                    fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Playing in ${secs}s", color = EnktelTextDim, fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    tv.enktel.app.ui.components.FocusButton("▶ Play now", accent = true, onClick = go)
+                    // Dismissal has to stick. Without the flag the card would
+                    // reappear on the next position tick, a quarter of a second
+                    // later, and the viewer could not get rid of it at all.
+                    tv.enktel.app.ui.components.FocusButton(
+                        "✕ Not now",
+                        onClick = { nextUpCancelled = true; nextUpSecs = null },
+                    )
+                }
+            }
+        }
 
         if (playError != null) {
             Text(

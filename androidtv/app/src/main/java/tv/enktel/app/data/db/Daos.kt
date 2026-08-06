@@ -281,6 +281,40 @@ interface SearchDao {
              OR CAST(year AS TEXT) LIKE '%' || :q || '%'
          ) ORDER BY name LIMIT 60""")
     suspend fun searchSeriesDeep(profileId: Long, q: String): List<Series>
+
+    // --- FTS4 --------------------------------------------------------------
+    //
+    // The LIKE queries above stay as a fallback for a profile whose index has
+    // not been built yet (an upgrade lands with empty FTS tables until the next
+    // sync). Everything else goes through MATCH, where the cost is proportional
+    // to the number of hits rather than the size of the catalogue.
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun indexMovies(rows: List<MovieFts>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun indexSeries(rows: List<SeriesFts>)
+
+    @Query("DELETE FROM movies_fts WHERE profileId = :profileId")
+    suspend fun clearMovieIndex(profileId: Long)
+
+    @Query("DELETE FROM series_fts WHERE profileId = :profileId")
+    suspend fun clearSeriesIndex(profileId: Long)
+
+    @Query("SELECT COUNT(*) FROM movies_fts WHERE profileId = :profileId")
+    suspend fun movieIndexSize(profileId: Long): Int
+
+    @Query("""SELECT m.* FROM movies m
+             JOIN movies_fts f ON f.itemKey = m.key
+             WHERE f.profileId = :profileId AND movies_fts MATCH :match
+             ORDER BY m.name LIMIT 60""")
+    suspend fun searchMoviesFts(profileId: Long, match: String): List<Movie>
+
+    @Query("""SELECT s.* FROM series s
+             JOIN series_fts f ON f.itemKey = s.key
+             WHERE f.profileId = :profileId AND series_fts MATCH :match
+             ORDER BY s.name LIMIT 60""")
+    suspend fun searchSeriesFts(profileId: Long, match: String): List<Series>
 }
 
 @Dao

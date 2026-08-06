@@ -91,8 +91,12 @@ fun SearchScreen(
             return@LaunchedEffect
         }
         delay(300)
-        movies = graph.db.searchDao().searchMoviesDeep(p.id, query)
-        series = graph.db.searchDao().searchSeriesDeep(p.id, query)
+        // Through the repository, which uses the FTS index when it exists and
+        // falls back to LIKE when it doesn't (an upgrade lands with an empty
+        // index until the next catalogue sync).
+        val (m, sr) = graph.content.searchDeep(p.id, query)
+        movies = m
+        series = sr
         epg = try { graph.db.epgDao().searchUpcoming(p.id, query, System.currentTimeMillis()) }
               catch (_: Throwable) { emptyList() }
     }
