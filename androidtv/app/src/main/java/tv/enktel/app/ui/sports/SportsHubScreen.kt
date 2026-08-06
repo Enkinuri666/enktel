@@ -538,6 +538,23 @@ private fun Modifier.sportsCardFocus(
         )
 }
 
+/**
+ * Focus scale for a full-width card: none.
+ *
+ * tv-material's Surface defaults to `focusedScale = 1.1f`, and it applies that
+ * to the Surface's own graphics layer. [sportsCardFocus] draws its shadow on
+ * the modifier chain *outside* that layer, so on focus the glow kept drawing
+ * at 100 % while the card drew at 110 % — a tinted rectangle sitting visibly
+ * offset from the card, and the wider the card the further out it sat. These
+ * are full-width rows, so they have nowhere to grow into anyway: they would
+ * scale straight off both edges of the screen.
+ *
+ * Focus is carried by the shadow, the accent tint and the border instead, all
+ * of which share one set of bounds. Same conclusion NavRailItem reached.
+ */
+@Composable
+private fun noGrowScale() = ClickableSurfaceDefaults.scale(focusedScale = 1f)
+
 @Composable
 private fun LiveEventCard(
     ev: SportsEvent,
@@ -554,6 +571,7 @@ private fun LiveEventCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
             .sportsCardFocus(cardFocused, EnktelLive)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onTap),
+        scale = noGrowScale(),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         // Was EnktelLive.copy(0.14f) — a 14 % red wash over the near-black
         // background, which rendered as muddy maroon on a phone and made a row
@@ -633,6 +651,7 @@ private fun UpcomingEventCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
             .sportsCardFocus(cardFocused, EnktelBlue)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onOpen),
+        scale = noGrowScale(),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurfaceHigh.copy(0.5f),
@@ -674,6 +693,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
         modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
             .sportsCardFocus(cardFocused, EnktelOk)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onReplay),
+        scale = noGrowScale(),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurface.copy(0.5f),

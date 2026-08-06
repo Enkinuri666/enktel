@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,8 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SportsSoccer
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +46,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -155,7 +162,24 @@ fun TvNavShell(
                 // version — it does; it lives in androidx.compose.foundation,
                 // not androidx.compose.ui.focus.)
                 .focusGroup()
-                .onFocusChanged { expanded = it.hasFocus },
+                .onFocusChanged { expanded = it.hasFocus }
+                // The rail must scroll, and it did not.
+                //
+                // A 1080p Android TV reports 960×540 dp — the panel is 1080
+                // physical pixels at xhdpi, so the *layout* height is 540 dp,
+                // not 1080. Each rail item is about 44 dp plus a 6 dp gap, so
+                // thirteen destinations plus the "Now playing" entry need
+                // roughly 720 dp of column. In a plain Column that simply
+                // overflows: everything past Downloads was drawn below the
+                // bottom edge of the screen, unreachable and invisible, and
+                // adding Catch-Up pushed one more item off. Nothing about the
+                // rail's own geometry said so, because a Column will happily
+                // lay out past its parent's bounds.
+                //
+                // verticalScroll gives it somewhere to go, and Compose's focus
+                // system scrolls a newly focused child into view for free — so
+                // D-pad down through the rail now walks the whole list.
+                .verticalScroll(rememberScrollState()),
         ) {
             Spacer(Modifier.height(24.dp))
             if (nowPlayingLabel != null) {
@@ -172,8 +196,39 @@ fun TvNavShell(
                 NavRailItem(item = item, selected = selected, expanded = expanded, onClick = { onSelect(item.route) })
                 Spacer(Modifier.height(6.dp))
             }
+            // Tail padding, so the last destination can scroll clear of the
+            // bottom edge instead of sitting flush against it.
+            Spacer(Modifier.height(24.dp))
         }
-        Box(Modifier.weight(1f)) {
+        // Focus has to land *somewhere* when a screen opens, and it did not.
+        //
+        // Of the twenty-four content screens in this app, not one asked for
+        // focus on mount. Compose leaves focus unset until something claims it,
+        // so arriving anywhere — Home, Movies, Settings, the guide — left the
+        // first D-pad press with no origin to search from. It either did
+        // nothing or jumped somewhere arbitrary, and on a remote that is
+        // indistinguishable from a dropped button press. Every screen change
+        // cost the user a wasted press, on every screen, which is most of what
+        // "the remote isn't fully functional" describes.
+        //
+        // Doing it here rather than in twenty-four screens means it cannot be
+        // forgotten by the next screen someone adds. focusRestorer also brings
+        // you back to where you were when you return to a screen, instead of
+        // resetting to the top-left every time.
+        val contentFocus = remember { FocusRequester() }
+        LaunchedEffect(currentRoute) {
+            // A frame's grace: the destination's children are composed on the
+            // next pass, and requesting focus on an empty group throws.
+            withFrameNanos { }
+            runCatching { contentFocus.requestFocus() }
+        }
+        Box(
+            Modifier
+                .weight(1f)
+                .focusGroup()
+                .focusRestorer()
+                .focusRequester(contentFocus),
+        ) {
             content(PaddingValues(0.dp))
         }
     }

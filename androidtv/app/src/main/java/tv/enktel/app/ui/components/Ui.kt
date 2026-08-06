@@ -48,7 +48,9 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -80,8 +82,29 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * touch-enabled boxes) taps land nowhere. Attach this alongside Surface(onClick) so
  * both input methods work.
  */
-fun Modifier.tapClick(onClick: () -> Unit): Modifier =
-    pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+@Composable
+fun Modifier.tapClick(onClick: () -> Unit): Modifier {
+    // Touch gets a tick, the way the D-pad already gets an earcon.
+    //
+    // The TV path has NavSounds on every focus move and selection; the touch
+    // path had nothing at all — no ripple through this modifier, and no
+    // haptic — so on a phone the entire app confirmed a press only by whatever
+    // happened next. On a slow panel fetch that is a second of silence after a
+    // tap, which reads as a missed press and gets tapped again.
+    //
+    // ContextClick rather than LongPress: it is the lightest tick in the set,
+    // appropriate for a confirmation rather than an alert, and it is the one
+    // that stays pleasant when a user is moving quickly through a grid.
+    val haptics = LocalHapticFeedback.current
+    return pointerInput(Unit) {
+        detectTapGestures(
+            onTap = {
+                runCatching { haptics.performHapticFeedback(HapticFeedbackType.ContextClick) }
+                onClick()
+            },
+        )
+    }
+}
 
 @Composable
 fun FocusButton(
@@ -304,16 +327,21 @@ fun PosterCard(
             // read in the layout phase instead, which on a rail of thirty
             // posters is the difference between a smooth lift and a stutter.
             .offset { IntOffset(0, lift.roundToPx()) }
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(14.dp),
-                clip = false,
-                ambientColor = Color.Black,
-                // Focus tints the cast shadow with the brand accent, so the
-                // glow reads as light coming off the card rather than a
-                // generic drop shadow.
-                spotColor = if (focused) EnktelBlue else Color.Black,
-            )
+            // NB: no .shadow() here. This is the misaligned "glowing box".
+            //
+            // tv-material applies focusedScale to the Surface's own graphics
+            // layer. A .shadow() written on the modifier chain *outside* that
+            // Surface is not inside the scaled layer, so on focus it kept
+            // drawing at 100 % while the bordered card drew at 105–108 % — a
+            // brand-tinted rectangle sitting visibly offset from the card it
+            // was supposed to be lighting, growing more wrong the further from
+            // the screen centre the card sat.
+            //
+            // This is the same fault that was found and fixed in NavRailItem;
+            // the fix was never carried across to the posters, which is why the
+            // misaligned box was still being reported after the rail was clean.
+            // The glow now lives on the inner Box below, inside the scaled
+            // layer, so it shares one set of bounds with the border.
             .tapClick { NavSounds.open(); onClick() }.onFocusChanged {
             val wasFocused = focused
             focused = it.isFocused
@@ -344,17 +372,19 @@ fun PosterCard(
             Modifier
                 .width(w)
                 .height(h)
+                // Inside the scaled layer, so the glow tracks the card exactly.
+                // `elevation` carries the resting depth and focus adds the
+                // brand tint, which is what the two separate shadows used to do
+                // between them — one of which was drawing at the wrong size.
+                .shadow(
+                    elevation = if (focused) EnktelFocusGlowRadius else elevation,
+                    shape = RoundedCornerShape(14.dp),
+                    clip = false,
+                    ambientColor = Color.Black,
+                    spotColor = if (focused) EnktelFocusGlow else Color.Black,
+                )
                 .clip(RoundedCornerShape(14.dp))
-                .background(EnktelSurfaceHigh)
-                .then(
-                    if (focused) {
-                        Modifier.shadow(
-                            elevation = EnktelFocusGlowRadius,
-                            shape = RoundedCornerShape(14.dp),
-                            spotColor = EnktelFocusGlow,
-                        )
-                    } else Modifier
-                ),
+                .background(EnktelSurfaceHigh),
         ) {
             if (imageUrl.isNotBlank()) {
                 AsyncImage(
