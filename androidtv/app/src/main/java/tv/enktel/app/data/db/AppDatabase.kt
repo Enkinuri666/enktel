@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EpgProgram::class, Favorite::class, WatchProgress::class, Recording::class,
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
         DownloadEntry::class, UserList::class, UserListItem::class,
+        MovieFts::class, SeriesFts::class,
     ],
-    version = 11, // v11 keeps the playlist's catch-up scheme so playback can use it
+    version = 12, // v12 adds the FTS4 search index over the VOD catalogue
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -196,12 +197,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Search was seven LIKE '%q%' comparisons per row across two
+                // tables. A leading wildcard makes every index useless, so that
+                // is a full scan of the catalogue on every keystroke — and on a
+                // hundred-thousand-title line it is exactly the stutter it
+                // looks like.
+                //
+                // Created empty. The tables are filled by the next catalogue
+                // sync, and every FTS query has a LIKE fallback for the window
+                // in between, so an upgrade never lands on a search box that
+                // silently returns nothing.
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `movies_fts` USING FTS4(" +
+                        "`itemKey` TEXT NOT NULL, `profileId` INTEGER NOT NULL, `body` TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `series_fts` USING FTS4(" +
+                        "`itemKey` TEXT NOT NULL, `profileId` INTEGER NOT NULL, `body` TEXT NOT NULL)"
+                )
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                    MIGRATION_10_11,
+                    MIGRATION_10_11, MIGRATION_11_12,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

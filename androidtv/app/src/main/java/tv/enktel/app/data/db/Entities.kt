@@ -1,6 +1,8 @@
 package tv.enktel.app.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Fts4
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -311,4 +313,43 @@ data class UserListItem(
     val name: String,
     val poster: String = "",
     val addedAt: Long = System.currentTimeMillis(),
+)
+
+/**
+ * Full-text search index over the VOD catalogue.
+ *
+ * Search was seven `LIKE '%q%'` comparisons per row across two tables. A
+ * leading wildcard makes every index in SQLite useless, so that is a full scan
+ * of the whole catalogue on every keystroke — fine on a demo playlist, and on a
+ * hundred-thousand-title line it is exactly the stutter it looks like.
+ *
+ * FTS4 builds an inverted index instead: the cost is proportional to the number
+ * of *matches*, not the size of the table. It also tokenises, so "bat man"
+ * finds "The Batman" and "batman returns", which the LIKE version could not do
+ * at all — a user typing two words got nothing.
+ *
+ * Standalone rather than `contentEntity`-backed. An external-content FTS table
+ * needs SQLite triggers to stay in sync and Room does not generate them, so it
+ * would silently drift the first time a row changed. This one is rebuilt inside
+ * the same sync that replaces the catalogue, which is the only moment the
+ * contents can change, so it cannot drift.
+ */
+@Fts4
+@Entity(tableName = "movies_fts")
+data class MovieFts(
+    @PrimaryKey @ColumnInfo(name = "rowid") val rowId: Long,
+    /** The movie's `key`, so a hit can be resolved back to its row. */
+    val itemKey: String,
+    val profileId: Long,
+    /** Everything worth matching on, flattened into one indexed column. */
+    val body: String,
+)
+
+@Fts4
+@Entity(tableName = "series_fts")
+data class SeriesFts(
+    @PrimaryKey @ColumnInfo(name = "rowid") val rowId: Long,
+    val itemKey: String,
+    val profileId: Long,
+    val body: String,
 )
