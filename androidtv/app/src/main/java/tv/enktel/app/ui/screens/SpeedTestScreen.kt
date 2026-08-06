@@ -77,6 +77,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
     val ctx = LocalContext.current
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
 
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
@@ -149,8 +150,8 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(horizontal = shape.padH, vertical = shape.padV),
+        verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {

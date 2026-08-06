@@ -94,14 +94,15 @@ fun CatchupScreen(graph: AppGraph, nav: NavHostController, channelKey: String) {
     var resolving by remember { mutableStateOf<Long?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp)) {
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    Column(Modifier.fillMaxSize().padding(horizontal = shape.padH, vertical = shape.padV)) {
         SectionTitle("Catch-Up · ${ch.name}")
         CatchupExplainer(days = CatchupUrls.archiveDays(ch), supported = supported)
         error?.let {
             Spacer(Modifier.height(10.dp))
             Text(it, color = EnktelLive, fontSize = 12.sp)
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(shape.headerGap))
         when {
             !supported -> CenterMessage(
                 "This channel does not carry a catch-up archive.\n\n" +
@@ -162,7 +163,8 @@ fun CatchupBrowseScreen(graph: AppGraph, nav: NavHostController) {
             .sortedByDescending { it.archiveDays }
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp)) {
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    Column(Modifier.fillMaxSize().padding(horizontal = shape.padH, vertical = shape.padV)) {
         SectionTitle("Catch-Up")
         val deepest = channels?.maxOfOrNull { CatchupUrls.archiveDays(it) } ?: 0
         CatchupExplainer(days = deepest, supported = !channels.isNullOrEmpty())
