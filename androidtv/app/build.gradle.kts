@@ -159,6 +159,7 @@ dependencies {
     implementation(libs.media3.exoplayer.smoothstreaming)
     implementation(libs.media3.exoplayer.rtsp)
     implementation(libs.media3.ui)
+    implementation(libs.media3.ui.compose)
     implementation(libs.media3.datasource.okhttp)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
