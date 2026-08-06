@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import coil3.ImageLoader
+import coil3.request.allowRgb565
 import coil3.request.crossfade
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -223,6 +224,38 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
             // 220 ms: long enough to register as a fade, short enough that a
             // cached image still feels immediate on a Fire TV Stick.
             .crossfade(220)
+            // Memory budget, sized for the device this actually runs on.
+            //
+            // A Fire TV Stick Lite has 1 GB of RAM for the entire system, and
+            // Coil's default memory cache takes a fifth of what the app is
+            // allowed. A catalogue browse pulls thousands of posters and
+            // channel logos through that cache, and the app is simultaneously
+            // holding an ExoPlayer, its buffers and a Room database — so the
+            // default is a slow walk towards an OOM on exactly the hardware
+            // this is built for. 15 % leaves room for the player, which is the
+            // part the user will actually notice failing.
+            .memoryCache {
+                coil3.memory.MemoryCache.Builder()
+                    .maxSizePercent(context, 0.15)
+                    .build()
+            }
+            // allowRgb565, *not* bitmapConfig(RGB_565).
+            //
+            // The obvious way to halve the bytes per pixel is to set
+            // bitmapConfig directly, and it is wrong here. Coil applies an
+            // explicit bitmapConfig with no alpha guard at all — it goes
+            // straight to inPreferredConfig — and RGB_565 has no alpha channel.
+            // Channel logos are overwhelmingly PNGs with transparency, so a
+            // blanket RGB_565 would have flattened every one of them onto
+            // whatever happened to be behind it. (Checked in the decoder
+            // bytecode rather than assumed; the alpha branch only exists on the
+            // allowRgb565 path.)
+            //
+            // allowRgb565 asks Coil to downgrade only where it is safe: JPEGs,
+            // which are opaque by definition. That is posters and backdrops —
+            // the large images that actually dominate the cache — while logos
+            // keep their alpha. Half the memory on the half that matters.
+            .allowRgb565(true)
             .build()
 
     override fun onCreate() {

@@ -196,6 +196,21 @@ class MetadataEnrichmentWorker(
                 .setConstraints(
                     androidx.work.Constraints.Builder()
                         .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        // Enrichment is a nice-to-have that walks the whole
+                        // catalogue hitting TMDB. On the hardware this actually
+                        // runs on — a Fire TV Stick Lite with 1 GB of RAM
+                        // shared with the system — "connected" was the only
+                        // thing standing between that walk and a device that is
+                        // already low on memory or storage, or is busy trying
+                        // to keep a 1080p stream decoding.
+                        //
+                        // Deliberately *not* requiresDeviceIdle: a TV stick is
+                        // idle-by-OS-definition only when nobody is watching,
+                        // and enrichment that only ever runs when the user is
+                        // away never finishes on a box that gets unplugged.
+                        // Storage and battery pressure are the real signals.
+                        .setRequiresStorageNotLow(true)
+                        .setRequiresBatteryNotLow(true)
                         .build()
                 )
                 .build()
