@@ -140,21 +140,13 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     // is built separately, so nothing used to stop it repeating itself.
     val heroKeys = remember(heroItems) { heroItems.map { it.key }.toHashSet() }
 
-    // enktel.tv publishes the upcoming/latest feeds. Coming Soon in particular
-    // cannot come from the catalogue: anything in there is already playable.
+    // Rails are built from the panel's own VOD data — titles, years,
+    // ratings and the provider's `added` timestamp all arrive with the
+    // catalogue. The enktel.tv published feed used to drive Latest
+    // Releases and Coming Soon, and that was the bug: it advertised films
+    // from the wider world that this line does not carry, so the rails
+    // showed titles the subscriber did not have and could not open.
     val todayEpochDay = remember { tv.enktel.app.data.repo.EnktelFeed.todayEpochDay() }
-    var upcoming by remember { mutableStateOf<List<tv.enktel.app.data.repo.EnktelFeed.Upcoming>>(emptyList()) }
-    var freshMovies by remember { mutableStateOf<List<tv.enktel.app.data.repo.EnktelFeed.Upcoming>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        upcoming = try { graph.feed.upcoming(todayEpochDay, 20) } catch (_: Throwable) { emptyList() }
-        freshMovies = try { graph.feed.latestMovies(20) } catch (_: Throwable) { emptyList() }
-    }
-    // Feed entries are world releases, not your playlist. Matching on a
-    // normalised title lets a card stay clickable when you do have it, and say
-    // so plainly when you do not.
-    val byTitle = remember(latestReleases) {
-        latestReleases.associateBy { it.name.lowercase().filter(Char::isLetterOrDigit) }
-    }
 
     var clock by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -297,62 +289,23 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        if (freshMovies.isNotEmpty() || latestReleases.isNotEmpty()) {
-            item {
-                // Prefer the published feed for ordering (it knows real release
-                // dates); fall back to the catalogue when the feed is
-                // unreachable so the rail never simply vanishes.
-                if (freshMovies.isNotEmpty()) {
-                    ContentRail(
-                        "🆕  Latest Releases", freshMovies,
-                        accent = tv.enktel.app.ui.theme.EnktelOk,
-                        subtitle = "newest films",
-                        key = { it.id },
-                    ) { u ->
-                        val local = byTitle[u.title.lowercase().filter(Char::isLetterOrDigit)]
-                        PosterCard(
-                            u.title,
-                            local?.poster?.takeIf { it.isNotBlank() } ?: u.poster,
-                            subtitle = if (local != null) "In your playlist" else u.releaseDate,
-                            onClick = { local?.let { nav.navigate("movie/${it.key}") } },
-                        )
-                    }
-                } else {
-                    ContentRail(
-                        "🆕  Latest Releases", latestReleases.filterNot { it.key in heroKeys },
-                        accent = tv.enktel.app.ui.theme.EnktelOk,
-                        subtitle = "fresh on EnkTel",
-                        key = { it.key },
-                    ) { m ->
-                        val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
-                        val sub = when {
-                            ageDays <= 1 -> "Just added"
-                            ageDays < 7 -> "${ageDays}d ago"
-                            else -> if (m.year > 0) "${m.year}" else ""
-                        }
-                        PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
-                    }
-                }
-            }
-        }
-        if (upcoming.isNotEmpty()) {
+        if (latestReleases.isNotEmpty()) {
             item {
                 ContentRail(
-                    "🎬  Coming Soon", upcoming,
-                    accent = tv.enktel.app.ui.theme.EnktelPurple,
-                    subtitle = "not out yet",
-                    key = { it.id },
-                ) { u ->
-                    // Every entry here has a real release date in the future,
-                    // so the countdown counts down to the actual day rather than
-                    // to 1 January of the film's year, which is what made the
-                    // old rail say "available" about things it was advertising
-                    // as upcoming.
-                    PosterCard(
-                        u.title, u.poster,
-                        subtitle = u.countdown(todayEpochDay),
-                        onClick = {},
-                    )
+                    "🆕  Latest Releases", latestReleases.filterNot { it.key in heroKeys },
+                    accent = tv.enktel.app.ui.theme.EnktelOk,
+                    subtitle = "newest on your line",
+                    key = { it.key },
+                ) { m ->
+                    val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
+                    val sub = when {
+                        m.addedAt <= 0 && m.year > 0 -> "${m.year}"
+                        ageDays <= 1 -> "Just added"
+                        ageDays < 7 -> "${ageDays}d ago"
+                        m.year > 0 -> "${m.year}"
+                        else -> ""
+                    }
+                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }
             }
         }
@@ -625,8 +578,10 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // reads better than a thin banner floating over an empty Home.
         tv.enktel.app.ui.components.RefreshSplash(visible = syncing, status = syncStatus)
     } // close ambilight wrapper Box
+
     } // close CompositionLocalProvider (FocusedPosterState)
 }
+
 
 /**
  * Full-width rotating hero banner (Netflix-style): large backdrop art with a readability

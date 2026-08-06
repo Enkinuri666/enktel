@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -179,6 +181,28 @@ fun TvTextField(
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+
+    // Focus alone must not open the keyboard.
+    //
+    // Compose raises the IME the moment a BasicTextField gains focus. On a TV
+    // the app moves focus *programmatically* — every screen asks for focus on
+    // mount so the D-pad has somewhere to start — and on any screen whose
+    // first focusable is a search box that meant the keyboard appeared by
+    // itself, on top of whatever was playing. Setting windowSoftInputMode in
+    // the manifest did not fix it, because the window flag governs the
+    // activity's initial state, not an IME raised later by a focus change.
+    //
+    // So on TV the field is read-only until the user presses Select on it,
+    // which is how every set-top box behaves: focus highlights, OK opens the
+    // keyboard, Back closes it. On touch, focus only ever comes *from* a tap,
+    // so the tap is the intent and the keyboard opens as usual.
+    var typing by remember { mutableStateOf(false) }
+    val editable = isMobile || typing
+    LaunchedEffect(typing) { if (typing) keyboard?.show() else keyboard?.hide() }
+    LaunchedEffect(focused) { if (!focused) typing = false }
+
     Column(modifier.fillMaxWidth()) {
         Text(label, color = EnktelTextDim, fontSize = 12.sp)
         Spacer(Modifier.height(4.dp))
@@ -186,6 +210,7 @@ fun TvTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
+            readOnly = !editable,
             visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
             textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
             cursorBrush = SolidColor(EnktelBlue),
@@ -202,6 +227,14 @@ fun TvTextField(
                 .onPreviewKeyEvent { ev ->
                     if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     when (ev.key.nativeKeyCode) {
+                        // Select opens the keyboard; Back closes it and hands
+                        // the D-pad back to the screen rather than exiting.
+                        AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+                        AndroidKeyEvent.KEYCODE_ENTER,
+                        AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ->
+                            if (!typing) { typing = true; true } else false
+                        AndroidKeyEvent.KEYCODE_BACK ->
+                            if (typing) { typing = false; true } else false
                         AndroidKeyEvent.KEYCODE_DPAD_DOWN -> { focusManager.moveFocus(FocusDirection.Down); true }
                         AndroidKeyEvent.KEYCODE_DPAD_UP -> { focusManager.moveFocus(FocusDirection.Up); true }
                         else -> false
