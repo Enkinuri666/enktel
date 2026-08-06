@@ -58,6 +58,7 @@ import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.LocalToaster
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -66,6 +67,7 @@ import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextFaint
 import tv.enktel.app.vodPlayerRoute
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -91,6 +93,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val toaster = LocalToaster.current
 
     val channels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     var dayOffset by remember { mutableIntStateOf(0) }
@@ -267,11 +270,38 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                         ),
                     ) {
                         Row(Modifier.padding(horizontal = 10.dp).fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(32.dp).clip(RoundedCornerShape(4.dp)).background(EnktelSurfaceHigh)) {
-                                if (ch.logo.isNotBlank()) AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
+                            Box(
+                                Modifier.size(34.dp).clip(RoundedCornerShape(6.dp))
+                                    .background(EnktelSurfaceHigh),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (ch.logo.isNotBlank()) {
+                                    AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(2.dp))
+                                } else {
+                                    Text(
+                                        ch.name.take(2).uppercase(), fontSize = 11.sp,
+                                        fontWeight = FontWeight.Black, color = EnktelTextDim,
+                                    )
+                                }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Text(ch.name, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                // The channel number was nowhere in the guide,
+                                // so the one identifier people actually navigate
+                                // by — and type on the remote — was missing from
+                                // the screen built for navigating.
+                                if (ch.num > 0) {
+                                    Text(
+                                        "${ch.num}", fontSize = 10.sp, fontWeight = FontWeight.Black,
+                                        color = EnktelBlue, letterSpacing = 0.6.sp,
+                                    )
+                                }
+                                Text(
+                                    ch.name, fontSize = 12.sp, maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 14.sp,
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.width(6.dp))
@@ -297,25 +327,74 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 }
                                 val w = DP_PER_HOUR * ((end - start).toFloat() / HOUR)
                                 val isNow = prog.startMs <= now && prog.endMs > now
+                                // Three states, not two.
+                                //
+                                // The grid drew everything the same except for
+                                // a tint on the live cell, so a programme that
+                                // finished four hours ago was as visually loud
+                                // as one starting next — the eye had nothing to
+                                // anchor to and the whole grid read as an
+                                // undifferentiated wall of grey rectangles.
+                                val isPast = prog.endMs <= now
                                 Surface(
                                     onClick = { selected = ch to prog },
-                                    modifier = Modifier.width(w - 2.dp).fillMaxSize().padding(end = 2.dp)
+                                    modifier = Modifier.width(w - 3.dp).fillMaxSize().padding(end = 3.dp)
                                         .onFocusChanged { if (it.isFocused) highlighted = ch to prog }
                                         .tapClick { selected = ch to prog },
-                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(7.dp)),
                                     colors = ClickableSurfaceDefaults.colors(
-                                        containerColor = if (isNow) EnktelBlue.copy(0.28f) else EnktelSurfaceHigh,
+                                        containerColor = when {
+                                            isNow -> EnktelBlue.copy(0.30f)
+                                            isPast -> EnktelSurface.copy(0.55f)
+                                            else -> EnktelSurfaceHigh
+                                        },
                                         focusedContainerColor = EnktelBlue,
                                         focusedContentColor = Color.White,
-                                        contentColor = Color.White,
+                                        contentColor = if (isPast) EnktelTextDim else Color.White,
                                     ),
+                                    // Full-width-ish cells have nowhere to grow;
+                                    // scaling one inside a tight grid overlaps
+                                    // its neighbours. Focus is the fill.
+                                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 ) {
-                                    Column(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
-                                        Text(prog.title, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal)
-                                        Text(
-                                            "${TimeFormat.format("HH:mm", prog.startMs)}–${TimeFormat.format("HH:mm", prog.endMs)}",
-                                            fontSize = 10.sp, color = EnktelTextDim, maxLines = 1,
-                                        )
+                                    Row(Modifier.fillMaxSize()) {
+                                        // Live marker on the leading edge, so
+                                        // "what's on now" is findable by shape
+                                        // rather than by reading every cell.
+                                        if (isNow) {
+                                            Box(
+                                                Modifier
+                                                    .width(3.dp)
+                                                    .fillMaxHeight()
+                                                    .background(EnktelLive),
+                                            )
+                                        }
+                                        Column(
+                                            Modifier.padding(
+                                                start = if (isNow) 7.dp else 9.dp,
+                                                end = 6.dp, top = 6.dp, bottom = 6.dp,
+                                            ),
+                                        ) {
+                                            Text(
+                                                prog.title, fontSize = 12.sp, maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                fontWeight = if (isNow) FontWeight.Bold else FontWeight.Medium,
+                                            )
+                                            // A 15-minute programme is ~55 dp
+                                            // wide. Both lines used to render
+                                            // regardless, so short cells showed
+                                            // two clipped fragments stacked on
+                                            // each other and read as noise.
+                                            if (w >= 96.dp) {
+                                                Spacer(Modifier.height(2.dp))
+                                                Text(
+                                                    "${TimeFormat.format("HH:mm", prog.startMs)} – ${TimeFormat.format("HH:mm", prog.endMs)}",
+                                                    fontSize = 10.sp,
+                                                    color = if (isPast) EnktelTextFaint else EnktelTextDim,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                                 cursor = end
@@ -333,9 +412,20 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             onWatchLive = { selected = null; nav.navigate("live?ch=${ch.key}") },
             onCatchup = {
                 selected = null
-                val mins = (prog.endMs - prog.startMs) / 60000
-                val url = XtreamClient.timeshiftUrl(p, ch.streamId, prog.startMs, mins)
-                nav.navigate(vodPlayerRoute(url, "${ch.name} · ${prog.title}"))
+                // Was a single guessed Xtream timeshift URL — the last copy of
+                // the bug fixed everywhere else. Goes through the resolver now,
+                // which walks the shapes the panel might serve and says so when
+                // none of them answer.
+                scope.launch {
+                    val url = tv.enktel.app.data.catchup.CatchupUrls.resolve(
+                        graph.http, p, ch, prog.startMs, prog.endMs,
+                    )
+                    if (url == null) {
+                        toaster.error("The provider has no recording of that programme")
+                    } else {
+                        nav.navigate(vodPlayerRoute(url, "${ch.name} · ${prog.title}"))
+                    }
+                }
             },
             onRecord = {
                 selected = null

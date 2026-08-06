@@ -48,6 +48,7 @@ import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextFaint
 
 /**
  * Full-screen player chrome for the TV build.
@@ -58,10 +59,11 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * actually check mid-programme — how far through it is, what resolution is
  * really arriving, what is on next — should not need squinting.
  *
- * So the TV overlay is laid out cinematically: identity and programme bottom
- * left over a scrim, the stream's real properties as chips beside it, and a
- * footer strip carrying what's next and how to reach the menu. The mobile
- * build keeps its compact bar (see InfoBar in LivePlayerScreen).
+ * So the TV overlay is laid out cinematically: a quiet eyebrow line carrying
+ * channel identity, the programme title as the headline, a full-width timeline
+ * with real clock times under it, and a footer strip holding what's next on the
+ * left and the stream's actual resolution and frame rate on the right. The
+ * mobile build keeps its compact bar (see InfoBar in LivePlayerScreen).
  */
 private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
 
@@ -152,20 +154,50 @@ fun LiveInfoOverlay(
                 }
                 Spacer(Modifier.width(22.dp))
                 Column(Modifier.weight(1f)) {
+                    // Channel identity is the *supporting* line, not the
+                    // headline.
+                    //
+                    // It used to be 30 sp Black — larger and heavier than the
+                    // programme title underneath it — so the biggest thing on
+                    // screen was the name of the channel you had just chosen
+                    // and already knew, while the thing you actually wanted to
+                    // read sat below it in a smaller, lighter weight. There is
+                    // an 84 dp logo immediately to the left saying the same
+                    // thing. One eyebrow row carries number, name, group and
+                    // status; the programme gets the headline.
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (channel.num > 0) {
                             Text(
                                 "${channel.num}",
-                                color = EnktelBlue, fontSize = 30.sp, fontWeight = FontWeight.Black,
+                                color = EnktelBlue, fontSize = 15.sp, fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp,
                             )
-                            Spacer(Modifier.width(12.dp))
+                            Dot()
                         }
                         Text(
-                            channel.name, color = Color.White, fontSize = 30.sp,
-                            fontWeight = FontWeight.Black, maxLines = 1,
+                            channel.name.uppercase(),
+                            color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp, maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false),
                         )
+                        // Playlist and group belong with the channel's identity,
+                        // not in the chip row beside the resolution readout —
+                        // mixing editorial with telemetry at one weight is what
+                        // made that row read as chip soup.
+                        val provenance = listOfNotNull(
+                            playlistName.takeIf { it.isNotBlank() },
+                            channel.categoryName.takeIf { it.isNotBlank() },
+                        ).joinToString(" · ")
+                        if (provenance.isNotBlank()) {
+                            Dot()
+                            Text(
+                                provenance, color = EnktelTextFaint, fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium, maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                        }
                         Spacer(Modifier.width(12.dp))
                         if (recording) StatusPill("● REC", EnktelLive)
                         if (shiftedFrom > 0) StatusPill("⏪ ${hhmm(shiftedFrom)}", EnktelLive)
@@ -176,57 +208,53 @@ fun LiveInfoOverlay(
                         if (channel.hasArchive) StatusPill("CATCH-UP", EnktelOk)
                     }
                     if (now != null) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(7.dp))
                         Text(
-                            now.title, color = Color.White.copy(0.95f), fontSize = 19.sp,
-                            fontWeight = FontWeight.SemiBold, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            now.title, color = Color.White, fontSize = 32.sp,
+                            fontWeight = FontWeight.Black, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, letterSpacing = (-0.4).sp,
                         )
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(12.dp))
                         val span = (now.endMs - now.startMs).coerceAtLeast(1)
                         val frac = ((System.currentTimeMillis() - now.startMs).toFloat() / span)
                             .coerceIn(0f, 1f)
-                        val minsLeft = ((now.endMs - System.currentTimeMillis()) / 60_000)
-                            .coerceAtLeast(0)
+                        // The programme's actual clock times, which the overlay
+                        // never showed — it offered a progress bar and a
+                        // countdown and left "what time is this on?" unanswered.
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.width(300.dp)) { ProgressTrack(frac) }
+                            Text(
+                                "${hhmm(now.startMs)} – ${hhmm(now.endMs)}",
+                                color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.width(14.dp))
+                            // A full-width timeline rather than a fixed 300 dp
+                            // stub floating in the middle of a 960 dp row.
+                            Box(Modifier.weight(1f)) { ProgressTrack(frac) }
                             Spacer(Modifier.width(14.dp))
                             Text(
-                                "$minsLeft Minutes Left",
-                                color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                remainingLabel(now.endMs),
+                                color = EnktelBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             )
-                            Spacer(Modifier.width(18.dp))
-                            // What the stream really is, rather than what the
-                            // channel name claims. A line advertised as HD that
-                            // arrives at 720p is the single most common
-                            // complaint, and this is where it becomes visible.
-                            resolutionLabel(stats.width, stats.height).takeIf { it.isNotBlank() }
-                                ?.let { InfoChip(it) }
-                            if (stats.frameRate > 0f) {
-                                Spacer(Modifier.width(8.dp))
-                                InfoChip("%.0f FPS".format(stats.frameRate))
-                            }
-                            if (playlistName.isNotBlank()) {
-                                Spacer(Modifier.width(8.dp))
-                                InfoChip(
-                                    playlistName +
-                                        channel.categoryName.takeIf { it.isNotBlank() }
-                                            ?.let { ", Group: $it" }.orEmpty(),
-                                )
-                            }
                         }
                         if (now.desc.isNotBlank()) {
-                            Spacer(Modifier.height(10.dp))
+                            Spacer(Modifier.height(11.dp))
                             Text(
-                                now.desc, color = Color.White.copy(0.72f), fontSize = 13.sp,
+                                now.desc, color = EnktelTextDim, fontSize = 14.sp,
+                                lineHeight = 20.sp,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                         }
                     } else {
+                        Spacer(Modifier.height(7.dp))
+                        Text(
+                            channel.name,
+                            color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "No guide data for this channel",
-                            color = EnktelTextDim, fontSize = 14.sp,
+                            "No guide listing for this channel",
+                            color = EnktelTextFaint, fontSize = 14.sp,
                         )
                     }
                 }
@@ -238,9 +266,16 @@ fun LiveInfoOverlay(
             ) {
                 if (next != null) {
                     Text(
-                        "Next at ${hhmm(next.startMs)}:  ",
-                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        "NEXT",
+                        color = EnktelTextFaint, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                        letterSpacing = 1.4.sp,
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        hhmm(next.startMs),
+                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         next.title, color = Color.White.copy(0.9f), fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold, maxLines = 1,
@@ -248,13 +283,67 @@ fun LiveInfoOverlay(
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                // Stream telemetry lives here, away from the programme.
+                //
+                // Resolution and frame rate were chips in the middle of the
+                // programme row, styled identically to the playlist name beside
+                // them — five interchangeable grey pills, which is what made the
+                // overlay look cheap. They are readouts, not labels: quiet,
+                // monospaced-feeling, and grouped at the far end where a viewer
+                // checking "am I really getting HD?" will look for them.
+                resolutionLabel(stats.width, stats.height).takeIf { it.isNotBlank() }?.let {
+                    Readout(it)
+                }
+                if (stats.frameRate > 0f) Readout("%.0f fps".format(stats.frameRate))
+                Spacer(Modifier.width(14.dp))
                 Text(
-                    "Press ▼ for the quick menu",
-                    color = EnktelTextDim.copy(0.85f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    "▼  Menu",
+                    color = EnktelTextFaint, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 )
             }
         }
     }
+}
+
+/** "· " separator between eyebrow fields, at the faint weight. */
+@Composable
+private fun Dot() {
+    Text(
+        "  ·  ", color = EnktelTextFaint, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+    )
+}
+
+/**
+ * "24 min left" / "Ends in under a minute" / "Just finished".
+ *
+ * The old string was `"$minsLeft Minutes Left"`, which capitalised mid-phrase
+ * like a system dialog and read "1 Minutes Left" and "0 Minutes Left" at the
+ * two moments a viewer is most likely to be looking at it.
+ */
+internal fun remainingLabel(endMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    val mins = (endMs - nowMs) / 60_000
+    return when {
+        mins < 0 -> "Just finished"
+        mins < 1 -> "Ends in under a minute"
+        mins == 1L -> "1 min left"
+        mins < 60 -> "$mins min left"
+        else -> {
+            val h = mins / 60
+            val m = mins % 60
+            if (m == 0L) "${h}h left" else "${h}h ${m}m left"
+        }
+    }
+}
+
+/** Quiet technical readout — telemetry, deliberately not styled as a label. */
+@Composable
+private fun Readout(text: String) {
+    Text(
+        text,
+        color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.4.sp,
+        modifier = Modifier.padding(start = 14.dp),
+    )
 }
 
 @Composable
@@ -262,17 +351,33 @@ private fun ProgressTrack(frac: Float) {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(5.dp)
+            .height(6.dp)
             .clip(RoundedCornerShape(3.dp))
-            .background(Color.White.copy(0.18f)),
+            .background(Color.White.copy(0.14f)),
     ) {
         Box(
             Modifier
                 .fillMaxWidth(frac)
-                .height(5.dp)
+                .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
                 .background(Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple))),
         )
+        // The playhead. A bare filled bar reads as a loading indicator; a head
+        // at the boundary reads as "you are here on a timeline", which is what
+        // it actually is.
+        Box(
+            Modifier
+                .fillMaxWidth(frac)
+                .height(6.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.White),
+            )
+        }
     }
 }
 
