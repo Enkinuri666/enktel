@@ -1024,8 +1024,13 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     // it up and keeps the picture on screen while the user browses.
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
     val playbackMode by graph.playback.mode.collectAsStateWithLifecycle()
+    // A screen drawing the picture inline (the TV Guide's dock) owns the
+    // surface while it is on screen, so the floating window stands down —
+    // otherwise both render and you get two docked players at once.
+    val inlinePreview by graph.playback.inlinePreview.collectAsStateWithLifecycle()
     val docked = nowPlaying != null &&
-        playbackMode == tv.enktel.app.player.PlaybackSession.Mode.DOCKED
+        playbackMode == tv.enktel.app.player.PlaybackSession.Mode.DOCKED &&
+        !inlinePreview
     val backgroundAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
     val dockCornerName by graph.settings.dockCorner.collectAsStateWithLifecycle(initialValue = "BOTTOM_END")
     val dockSizeStep by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)

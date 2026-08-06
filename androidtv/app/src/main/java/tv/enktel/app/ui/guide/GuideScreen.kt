@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -423,6 +424,15 @@ private fun GuideDock(
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
     val ch = highlighted?.first
     val prog = highlighted?.second
+
+    // Claim the picture for as long as this dock is composed, so the floating
+    // mini window does not draw a second copy over the corner of the guide.
+    // Released on the way out, which hands the surface back to the mini window
+    // for whatever screen comes next.
+    DisposableEffect(Unit) {
+        graph.playback.setInlinePreview(true)
+        onDispose { graph.playback.setInlinePreview(false) }
+    }
     Row(modifier.fillMaxWidth().height(184.dp)) {
         Box(
             Modifier

@@ -108,6 +108,27 @@ class PlaybackSession(
     private val _mode = MutableStateFlow(Mode.FULLSCREEN)
     val mode: StateFlow<Mode> = _mode.asStateFlow()
 
+    /**
+     * True while a screen is showing the picture inline in its own layout —
+     * currently the TV Guide's dock.
+     *
+     * There is one engine and one surface, but two things want to draw it: the
+     * floating mini window that follows you around the app, and an inline
+     * preview belonging to a screen. Both were rendering at once, so the guide
+     * showed its preview *and* the mini window floated over the corner — two
+     * docked players, one of them fighting for a surface it could not keep.
+     *
+     * A screen that draws the picture itself claims it here for as long as it
+     * is composed; the mini window stands down while anything is claiming.
+     */
+    private val _inlinePreview = MutableStateFlow(false)
+    val inlinePreview: StateFlow<Boolean> = _inlinePreview.asStateFlow()
+
+    /** Claim/release the inline surface. Balanced by the caller's DisposableEffect. */
+    fun setInlinePreview(active: Boolean) {
+        _inlinePreview.value = active
+    }
+
     private var engineRef: PlayerEngine? = null
 
     /** The single [PlayerView] currently rendering the engine. See [bind]. */
