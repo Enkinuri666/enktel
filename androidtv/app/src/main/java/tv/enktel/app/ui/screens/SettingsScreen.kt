@@ -47,11 +47,16 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
-    // Mobile builds get less horizontal padding so the content isn't crushed into
-    // the middle of a phone display; TV builds keep the wide 10-foot padding.
+    // Padding follows the viewport, not the build flavour.
+    //
+    // A flat "mobile gets 18 dp, TV gets 28 dp" reads the wrong axis: turn a
+    // phone sideways and 18 dp top and bottom is still 10 % of the height,
+    // spent before a single row of settings is drawn, on the orientation with
+    // the least room. See ScreenShape.
     val isMobile = BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 20.dp else 48.dp
-    val vPad = if (isMobile) 18.dp else 28.dp
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val hPad = shape.padH
+    val vPad = shape.padV
     // One category at a time.
     //
     // Settings was a single 780-line Column inside a verticalScroll: every
@@ -67,7 +72,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
 
     Column(
         Modifier.fillMaxSize().padding(horizontal = hPad, vertical = vPad),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {
         SectionTitle("Settings")
         if (status.isNotBlank()) Text(status, color = EnktelOk, fontSize = 13.sp)
@@ -500,7 +505,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
         Text(
             if (tmdbKey.isBlank())
-                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Needs the TMDB key above — without one this stays inactive."
+                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. " +
+                    "Trailer lookups go through enktel.tv, so no key is needed — adding one above just " +
+                    "uses your own TMDB quota instead of the shared one."
             else
                 "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Always muted; move off the poster and it stops.",
             color = EnktelTextDim, fontSize = 11.sp,

@@ -234,12 +234,22 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     /** Jump into the channel's archive at [startMs] (restart programme / rewind live TV). */
     fun playShifted(startMs: Long) {
         val ch = current ?: return
-        if (p.kind != "xtream" || !ch.hasArchive) {
+        if (!tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, ch)) {
             toaster.error("This channel has no catch-up archive")
             return
         }
-        val durMin = ((System.currentTimeMillis() - startMs) / 60_000 + 180).coerceAtLeast(30)
-        engine.play(XtreamClient.timeshiftUrl(p, ch.streamId, startMs, durMin), live = false)
+        // Ask for the window from the requested start to a few hours out, so a
+        // restart plays through the end of the programme rather than stopping
+        // at "now". Candidates rather than one URL: panels serve the same
+        // archive from at least three different paths.
+        val now = System.currentTimeMillis()
+        val endMs = now + 3 * 60 * 60_000L
+        val urls = tv.enktel.app.data.catchup.CatchupUrls.candidates(p, ch, startMs, endMs, now)
+        if (urls.isEmpty()) {
+            toaster.error("This channel has no catch-up archive")
+            return
+        }
+        engine.playCandidates(urls, live = false)
         shiftedFrom = startMs
         showInfo = true; infoTick++
         toaster.info("Time-shift · ${hhmm(startMs)}")
@@ -792,12 +802,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
         if (showQuickMenu && current != null) {
             QuickMenu(
+                profile = p,
                 channel = current!!,
                 isFav = isFav,
                 recording = recordingId != 0L,
                 showStats = showStats,
                 shifted = shiftedFrom > 0,
-                canShift = p.kind == "xtream" && current!!.hasArchive,
+                canShift = tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, current!!),
                 sleepUntil = sleepUntil,
                 onRestartProgram = {
                     val start = nowNext.now?.startMs
@@ -860,6 +871,13 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     nav.navigate("catchup/${current!!.key}")
                 },
                 onGuide = { showQuickMenu = false; nav.navigate("guide") },
+                onSettings = {
+                    showQuickMenu = false
+                    // Dock rather than stop: leaving the player to change a
+                    // setting should not end the programme.
+                    graph.playback.dock()
+                    nav.navigate("settings")
+                },
                 onPip = {
                     showQuickMenu = false
                     val ok = (context as? android.app.Activity)?.let { tv.enktel.app.player.PictureInPicture.enter(it) } ?: false
@@ -1344,6 +1362,7 @@ private fun ChannelRow(
 
 @Composable
 private fun QuickMenu(
+    profile: Profile,
     channel: Channel,
     isFav: Boolean,
     recording: Boolean,
@@ -1364,6 +1383,7 @@ private fun QuickMenu(
     onRecord: () -> Unit,
     onCatchup: () -> Unit,
     onGuide: () -> Unit,
+    onSettings: () -> Unit,
     onPip: () -> Unit,
     onMultiView: () -> Unit,
     onClose: () -> Unit,
@@ -1390,7 +1410,9 @@ private fun QuickMenu(
             }
             add(QuickAction(if (isFav) "★" else "☆", "Favourite", onFavorite, active = isFav))
             add(QuickAction(if (recording) "■" else "●", if (recording) "Stop rec" else "Record", onRecord, active = recording))
-            if (channel.hasArchive) add(QuickAction("🗂", "Catch-up", onCatchup))
+            if (tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel)) {
+                add(QuickAction("🗂", "Catch-up", onCatchup))
+            }
             add(QuickAction("🎞", "Video", onVideo))
             add(QuickAction("🔊", "Audio", onAudio))
             add(QuickAction("💬", "Subtitles", onSubs))
@@ -1399,6 +1421,11 @@ private fun QuickMenu(
             add(QuickAction("▤", "Multi-view", onMultiView))
             add(QuickAction("☾", sleepLabel.substringBefore(':').ifBlank { "Sleep" }, onSleep, active = sleepUntil > 0))
             add(QuickAction("📊", "Stats", onStats, active = showStats))
+            // There was no way out of the player to Settings at all — not from
+            // the strip, not from the drawer. On a Firestick, where Back exits
+            // playback, that made every player-adjacent setting unreachable
+            // without abandoning what you were watching.
+            add(QuickAction("⚙", "Settings", onSettings))
         }
         Box(Modifier.fillMaxSize()) {
             QuickMenuBar(actions, Modifier.align(Alignment.BottomCenter))
@@ -1427,7 +1454,9 @@ private fun QuickMenu(
             }
             FocusButton(if (isFav) "★ Remove favorite" else "☆ Add favorite", onClick = onFavorite, modifier = Modifier.fillMaxWidth())
             FocusButton(if (recording) "■ Stop recording" else "● Record now (DVR)", onClick = onRecord, modifier = Modifier.fillMaxWidth())
-            if (channel.hasArchive) FocusButton("🗂 Catch-up archive", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
+            if (tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel)) {
+                FocusButton("🗂 Catch-up archive", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
+            }
             FocusButton(sleepLabel, onClick = onSleep, modifier = Modifier.fillMaxWidth())
             FocusButton("Video quality", onClick = onVideo, modifier = Modifier.fillMaxWidth())
             FocusButton("Audio track", onClick = onAudio, modifier = Modifier.fillMaxWidth())
@@ -1437,6 +1466,7 @@ private fun QuickMenu(
             FocusButton("⧉ Picture-in-Picture", onClick = onPip, modifier = Modifier.fillMaxWidth())
             FocusButton("▤▤ Multi-view", onClick = onMultiView, modifier = Modifier.fillMaxWidth())
             FocusButton("TV Guide", onClick = onGuide, modifier = Modifier.fillMaxWidth())
+            FocusButton("⚙ Settings", onClick = onSettings, modifier = Modifier.fillMaxWidth())
             FocusButton("Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
         }
     }

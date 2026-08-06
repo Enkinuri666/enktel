@@ -170,9 +170,13 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 20.dp else 48.dp
+    // Padding from the viewport rather than the flavour — a landscape phone
+    // has a TV's width and a third of its height, and was getting a TV's
+    // margins on both axes. See ScreenShape.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val hPad = shape.padH
 
-    Column(Modifier.fillMaxSize().padding(top = if (isMobile) 12.dp else 20.dp)) {
+    Column(Modifier.fillMaxSize().padding(top = shape.padV)) {
         Row(
             Modifier.padding(horizontal = hPad),
             verticalAlignment = Alignment.CenterVertically,
@@ -184,7 +188,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
                 color = EnktelTextDim, fontSize = 12.sp,
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(shape.headerGap))
 
         // Mode chips: favourites, radio, hidden.
         LazyRow(

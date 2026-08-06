@@ -17,7 +17,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -331,20 +337,34 @@ fun QuickMenuBar(actions: List<QuickAction>, modifier: Modifier = Modifier) {
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         Spacer(Modifier.height(8.dp))
+        // Something has to be focused the moment the strip appears, or the
+        // first D-pad press goes nowhere and the menu reads as unresponsive —
+        // which is most of "I can't reach the settings in the player".
+        val first = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
         LazyRow(
+            // focusGroup keeps the strip one stop in focus search rather than
+            // sixteen, and focusRestorer brings you back to the action you were
+            // on instead of the far left. Same fix the Home rails needed.
+            modifier = Modifier.focusGroup().focusRestorer(),
             contentPadding = PaddingValues(horizontal = 40.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            items(actions.size) { i -> QuickAction(actions[i]) }
+            items(actions.size) { i ->
+                QuickAction(
+                    actions[i],
+                    modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun QuickAction(a: QuickAction) {
+private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
     Surface(
         onClick = a.onClick,
-        modifier = Modifier.tapClick(a.onClick),
+        modifier = modifier.tapClick(a.onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,

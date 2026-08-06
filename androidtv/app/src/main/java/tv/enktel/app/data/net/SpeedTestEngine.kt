@@ -30,6 +30,20 @@ import tv.enktel.app.data.str
  * ICMP would be anyway (ICMP is frequently deprioritised or blocked by
  * routers and CDNs, producing misleadingly bad numbers).
  */
+/** "in 27 days" / "expired 3 days ago" / "expires today", from a Unix ms instant. */
+internal fun expiryLabel(atMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    val days = ((atMs - nowMs) / 86_400_000L).toInt()
+    return when {
+        atMs <= nowMs -> {
+            val ago = ((nowMs - atMs) / 86_400_000L).toInt()
+            if (ago <= 0) "expired today" else "expired $ago day${if (ago == 1) "" else "s"} ago"
+        }
+        days <= 0 -> "expires today"
+        days == 1 -> "1 day left"
+        else -> "$days days left"
+    }
+}
+
 object SpeedTestEngine {
 
     /**
@@ -107,6 +121,40 @@ object SpeedTestEngine {
         val redirectChain: List<String> = emptyList(),
     )
 
+    /**
+     * What the app has actually downloaded from the panel and cached locally.
+     *
+     * "There's nothing in the guide", "Catch-Up is empty" and "half my
+     * channels are missing" are all reported as playback faults and none of
+     * them are — they are sync results. Counting what is in the database turns
+     * each into a number the user and the reseller can both look at.
+     */
+    data class Catalogue(
+        val channels: Int = 0,
+        val movies: Int = 0,
+        val series: Int = 0,
+        val catchupChannels: Int = 0,
+        val catchupDays: Int = 0,
+        val epgProgrammes: Int = 0,
+        /** Distinct channels the loaded guide covers. */
+        val epgChannels: Int = 0,
+        /** Furthest programme end time in the guide, Unix ms. */
+        val epgHorizonMs: Long = 0,
+        /** When the profile last completed a catalogue sync, Unix ms. */
+        val lastSyncMs: Long = 0,
+    ) {
+        fun isEmpty(): Boolean = channels == 0 && movies == 0 && series == 0 && epgProgrammes == 0
+
+        /** Guide depth in whole days ahead of now; 0 when the guide is stale or absent. */
+        val epgDaysAhead: Int
+            get() = if (epgHorizonMs <= 0) 0
+            else ((epgHorizonMs - System.currentTimeMillis()) / 86_400_000L).toInt().coerceAtLeast(0)
+
+        /** Share of channels the guide covers, 0–100. */
+        val epgCoveragePct: Int
+            get() = if (channels <= 0) 0 else (epgChannels * 100 / channels).coerceIn(0, 100)
+    }
+
     data class Result(
         val host: String,
         val resolvedIp: String?,
@@ -124,12 +172,28 @@ object SpeedTestEngine {
         val server: ServerInfo = ServerInfo(),
         val liveProbe: StreamProbe? = null,
         val vodProbe: StreamProbe? = null,
+        /** What this box can decode and display. See [DeviceProbe]. */
+        val device: DeviceProbe.Info = DeviceProbe.Info(),
+        /** What the app has cached from the panel. See [Catalogue]. */
+        val catalogue: Catalogue = Catalogue(),
         val suggestions: List<String> = emptyList(),
         val error: String? = null,
+        /**
+         * When this run finished, Unix ms.
+         *
+         * Without it a result is undated, and a screen showing readings from
+         * twenty minutes ago looks exactly like one showing readings from
+         * twenty seconds ago — which is how stale numbers get pasted into a
+         * bug report as though they described the problem.
+         */
+        val measuredAtMs: Long = System.currentTimeMillis(),
     ) {
         /** Plain-text report suitable for "copy to clipboard → paste to support". */
         fun toReport(): String = buildString {
             appendLine("EnkTel IPTV — Network Diagnostic Report")
+            appendLine("Measured: " + tv.enktel.app.data.TimeFormat.format("yyyy-MM-dd HH:mm:ss", measuredAtMs))
+            appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+            appendLine("App: ${tv.enktel.app.BuildConfig.VERSION_NAME} (${tv.enktel.app.BuildConfig.FLAVOR})")
             appendLine("Server: $host")
             appendLine("Resolved IP: ${resolvedIp ?: "unresolved"}")
             appendLine("DNS lookup: ${dnsLookupMs} ms")
@@ -138,6 +202,47 @@ object SpeedTestEngine {
             appendLine("Packet loss (probe failures): $packetLossPct%")
             appendLine("Download throughput: %.2f Mbps".format(downloadMbps))
             appendLine("Connection type: $connectionType")
+            if (device.linkDownKbps > 0) {
+                appendLine("Link estimate (OS): %.1f Mbps".format(device.linkDownKbps / 1000.0))
+            }
+            if (!device.isEmpty()) {
+                appendLine("---")
+                appendLine("Display: ${device.displayLabel}")
+                appendLine("HDR: ${device.hdrTypes.joinToString(", ").ifBlank { "SDR only" }}")
+                appendLine("Video decoders:")
+                listOf("H.264", "HEVC", "AV1", "VP9").forEach { label ->
+                    val d = device.decoder(label)
+                    appendLine(
+                        "  $label: " + when {
+                            d == null -> "not supported"
+                            else -> (if (d.hardware) "hardware" else "software") +
+                                d.resolutionLabel.let { if (it.isBlank()) "" else " up to $it" }
+                        },
+                    )
+                }
+                if (device.totalRamMb > 0) {
+                    appendLine("Memory: ${device.availRamMb} MB free of ${device.totalRamMb} MB")
+                }
+                if (device.totalStorageMb > 0) {
+                    appendLine("Storage: ${device.freeStorageMb} MB free of ${device.totalStorageMb} MB")
+                }
+                if (device.abi.isNotBlank()) appendLine("ABI: ${device.abi}")
+            }
+            if (!catalogue.isEmpty()) {
+                appendLine("---")
+                appendLine("Catalogue: ${catalogue.channels} channels · ${catalogue.movies} movies · ${catalogue.series} series")
+                if (catalogue.lastSyncMs > 0) {
+                    appendLine("Last sync: " + tv.enktel.app.data.TimeFormat.format("yyyy-MM-dd HH:mm", catalogue.lastSyncMs))
+                }
+                appendLine(
+                    "Guide: ${catalogue.epgProgrammes} programmes over ${catalogue.epgChannels} channels " +
+                        "(${catalogue.epgCoveragePct}% coverage, ${catalogue.epgDaysAhead}d ahead)",
+                )
+                appendLine(
+                    "Catch-Up: ${catalogue.catchupChannels} channels" +
+                        if (catalogue.catchupDays > 0) " · up to ${catalogue.catchupDays} days back" else "",
+                )
+            }
             if (!server.isEmpty()) {
                 appendLine("---")
                 appendLine("Panel URL: ${server.url}")
@@ -146,6 +251,16 @@ object SpeedTestEngine {
                 appendLine("Transcoder process: ${server.transcoderProcess.ifBlank { "unknown" }}")
                 appendLine("Timezone: ${server.timezone}   Panel time: ${server.timeNow}")
                 appendLine("Connections: ${server.activeConnections} / ${server.maxConnections}${if (server.trial) " (trial)" else ""}")
+                // The panel has always told us this and the report has never
+                // shown it, so an expired line reads as a network fault right
+                // up until someone thinks to check the account.
+                if (server.expiresAt > 0) {
+                    appendLine(
+                        "Subscription expires: " +
+                            tv.enktel.app.data.TimeFormat.format("yyyy-MM-dd HH:mm", server.expiresAt) +
+                            " (${expiryLabel(server.expiresAt)})",
+                    )
+                }
             }
             liveProbe?.let {
                 appendLine("---")
@@ -220,6 +335,11 @@ object SpeedTestEngine {
         vodSampleUrl: String? = null,
         profile: Profile? = null,
         xtream: tv.enktel.app.data.xtream.XtreamClient? = null,
+        /** Decoder / display / storage snapshot. The caller takes it because
+         *  this engine has no Context and no reason to acquire one. */
+        device: DeviceProbe.Info = DeviceProbe.Info(),
+        /** Locally cached catalogue counts, read from the database by the caller. */
+        catalogue: Catalogue = Catalogue(),
         onProgress: (String) -> Unit = {},
         /** Live readings during the throughput phase, for the on-screen meter. */
         onSpeedSample: (SpeedSample) -> Unit = {},
@@ -229,6 +349,7 @@ object SpeedTestEngine {
                 host = serverUrl, resolvedIp = null, dnsLookupMs = 0, pingMs = 0, jitterMs = 0,
                 packetLossPct = 100, downloadMbps = 0.0, connectionType = NetworkClass.kind.value,
                 recommendation = "Unable to test — invalid server URL", bufferProjection = "unknown",
+                device = device, catalogue = catalogue,
                 suggestions = listOf("Fix the server URL in Settings → Profiles."),
                 error = e.message,
             )
@@ -322,6 +443,8 @@ object SpeedTestEngine {
             server = server,
             live = liveProbe,
             vod = vodProbe,
+            device = device,
+            catalogue = catalogue,
         )
 
         Result(
@@ -338,6 +461,8 @@ object SpeedTestEngine {
             server = server,
             liveProbe = liveProbe,
             vodProbe = vodProbe,
+            device = device,
+            catalogue = catalogue,
             urlShapes = shapes,
             connectionCap = cap,
             protocol = protocolInfo,
@@ -608,6 +733,8 @@ object SpeedTestEngine {
         server: ServerInfo,
         live: StreamProbe?,
         vod: StreamProbe?,
+        device: DeviceProbe.Info = DeviceProbe.Info(),
+        catalogue: Catalogue = Catalogue(),
     ): List<String> {
         val out = mutableListOf<String>()
         if (pingMs < 0) out += "TCP connection failed — check the panel URL / port, and that the profile isn't expired."
@@ -643,6 +770,75 @@ object SpeedTestEngine {
             out += "You've hit the panel's ${server.maxConnections}-connection cap. Close other devices or ask for a plan bump."
         }
         if (server.trial) out += "Panel reports this as a TRIAL account — bandwidth may be throttled."
+        // Expiry. The panel has always reported it; nothing ever looked.
+        if (server.expiresAt > 0) {
+            val daysLeft = (server.expiresAt - System.currentTimeMillis()) / 86_400_000L
+            when {
+                daysLeft < 0 -> out += "This subscription EXPIRED ${expiryLabel(server.expiresAt)}. Nothing will play until it is renewed — that is the whole fault, whatever else this report says."
+                daysLeft <= 3 -> out += "Subscription ${expiryLabel(server.expiresAt)}. Renew before it lapses or playback stops without warning."
+            }
+        }
+
+        // --- Device-side limits. A connection report that never mentions the
+        // box blames the network for decode problems the network never caused.
+        if (!device.isEmpty()) {
+            val hevc = device.decoder("HEVC")
+            val avc = device.decoder("H.264")
+            if (hevc == null) {
+                out += "This device advertises no HEVC decoder at all. HEVC channels and 4K VOD will not play here regardless of bandwidth — use the H.264 variant where the panel offers one."
+            } else if (!hevc.hardware) {
+                out += "HEVC decodes in software on this device. Expect judder and heat on anything above 1080p; a stick with hardware HEVC (or the H.264 variant) is the fix, not a bigger buffer."
+            } else if (!hevc.supports4k && mbps >= 25) {
+                out += "Your line is fast enough for 4K but this device's HEVC decoder tops out at ${hevc.resolutionLabel}. 4K streams will fail or fall back — pick the 1080p variant."
+            }
+            if (avc != null && !avc.hardware) {
+                out += "Even H.264 is decoding in software here. This box is below the app's comfortable minimum; expect dropped frames on most channels."
+            }
+            if (device.displayWidth in 1..1920 && mbps >= 25) {
+                out += "Your display is ${device.displayLabel.substringBefore("  ")}, so 4K streams are downscaled on the way in. Choosing the 1080p variant costs nothing visually and saves bandwidth."
+            }
+            if (device.hdrTypes.isEmpty() && device.displayWidth >= 3800) {
+                out += "4K display reporting no HDR support — HDR channels will play tone-mapped to SDR. Usually an HDMI input or cable limitation rather than the TV."
+            }
+            if (device.totalRamMb in 1..1200) {
+                out += "Under 1.2 GB of RAM. Close other apps before watching; low-memory boxes drop the player first when the system needs room."
+            }
+            if (device.freeStorageMb in 1..500) {
+                out += "Only ${device.freeStorageMb} MB of storage free. Downloads and recordings will fail, and the guide cache can be evicted mid-session."
+            }
+            // The OS link estimate against the measured figure — the two
+            // disagreeing localises the bottleneck without another test.
+            val linkMbps = device.linkDownKbps / 1000.0
+            if (linkMbps > 0 && mbps > 0) {
+                if (linkMbps >= 25 && mbps < linkMbps * 0.3) {
+                    out += "Your link reports %.0f Mbps but the panel delivered %.1f Mbps. The bottleneck is between the panel and you, not your Wi-Fi — usually reseller-side shaping or a congested route.".format(linkMbps, mbps)
+                } else if (linkMbps < 12) {
+                    out += "The OS rates this link at only %.0f Mbps. Move closer to the router, switch to the 5 GHz band, or use Ethernet before blaming the panel.".format(linkMbps)
+                }
+            }
+        }
+
+        // --- Catalogue-side gaps. These arrive as playback complaints and are
+        // not playback problems.
+        if (!catalogue.isEmpty()) {
+            if (catalogue.epgProgrammes == 0 && catalogue.channels > 0) {
+                out += "The guide is empty — no EPG data has been loaded for this profile. Settings → Refresh guide, and check the profile's EPG URL if it stays empty."
+            } else if (catalogue.channels > 0 && catalogue.epgCoveragePct < 50) {
+                out += "The guide covers only ${catalogue.epgCoveragePct}% of your ${catalogue.channels} channels (${catalogue.epgChannels} of them). The gaps are channels whose EPG id the panel does not publish — nothing the app can fix locally."
+            }
+            if (catalogue.epgProgrammes > 0 && catalogue.epgDaysAhead == 0) {
+                out += "The loaded guide does not extend past today. Refresh it — a stale guide is why Catch-Up and reminders look broken."
+            }
+            if (catalogue.catchupChannels == 0 && catalogue.channels > 0) {
+                out += "No channel on this line advertises a catch-up archive, so the Catch-Up screen will stay empty. It is a package feature — ask your reseller whether your plan includes it."
+            }
+            if (catalogue.lastSyncMs > 0) {
+                val ageDays = (System.currentTimeMillis() - catalogue.lastSyncMs) / 86_400_000L
+                if (ageDays >= 7) {
+                    out += "The catalogue was last synced $ageDays days ago. New channels and VOD added since then are missing locally — Settings → Refresh catalogue."
+                }
+            }
+        }
         if (vod?.container == "MP4" && (live?.container == "MPEG-TS")) {
             out += "Panel serves VOD as MP4 (progressive) and live as MPEG-TS — normal for Xtream."
         }

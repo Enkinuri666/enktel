@@ -995,6 +995,17 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
         }
+        // Catch-Up used to be reachable only from the quick menu of a channel
+        // you were already watching, so nothing in the app could answer "which
+        // channels have an archive?" — the commonest question about it.
+        composable("catchup") { tv.enktel.app.ui.screens.CatchupBrowseScreen(graph, nav) }
+        composable("trailer?key={key}&title={title}") { back ->
+            tv.enktel.app.ui.screens.TrailerScreen(
+                nav,
+                videoId = back.arguments?.getString("key").orEmpty(),
+                title = decode(back.arguments?.getString("title").orEmpty()),
+            )
+        }
         composable("sports") { SportsHubScreen(graph, nav) }
         composable("sportsFinder") { tv.enktel.app.ui.sports.ChannelFinderScreen(graph, nav) }
         composable("matchCenter?event={event}&title={title}") { back ->
@@ -1024,8 +1035,13 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
     // it up and keeps the picture on screen while the user browses.
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
     val playbackMode by graph.playback.mode.collectAsStateWithLifecycle()
+    // A screen drawing the picture inline (the TV Guide's dock) owns the
+    // surface while it is on screen, so the floating window stands down —
+    // otherwise both render and you get two docked players at once.
+    val inlinePreview by graph.playback.inlinePreview.collectAsStateWithLifecycle()
     val docked = nowPlaying != null &&
-        playbackMode == tv.enktel.app.player.PlaybackSession.Mode.DOCKED
+        playbackMode == tv.enktel.app.player.PlaybackSession.Mode.DOCKED &&
+        !inlinePreview
     val backgroundAudio by graph.settings.backgroundAudio.collectAsStateWithLifecycle(initialValue = false)
     val dockCornerName by graph.settings.dockCorner.collectAsStateWithLifecycle(initialValue = "BOTTOM_END")
     val dockSizeStep by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)

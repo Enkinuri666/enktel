@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,7 +81,8 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     // seven-day multi-column grid is unusable at that width.  Bounce to a
     // single-channel vertical timeline so scrolling stays 1-dimensional.
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
-    val isNarrow = cfg.screenWidthDp < 600
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val isNarrow = shape.narrow
     if (isNarrow) {
         MobileGuideScreen(graph, nav)
         return
@@ -136,9 +138,9 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         if (dayOffset == 0) scrollToNow() else hScroll.scrollTo(0)
     }
 
-    Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
+    Column(Modifier.fillMaxSize().padding(top = shape.padV)) {
         Row(
-            Modifier.padding(horizontal = 48.dp),
+            Modifier.padding(horizontal = shape.padH),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -159,11 +161,11 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { dayOffset = 0; scope.launch { scrollToNow() } },
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(shape.headerGap))
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
         // a single click instead of six D-pad presses.
         androidx.compose.foundation.lazy.LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
@@ -196,7 +198,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             graph = graph,
             highlighted = highlighted,
             playlistName = p.name,
-            modifier = Modifier.padding(horizontal = 48.dp),
+            modifier = Modifier.padding(horizontal = shape.padH),
         )
         Spacer(Modifier.height(14.dp))
 
@@ -361,8 +363,11 @@ private fun ProgramDialog(
     val isPast = prog.endMs <= now
     val isFuture = prog.startMs > now
     val isNow = !isPast && !isFuture
-    val canCatchup = isPast && channel.hasArchive && profile.kind == "xtream" &&
-        prog.startMs > now - channel.archiveDays.coerceAtLeast(1) * 24L * HOUR
+    // Not "is this an Xtream profile" — an M3U line that declares a catch-up
+    // scheme has working catch-up, and the old gate refused it on paperwork.
+    val canCatchup = isPast &&
+        tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel) &&
+        tv.enktel.app.data.catchup.CatchupUrls.isWithinWindow(channel, prog.startMs, now)
 
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(0.65f)),
@@ -423,10 +428,26 @@ private fun GuideDock(
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
     val ch = highlighted?.first
     val prog = highlighted?.second
-    Row(modifier.fillMaxWidth().height(184.dp)) {
+
+    // Claim the picture for as long as this dock is composed, so the floating
+    // mini window does not draw a second copy over the corner of the guide.
+    // Released on the way out, which hands the surface back to the mini window
+    // for whatever screen comes next.
+    DisposableEffect(Unit) {
+        graph.playback.setInlinePreview(true)
+        onDispose { graph.playback.setInlinePreview(false) }
+    }
+    // The dock is a fixed 184 dp tall over a grid that also wants room. On a
+    // landscape phone that is half the viewport spent on a preview, leaving
+    // two channel rows underneath — the "docked TV guide is cramped" report.
+    // It scales with the height available instead.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val dockHeight = if (shape.short) 116.dp else 184.dp
+    val previewWidth = if (shape.short) 202.dp else 320.dp
+    Row(modifier.fillMaxWidth().height(dockHeight)) {
         Box(
             Modifier
-                .width(320.dp)
+                .width(previewWidth)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.Black),

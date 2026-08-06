@@ -275,8 +275,16 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     // vertical sidebar, so the poster grid isn't squeezed into a single
     // column on ~410 dp handsets. TV and tablet/landscape keep the sidebar.
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
-    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
-    val cellSize = if (narrow) 104.dp else 118.dp
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && shape.narrow
+    // Smaller tiles when the viewport is short. A landscape phone was handed
+    // the full 118 dp cell, so the grid showed one and a bit rows of posters
+    // between the header and the nav bar — wide, and almost nothing in it.
+    val cellSize = when {
+        shape.short -> 92.dp
+        narrow -> 104.dp
+        else -> 118.dp
+    }
 
     VodBrowseShell(graph) {
         if (narrow) {
@@ -503,8 +511,16 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
-    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
-    val cellSize = if (narrow) 104.dp else 118.dp
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && shape.narrow
+    // Smaller tiles when the viewport is short. A landscape phone was handed
+    // the full 118 dp cell, so the grid showed one and a bit rows of posters
+    // between the header and the nav bar — wide, and almost nothing in it.
+    val cellSize = when {
+        shape.short -> 92.dp
+        narrow -> 104.dp
+        else -> 118.dp
+    }
 
     VodBrowseShell(graph) {
         if (narrow) {

@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WatchlistItem::class, SearchHistoryItem::class, FollowedTeam::class, MatchReminder::class,
         DownloadEntry::class, UserList::class, UserListItem::class,
     ],
-    version = 10, // v10 adds user-created themed lists spanning channels + VOD
+    version = 11, // v11 keeps the playlist's catch-up scheme so playback can use it
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -185,11 +185,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // The playlist has always told us how a channel's catch-up
+                // works; the sync threw it away, so playback could only ever
+                // guess the Xtream shape and every catch-up entry point was
+                // gated to Xtream profiles as a result.
+                db.execSQL("ALTER TABLE channels ADD COLUMN catchupType TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE channels ADD COLUMN catchupSource TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+                    MIGRATION_10_11,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.Movie
@@ -104,6 +105,7 @@ private val DEFAULT_ITEMS = listOf(
     TvNavItem("lists", "My Lists", Icons.AutoMirrored.Rounded.PlaylistPlay, "lists"),
     TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
     TvNavItem("recordings", "Recordings", Icons.Rounded.FiberManualRecord, "recordings"),
+    TvNavItem("catchup", "Catch-Up", Icons.Rounded.History, "catchup"),
     TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
     TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
 )
