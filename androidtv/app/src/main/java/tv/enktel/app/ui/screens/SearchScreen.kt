@@ -54,12 +54,17 @@ fun SearchScreen(
     graph: AppGraph,
     nav: NavHostController,
     voiceBus: tv.enktel.app.voice.VoiceCommandBus? = null,
+    /**
+     * Pre-filled search terms — from an Alexa phrase or a catalog deep link
+     * ("show me action movies"). Empty for a normal visit to the screen.
+     */
+    initialQuery: String = "",
 ) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
 
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialQuery) }
 
     // Receive spoken searches: "search for Interstellar" navigates here and
     // pushes "Interstellar" onto the voice bus. We collect it and drop it
