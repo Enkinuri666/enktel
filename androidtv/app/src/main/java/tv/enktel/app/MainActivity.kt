@@ -1001,7 +1001,7 @@ private fun MainNav(
         composable("seriesDetails/{key}") { back ->
             SeriesDetailsScreen(graph, nav, key = back.arguments?.getString("key").orEmpty())
         }
-        composable("vodPlayer?url={url}&title={title}&pk={pk}&live={live}") { back ->
+        composable("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}") { back ->
             val a = back.arguments
             VodPlayerScreen(
                 graph,
@@ -1010,6 +1010,8 @@ private fun MainNav(
                 title = decode(a?.getString("title").orEmpty()),
                 progressKey = a?.getString("pk").orEmpty(),
                 isLive = a?.getString("live") == "1",
+                nextRoute = decode(a?.getString("nr").orEmpty()),
+                nextLabel = decode(a?.getString("nl").orEmpty()),
             )
         }
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
@@ -1208,8 +1210,26 @@ private fun MainNav(
     }
 }
 
-fun vodPlayerRoute(url: String, title: String, progressKey: String = "", live: Boolean = false): String =
-    "vodPlayer?url=${encode(url)}&title=${encode(title)}&pk=$progressKey&live=${if (live) 1 else 0}"
+fun vodPlayerRoute(
+    url: String,
+    title: String,
+    progressKey: String = "",
+    live: Boolean = false,
+    /**
+     * The episode to roll into when this one ends, as a route of its own.
+     *
+     * Computed by the caller rather than the player, because the caller — the
+     * series screen — already holds the season map. Making the player work out
+     * what comes next would mean giving it a reverse lookup from a stream URL
+     * back to a series, which nothing else needs and which does not exist.
+     * Empty for films and for the last episode of a season.
+     */
+    nextRoute: String = "",
+    /** "S2 E4 · The Bells" — what the countdown card announces. */
+    nextLabel: String = "",
+): String =
+    "vodPlayer?url=${encode(url)}&title=${encode(title)}&pk=$progressKey&live=${if (live) 1 else 0}" +
+        "&nr=${encode(nextRoute)}&nl=${encode(nextLabel)}"
 
 private data class Quadruple<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 

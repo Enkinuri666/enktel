@@ -407,7 +407,29 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 val playEpisode = {
                     val url = XtreamClient.episodeUrl(p, ep.id, ep.ext)
                     val pk = "${p.id}:episode:${ep.id}"
-                    nav.navigate(vodPlayerRoute(url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk))
+                    // Work out what follows while we still have the season map.
+                    // Rolls into the next season when this one runs out, which
+                    // is where a naive "next in this list" stops and strands
+                    // the viewer at a finale that has a following season.
+                    val inSeason = seasons[season].orEmpty()
+                    val idx = inSeason.indexOfFirst { it.id == ep.id }
+                    val next = inSeason.getOrNull(idx + 1)
+                        ?: seasons.keys.sorted().firstOrNull { it > season }
+                            ?.let { seasons[it].orEmpty().firstOrNull() }
+                    val nextRoute = next?.let {
+                        vodPlayerRoute(
+                            XtreamClient.episodeUrl(p, it.id, it.ext),
+                            "${s.name} S${it.season}E${it.episode} · ${it.title}",
+                            "${p.id}:episode:${it.id}",
+                        )
+                    }.orEmpty()
+                    val nextLabel = next?.let { "S${it.season} E${it.episode} · ${it.title}" }.orEmpty()
+                    nav.navigate(
+                        vodPlayerRoute(
+                            url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk,
+                            nextRoute = nextRoute, nextLabel = nextLabel,
+                        ),
+                    )
                 }
                 androidx.tv.material3.Surface(
                     onClick = playEpisode,
