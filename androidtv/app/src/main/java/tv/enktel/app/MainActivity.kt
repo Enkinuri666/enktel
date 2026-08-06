@@ -89,7 +89,12 @@ class MainActivity : ComponentActivity() {
                         isPlaying = { tv.enktel.app.voice.ActivePlayerRef.active.value },
                     ) {
                         tv.enktel.app.voice.VoiceHost(voiceBus, wakeWordEnabled = wakeWordEnabled) {
-                            MainNav(graph, voiceBus = voiceBus, initialChannelKey = intent?.getStringExtra("channel_key"))
+                            MainNav(
+                                graph,
+                                voiceBus = voiceBus,
+                                initialChannelKey = intent?.getStringExtra("channel_key"),
+                                deepLink = DeepLink.from(intent),
+                            )
                         }
                     }
                 }
@@ -198,7 +203,13 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandBus, initialChannelKey: String?) {
+private fun MainNav(
+    graph: AppGraph,
+    voiceBus: tv.enktel.app.voice.VoiceCommandBus,
+    initialChannelKey: String?,
+    /** Set when Fire OS / Alexa launched us at a specific title. See [DeepLink]. */
+    deepLink: DeepLink.Target? = null,
+) {
     val nav = rememberNavController()
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = -1L)
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = null)
@@ -211,6 +222,22 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
 
     LaunchedEffect(firstRunDone, profiles) {
         if (!firstRunDone && profiles!!.isNotEmpty()) tourVisible = true
+    }
+    // A catalog row or an Alexa "play X on EnkTel" arrives here.
+    //
+    // The ids in the feed are the panel's stream ids, not our composite row
+    // keys — the feed generator has no profile id — so they are resolved
+    // against the active profile at navigation time. A title the line no
+    // longer carries lands on Home rather than on a dead detail screen.
+    LaunchedEffect(deepLink, activeId) {
+        val target = deepLink ?: return@LaunchedEffect
+        if (activeId <= 0) return@LaunchedEffect
+        when (target) {
+            is DeepLink.Target.Movie -> nav.navigate("movie/$activeId:${target.streamId}")
+            is DeepLink.Target.Series -> nav.navigate("series/$activeId:${target.seriesId}")
+            is DeepLink.Target.Channel -> nav.navigate("live?ch=$activeId:${target.streamId}")
+            is DeepLink.Target.Search -> nav.navigate("search?q=${encode(target.query)}")
+        }
     }
     LaunchedEffect(initialChannelKey) {
         if (!initialChannelKey.isNullOrBlank()) nav.navigate("live?ch=$initialChannelKey")
@@ -986,6 +1013,15 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
             )
         }
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
+        // Separate route rather than an optional arg on "search": the nav rail
+        // and the tab bar both match on the bare "search" route, and giving it
+        // a query placeholder would stop them lighting up.
+        composable("search?q={q}") { back ->
+            SearchScreen(
+                graph, nav, voiceBus = voiceBus,
+                initialQuery = decode(back.arguments?.getString("q").orEmpty()),
+            )
+        }
         composable("settings") { SettingsScreen(graph, nav) }
         composable("upgrade") { tv.enktel.app.ui.screens.UpgradeScreen(nav) }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }

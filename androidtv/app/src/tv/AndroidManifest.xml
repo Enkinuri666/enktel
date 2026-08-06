@@ -51,6 +51,42 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+
+            <!--
+                Deep links, and specifically the ones Fire OS hands off to.
+
+                Amazon's catalog integration is not a push API the app calls:
+                you submit a feed of your VOD to Amazon, and every entry in it
+                carries a URI that Fire OS fires at the app when a row on the
+                launcher is selected or when someone holds the Alexa button and
+                says "play X on EnkTel". Without a filter to catch that URI the
+                whole integration has nowhere to land — the catalog would
+                resolve, and launching would do nothing.
+
+                Two schemes on purpose. enktel:// is what the catalog feed and
+                Alexa use, and it cannot be hijacked by a browser. The https
+                form lets a link on enktel.tv open the app directly on a device
+                that has it, and fall back to the website on one that doesn't.
+            -->
+            <!-- No autoVerify here: App Links verification is an http(s)
+                 mechanism, and declaring it on a custom scheme is both
+                 meaningless and a lint error. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="enktel" android:host="play" />
+            </intent-filter>
+            <!-- autoVerify needs /.well-known/assetlinks.json served from
+                 enktel.tv listing this package and its signing certificate.
+                 Until that file exists the link still works — Android just
+                 shows a disambiguation dialog instead of opening us directly. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="enktel.tv" android:pathPrefix="/play" />
+            </intent-filter>
         </activity>
 
         <receiver
