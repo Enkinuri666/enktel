@@ -280,6 +280,7 @@ class ContentRepository(
                     categoryId = e.group, categoryName = e.group,
                     epgId = e.tvgId, url = e.url,
                     hasArchive = e.catchupDays > 0, archiveDays = e.catchupDays,
+                    catchupType = e.catchupType, catchupSource = e.catchupSource,
                     sortIdx = liveIdx,
                     isRadio = e.isRadio, userAgent = e.userAgent,
                 )

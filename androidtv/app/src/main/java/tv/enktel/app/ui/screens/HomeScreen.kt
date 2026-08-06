@@ -220,6 +220,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 item { HubTile("☆", "Watchlist", onClick = { nav.navigate("watchlist") }) }
                 item { HubTile("⬇", "Downloads", onClick = { nav.navigate("downloads") }) }
                 item { HubTile("⏺", "Recordings", onClick = { nav.navigate("recordings") }) }
+                item { HubTile("⏪", "Catch-Up", onClick = { nav.navigate("catchup") }) }
                 item { HubTile("🔍", "Search", onClick = { nav.navigate("search") }) }
                 item { HubTile("⚙", "Settings", onClick = { nav.navigate("settings") }) }
             }

@@ -83,6 +83,27 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val toaster = LocalToaster.current
 
+    // Replaying a finished match is catch-up, and used to be its own private
+    // copy of the one-guessed-URL bug — twice over, in the two replay rails.
+    // Both now go through the shared resolver, which walks the shapes the
+    // panel might actually serve and says so when none of them answer.
+    fun replay(ev: SportsEvent) {
+        if (!tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, ev.channel)) {
+            toaster.error("No catch-up archive on ${ev.channel.name}")
+            return
+        }
+        scope.launch {
+            val url = tv.enktel.app.data.catchup.CatchupUrls.resolve(
+                graph.http, p, ev.channel, ev.startMs, ev.endMs,
+            )
+            if (url == null) {
+                toaster.error("The provider has no recording of that match")
+            } else {
+                nav.navigate(vodPlayerRoute(url, "${ev.channel.name} · ${ev.title}"))
+            }
+        }
+    }
+
     var loading by remember { mutableStateOf(true) }
     var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
@@ -438,13 +459,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             items(highlights, key = { "H-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
-                    onReplay = {
-                        if (ev.channel.hasArchive && p.kind == "xtream") {
-                            val mins = (ev.endMs - ev.startMs) / 60_000
-                            val url = XtreamClient.timeshiftUrl(p, ev.channel.streamId, ev.startMs, mins)
-                            nav.navigate(vodPlayerRoute(url, "${ev.channel.name} · ${ev.title}"))
-                        } else toaster.error("No catch-up archive")
-                    },
+                    onReplay = { replay(ev) },
                 )
             }
         }
@@ -453,13 +468,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             items(olderReplays, key = { "F-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
-                    onReplay = {
-                        if (ev.channel.hasArchive && p.kind == "xtream") {
-                            val mins = (ev.endMs - ev.startMs) / 60_000
-                            val url = XtreamClient.timeshiftUrl(p, ev.channel.streamId, ev.startMs, mins)
-                            nav.navigate(vodPlayerRoute(url, "${ev.channel.name} · ${ev.title}"))
-                        } else toaster.error("No catch-up archive")
-                    },
+                    onReplay = { replay(ev) },
                 )
             }
         }

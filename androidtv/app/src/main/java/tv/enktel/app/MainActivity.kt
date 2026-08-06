@@ -995,6 +995,10 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
         }
+        // Catch-Up used to be reachable only from the quick menu of a channel
+        // you were already watching, so nothing in the app could answer "which
+        // channels have an archive?" — the commonest question about it.
+        composable("catchup") { tv.enktel.app.ui.screens.CatchupBrowseScreen(graph, nav) }
         composable("sports") { SportsHubScreen(graph, nav) }
         composable("sportsFinder") { tv.enktel.app.ui.sports.ChannelFinderScreen(graph, nav) }
         composable("matchCenter?event={event}&title={title}") { back ->

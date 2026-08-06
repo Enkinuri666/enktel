@@ -36,6 +36,16 @@ data class Channel(
     val url: String = "",
     val hasArchive: Boolean = false,
     val archiveDays: Int = 0,
+    /**
+     * `catchup="…"` from the playlist — default | append | shift | flussonic | xc.
+     *
+     * Parsed since the Panel Doctor work and thrown away at sync time, so
+     * playback had nothing to go on and every catch-up path was hard-gated to
+     * Xtream profiles. Blank on Xtream lines, where the scheme is implied.
+     */
+    val catchupType: String = "",
+    /** `catchup-source="…"` URL template, when the provider supplies one. */
+    val catchupSource: String = "",
     val sortIdx: Int = 0,
     /** Audio-only stream. Xtream reports `stream_type: "radio"`; M3U uses `radio="true"`. */
     val isRadio: Boolean = false,

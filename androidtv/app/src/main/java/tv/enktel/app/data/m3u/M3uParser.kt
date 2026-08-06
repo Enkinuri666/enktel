@@ -11,6 +11,10 @@ data class M3uEntry(
     val group: String,
     val chno: Int,
     val catchupDays: Int,
+    /** `catchup="…"` — the scheme name, needed to build an archive URL. */
+    val catchupType: String = "",
+    /** `catchup-source="…"` — the provider's own URL template, when given. */
+    val catchupSource: String = "",
     /** `radio="true"` on the #EXTINF line. */
     val isRadio: Boolean = false,
     /** `#EXTVLCOPT:http-user-agent=` for this entry only. */
@@ -85,8 +89,15 @@ object M3uParser {
                         logo = attrs["tvg-logo"].orEmpty(),
                         group = attrs["group-title"].orEmpty().ifBlank { "Uncategorized" },
                         chno = attrs["tvg-chno"]?.toIntOrNull() ?: autoNum,
+                        // `timeshift` is the older spelling of catchup-days and
+                        // appears alone on plenty of lines; missing it meant a
+                        // channel with a week of archive reported none.
                         catchupDays = attrs["catchup-days"]?.toIntOrNull()
-                            ?: if (attrs.containsKey("catchup")) 1 else 0,
+                            ?: attrs["timeshift"]?.toIntOrNull()
+                            ?: if (attrs.containsKey("catchup") || attrs.containsKey("catchup-source")) 1 else 0,
+                        catchupType = attrs["catchup"].orEmpty()
+                            .ifBlank { attrs["catchup-type"].orEmpty() },
+                        catchupSource = attrs["catchup-source"].orEmpty(),
                         isRadio = attrs["radio"].equals("true", true),
                         userAgent = vlcUa,
                     )

@@ -362,8 +362,11 @@ private fun ProgramDialog(
     val isPast = prog.endMs <= now
     val isFuture = prog.startMs > now
     val isNow = !isPast && !isFuture
-    val canCatchup = isPast && channel.hasArchive && profile.kind == "xtream" &&
-        prog.startMs > now - channel.archiveDays.coerceAtLeast(1) * 24L * HOUR
+    // Not "is this an Xtream profile" — an M3U line that declares a catch-up
+    // scheme has working catch-up, and the old gate refused it on paperwork.
+    val canCatchup = isPast &&
+        tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel) &&
+        tv.enktel.app.data.catchup.CatchupUrls.isWithinWindow(channel, prog.startMs, now)
 
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(0.65f)),

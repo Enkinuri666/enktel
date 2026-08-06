@@ -234,12 +234,22 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     /** Jump into the channel's archive at [startMs] (restart programme / rewind live TV). */
     fun playShifted(startMs: Long) {
         val ch = current ?: return
-        if (p.kind != "xtream" || !ch.hasArchive) {
+        if (!tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, ch)) {
             toaster.error("This channel has no catch-up archive")
             return
         }
-        val durMin = ((System.currentTimeMillis() - startMs) / 60_000 + 180).coerceAtLeast(30)
-        engine.play(XtreamClient.timeshiftUrl(p, ch.streamId, startMs, durMin), live = false)
+        // Ask for the window from the requested start to a few hours out, so a
+        // restart plays through the end of the programme rather than stopping
+        // at "now". Candidates rather than one URL: panels serve the same
+        // archive from at least three different paths.
+        val now = System.currentTimeMillis()
+        val endMs = now + 3 * 60 * 60_000L
+        val urls = tv.enktel.app.data.catchup.CatchupUrls.candidates(p, ch, startMs, endMs, now)
+        if (urls.isEmpty()) {
+            toaster.error("This channel has no catch-up archive")
+            return
+        }
+        engine.playCandidates(urls, live = false)
         shiftedFrom = startMs
         showInfo = true; infoTick++
         toaster.info("Time-shift · ${hhmm(startMs)}")
@@ -797,7 +807,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 recording = recordingId != 0L,
                 showStats = showStats,
                 shifted = shiftedFrom > 0,
-                canShift = p.kind == "xtream" && current!!.hasArchive,
+                canShift = tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, current!!),
                 sleepUntil = sleepUntil,
                 onRestartProgram = {
                     val start = nowNext.now?.startMs
