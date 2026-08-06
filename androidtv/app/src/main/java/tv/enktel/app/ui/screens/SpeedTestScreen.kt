@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -35,16 +36,21 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.net.DeviceProbe
 import tv.enktel.app.data.net.SpeedTestEngine
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
@@ -70,6 +76,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
+    val ctx = LocalContext.current
 
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
@@ -79,6 +86,21 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
     var liveSample by remember { mutableStateOf<SpeedTestEngine.SpeedSample?>(null) }
     val speedHistory = remember { mutableStateListOf<Float>() }
     var result by remember { mutableStateOf<SpeedTestEngine.Result?>(null) }
+
+    // Leaving the screen discards the run.
+    //
+    // Compose keeps `remember` state alive across a navigation that does not
+    // destroy the entry, so coming back to Diagnostics used to show the
+    // previous run's numbers, sitting there as if they had just been taken.
+    // A diagnostic that reports the past as the present is worse than one
+    // that reports nothing.
+    DisposableEffect(Unit) {
+        onDispose {
+            result = null
+            liveSample = null
+            speedHistory.clear()
+        }
+    }
 
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
@@ -98,6 +120,9 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             // engine gracefully falls back to a server-URL throughput test.
             val liveUrl = pickLiveUrl(graph, p)
             val vodUrl = pickVodUrl(graph, p)
+            status = "Reading device capabilities…"
+            val device = withContext(Dispatchers.IO) { DeviceProbe.snapshot(ctx) }
+            val catalogue = withContext(Dispatchers.IO) { readCatalogue(graph, p) }
             val r = SpeedTestEngine.run(
                 http = graph.http,
                 serverUrl = p.server,
@@ -105,6 +130,8 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 vodSampleUrl = vodUrl,
                 profile = p,
                 xtream = graph.xtream,
+                device = device,
+                catalogue = catalogue,
                 onProgress = { status = it },
                 onSpeedSample = { sample ->
                     liveSample = sample
@@ -171,6 +198,33 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             // and everything below it is the working.
             item { VerdictBanner(r) }
             item {
+                // When these numbers were taken, and what took them.
+                //
+                // Results used to sit on screen undated for as long as the
+                // screen lived, so readings from a run twenty minutes ago
+                // looked identical to ones from twenty seconds ago — and got
+                // pasted into reports as though they described the problem
+                // being reported. The device and app line is here because
+                // every bug report needs it and asking for it afterwards
+                // costs a round trip.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Measured ${TimeFormat.format("HH:mm:ss", r.measuredAtMs)}" +
+                            "  ·  ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}" +
+                            "  ·  Android ${android.os.Build.VERSION.RELEASE}" +
+                            "  ·  EnkTel ${tv.enktel.app.BuildConfig.VERSION_NAME}",
+                        color = EnktelTextDim, fontSize = 11.sp,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    FocusButton("✕ Clear", onClick = {
+                        result = null
+                        speedHistory.clear()
+                        liveSample = null
+                        status = ""
+                    })
+                }
+            }
+            item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ScoreTile(
                         "Download", "%.1f".format(r.downloadMbps), "Mbps",
@@ -199,6 +253,97 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     MetricRow("Resolved IP", r.resolvedIp ?: "unresolved")
                     MetricRow("DNS lookup", "${r.dnsLookupMs} ms")
                     MetricRow("Connection type", r.connectionType.name)
+                    if (r.device.linkDownKbps > 0) {
+                        // Side by side with the measured figure on purpose:
+                        // a link rated far above what the panel delivered
+                        // puts the bottleneck past the user's own network.
+                        MetricRow(
+                            "Link estimate (OS)",
+                            "%.0f Mbps".format(r.device.linkDownKbps / 1000.0),
+                        )
+                    }
+                }
+            }
+            if (!r.device.isEmpty()) {
+                item {
+                    DiagCard("This device") {
+                        MetricRow("Model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                        MetricRow("Display", r.device.displayLabel)
+                        MetricRow("HDR", r.device.hdrTypes.joinToString(", ").ifBlank { "SDR only" })
+                        if (r.device.totalRamMb > 0) {
+                            MetricRow(
+                                "Memory free",
+                                "${r.device.availRamMb} MB of ${r.device.totalRamMb} MB",
+                                color = if (r.device.totalRamMb in 1..1200) EnktelLive else Color.White,
+                            )
+                        }
+                        if (r.device.totalStorageMb > 0) {
+                            MetricRow(
+                                "Storage free",
+                                "%.1f GB of %.1f GB".format(
+                                    r.device.freeStorageMb / 1024.0, r.device.totalStorageMb / 1024.0,
+                                ),
+                                color = if (r.device.freeStorageMb in 1..500) EnktelLive else Color.White,
+                            )
+                        }
+                        if (r.device.abi.isNotBlank()) MetricRow("Architecture", r.device.abi)
+                    }
+                }
+                item {
+                    // The half of "why does this stutter" that a throughput
+                    // test cannot see. A software HEVC path judders on a
+                    // gigabit line and nothing else in this report says so.
+                    DiagCard("Video decoders") {
+                        listOf("H.264", "HEVC", "AV1", "VP9").forEach { label ->
+                            val d = r.device.decoder(label)
+                            MetricRow(
+                                label,
+                                when {
+                                    d == null -> "not supported"
+                                    else -> (if (d.hardware) "hardware" else "software") +
+                                        d.resolutionLabel.let { if (it.isBlank()) "" else " · up to $it" }
+                                },
+                                color = when {
+                                    d == null -> EnktelTextDim
+                                    !d.hardware -> Color(0xFFFBBF24)
+                                    else -> EnktelOk
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            if (!r.catalogue.isEmpty()) {
+                val c = r.catalogue
+                item {
+                    DiagCard("Catalogue on this device") {
+                        MetricRow("Channels", "${c.channels}")
+                        MetricRow("Movies / series", "${c.movies} / ${c.series}")
+                        if (c.lastSyncMs > 0) {
+                            MetricRow("Last synced", TimeFormat.format("d MMM, HH:mm", c.lastSyncMs))
+                        }
+                        MetricRow(
+                            "Guide loaded",
+                            if (c.epgProgrammes == 0) "empty" else
+                                "${c.epgProgrammes} programmes · ${c.epgChannels} channels (${c.epgCoveragePct}%)",
+                            color = when {
+                                c.epgProgrammes == 0 -> EnktelLive
+                                c.epgCoveragePct < 50 -> Color(0xFFFBBF24)
+                                else -> EnktelOk
+                            },
+                        )
+                        MetricRow(
+                            "Guide depth",
+                            if (c.epgDaysAhead <= 0) "does not reach past today" else "${c.epgDaysAhead} days ahead",
+                            color = if (c.epgDaysAhead <= 0) Color(0xFFFBBF24) else Color.White,
+                        )
+                        MetricRow(
+                            "Catch-Up channels",
+                            if (c.catchupChannels == 0) "none on this line" else
+                                "${c.catchupChannels}" + if (c.catchupDays > 0) " · up to ${c.catchupDays} days back" else "",
+                            color = if (c.catchupChannels == 0) Color(0xFFFBBF24) else EnktelOk,
+                        )
+                    }
                 }
             }
             if (speedHistory.size >= 2) {
@@ -247,6 +392,21 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                                 "Connections used",
                                 "${r.server.activeConnections} / ${r.server.maxConnections}${if (r.server.trial) " (trial)" else ""}",
                                 color = if (r.server.activeConnections >= r.server.maxConnections && r.server.maxConnections > 0) EnktelLive else Color.White,
+                            )
+                        }
+                        if (r.server.expiresAt > 0) {
+                            // Fetched since v1.23 and never shown, so an
+                            // expired line has been reading as a network fault.
+                            val daysLeft = (r.server.expiresAt - System.currentTimeMillis()) / 86_400_000L
+                            MetricRow(
+                                "Subscription",
+                                TimeFormat.format("d MMM yyyy", r.server.expiresAt) +
+                                    " · " + tv.enktel.app.data.net.expiryLabel(r.server.expiresAt),
+                                color = when {
+                                    daysLeft < 0 -> EnktelLive
+                                    daysLeft <= 3 -> Color(0xFFFBBF24)
+                                    else -> EnktelOk
+                                },
                             )
                         }
                     }
@@ -611,6 +771,30 @@ private suspend fun pickLiveUrl(graph: AppGraph, p: Profile): String? = try {
     val list = graph.content.channels(p.id).first()
     list.firstOrNull()?.let { c -> graph.content.liveUrl(p, c, graph.settings.streamFormat.first()) }
 } catch (_: Throwable) { null }
+
+/**
+ * Counts what the app has actually cached for this profile.
+ *
+ * Every one of these numbers answers a complaint that arrives as a playback
+ * fault and is not one: an empty guide, a Catch-Up screen with nothing in it,
+ * channels the user was promised that never synced. Best-effort — a database
+ * that will not answer should not sink the whole diagnostic run.
+ */
+private suspend fun readCatalogue(graph: AppGraph, p: Profile): SpeedTestEngine.Catalogue = try {
+    val content = graph.db.contentDao()
+    val epg = graph.db.epgDao()
+    SpeedTestEngine.Catalogue(
+        channels = content.channelCount(p.id),
+        movies = content.movieCount(p.id),
+        series = content.seriesCount(p.id),
+        catchupChannels = content.catchupChannelCount(p.id),
+        catchupDays = content.maxCatchupDays(p.id) ?: 0,
+        epgProgrammes = epg.count(p.id),
+        epgChannels = epg.coveredChannelCount(p.id),
+        epgHorizonMs = epg.horizonMs(p.id) ?: 0L,
+        lastSyncMs = p.lastSync,
+    )
+} catch (_: Throwable) { SpeedTestEngine.Catalogue() }
 
 private suspend fun pickVodUrl(graph: AppGraph, p: Profile): String? = try {
     val list = graph.content.movies(p.id).first()

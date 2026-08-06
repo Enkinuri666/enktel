@@ -157,6 +157,18 @@ interface ContentDao {
     @Query("UPDATE series SET enrichedAt = :now WHERE key = :key")
     suspend fun markSeriesEnrichAttempt(key: String, now: Long)
 
+    @Query("SELECT COUNT(*) FROM channels WHERE profileId = :profileId")
+    suspend fun channelCount(profileId: Long): Int
+
+    /** Channels the panel flagged as having a catch-up archive, and how far
+     *  back the deepest one goes. Reported by Diagnostics so "Catch-Up is
+     *  empty" can be answered without guessing whose side it is on. */
+    @Query("SELECT COUNT(*) FROM channels WHERE profileId = :profileId AND hasArchive = 1")
+    suspend fun catchupChannelCount(profileId: Long): Int
+
+    @Query("SELECT MAX(archiveDays) FROM channels WHERE profileId = :profileId AND hasArchive = 1")
+    suspend fun maxCatchupDays(profileId: Long): Int?
+
     @Query("SELECT COUNT(*) FROM movies WHERE profileId = :profileId")
     suspend fun movieCount(profileId: Long): Int
 
@@ -195,6 +207,16 @@ interface EpgDao {
     suspend fun archive(profileId: Long, epgId: String, from: Long, now: Long): List<EpgProgram>
 
     @Query("SELECT COUNT(*) FROM epg WHERE profileId = :profileId") suspend fun count(profileId: Long): Int
+
+    /** How many distinct channels the loaded guide actually covers. A guide
+     *  with 40 000 programmes across 30 of your 900 channels looks healthy by
+     *  row count and is empty everywhere the user looks. */
+    @Query("SELECT COUNT(DISTINCT epgId) FROM epg WHERE profileId = :profileId")
+    suspend fun coveredChannelCount(profileId: Long): Int
+
+    /** Furthest-out programme end time — how many days ahead the guide runs. */
+    @Query("SELECT MAX(endMs) FROM epg WHERE profileId = :profileId")
+    suspend fun horizonMs(profileId: Long): Long?
 
     /** Global title search — used by the unified master-search screen so
      *  users can find an upcoming program by name across every channel. */
