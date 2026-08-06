@@ -999,6 +999,13 @@ private fun MainNav(graph: AppGraph, voiceBus: tv.enktel.app.voice.VoiceCommandB
         // you were already watching, so nothing in the app could answer "which
         // channels have an archive?" — the commonest question about it.
         composable("catchup") { tv.enktel.app.ui.screens.CatchupBrowseScreen(graph, nav) }
+        composable("trailer?key={key}&title={title}") { back ->
+            tv.enktel.app.ui.screens.TrailerScreen(
+                nav,
+                videoId = back.arguments?.getString("key").orEmpty(),
+                title = decode(back.arguments?.getString("title").orEmpty()),
+            )
+        }
         composable("sports") { SportsHubScreen(graph, nav) }
         composable("sportsFinder") { tv.enktel.app.ui.sports.ChannelFinderScreen(graph, nav) }
         composable("matchCenter?event={event}&title={title}") { back ->

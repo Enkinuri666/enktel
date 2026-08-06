@@ -30,14 +30,27 @@ class TrailerRepository(
 ) {
     private companion object {
         const val MAX_ENTRIES = 400
+
+        /** Server-side TMDB lookup, so trailers need no per-user setup. */
+        const val PROXY = "https://enktel.tv/api/trailer"
     }
 
     /** key → YouTube video id, or null when TMDB has no trailer for it. */
     private val cache = LinkedHashMap<String, String?>(64, 0.75f, true)
     private val lock = Mutex()
 
-    /** True when a TMDB key is configured — the whole feature is inert without one. */
-    suspend fun isAvailable(): Boolean = settings.tmdbApiKey.first().isNotBlank()
+    /**
+     * Always true now.
+     *
+     * This used to be `tmdbApiKey.isNotBlank()`, and it was the reason trailers
+     * "didn't work": the whole feature was gated behind the user going into
+     * Settings and pasting a TMDB API key, which essentially nobody does. Every
+     * trailer path then returned null and no-opped in silence, which reads as a
+     * broken feature rather than an unconfigured one. Lookups now fall back to
+     * enktel.tv's own server-side key, so a personal key is an optimisation
+     * (fewer shared-quota hops), not a prerequisite.
+     */
+    suspend fun isAvailable(): Boolean = true
 
     /**
      * YouTube video id for [tmdbId], or null if there isn't one (or TMDB is
@@ -72,12 +85,17 @@ class TrailerRepository(
         lock.withLock { if (cache.containsKey(cacheKey)) return cache[cacheKey] }
 
         val apiKey = try { settings.tmdbApiKey.first() } catch (_: Throwable) { "" }
-        if (apiKey.isBlank()) return null
-        val found = try {
-            val client = TmdbClient(http, apiKey)
-            val id = if (tmdbId > 0) tmdbId else client.search(title, 0, isSeries)
-            if (id == null || id <= 0) null else client.trailerKey(id, isSeries)
-        } catch (_: Throwable) { null }
+        val found = if (apiKey.isNotBlank()) {
+            // A personal key talks to TMDB directly — one hop fewer, and the
+            // user's own quota rather than the shared one.
+            try {
+                val client = TmdbClient(http, apiKey)
+                val id = if (tmdbId > 0) tmdbId else client.search(title, 0, isSeries)
+                if (id == null || id <= 0) null else client.trailerKey(id, isSeries)
+            } catch (_: Throwable) { null }
+        } else {
+            proxyLookup(tmdbId, title, isSeries)
+        }
 
         lock.withLock {
             cache[cacheKey] = found
@@ -88,4 +106,55 @@ class TrailerRepository(
         }
         return found
     }
+
+    /**
+     * enktel.tv's server-side lookup, used when the user has set no key of
+     * their own — which is the overwhelmingly common case and the one the
+     * feature was previously broken for.
+     *
+     * Returns null on anything other than a clean answer. The endpoint
+     * deliberately distinguishes "no trailer exists" from "lookup is not
+     * configured", but from the app's side both mean the same thing: don't
+     * offer a trailer button.
+     */
+    private suspend fun proxyLookup(
+        tmdbId: Long,
+        title: String,
+        isSeries: Boolean,
+    ): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val q = buildString {
+                append(PROXY)
+                append("?type=").append(if (isSeries) "tv" else "movie")
+                if (tmdbId > 0) {
+                    append("&tmdb=").append(tmdbId)
+                } else {
+                    append("&title=").append(java.net.URLEncoder.encode(title, "UTF-8"))
+                }
+            }
+            val req = okhttp3.Request.Builder().url(q).get().build()
+            http.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@use null
+                parseProxyKey(r.body.string())
+            }
+        } catch (_: Throwable) { null }
+    }
 }
+
+/**
+ * Pulls the YouTube id out of an `/api/trailer` response.
+ *
+ * `key` is null in the response whenever there is no trailer, so a null here
+ * and a parse failure are the same outcome by design.
+ */
+private val proxyJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+internal fun parseProxyKey(body: String): String? = try {
+    proxyJson.parseToJsonElement(body)
+        .let { it as? kotlinx.serialization.json.JsonObject }
+        ?.get("key")
+        ?.let { it as? kotlinx.serialization.json.JsonPrimitive }
+        ?.takeIf { it.isString }
+        ?.content
+        ?.takeIf { it.isNotBlank() }
+} catch (_: Throwable) { null }

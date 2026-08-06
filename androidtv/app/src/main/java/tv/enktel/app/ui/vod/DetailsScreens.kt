@@ -153,14 +153,15 @@ private fun MovieDetailsBody(
     }
     Spacer(Modifier.height(14.dp))
     var trailerKey by remember { mutableStateOf<String?>(null) }
-    val ctxT = androidx.compose.ui.platform.LocalContext.current
-    androidx.compose.runtime.LaunchedEffect(m.tmdbId) {
-        trailerKey = if (m.tmdbId > 0) {
-            runCatching {
-                tv.enktel.app.data.metadata.TmdbClient(graph.http, graph.settings.tmdbApiKey.first())
-                    .trailerYoutubeKey("movie", m.tmdbId)
-            }.getOrNull()
-        } else null
+    // Through the repository, not a bare TmdbClient: the repository falls back
+    // to enktel.tv's server-side key, so the button appears without the user
+    // having pasted a TMDB key into Settings first. It also resolves by title
+    // when the panel published no TMDB id, which is most of the catalogue —
+    // the old `if (m.tmdbId > 0)` guard is why the button was usually absent.
+    androidx.compose.runtime.LaunchedEffect(m.tmdbId, m.name) {
+        trailerKey = runCatching {
+            graph.trailers.trailerKey(m.tmdbId, m.name, isSeries = false)
+        }.getOrNull()
     }
     // FlowRow so long action lists (Play + Resume + Trailer + Fav + Watchlist +
     // Download) wrap to a second row on narrow phones instead of clipping.
@@ -178,14 +179,11 @@ private fun MovieDetailsBody(
         }
         trailerKey?.let { key ->
             FocusButton("🎬 Trailer", onClick = {
-                val youtubeAppUri = "vnd.youtube:$key".toUri()
-                val webUri = "https://www.youtube.com/watch?v=$key".toUri()
-                val youtubeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, youtubeAppUri)
-                    .setPackage("com.google.android.youtube.tv")
-                val fallback = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
-                runCatching { ctxT.startActivity(youtubeIntent) }.getOrElse {
-                    runCatching { ctxT.startActivity(fallback) }
-                }
+                // In-app, not an ACTION_VIEW at the YouTube app. A sideloaded
+                // Fire TV Stick has neither YouTube nor a browser installed, so
+                // both intents threw, both throws were swallowed by runCatching,
+                // and the button did nothing at all — no error, no trailer.
+                nav.navigate("trailer?key=$key&title=${tv.enktel.app.encode(m.name)}")
             })
         }
         FavButton(graph, p.id, "vod", m.streamId)
@@ -327,7 +325,20 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     Text(plot, color = Color.White.copy(0.85f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.height(8.dp))
+                // Series had no trailer button at all — only films did, for no
+                // reason other than nobody having added one.
+                var seriesTrailer by remember { mutableStateOf<String?>(null) }
+                androidx.compose.runtime.LaunchedEffect(s.tmdbId, s.name) {
+                    seriesTrailer = runCatching {
+                        graph.trailers.trailerKey(s.tmdbId, s.name, isSeries = true)
+                    }.getOrNull()
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    seriesTrailer?.let { key ->
+                        FocusButton("🎬 Trailer", onClick = {
+                            nav.navigate("trailer?key=$key&title=${tv.enktel.app.encode(s.name)}")
+                        })
+                    }
                     FavButton(graph, p.id, "series", s.seriesId)
                     WatchlistButton(graph, p.id, "series", s.seriesId, s.name, s.poster)
                 }
