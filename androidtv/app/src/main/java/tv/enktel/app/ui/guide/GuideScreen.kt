@@ -77,6 +77,39 @@ import java.util.Locale
 private val HOUR = 3_600_000L
 private val DP_PER_HOUR = 220.dp
 
+/**
+ * A faint genre wash behind each programme cell.
+ *
+ * The grid was one flat surface colour for every cell, so a wall of a hundred
+ * programmes carried no information until you read each title. A tint lets the
+ * eye find the sport or the film before the text resolves — and at these
+ * alphas it stays subordinate to the live/past/future states, which are what
+ * actually matter.
+ *
+ * Derived from the *channel's* category, not the programme's: EpgProgram has no
+ * category column, and adding one means an XMLTV parser change plus a schema
+ * migration. The channel group is a decent proxy on an IPTV line — a channel in
+ * "Sports" is showing sport — and it is available today with no migration. If
+ * per-programme genres are wanted later, this function is where they plug in.
+ *
+ * Anything unrecognised gets no tint at all, rather than a wrong one.
+ */
+internal fun genreTint(category: String): Color? {
+    val c = category.lowercase()
+    return when {
+        c.isBlank() -> null
+        "sport" in c || "football" in c || "soccer" in c -> Color(0xFF00E5A0)
+        "news" in c || "weather" in c || "current affairs" in c -> Color(0xFF29B6FF)
+        "movie" in c || "film" in c || "cinema" in c -> Color(0xFFB14DFF)
+        "kid" in c || "child" in c || "cartoon" in c || "animation" in c -> Color(0xFFFFC44D)
+        "music" in c || "concert" in c -> Color(0xFFFF6FD8)
+        "document" in c || "nature" in c || "science" in c || "history" in c -> Color(0xFF7FD1AE)
+        "comedy" in c || "sitcom" in c -> Color(0xFFFFA24D)
+        "drama" in c || "series" in c || "soap" in c -> Color(0xFF6E8BFF)
+        else -> null
+    }
+}
+
 @Composable
 fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     // Narrow phone viewport (Galaxy S25 Ultra portrait, standard 6" phones): a
@@ -292,14 +325,14 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 // the screen built for navigating.
                                 if (ch.num > 0) {
                                     Text(
-                                        "${ch.num}", fontSize = 10.sp, fontWeight = FontWeight.Black,
+                                        "${ch.num}", fontSize = 11.sp, fontWeight = FontWeight.Black,
                                         color = EnktelBlue, letterSpacing = 0.6.sp,
                                     )
                                 }
                                 Text(
-                                    ch.name, fontSize = 12.sp, maxLines = 2,
+                                    ch.name, fontSize = 14.sp, maxLines = 2,
                                     overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold,
-                                    lineHeight = 14.sp,
+                                    lineHeight = 16.sp,
                                 )
                             }
                         }
@@ -346,7 +379,15 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                         containerColor = when {
                                             isNow -> EnktelBlue.copy(0.30f)
                                             isPast -> EnktelSurface.copy(0.55f)
-                                            else -> EnktelSurfaceHigh
+                                            // A whole grid of one surface colour
+                                            // carried no information until you
+                                            // read every title. The wash is
+                                            // deliberately faint: it must stay
+                                            // subordinate to live/past/future,
+                                            // which are the states that matter.
+                                            else -> genreTint(ch.categoryName)
+                                                ?.copy(alpha = 0.13f)
+                                                ?: EnktelSurfaceHigh
                                         },
                                         focusedContainerColor = EnktelBlue,
                                         focusedContentColor = Color.White,
@@ -376,7 +417,13 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                             ),
                                         ) {
                                             Text(
-                                                prog.title, fontSize = 12.sp, maxLines = 1,
+                                                // 14 sp, not 12. A viewer is
+                                                // three metres away; 12 sp on a
+                                                // 540 dp-tall layout is about
+                                                // 8 pt at that distance, and
+                                                // washes out entirely on the
+                                                // cheaper panels this runs on.
+                                                prog.title, fontSize = 14.sp, maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 fontWeight = if (isNow) FontWeight.Bold else FontWeight.Medium,
                                             )
@@ -389,7 +436,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                                 Spacer(Modifier.height(2.dp))
                                                 Text(
                                                     "${TimeFormat.format("HH:mm", prog.startMs)} – ${TimeFormat.format("HH:mm", prog.endMs)}",
-                                                    fontSize = 10.sp,
+                                                    fontSize = 12.sp,
                                                     color = if (isPast) EnktelTextFaint else EnktelTextDim,
                                                     maxLines = 1,
                                                 )

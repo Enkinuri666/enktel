@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import tv.enktel.app.BuildConfig
 
 /**
  * The shape of the viewport, as a layout decision rather than a device class.
@@ -32,14 +33,33 @@ data class ScreenShape(
      * Not enough vertical room for full-height chrome — a phone or small
      * tablet in landscape, and a foldable half-open.
      *
-     * A television is never short: 1080p at the standard TV density is
-     * ~648 dp tall, and 720p is ~720 dp, both comfortably past the threshold.
+     * A television must never be classed short, and the margin is thinner than
+     * it looks: a 1080p Android TV reports 960×540 dp, not 1080 — the panel is
+     * 1080 physical pixels at xhdpi, so the layout height is half of it. (An
+     * earlier version of this comment claimed ~648 dp, which is simply wrong;
+     * the nav rail overflowing its 540 dp column is what proved it.)
      */
     val short: Boolean,
 ) {
-    /** Outer horizontal page padding. */
+    /**
+     * True on the ten-foot build, where the edge rules are different: a television
+     * may crop the edges of the signal, so nothing important can sit in the
+     * outer band.
+     */
+    private val tenFoot: Boolean get() = BuildConfig.FLAVOR != "mobile"
+
+    /**
+     * Outer horizontal page padding.
+     *
+     * On TV this is the overscan safe zone, not a taste decision. Android TV's
+     * guidance is 5 % of the width — 48 dp on a 960 dp layout — and 58 dp is
+     * the figure that survives the older panels that still crop. The app was
+     * sitting at 48 dp on wide screens and dropping to 32 dp on the rest, which
+     * put content inside the band that a cropping TV eats.
+     */
     val padH: Dp
         get() = when {
+            tenFoot -> 58.dp
             narrow -> 16.dp
             landscape && short -> 28.dp
             widthDp >= 1200 -> 48.dp
@@ -54,6 +74,8 @@ data class ScreenShape(
      */
     val padV: Dp
         get() = when {
+            // Vertical overscan safe zone, same reasoning as padH.
+            tenFoot -> 27.dp
             short -> 10.dp
             narrow -> 16.dp
             else -> 24.dp
@@ -87,10 +109,12 @@ fun rememberScreenShape(): ScreenShape {
             heightDp = cfg.screenHeightDp,
             landscape = landscape,
             narrow = cfg.screenWidthDp < 600,
-            // 500 dp, not 600: a 1080p television reports ~648 dp and must
-            // never be treated as short, while a landscape phone (~360 dp) and
-            // a small landscape tablet (~450 dp) both must be.
-            short = cfg.screenHeightDp < 500,
+            // The two populations to separate are a landscape phone (~360 dp)
+            // and a television (540 dp at 1080p). 460 sits between them with
+            // room on both sides; 500 left only 40 dp of margin against a TV,
+            // which is close enough to be one odd device from misclassifying
+            // the ten-foot layout as cramped.
+            short = cfg.screenHeightDp < 460,
         )
     }
 }

@@ -48,7 +48,9 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -80,8 +82,29 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * touch-enabled boxes) taps land nowhere. Attach this alongside Surface(onClick) so
  * both input methods work.
  */
-fun Modifier.tapClick(onClick: () -> Unit): Modifier =
-    pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+@Composable
+fun Modifier.tapClick(onClick: () -> Unit): Modifier {
+    // Touch gets a tick, the way the D-pad already gets an earcon.
+    //
+    // The TV path has NavSounds on every focus move and selection; the touch
+    // path had nothing at all — no ripple through this modifier, and no
+    // haptic — so on a phone the entire app confirmed a press only by whatever
+    // happened next. On a slow panel fetch that is a second of silence after a
+    // tap, which reads as a missed press and gets tapped again.
+    //
+    // ContextClick rather than LongPress: it is the lightest tick in the set,
+    // appropriate for a confirmation rather than an alert, and it is the one
+    // that stays pleasant when a user is moving quickly through a grid.
+    val haptics = LocalHapticFeedback.current
+    return pointerInput(Unit) {
+        detectTapGestures(
+            onTap = {
+                runCatching { haptics.performHapticFeedback(HapticFeedbackType.ContextClick) }
+                onClick()
+            },
+        )
+    }
+}
 
 @Composable
 fun FocusButton(

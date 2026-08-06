@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import coil3.ImageLoader
+import coil3.request.crossfade
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
@@ -210,6 +211,18 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
             .components {
                 add(OkHttpNetworkFetcherFactory(callFactory = { graph.http }))
             }
+            // Fade artwork in rather than letting it snap.
+            //
+            // This app draws thousands of channel logos and VOD posters, all
+            // arriving at different moments over a domestic connection, and
+            // every one of them appeared as an instant pop from the placeholder
+            // to the image. A grid settling in is a dozen unrelated pops, which
+            // is a large part of why a fully-populated screen looked cheap even
+            // when every individual element was fine.
+            //
+            // 220 ms: long enough to register as a fade, short enough that a
+            // cached image still feels immediate on a Fire TV Stick.
+            .crossfade(220)
             .build()
 
     override fun onCreate() {
