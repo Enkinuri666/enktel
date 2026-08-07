@@ -88,6 +88,19 @@ jobs:
             fi
           fi
 
+      # Advisory only. The reading is indirect enough that it must never fail a
+      # release on its own — but when it is wrong, it is wrong eight minutes
+      # before `gh release create` says the same thing the expensive way.
+      - name: Warn if the Actions token looks read-only
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PUSH="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.permissions.push // empty' 2>/dev/null || true)"
+          if [ "$PUSH" = "false" ]; then
+            echo "::warning::This job asks for contents: write but the token reports read-only access, so publishing the release will very likely fail at the last step. Check Settings > Actions > General > Workflow permissions before waiting out the build."
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -224,13 +237,24 @@ jobs:
           [ "$PRERELEASE" = "true" ] && FLAGS+=(--prerelease)
           [ "$DRAFT" = "true" ] && FLAGS+=(--draft)
 
-          gh release create "$TAG" \
+          # The 403 this catches says only "Resource not accessible by
+          # integration", which reads like a bug in the workflow rather than
+          # what it is — the token being denied a scope the job already asked
+          # for. Naming the setting turns an hour of digging into two clicks.
+          if ! gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "${TITLE:-$TAG}" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             --generate-notes \
             "${FLAGS[@]}" \
-            "$RUNNER_TEMP"/assets/*
+            "$RUNNER_TEMP"/assets/* 2> "$RUNNER_TEMP/create.err"
+          then
+            cat "$RUNNER_TEMP/create.err" >&2
+            if grep -qi 'not accessible by integration\|HTTP 403' "$RUNNER_TEMP/create.err"; then
+              echo "::error::Creating the release was refused, even though this job requests contents: write. Check Settings > Actions > General > Workflow permissions — it has to be 'Read and write permissions', not 'Read repository contents and packages permissions'. If that is already set, look for a ruleset protecting v* tags without a bypass for GitHub Actions." >&2
+            fi
+            exit 1
+          fi
 
           echo "Released: $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)"
