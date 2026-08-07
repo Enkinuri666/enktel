@@ -37,14 +37,27 @@ on:
         description: 'FFmpeg decoders to enable. ac3/eac3/dca/mlp/truehd are the patent-encumbered ones.'
         type: string
         default: 'vorbis opus flac alac pcm_mulaw pcm_alaw mp3 aac ac3 eac3 dca mlp truehd'
+      commit_branch:
+        description: 'Branch to commit the AAR to. Empty means build only, which is the default because a 3 MB binary should not land in the repo by accident.'
+        type: string
+        default: ''
 
+# contents: write only so the runner can push the AAR when commit_branch is
+# set. Workflow artifacts are served from a host unreachable from the
+# environment this is driven from, so the runner committing is the only way
+# the binary gets into the repository without a human relaying it by hand.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out this repository
+        uses: actions/checkout@v7
+        with:
+          path: app
+
       - name: Check out androidx/media
         uses: actions/checkout@v7
         with:
@@ -171,3 +184,42 @@ jobs:
           name: media3-decoder-ffmpeg-${{ inputs.media3_ref }}
           path: aars/*.aar
           if-no-files-found: error
+
+      - name: Commit the AAR
+        if: inputs.commit_branch != ''
+        env:
+          BRANCH: ${{ inputs.commit_branch }}
+          MEDIA3_REF: ${{ inputs.media3_ref }}
+          DECODERS: ${{ inputs.decoders }}
+        run: |
+          # Exactly one AAR, named for the media3 version it was built from —
+          # a decoder built against a different media3 than the app uses is
+          # the kind of mismatch that fails at runtime, not at build time.
+          COUNT="$(ls -1 aars/*.aar | wc -l)"
+          if [ "$COUNT" -ne 1 ]; then
+            echo "::error::Expected exactly one AAR, found $COUNT." >&2
+            ls -la aars
+            exit 1
+          fi
+          DEST="androidtv/app/libs/media3-decoder-ffmpeg-${MEDIA3_REF}.aar"
+
+          cd app
+          mkdir -p androidtv/app/libs
+          cp ../aars/*.aar "$DEST"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            echo "::notice::AAR is byte-identical to the committed one; nothing to push."
+            exit 0
+          fi
+          git commit -m "Add the prebuilt Media3 FFmpeg audio decoder ($MEDIA3_REF)
+
+          Built by build-ffmpeg-extension.yml from androidx/media $MEDIA3_REF
+          against FFmpeg ${{ inputs.ffmpeg_branch }}, API ${{ inputs.api_level }}.
+
+          Decoders: $DECODERS"
+          git push -u origin "$BRANCH"
+          echo "Pushed $DEST to $BRANCH"
