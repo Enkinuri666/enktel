@@ -1,0 +1,137 @@
+name: Attach Play bundles to a release
+
+# Adds the .aab files to a release that already exists.
+#
+# publish-release.yml can attach bundles at publish time (include_aab), but it
+# refuses to touch a release that is already published — deliberately, because
+# republishing breaks the download URLs people have already been given. That
+# leaves a gap: a release that shipped without bundles, and a Play upload that
+# now needs them. This fills it without disturbing what is already there.
+#
+# The build runs at the tag, not at whatever branch this is dispatched from, so
+# the bundle is built from exactly the commit the published APKs were built
+# from rather than from main as it happens to look today.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach bundles to, e.g. v1.50.0'
+        type: string
+        required: true
+
+jobs:
+  bundles:
+    runs-on: ubuntu-latest
+    # gh release upload writes to the release.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: androidtv
+    env:
+      ENKTEL_KEYSTORE: ${{ github.workspace }}/enktel-release.jks
+      ENKTEL_KEYSTORE_PASS: ${{ secrets.ENKTEL_KEYSTORE_PASS }}
+      ENKTEL_KEY_PASS: ${{ secrets.ENKTEL_KEY_PASS }}
+      ENKTEL_KEY_ALIAS: ${{ secrets.ENKTEL_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Check the release exists and matches versionName
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Dispatch inputs go through the environment, never straight into the
+          # shell text — interpolating them inline is the standard Actions
+          # script-injection hole.
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::No release $TAG to attach to. Use publish-release.yml with include_aab to create one." >&2
+            exit 1
+          fi
+
+          # The checkout is at the tag, so this is the version the published
+          # APKs were built from. If it disagrees with the tag name, the tag is
+          # not what it claims to be and the bundle would be mislabelled.
+          VERSION="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG points at a commit whose versionName is $VERSION (expected v$VERSION)." >&2
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android SDK 37.1
+        # The runner image ships an older platform set. core-ktx 1.19 and
+        # lifecycle 2.11 refuse to be consumed below API 37, so the compile
+        # target has to be present before Gradle resolves anything.
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-37.1" "build-tools;37.0.0"
+        working-directory: .
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Set up Android SDK build-tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'build-tools;36.0.0 platforms;android-36'
+
+      # Fail before spending seven minutes on a build we can't sign.
+      - name: Decode release keystore
+        run: |
+          if [ -z "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::ENKTEL_KEYSTORE_BASE64 secret is not set. See ENKTEL_BUILD_AUDIT.md section 2." >&2
+            exit 1
+          fi
+          echo "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" | base64 -d > "$ENKTEL_KEYSTORE"
+          test -s "$ENKTEL_KEYSTORE"
+
+      - name: Build signed bundles (tv + mobile)
+        run: ./gradlew :app:bundleTvRelease :app:bundleMobileRelease --no-daemon
+
+      # Always, so a failed build never leaves the signing key on the runner.
+      - name: Clean up keystore file
+        if: always()
+        run: rm -f "$ENKTEL_KEYSTORE"
+
+      - name: Attach bundles to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/assets"
+          cp app/build/outputs/bundle/tvRelease/app-tv-release.aab \
+             "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.aab"
+          cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab \
+             "$RUNNER_TEMP/assets/enktel-mobile-${VERSION}.aab"
+          ls -la "$RUNNER_TEMP/assets"
+
+          # --clobber so a re-run replaces a half-finished upload instead of
+          # failing on a name that already exists. Only the .aab names are
+          # touched, so the published APKs are never at risk.
+          if ! gh release upload "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber \
+            "$RUNNER_TEMP"/assets/*.aab 2> "$RUNNER_TEMP/upload.err"
+          then
+            cat "$RUNNER_TEMP/upload.err" >&2
+            if grep -qi 'not accessible by integration\|HTTP 403' "$RUNNER_TEMP/upload.err"; then
+              echo "::error::Uploading was refused, even though this job requests contents: write. Check Settings > Actions > General > Workflow permissions — it has to be 'Read and write permissions'." >&2
+            fi
+            exit 1
+          fi
+
+          echo "Attached to $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)"
