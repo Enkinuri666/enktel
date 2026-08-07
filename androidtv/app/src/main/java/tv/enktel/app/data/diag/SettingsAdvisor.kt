@@ -123,6 +123,8 @@ object SettingsAdvisor {
                         "requests segments the provider has already deleted.",
                 )
             }
+        }
+
         // ---- Per-type VOD buffer -------------------------------------------
         // When ranges are broken, VOD needs a deep read-ahead since seeking
         // is impossible — push the min up so the player stockpiles ahead.
