@@ -29,10 +29,10 @@ on:
         description: 'FFmpeg release branch'
         type: string
         default: 'release/6.0'
-      abis:
-        description: 'Space-separated ABIs. Fire TV and Android TV are arm; x86 is emulators only.'
+      api_level:
+        description: 'Android API level to compile against. Must not exceed the app minSdk (23). The script builds every ABI itself.'
         type: string
-        default: 'armeabi-v7a arm64-v8a'
+        default: '23'
       decoders:
         description: 'FFmpeg decoders to enable. ac3/eac3/dca/mlp/truehd are the patent-encumbered ones.'
         type: string
@@ -89,8 +89,18 @@ jobs:
             exit 1
           fi
           ls -la "$JNI"
-          echo "--- gradle modules matching ffmpeg ---"
-          grep -rn 'ffmpeg' media/core_settings.gradle media/settings.gradle 2>/dev/null || true
+
+          # The previous run's grep found nothing because it guessed at which
+          # settings file exists. List them, then search whichever are there —
+          # the AAR step needs the real module name, not a guess.
+          echo "--- settings files present ---"
+          ls -la media/*.gradle media/*.gradle.kts 2>/dev/null || true
+          echo "--- lines naming decoder_ffmpeg ---"
+          grep -rn 'decoder_ffmpeg' media --include='*.gradle' --include='*.gradle.kts' \
+            --include='settings*' 2>/dev/null | head -20 || true
+
+          echo "--- build_ffmpeg.sh usage ---"
+          sed -n '1,40p' "$JNI/build_ffmpeg.sh"
 
       - name: Fetch FFmpeg
         run: |
@@ -102,16 +112,21 @@ jobs:
       - name: Build libffmpeg for each ABI
         env:
           NDK: ${{ steps.ndk.outputs.path }}
-          ABIS: ${{ inputs.abis }}
+          API_LEVEL: ${{ inputs.api_level }}
           DECODERS: ${{ inputs.decoders }}
         run: |
           cd media/libraries/decoder_ffmpeg/src/main/jni
-          # The script takes the extension root, the NDK, the host tag, then
-          # the decoder list as trailing arguments.
+          # Positional: <module path> <NDK> <host tag> <API level> <decoders...>
+          #
+          # The fourth argument is named ANDROID_ABI in the script but is an
+          # API level — it lands in the toolchain path as
+          # armv7a-linux-androideabi<N>-clang, and the script's own error says
+          # it must not exceed the app's minSdk. The script iterates the ABIs
+          # itself, so there is no ABI list to pass.
           ./build_ffmpeg.sh \
-            "$(cd ../../.. && pwd)" "$NDK" "linux-x86_64" $DECODERS
+            "$(cd ../../.. && pwd)" "$NDK" "linux-x86_64" "$API_LEVEL" $DECODERS
           echo "--- produced libraries ---"
-          find . -name '*.so' -o -name '*.a' | head -40
+          find . \( -name '*.so' -o -name '*.a' \) -print | head -40
 
       - name: Assemble the AAR
         run: |
