@@ -95,12 +95,18 @@ jobs:
           # the AAR step needs the real module name, not a guess.
           echo "--- settings files present ---"
           ls -la media/*.gradle media/*.gradle.kts 2>/dev/null || true
-          echo "--- lines naming decoder_ffmpeg ---"
-          grep -rn 'decoder_ffmpeg' media --include='*.gradle' --include='*.gradle.kts' \
-            --include='settings*' 2>/dev/null | head -20 || true
+          # Grepping for the literal 'decoder_ffmpeg' found nothing last run,
+          # so the module include is computed rather than spelled out. Print
+          # settings.gradle.kts outright — it is small, and it is the only
+          # thing that says what the Gradle module is actually called.
+          echo "--- settings.gradle.kts ---"
+          cat media/settings.gradle.kts 2>/dev/null || true
 
-          echo "--- build_ffmpeg.sh usage ---"
-          sed -n '1,40p' "$JNI/build_ffmpeg.sh"
+          echo "--- build_ffmpeg.sh argument contract ---"
+          grep -n '^\(FFMPEG_MODULE_PATH\|NDK_PATH\|HOST_PLATFORM\|ANDROID_ABI\|ENABLED_DECODERS\)=' \
+            "$JNI/build_ffmpeg.sh"
+          echo "--- where it expects ffmpeg to be ---"
+          grep -n 'FFMPEG_MODULE_PATH' "$JNI/build_ffmpeg.sh" | head -10
 
       - name: Fetch FFmpeg
         run: |
@@ -123,20 +129,45 @@ jobs:
           # armv7a-linux-androideabi<N>-clang, and the script's own error says
           # it must not exceed the app's minSdk. The script iterates the ABIs
           # itself, so there is no ABI list to pass.
+          #
+          # The module path is src/main, not the module root: the script looks
+          # for "$FFMPEG_MODULE_PATH/jni/ffmpeg", and jni lives under src/main.
+          # Passing the module root sent it to decoder_ffmpeg/jni/ffmpeg, which
+          # does not exist.
           ./build_ffmpeg.sh \
-            "$(cd ../../.. && pwd)" "$NDK" "linux-x86_64" "$API_LEVEL" $DECODERS
+            "$(cd .. && pwd)" "$NDK" "linux-x86_64" "$API_LEVEL" $DECODERS
           echo "--- produced libraries ---"
           find . \( -name '*.so' -o -name '*.a' \) -print | head -40
 
       - name: Assemble the AAR
         run: |
           cd media
-          ./gradlew :lib-decoder-ffmpeg:assembleRelease --no-daemon
-          find . -name '*.aar' -path '*decoder_ffmpeg*' -exec ls -la {} +
+          # :lib-decoder-ffmpeg is still a guess. If it is wrong, list the
+          # real project names in the same run rather than costing a cycle.
+          if ! ./gradlew :lib-decoder-ffmpeg:assembleRelease --no-daemon; then
+            echo "::error::assembleRelease failed for :lib-decoder-ffmpeg. Candidate module names follow." >&2
+            ./gradlew -q projects 2>/dev/null | grep -i 'ffmpeg\|decoder' || \
+              ./gradlew -q projects 2>/dev/null | head -40 || true
+            exit 1
+          fi
+
+      # The output directory is the last guess in this workflow — media3 has
+      # used both build/ and buildout/ — so collect by search instead of by
+      # path, and fail loudly if nothing turns up.
+      - name: Collect the AAR
+        run: |
+          mkdir -p aars
+          find media -name '*.aar' -print -exec cp {} aars/ \;
+          if [ -z "$(ls -A aars)" ]; then
+            echo "::error::Built successfully but produced no .aar — the output path assumption is wrong." >&2
+            find media -name '*.aar' -o -name 'buildout' -o -name 'build' -maxdepth 4 -type d | head -20
+            exit 1
+          fi
+          ls -la aars
 
       - name: Upload the AAR
         uses: actions/upload-artifact@v4
         with:
           name: media3-decoder-ffmpeg-${{ inputs.media3_ref }}
-          path: media/libraries/decoder_ffmpeg/buildout/outputs/aar/*.aar
+          path: aars/*.aar
           if-no-files-found: error
