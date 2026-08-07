@@ -83,6 +83,8 @@ class PlaylistRepository(
         val saved = candidate.copy(expiresAt = expires, maxConnections = maxConn)
         val id = dao.insert(saved)
         settings.setActiveProfile(id)
+        settings.setTrialUsed(true)
+        settings.setTrialExpiresAt(expires)
         saved.copy(id = id)
     }
 

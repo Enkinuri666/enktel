@@ -96,6 +96,9 @@ class PlaybackSession(
         val minBufferMs: Int = 0,
         val lockToTopBitrate: Boolean = false,
         val dialogueBoost: String = "off",
+        val vodBuffer: BufferConfig? = null,
+        val liveBuffer: BufferConfig? = null,
+        val allocatorSizeBytes: Int = 0,
     )
 
     @Volatile
@@ -132,7 +135,7 @@ class PlaybackSession(
 
     init {
         scope.launch {
-            combine(
+            val baseFlow = combine(
                 settings.bufferProfile,
                 settings.decoderMode,
                 settings.minBufferMs,
@@ -147,6 +150,31 @@ class PlaybackSession(
                     minBufferMs = if (companion) maxOf(minBuffer, 30_000) else minBuffer,
                     lockToTopBitrate = companion,
                     dialogueBoost = dialogue,
+                )
+            }
+            val vodBufFlow = combine(
+                settings.vodBufferProfile,
+                settings.vodMinBufferMs,
+                settings.vodMaxBufferMs,
+                settings.vodPlaybackMs,
+                settings.vodRebufferMs,
+            ) { profile, min, max, play, rebuf ->
+                if (profile == "custom") BufferConfig(min, max, play, rebuf) else null
+            }
+            val liveBufFlow = combine(
+                settings.liveBufferProfile,
+                settings.liveMinBufferMs,
+                settings.liveMaxBufferMs,
+                settings.livePlaybackMs,
+                settings.liveRebufferMs,
+            ) { profile, min, max, play, rebuf ->
+                if (profile == "custom") BufferConfig(min, max, play, rebuf) else null
+            }
+            combine(baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb) { base, vod, live, allocKb ->
+                base.copy(
+                    vodBuffer = vod,
+                    liveBuffer = live,
+                    allocatorSizeBytes = allocKb * 1024,
                 )
             }.collect { next ->
                 val prev = config
@@ -209,6 +237,9 @@ class PlaybackSession(
             minBufferOverrideMs = c.minBufferMs,
             lockToTopBitrate = c.lockToTopBitrate,
             live = live,
+            vodBuffer = c.vodBuffer,
+            liveBuffer = c.liveBuffer,
+            allocatorSizeBytes = c.allocatorSizeBytes,
         )
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)

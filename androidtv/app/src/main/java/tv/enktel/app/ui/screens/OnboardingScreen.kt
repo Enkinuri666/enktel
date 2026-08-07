@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
@@ -54,6 +55,9 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     var trialBusy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var trialMessage by remember { mutableStateOf("") }
+    var showTrialExpired by remember { mutableStateOf(false) }
+    val trialUsed by graph.settings.trialUsed.collectAsStateWithLifecycle(initialValue = false)
+    val trialExpiresAt by graph.settings.trialExpiresAt.collectAsStateWithLifecycle(initialValue = 0L)
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -74,10 +78,20 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
             // arriving without credentials. Calls the Eagle 4K trial API,
             // logs the user in on success, kicks off the initial content
             // sync and drops them on Home — no form to fill.
+            val trialExpired = trialUsed && trialExpiresAt > 0 && trialExpiresAt < System.currentTimeMillis()
             TrialCard(
                 busy = trialBusy,
                 message = trialMessage,
+                expired = trialExpired,
                 onStart = {
+                    if (trialExpired) {
+                        showTrialExpired = true
+                        return@TrialCard
+                    }
+                    if (trialUsed) {
+                        showTrialExpired = true
+                        return@TrialCard
+                    }
                     if (trialBusy || busy) return@TrialCard
                     trialBusy = true; error = ""; trialMessage = "Contacting Eagle 4K…"
                     scope.launch {
@@ -175,6 +189,20 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
             )
         }
     }
+
+    if (showTrialExpired) {
+        tv.enktel.app.ui.components.ConfirmDialog(
+            title = "Free Trial Expired",
+            message = "Your 24-hour free trial has ended. To continue enjoying " +
+                "EnkTel 4K with full access to live TV, movies and series, " +
+                "upgrade to a 12-month subscription for just \$99 USD.\n\n" +
+                "Log in with your existing credentials below, or go to " +
+                "Settings > Upgrade Account after logging in.",
+            confirmLabel = "OK",
+            onConfirm = { showTrialExpired = false },
+            onDismiss = { showTrialExpired = false },
+        )
+    }
 }
 
 /**
@@ -182,7 +210,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
  * busy indicator + status line so callers only see start/finish.
  */
 @Composable
-private fun TrialCard(busy: Boolean, message: String, onStart: () -> Unit) {
+private fun TrialCard(busy: Boolean, message: String, expired: Boolean = false, onStart: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -193,24 +221,29 @@ private fun TrialCard(busy: Boolean, message: String, onStart: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("🎁", fontSize = 18.sp)
+            Text(if (expired) "⏰" else "🎁", fontSize = 18.sp)
             Spacer(Modifier.width(8.dp))
             Text(
-                "24-hour free trial",
-                color = Color.White,
+                if (expired) "Trial expired" else "24-hour free trial",
+                color = if (expired) EnktelLive else Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
             )
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "Full access to live TV, movies & series — no credit card required.",
+            if (expired) "Your free trial has ended. Upgrade for \$99/year to continue."
+            else "Full access to live TV, movies & series — no credit card required.",
             color = EnktelTextDim,
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(12.dp))
         FocusButton(
-            if (busy) "Setting up your trial…" else "Start free trial",
+            when {
+                expired -> "Upgrade — \$99/year"
+                busy -> "Setting up your trial…"
+                else -> "Start free trial"
+            },
             accent = true,
             onClick = onStart,
         )
@@ -220,7 +253,8 @@ private fun TrialCard(busy: Boolean, message: String, onStart: () -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "Trial ends automatically after 24 hours. You'll see an upgrade prompt in Settings.",
+            if (expired) "Pay via PayPal Send to a Friend — activation usually within minutes."
+            else "Trial ends automatically after 24 hours. You'll see an upgrade prompt in Settings.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
     }

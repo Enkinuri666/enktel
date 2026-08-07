@@ -123,6 +123,45 @@ object SettingsAdvisor {
                         "requests segments the provider has already deleted.",
                 )
             }
+        // ---- Per-type VOD buffer -------------------------------------------
+        // When ranges are broken, VOD needs a deep read-ahead since seeking
+        // is impossible — push the min up so the player stockpiles ahead.
+        if (rangeBroken && current.vodBufferProfile == "custom" && current.vodMinBufferMs < 30_000) {
+            out += SettingChange(
+                key = "vodMinBufferMs",
+                label = "VOD min buffer",
+                current = "${current.vodMinBufferMs / 1000}s",
+                suggested = "30s",
+                reason = "Panel refused byte-range requests — a deeper VOD buffer compensates.",
+            )
+        }
+
+        // ---- Per-type Live buffer ------------------------------------------
+        // HLS live with dangling audio groups stalls easily; a slightly deeper
+        // live buffer gives ExoPlayer more runway before it stalls.
+        val hlsDangling = live?.hls?.danglingAudioGroups?.isNotEmpty() == true
+        if (hlsDangling && current.liveBufferProfile == "custom" && current.liveMinBufferMs < 4_000) {
+            out += SettingChange(
+                key = "liveMinBufferMs",
+                label = "Live min buffer",
+                current = "${current.liveMinBufferMs / 1000}s",
+                suggested = "4s",
+                reason = "Live HLS has dangling audio groups — a deeper live buffer reduces stalls.",
+            )
+        }
+
+        // ---- Allocator size ------------------------------------------------
+        // Large MKV/4K files with big clusters benefit from a bigger pool
+        // chunk so the allocator doesn't thrash on tiny slices.
+        val largeVod = vod?.matroska?.isMatroska == true || vodDetected == "MATROSKA"
+        if (largeVod && current.allocatorSizeKb < 2048) {
+            out += SettingChange(
+                key = "allocatorSizeKb",
+                label = "Allocator chunk",
+                current = if (current.allocatorSizeKb == 0) "default (16 KB)" else "${current.allocatorSizeKb} KB",
+                suggested = "2048 KB",
+                reason = "VOD is Matroska — a 2 MB allocator chunk reduces overhead for large clusters.",
+            )
         }
 
         // ---- Live time-shift -----------------------------------------------
