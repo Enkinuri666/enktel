@@ -1,0 +1,65 @@
+name: Probe Media3 decoder extensions
+
+# Throwaway investigation aid — delete once the decoder question is settled.
+#
+# PlayerEngine defaults decoderMode to "hwplus", which maps to
+# EXTENSION_RENDERER_MODE_PREFER: prefer software extension decoders over the
+# platform ones. No extension renderer is on the classpath, so today that
+# setting decides nothing. Whether fixing it is a dependency line or an NDK
+# build depends on what Google actually publishes to their Maven repo, and
+# maven.google.com redirects to dl.google.com, which is unreachable from the
+# environment this was written in. A runner can reach it.
+#
+# group-index.xml lists every artifact in the androidx.media3 group with its
+# published versions, so it answers the question outright rather than a guess
+# per coordinate.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: What does androidx.media3 actually publish?
+        run: |
+          set -o pipefail
+          echo "## androidx.media3 published artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+
+          if ! curl -fsSL --max-time 60 \
+            "https://maven.google.com/androidx/media3/group-index.xml" \
+            -o group-index.xml
+          then
+            echo "::error::Could not fetch the androidx.media3 group index."
+            exit 1
+          fi
+
+          # <media3-exoplayer versions="1.0.0,1.0.1,..."/> — one element per
+          # artifact, so the tag name is the artifact and the attribute is
+          # every version of it.
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("group-index.xml").getroot()
+          artifacts = sorted(
+              (child.tag, (child.get("versions") or "").split(",")[-1])
+              for child in root
+          )
+
+          print("| Artifact | Latest |")
+          print("| :--- | :--- |")
+          for name, latest in artifacts:
+              print(f"| `{name}` | {latest} |")
+
+          print()
+          wanted = ["ffmpeg", "av1", "opus", "flac", "vp9", "iamf", "midi"]
+          names = {n for n, _ in artifacts}
+          print("Decoder extensions of interest:")
+          for w in wanted:
+              hit = f"media3-decoder-{w}"
+              print(f"  - {hit}: {'PUBLISHED' if hit in names else 'not published'}")
+          PY
