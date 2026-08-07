@@ -37,11 +37,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.navigation.NavHostController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -590,16 +591,43 @@ private fun GuideDock(
                 .background(Color.Black),
             contentAlignment = Alignment.Center,
         ) {
-            if (nowPlaying != null) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            useController = false
-                            setKeepContentOnPlayerReset(true)
-                        }
-                    },
-                    update = { view -> graph.playback.bind(view) },
-                    onRelease = { view -> graph.playback.unbind(view) },
+            val engine = graph.playback.engineOrNull()
+            if (nowPlaying != null && engine != null) {
+                // First migrated surface that shares the session's engine.
+                //
+                // No bind/unbind here any more. Those exist because a
+                // PlayerView has to be handed the player explicitly, and two
+                // hosts mounting in an unpredictable order could leave the
+                // wrong one holding it. PlayerSurface attaches and detaches
+                // with the composition instead, so the ordering problem the
+                // hand-off was solving does not arise for this host.
+                //
+                // What still matters is that only one surface targets the
+                // engine at a time — two would fight and one would go black.
+                // That is already guaranteed: this dock claims inlinePreview
+                // for as long as it is composed (see the DisposableEffect
+                // above) and the floating mini window stands down while
+                // anything is claiming.
+                //
+                // TEXTURE_VIEW, despite this being a single static panel where
+                // SURFACE_VIEW would be cheaper: the dock is clipped to a
+                // 10 dp rounded rectangle, and a SurfaceView is a separate
+                // window layer that ignores its parent's clip. It would draw
+                // square corners over a rounded frame. A TextureView is an
+                // ordinary view and clips normally.
+                //
+                // ContentFrame rather than a bare PlayerSurface because the
+                // PlayerView this replaces letterboxed (RESIZE_MODE_FIT, its
+                // default) and kept the last frame across a player reset.
+                // PlayerSurface on its own does neither: it fills whatever box
+                // it is given, so a 4:3 channel would come out stretched, and
+                // it goes black the moment the engine re-prepares. ContentFrame
+                // is the composable that carries both behaviours.
+                ContentFrame(
+                    player = engine.player,
+                    surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                    contentScale = ContentScale.Fit,
+                    keepContentOnReset = true,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else if (ch != null && ch.logo.isNotBlank()) {
