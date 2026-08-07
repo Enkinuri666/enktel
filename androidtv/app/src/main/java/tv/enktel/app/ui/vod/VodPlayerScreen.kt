@@ -123,7 +123,10 @@ fun VodPlayerScreen(
     // PlaybackSession, which also owns the engine settings snapshot that used
     // to rebuild this engine mid-startup as DataStore values resolved.
     val session = graph.playback
-    val engine = session.engine()
+    // This screen also serves catch-up, which is a live-edge stream despite
+    // arriving through the VOD player, so the kind follows the route flag
+    // rather than the screen.
+    val engine = session.engine(live = isLive)
     LaunchedEffect(Unit) { session.expand() }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")

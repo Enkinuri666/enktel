@@ -24,7 +24,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
 
     /** Top N movies sharing genres with recently watched items, minus the ones already watched. */
     suspend fun becauseYouWatched(profileId: Long, n: Int = 15): List<Movie> = withContext(Dispatchers.Default) {
-        val history = content.continueWatching(profileId, 30).first()
+        val history = content.watchHistory(profileId, 30).first()
         if (history.isEmpty()) return@withContext emptyList()
         val seedIds = history.map { it.refId }.toHashSet()
         val allMovies = content.movies(profileId).first()
@@ -175,7 +175,7 @@ class RecommendationsRepository(private val content: ContentRepository) {
     suspend fun homeRails(profileId: Long): HomeRails = withContext(Dispatchers.Default) {
         val allMovies = content.movies(profileId).first()
         val withPoster = MovieRails.renderable(allMovies)
-        val history = content.continueWatching(profileId, 30).first()
+        val history = content.watchHistory(profileId, 30).first()
         val seedIds = history.map { it.refId }.toHashSet()
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000

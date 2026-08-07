@@ -177,11 +177,42 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setBufferProfile("large") } })
         }
         Text(
-            "Auto = scales by device class (TV keeps a bigger cushion; phones lean lean). " +
-                "Low latency ≈ 5 s buffer for live sports. Balanced ≈ 15 s for typical use. " +
-                "High buffer ≈ 30 s+ for unstable Wi-Fi or mobile networks. Applies next player open.",
+            "Live and on-demand get opposite buffers from the same profile, because they want " +
+                "opposite things: live has to stay near the broadcast edge and inside the " +
+                "provider's segment window, on-demand wants as much runway as it can hold. " +
+                "Auto scales by device class. Applies next time a player opens.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
+        // The numbers actually in force, not the ones the profile is named
+        // after. A profile is adjusted for live-vs-VOD, device class and
+        // available memory before it reaches the player, so "High buffer"
+        // meaning 180 s on a film and 15 s on a live channel is exactly the
+        // kind of thing a user should be able to read rather than infer.
+        run {
+            // LocalConfiguration, not ctx.resources.configuration: the
+            // context's copy is not invalidated on a configuration change, so
+            // this line would keep reporting the mode it saw at first
+            // composition.
+            val uiMode = androidx.compose.ui.platform.LocalConfiguration.current.uiMode
+            val isTvUi = (uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+                android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+            val lowRam = (ctx.getSystemService(android.content.Context.ACTIVITY_SERVICE)
+                as? android.app.ActivityManager)?.isLowRamDevice == true
+            val resolved = if (bufferProfile == "auto") {
+                tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
+            } else {
+                bufferProfile
+            }
+            val liveW = tv.enktel.app.player.BufferProfiles.window(resolved, true, isTvUi, lowRam)
+            val vodW = tv.enktel.app.player.BufferProfiles.window(resolved, false, isTvUi, lowRam)
+            Text(
+                "On this device: live holds up to ${liveW.maxMs / 1000}s and starts after " +
+                    "${liveW.playMs}ms · on-demand holds up to ${vodW.maxMs / 1000}s and starts " +
+                    "after ${vodW.playMs}ms" +
+                    if (lowRam) " (halved — this device reports low RAM)" else "",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        }
 
         Spacer(Modifier.height(10.dp))
         tv.enktel.app.ui.components.ChipRowLabel("Force MP4 fallback (VOD)")
@@ -256,7 +287,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         Text(
-            "Force a floor under the LoadControl minimum buffer. Use on jittery ISPs where the profile default (Low/Balanced/Large) still under-buffers.",
+            "Force a floor under the LoadControl minimum buffer. Use on jittery ISPs where the " +
+                "profile default still under-buffers. Clamped so it can never exceed the maximum " +
+                "for the stream being played — ExoPlayer throws rather than clamps, and that " +
+                "would be a crash on the first frame.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 

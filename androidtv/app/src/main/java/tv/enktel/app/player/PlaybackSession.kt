@@ -170,9 +170,36 @@ class PlaybackSession(
     /**
      * The engine, built on first use. Safe to call from composition on every
      * recomposition — it returns the same instance until something releases it.
+     *
+     * @param live what the *caller* is about to play. Live and VOD need
+     *   opposite buffering (see BufferProfiles) and the window is fixed when
+     *   the ExoPlayer is built, so an engine built for the wrong kind has to be
+     *   replaced rather than reconfigured.
+     *
+     *   An engine built for the wrong kind is replaced only while nothing is
+     *   playing. That guard is the same one the settings watcher above uses,
+     *   for the same reason: both player screens call this from their
+     *   composition body, and during a navigation transition the outgoing
+     *   screen still recomposes while the incoming one mounts. Rebuilding
+     *   unconditionally would have the two tearing down each other's engine,
+     *   and the outgoing screen's `stop()` on dispose would land on the
+     *   incoming screen's brand-new engine.
+     *
+     *   Idle is when it matters anyway: you reach a player from a browse
+     *   screen, so the swap happens before anything is on screen to interrupt.
+     *   Switching kind mid-playback — starting a film while live TV is docked —
+     *   keeps the running engine and its window until that playback ends,
+     *   which is a slightly wrong buffer rather than a dead player.
      */
-    fun engine(): PlayerEngine {
-        engineRef?.let { return it }
+    fun engine(live: Boolean = false): PlayerEngine {
+        engineRef?.let { current ->
+            if (current.isLiveEngine == live || _now.value != null) return current
+            releaseEngine()
+        }
+        return build(live)
+    }
+
+    private fun build(live: Boolean): PlayerEngine {
         val c = config
         val profile =
             if (c.bufferProfile == "auto") NetworkClass.suggestedBufferProfile else c.bufferProfile
@@ -181,6 +208,7 @@ class PlaybackSession(
             decoderMode = c.decoderMode,
             minBufferOverrideMs = c.minBufferMs,
             lockToTopBitrate = c.lockToTopBitrate,
+            live = live,
         )
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)
