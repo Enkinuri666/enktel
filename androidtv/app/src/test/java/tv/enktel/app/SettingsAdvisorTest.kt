@@ -136,7 +136,12 @@ class SettingsAdvisorTest {
 
     @Test fun `a healthy panel produces no changes at all`() {
         val changes = SettingsAdvisor.advise(
-            defaults.copy(streamFormat = "hls", vodForceMp4 = false, liveShiftEnabled = true),
+            defaults.copy(
+                streamFormat = "hls",
+                vodForceMp4 = false,
+                liveShiftEnabled = true,
+                allocatorSizeKb = 2048,
+            ),
             facts("HLS"),
             facts("MATROSKA"),
             CatchupFacts(tested = true, available = true, httpCode = 200, channelsWithArchive = 4),
