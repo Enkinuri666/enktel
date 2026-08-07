@@ -14,8 +14,57 @@ package tv.enktel.app.data.metadata
  * We don't tokenise into semantic parts (title / year / edition / codec)
  * because that's the enrichment worker's job, and losing information here
  * would hurt search recall later.
+ *
+ * ### The rule this file is built around
+ *
+ * A wrong strip is much worse than a missed one. A title left slightly noisy
+ * is ugly; a title with a real word removed is a different film. Everything
+ * below that could plausibly appear in a real name is either excluded or
+ * gated on surrounding evidence that we are looking at scene junk. Edition
+ * markers — `Extended`, `Unrated`, `IMAX`, `Director's Cut` — are deliberately
+ * *not* stripped: they are information the user wants, not noise.
  */
 object TitleSanitizer {
+
+    /**
+     * Scene releases separate words with dots or underscores rather than
+     * spaces: `The.Matrix.1999.1080p.BluRay.x264-GROUP`. Every pattern below
+     * is written against word boundaries, and a dot is not one, so before this
+     * existed the strip passes punched holes in the middle of the string and
+     * left `The.Matrix.1999. . .x264-GROUP` — measurably worse than the input.
+     *
+     * Gated on the title having no spaces at all, because that is what makes a
+     * dotted string a scene name rather than ordinary punctuation. `Mr. Robot`
+     * and `Marvel's Agents of S.H.I.E.L.D.` both contain spaces and are left
+     * alone.
+     *
+     * The two-segments-of-three rule is what saves initialisms. `W.A.R.` has
+     * no spaces and two dots, but every segment is a single letter, so it is
+     * not a word-separated title and is left as it is.
+     */
+    private fun despace(raw: String): Pair<String, Boolean> {
+        if (raw.contains(' ')) return raw to false
+        val sep = when {
+            raw.count { it == '_' } >= 2 -> '_'
+            raw.count { it == '.' } >= 2 -> '.'
+            else -> return raw to false
+        }
+        val parts = raw.split(sep).filter { it.isNotBlank() }
+        // Underscores never appear in a real display title, so they need no
+        // further evidence. Dots do.
+        if (sep == '.' && parts.count { it.length >= 3 } < 2) return raw to false
+        return parts.joinToString(" ") to true
+    }
+
+    /**
+     * The release group glued to the end of a scene name: `…x264-GROUP`.
+     *
+     * Only applied to strings [despace] recognised as scene names. Run
+     * unconditionally it would eat the tail of every hyphenated title —
+     * `Spider-Man`, `Ant-Man`, `X-Men` — and that is exactly the kind of wrong
+     * strip this file exists to avoid.
+     */
+    private val sceneGroupSuffix = Regex("-[A-Za-z0-9]{2,}\\s*$")
 
     // Common junk to strip. Order matters — extension first so the tokens
     // stripped later don't consume valid text.
@@ -25,29 +74,58 @@ object TitleSanitizer {
         // Resolution / quality tags — the ones that appear inside brackets
         // and the bare-word variants. HDR variants + dolby/atmos flags too.
         Regex("[\\[(]\\s*(4k|uhd|hd|fhd|sd|1080p?|720p?|480p?|2160p?|hdr(10\\+?)?|dv|dolby(-vision)?|atmos|remux|bluray|webrip|webdl|hdrip|dvdrip|xvid|x264|x265|hevc|h\\.?264|h\\.?265|10bit|8bit|aac|ac3|dts)\\s*[\\])]", RegexOption.IGNORE_CASE),
-        Regex("\\b(4k|uhd|fhd|1080p|720p|480p|2160p|hdr10\\+?|dv|hdrip|webrip|webdl|dvdrip|xvid|hevc|remux|bluray)\\b", RegexOption.IGNORE_CASE),
-        // Multi-language tags (`MULTI`, `MULTiSUB`), episode-title
-        // separators (`| Episode 3 |`), and repeated symbol runs.
-        Regex("\\b(multi|multisub|multiaudio|dual|dubbed|subbed)\\b", RegexOption.IGNORE_CASE),
+        // Bare-word forms of the same tags.
+        //
+        // `hd` and `sd` are deliberately absent: "BBC ONE HD" and "BBC ONE"
+        // are two different channels on most lines, and collapsing them makes
+        // the guide ambiguous. So are the edition markers — Extended, Unrated,
+        // IMAX, Remastered — which the user wants to see.
+        Regex(
+            "\\b(4k|uhd|fhd|1080p|720p|480p|2160p|hdr10\\+?|dv|hdrip|webrip|web-?dl|" +
+                "brrip|bdrip|dvdrip|dvdscr|hdts|hdcam|camrip|telesync|xvid|hevc|remux|bluray|" +
+                "x\\.?26[45]|h\\.?26[45]|10bit|8bit|aac|ac-?3|e-?ac-?3|ddp|dts(-hd)?|truehd)\\b",
+            RegexOption.IGNORE_CASE,
+        ),
+        // Multi-language tags and episode-title separators.
+        //
+        // Bare `dual` used to be here and had to go: `Dual` is a 2022 film,
+        // and "Dual 2022" was being reduced to "2022". It only counts as junk
+        // when it is qualifying something.
+        Regex("\\b(multi|multisub|multiaudio|dual[\\s\\-]?audio|dubbed|subbed)\\b", RegexOption.IGNORE_CASE),
         // Stray brackets with only whitespace inside.
         Regex("[\\[(]\\s*[\\])]"),
         // Country-code prefixes on live channels: "US: ", "UK - ", "PT| ".
         // Only strip when it's 2 uppercase letters + a separator at the
         // very start (won't gobble legitimate titles like "US Marshals").
         Regex("^\\s*[A-Z]{2}\\s*[:|\\-]\\s+"),
+        // The same idea for the longer prefixes panels use, which the
+        // two-letter rule above never matched — `USA: `, `ARA - `, `EXYU| `.
+        //
+        // An explicit list rather than `[A-Z]{3,4}`, because that would strip
+        // the front off any title whose first word happens to be short and
+        // capitalised: "MTV: Hits" and "HBO: Originals" are channel names, not
+        // country prefixes, and the pattern cannot tell them apart.
+        Regex(
+            "^\\s*(ARA|BUL|CRO|CZE|DEU|ENG|ESP|EXYU|FRA|GER|GRE|HUN|IND|ITA|LAT|LATINO|" +
+                "NED|NOR|POL|POR|ROM|RUS|SCA|SPA|SRB|SWE|TUR|UAE|USA|VIP|YUG)\\s*[:|\\-]\\s+",
+        ),
+        // The bracketed form of the same thing: "[EN] Top Gun", "(AR) فيلم".
+        Regex("^\\s*[\\[(][A-Z]{2,4}[\\])]\\s*"),
         // Standalone quality/format symbols scattered through the title.
         Regex("[▶◉●○★☆]"),
     )
 
     // After the above passes, collapse runs of whitespace / stray punctuation.
     private val whitespaceRuns = Regex("\\s{2,}")
-    private val leadingTrailingPunct = Regex("^[\\s\\-|:.,;/]+|[\\s\\-|:.,;/]+\$")
+    private val leadingTrailingPunct = Regex("^[\\s\\-|:.,;/]+|[\\s\\-|:,;/]+\$|\\s+\\.\\s*\$")
 
     /** Returns [raw] with cosmetic junk removed. Preserves year suffix `(2019)`
      *  when it survives the pattern pass — that's semantically useful. */
     fun clean(raw: String): String {
         if (raw.isBlank()) return raw
-        var s = raw
+        val (despaced, wasScene) = despace(raw.trim())
+        var s = despaced
+        if (wasScene) s = sceneGroupSuffix.replace(s, "")
         patterns.forEach { s = it.replace(s, " ") }
         s = whitespaceRuns.replace(s, " ")
         s = leadingTrailingPunct.replace(s, "")
@@ -96,7 +174,7 @@ object TitleSanitizer {
      *  UfoKeywordScanner + the search index. */
     fun keywords(raw: String): List<String> =
         raw.lowercase()
-            .split(Regex("[\\s,|/:;\\-\\[\\]()]+"))
+            .split(Regex("[\\s,|/:;\\-\\[\\]()._]+"))
             .filter { it.length >= 2 }
             .distinct()
 }
