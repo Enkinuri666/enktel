@@ -282,6 +282,21 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // above and below the current one so the socket/TLS handshake is
     // already done by the time the user actually flips.  See ZapPreloader.
     LaunchedEffect(current?.key, channels) {
+        // Not on a single-connection line.
+        //
+        // Warming the next channel means issuing a request to a *second*
+        // stream URL while the first is still playing. On a line that permits
+        // one connection that is not an optimisation, it is a second session
+        // against a cap of one — panels answer that either by refusing the
+        // warm-up (pointless) or by dropping the session already in progress
+        // (actively harmful, and it presents as the stream cutting out for no
+        // visible reason while the user is sitting still).
+        //
+        // maxConnections comes from the panel's own user_info. 0 means it did
+        // not say, so the benefit of the doubt goes to warming — the previous
+        // behaviour — rather than disabling zap latency hiding for every M3U
+        // profile.
+        if (p.maxConnections == 1) return@LaunchedEffect
         val list = channels
         val cur = current
         if (list.isEmpty() || cur == null) return@LaunchedEffect

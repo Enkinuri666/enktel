@@ -28,7 +28,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import tv.enktel.app.R
@@ -139,15 +140,25 @@ fun WelcomeSplash(onDone: () -> Unit) {
             contentAlignment = Alignment.BottomCenter,
         ) {
             if (player != null) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            useController = false
-                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                            setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            this.player = player
-                        }
-                    },
+                // First call site on media3-ui-compose.
+                //
+                // Deliberately started here rather than in one of the two full
+                // players: this surface has no subtitles, no controls, and — the
+                // part that matters — no PlaybackSession.bind/unbind. It is a
+                // straight swap, so it proves PlayerSurface renders correctly in
+                // this app without touching the single-surface hand-off between
+                // the fullscreen player, the mini window and the guide dock,
+                // which is the mechanism behind two bugs shipped this week.
+                //
+                // SURFACE_TYPE_SURFACE_VIEW, not TEXTURE_VIEW: a SurfaceView
+                // composites in the display pipeline instead of going through
+                // the GPU as a texture, which on a Fire TV Stick is the
+                // difference between a smooth first frame and a stutter behind
+                // the splash. The trade-off is that it cannot be animated or
+                // z-ordered freely — irrelevant for a full-bleed background.
+                PlayerSurface(
+                    player = player,
+                    surfaceType = SURFACE_TYPE_SURFACE_VIEW,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
