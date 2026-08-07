@@ -34,10 +34,10 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.flow.first
@@ -169,9 +169,24 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
 @Composable
 private fun Pane(engine: PlayerEngine, isPrimary: Boolean, channel: Channel, modifier: Modifier) {
     Box(modifier.background(EnktelSurface)) {
-        AndroidView(
-            factory = { ctx -> PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) } },
-            update = { it.player = engine.player },
+        // TEXTURE_VIEW here, unlike the welcome splash's SURFACE_VIEW.
+        //
+        // Multi-view puts up to four of these on screen at once. A SurfaceView
+        // is composited by the display hardware, and a device has a small fixed
+        // number of overlay planes to composite with — a Fire TV Stick has very
+        // few. Ask for more than it has and the surplus surfaces fall back
+        // unpredictably, which shows up as tiles that flicker or stay black
+        // while the others play. A TextureView is drawn through the GPU like
+        // any other view, so four of them compose without contending for a
+        // scarce hardware resource.
+        //
+        // The cost is real — a texture round-trip per frame per pane — but four
+        // simultaneous streams is already the most expensive thing this app
+        // does, and correctness beats a saving that only materialises if the
+        // surfaces render at all.
+        PlayerSurface(
+            player = engine.player,
+            surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
             modifier = Modifier.fillMaxSize(),
         )
         Row(
