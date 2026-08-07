@@ -18,8 +18,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 112
-        versionName = "1.52.0"
+        versionCode = 113
+        versionName = "1.53.0"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -95,6 +95,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // The FFmpeg decoder AAR carries all four ABIs, and x86/x86_64 are
+            // 3.2 MB of the 6.2 MB it adds. No Fire TV, Android TV or phone
+            // ships an x86 CPU — those slices exist for emulators, which run
+            // debug builds. Dropping them from release halves the cost of the
+            // decoder for every real device.
+            ndk {
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            }
             signingConfig = if (canSignRelease) {
                 signingConfigs.getByName("release")
             } else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = false) }) {
@@ -165,6 +173,13 @@ dependencies {
     // reflection when it sees the scheme, so this is a dependency-only
     // change — no wiring in PlayerEngine.
     implementation(libs.media3.datasource.rtmp)
+    // Software AC-3 / E-AC-3 / DTS / TrueHD audio, for the Fire TV hardware
+    // that decodes none of them and plays those streams silently. Built by
+    // build-ffmpeg-extension.yml from androidx/media 1.11.0 — Google ships
+    // this decoder as source, not to Maven (#121), so it is a checked-in
+    // binary rather than a coordinate. Its version must track the media3
+    // version above; a mismatch fails at runtime, not at build time.
+    implementation(files("libs/media3-decoder-ffmpeg-1.11.0.aar"))
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
