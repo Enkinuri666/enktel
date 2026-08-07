@@ -100,6 +100,29 @@ object SettingsAdvisor {
             )
         }
 
+        // ---- Live buffer vs. the provider's segment window -----------------
+        // The one measurable version of the rule in BufferProfiles: a live HLS
+        // server only retains the segments listed in its playlist, so the
+        // furthest back a client can hold is targetDuration × segmentCount.
+        // Asking for more is a request for a file the provider has deleted,
+        // and the answer is 404 — which the player reports as a load error and
+        // a stall. "It buffers constantly" on live is very often this, and the
+        // instinct it provokes (raise the buffer) makes it worse.
+        live?.hls?.let { pl ->
+            val retentionMs = pl.targetDurationSec * pl.segmentCount * 1000
+            if (retentionMs in 1 until tv.enktel.app.player.BufferProfiles.LIVE_MAX_CEILING_MS &&
+                current.bufferProfile != "low"
+            ) {
+                out += SettingChange(
+                    key = "bufferProfile",
+                    label = "Buffer profile",
+                    current = current.bufferProfile,
+                    suggested = "low",
+                    reason = "Live playlist retains only ${retentionMs / 1000}s of segments " +
+                        "(${pl.segmentCount} × ${pl.targetDurationSec}s). Buffering past that " +
+                        "requests segments the provider has already deleted.",
+                )
+            }
         // ---- Per-type VOD buffer -------------------------------------------
         // When ranges are broken, VOD needs a deep read-ahead since seeking
         // is impossible — push the min up so the player stockpiles ahead.
@@ -165,7 +188,20 @@ object SettingsAdvisor {
             )
         }
 
-        return out
+        // One suggestion per setting.
+        //
+        // Two rules can now reach for bufferProfile — a VOD panel that refuses
+        // byte ranges wants "large", a live playlist with a short retention
+        // window wants "low" — and they can both be right about their own half
+        // of the problem. The UI applies changes by key, so emitting both is a
+        // coin flip over which one lands, and the user would see two rows
+        // contradicting each other.
+        //
+        // First wins, and the order above is the priority: the live retention
+        // rule sits after the range rule because a stall on live is caused by
+        // the panel deleting segments either way, while a VOD panel with no
+        // range support genuinely cannot be read any other way.
+        return out.distinctBy { it.key }
     }
 
     /**
@@ -215,6 +251,14 @@ object SettingsAdvisor {
         }
 
         live?.hls?.let { pl ->
+            val retentionMs = pl.targetDurationSec * pl.segmentCount * 1000
+            if (retentionMs > 0) {
+                out += "Live playlist retains ${retentionMs / 1000}s of segments " +
+                    "(${pl.segmentCount} × ${pl.targetDurationSec}s). The live buffer is capped at " +
+                    "${tv.enktel.app.player.BufferProfiles.LIVE_MAX_CEILING_MS / 1000}s regardless " +
+                    "of the buffer profile, because holding more than the provider keeps means " +
+                    "asking for deleted segments."
+            }
             if (pl.danglingAudioGroups.isNotEmpty()) {
                 out += "Live HLS variants reference audio groups the playlist never declares " +
                     "(${pl.danglingAudioGroups.joinToString()}). ExoPlayer waits on a rendition " +

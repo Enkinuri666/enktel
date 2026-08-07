@@ -129,6 +129,9 @@ class ContentRepository(
     fun seriesIn(profileId: Long, categoryId: String) = content.seriesIn(profileId, categoryId)
     fun continueWatching(profileId: Long, n: Int = 20) = user.continueWatching(profileId, n)
 
+    /** Unfiltered watch history — see [tv.enktel.app.data.db.UserDao.watchHistory]. */
+    fun watchHistory(profileId: Long, n: Int = 30) = user.watchHistory(profileId, n)
+
     suspend fun channel(key: String) = content.channel(key)
     suspend fun channelByNum(profileId: Long, num: Int) = content.channelByNum(profileId, num)
     suspend fun movie(key: String) = content.movie(key)

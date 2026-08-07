@@ -280,8 +280,34 @@ interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveProgress(p: WatchProgress)
     @Query("SELECT * FROM progress WHERE key = :key") suspend fun progress(key: String): WatchProgress?
-    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC LIMIT :n")
+    /**
+     * The Continue Watching rail: things actually worth picking up again.
+     *
+     * The thresholds are ResumePolicy's, restated in SQL because filtering in
+     * Kotlin would mean LIMIT :n counting rows the rail then discards — ask
+     * for twenty and get four. Keep the two in step; ResumePolicyTest pins the
+     * numbers.
+     */
+    @Query(
+        """SELECT * FROM progress WHERE profileId = :profileId
+             AND positionMs >= 60000
+             AND (durationMs <= 0
+                  OR (positionMs < durationMs - 120000 AND positionMs * 100 < durationMs * 95))
+           ORDER BY updatedAt DESC LIMIT :n"""
+    )
     fun continueWatching(profileId: Long, n: Int): Flow<List<WatchProgress>>
+
+    /**
+     * Everything watched, unfiltered — the taste signal behind the
+     * recommendation rails.
+     *
+     * Deliberately not the query above. A film watched to the end is the
+     * *strongest* evidence of what somebody likes, and it is exactly what
+     * Continue Watching is built to hide, so pointing "Because You Watched" at
+     * the rail query would have thrown away the best input it has.
+     */
+    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC LIMIT :n")
+    fun watchHistory(profileId: Long, n: Int): Flow<List<WatchProgress>>
     @Query("DELETE FROM progress WHERE key = :key") suspend fun clearProgress(key: String)
 }
 

@@ -129,7 +129,12 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // navigating away can dock the stream into the mini window instead of
     // tearing it down. See PlaybackSession.
     val session = graph.playback
-    val engine = session.engine()
+    // live = true: this screen's buffering has to stay near the live edge.
+    // Time-shift on this same screen plays an archive URL through the same
+    // engine and keeps the live window — a catch-up stream comes off the same
+    // provider with the same segment retention, so the live shape is the safe
+    // one there too.
+    val engine = session.engine(live = true)
     // Coming back from the dock means this screen is re-mounting on top of a
     // stream that is already running. `expand()` flips the session out of
     // docked mode so the mini window gets out of the way.

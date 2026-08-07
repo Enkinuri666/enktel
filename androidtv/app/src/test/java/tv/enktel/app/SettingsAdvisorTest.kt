@@ -8,6 +8,7 @@ import tv.enktel.app.data.diag.CatchupFacts
 import tv.enktel.app.data.diag.ContainerFacts
 import tv.enktel.app.data.diag.Ebml
 import tv.enktel.app.data.diag.PlaybackSettings
+import tv.enktel.app.data.diag.HlsInspector
 import tv.enktel.app.data.diag.RangeSupport
 import tv.enktel.app.data.diag.SettingsAdvisor
 
@@ -204,5 +205,70 @@ class SettingsAdvisorTest {
             live, null, CatchupFacts(),
         ).single { it.key == "liveMinBufferMs" }
         assertEquals("4s", c.suggested)
+    }
+}
+
+/**
+ * The live-buffer rule, which exists because "live buffers constantly" is
+ * usually the provider deleting segments out from under a buffer that is too
+ * big — and the instinct it provokes, raising the buffer, makes it worse.
+ */
+class SettingsAdvisorLiveBufferTest {
+
+    private fun liveWithPlaylist(targetSec: Int, segments: Int) = ContainerFacts(
+        detected = "HLS",
+        hls = HlsInspector.Playlist(
+            kind = HlsInspector.Kind.MEDIA,
+            targetDurationSec = targetSec,
+            segmentCount = segments,
+        ),
+    )
+
+    @Test
+    fun `a short retention window recommends the low profile`() {
+        val changes = SettingsAdvisor.advise(
+            current = PlaybackSettings(bufferProfile = "large"),
+            live = liveWithPlaylist(targetSec = 2, segments = 3), // 6s of segments
+            vod = null,
+            catchup = CatchupFacts(),
+        )
+        val c = changes.single { it.key == "bufferProfile" }
+        assertEquals("low", c.suggested)
+        assertTrue(c.reason.contains("6s"))
+    }
+
+    @Test
+    fun `a generous retention window does not trigger it`() {
+        val changes = SettingsAdvisor.advise(
+            current = PlaybackSettings(bufferProfile = "balanced"),
+            live = liveWithPlaylist(targetSec = 10, segments = 6), // 60s
+            vod = null,
+            catchup = CatchupFacts(),
+        )
+        assertTrue(changes.none { it.key == "bufferProfile" })
+    }
+
+    @Test
+    fun `never two contradictory suggestions for the same setting`() {
+        // A panel can refuse byte ranges on VOD (wants "large") while serving
+        // live from a three-segment playlist (wants "low"). The UI applies by
+        // key, so emitting both is a coin flip the user sees as two rows
+        // arguing with each other.
+        val changes = SettingsAdvisor.advise(
+            current = PlaybackSettings(bufferProfile = "balanced"),
+            live = liveWithPlaylist(targetSec = 2, segments = 3),
+            vod = ContainerFacts(
+                detected = "MP4",
+                range = RangeSupport(tested = true, partialContent = false),
+            ),
+            catchup = CatchupFacts(),
+        )
+        assertEquals(1, changes.count { it.key == "bufferProfile" })
+    }
+
+    @Test
+    fun `the retention window is reported as a note`() {
+        val notes = SettingsAdvisor.notes(live = liveWithPlaylist(4, 5), vod = null)
+        assertTrue(notes.any { it.contains("retains 20s of segments") })
     }
 }

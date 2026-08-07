@@ -68,6 +68,15 @@ class PlayerEngine(
     decoderMode: String = "hwplus",
     /** Override the profile's minimum buffer (ms). 0 = don't override. */
     minBufferOverrideMs: Int = 0,
+    /**
+     * Whether this engine is for a live channel rather than a film.
+     *
+     * A constructor parameter, not a [play] argument, because the buffering
+     * window is baked into the LoadControl and the LoadControl is fixed once
+     * the ExoPlayer is built. PlaybackSession rebuilds the engine when the
+     * kind changes; see BufferProfiles for why one window cannot serve both.
+     */
+    private val live: Boolean = false,
     /** v1.26.0 — when true, force the AdaptiveTrackSelection to pin the top
      *  bitrate rendition and hold it. Used by Streaming Companion Mode so
      *  Discord viewers don't see quality flapping mid-stream. */
@@ -249,11 +258,54 @@ class PlayerEngine(
 
     val player: ExoPlayer
 
+    /**
+     * The window this engine was actually built with.
+     *
+     * Read by Diagnostics. The settings screen can only show what was
+     * *requested*; a profile is adjusted for live-versus-VOD, device class and
+     * available memory before it reaches the player, and "the buffer setting
+     * says 90 s but live is capped at 12" is exactly the kind of thing a
+     * support conversation needs to be able to see rather than infer.
+     */
+    var activeWindow: BufferProfiles.Window? = null
+        private set
+
+    /** True when this engine was built for live playback. */
+    val isLiveEngine: Boolean get() = live
+
     init {
         // Buffer profiles trade zap speed vs. resilience. "auto" scales the window
         // by device class (TV keeps a bigger cushion; phones keep it lean).
         val isTv = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
             android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        // A 1 GB Fire TV Stick Lite shares that gigabyte with the system while
+        // decoding 1080p. Holding a three-minute 4K window there is an OOM
+        // rather than a stall, so the ceiling is halved whatever the user
+        // picked.
+        val lowRam = (context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)
+            ?.isLowRamDevice == true ||
+            Runtime.getRuntime().maxMemory() < 128L * 1024 * 1024
+        val bw = BufferProfiles.withMinOverride(
+            BufferProfiles.window(bufferProfile, live = live, isTv = isTv, lowRam = lowRam),
+            minBufferOverrideMs,
+        )
+        activeWindow = bw
+        // An explicit allocator rather than DefaultLoadControl's own: the
+        // default chunk is 64 KB, and on a high-bitrate 4K stream that is a lot
+        // of small allocations per second of video, which shows up as
+        // micro-stutter. Bigger chunks, fewer of them.
+        val allocator = androidx.media3.exoplayer.upstream.DefaultAllocator(
+            true, BufferProfiles.allocationChunkBytes(lowRam),
+        )
+        val loadControl = DefaultLoadControl.Builder()
+            .setAllocator(allocator)
+            .setBufferDurationsMs(bw.minMs, bw.maxMs, bw.playMs, bw.rebufMs)
+            // Keep 60 s behind the playhead so instant-rewinds inside DVR-style
+            // catch-up don't force a re-fetch, and short backward skips stay
+            // smooth. Not on live: a back buffer there is 60 s of memory held
+            // for a rewind the stream usually cannot serve anyway, on the
+            // devices least able to spare it.
+            .setBackBuffer(if (live) 0 else 60_000, true)
         data class BufferWindow(val min: Int, val max: Int, val play: Int, val rebuf: Int)
 
         // v1.50.0 — best-practice defaults differ by stream type.
