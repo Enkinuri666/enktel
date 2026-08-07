@@ -135,3 +135,57 @@ jobs:
           fi
 
           echo "Attached to $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)"
+
+      # The assets are the deliverable; the table listing them is a courtesy.
+      # So this step is allowed to decline — it edits the notes only when it can
+      # see exactly where the rows belong, and continue-on-error means a
+      # surprise here can never fail a run whose bundles already uploaded.
+      - name: List the bundles in the release notes
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cat > "$RUNNER_TEMP/list_bundles.py" <<'PY'
+          import sys
+
+          path, version = sys.argv[1], sys.argv[2]
+          body = open(path).read()
+
+          names = [f"enktel-tv-{version}.aab", f"enktel-mobile-{version}.aab"]
+          # Re-running after a --clobber upload must not append a second copy.
+          if all(n in body for n in names):
+              print("already listed")
+              sys.exit(3)
+
+          # Anchor on the last table row naming an APK of this version, so the
+          # bundles land in the Downloads table rather than at some arbitrary
+          # end of a body someone may have rewritten by hand. No anchor means
+          # the notes are not in the shape this understands, and guessing where
+          # to write into someone's prose is worse than leaving it alone.
+          lines = body.split("\n")
+          anchors = [
+              i for i, line in enumerate(lines)
+              if line.startswith("| `enktel-") and f"-{version}.apk`" in line
+          ]
+          if not anchors:
+              print("no Downloads table row to anchor to")
+              sys.exit(4)
+
+          rows = [
+              f"| `{n}` | Google Play upload only (not installable directly) |"
+              for n in names
+          ]
+          at = anchors[-1] + 1
+          open(path, "w").write("\n".join(lines[:at] + rows + lines[at:]))
+          print(f"inserted after line {at}")
+          PY
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > "$RUNNER_TEMP/body.md"
+          if python3 "$RUNNER_TEMP/list_bundles.py" "$RUNNER_TEMP/body.md" "$VERSION"; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/body.md"
+            echo "Release notes now list the bundles."
+          else
+            echo "::notice::Left the release notes unchanged — the bundles are attached either way."
+          fi
