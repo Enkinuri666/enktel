@@ -64,7 +64,12 @@ class PlayerEngine(
     /** "hwplus" (default, EXTENSION_RENDERER_MODE_PREFER) | "hw"
      *  (EXTENSION_RENDERER_MODE_OFF, hardware-only) | any other value
      *  falls back to hwplus. Kept as a plain string so the setting flow
-     *  can drive it without introducing a shared enum. */
+     *  can drive it without introducing a shared enum.
+     *
+     *  No extension renderer is bundled, so the two modes currently select
+     *  the same decoders — Google ships the FFmpeg/AV1 extensions as source
+     *  rather than as Maven artifacts. The value is still honoured here so
+     *  that adding one later needs no change at this layer. */
     decoderMode: String = "hwplus",
     /** Override the profile's minimum buffer (ms). 0 = don't override. */
     minBufferOverrideMs: Int = 0,
