@@ -60,6 +60,34 @@ jobs:
           # Full history so the auto-generated changelog can see previous tags.
           fetch-depth: 0
 
+      # Everything here is a string comparison, so it runs before the SDK
+      # install and the eight-minute build rather than after them. v1.50.0 was
+      # dispatched against a commit that still said 1.49.0, and nothing noticed
+      # until the assets had already been named.
+      - name: Check the tag against versionName
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          VERSION="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG does not match versionName $VERSION at this commit (expected v$VERSION). Either dispatch against a commit that has been bumped, or bump versionName/versionCode first." >&2
+            exit 1
+          fi
+
+          # A tag that already exists wins over --target, so the release would
+          # be published at whatever commit the old tag points to rather than
+          # this one — silently shipping the wrong build.
+          if EXISTING="$(git rev-parse -q --verify "refs/tags/$TAG")"; then
+            if [ "$EXISTING" != "$GITHUB_SHA" ]; then
+              echo "::error::Tag $TAG already exists at $EXISTING but this run is at $GITHUB_SHA. Delete the stale tag (git push origin :refs/tags/$TAG) or dispatch against that commit." >&2
+              exit 1
+            fi
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -139,12 +167,10 @@ jobs:
       # later, rather than four generations of "app-tv-release.apk" in a
       # downloads folder.
       - name: Stage release assets
-        id: stage
         env:
           INCLUDE_AAB: ${{ inputs.include_aab }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/assets"
           cp app/build/outputs/apk/tv/release/app-tv-release.apk \
              "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.apk"
@@ -172,7 +198,7 @@ jobs:
           INCLUDE_AAB: ${{ inputs.include_aab }}
           PRERELEASE: ${{ inputs.prerelease }}
           DRAFT: ${{ inputs.draft }}
-          VERSION: ${{ steps.stage.outputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           {
             if [ -n "$NOTES" ]; then
