@@ -161,6 +161,10 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.ui.compose)
     implementation(libs.media3.datasource.okhttp)
+    // rtmp:// sources. DefaultDataSource instantiates RtmpDataSource by
+    // reflection when it sees the scheme, so this is a dependency-only
+    // change — no wiring in PlayerEngine.
+    implementation(libs.media3.datasource.rtmp)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

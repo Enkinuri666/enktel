@@ -381,7 +381,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setDecoderMode("hw") } })
         }
         Text(
-            "HW+ prefers software extensions (AV1/VP9/FFmpeg) then falls back to SoC hardware — safer for weird codecs. HW-only skips extensions entirely — sharper on strong SoCs (Nvidia Shield, Fire Cube gen 3).",
+            "HW+ asks the player to prefer software extension decoders over the SoC's own. This build ships none — Google publishes the FFmpeg and AV1 extensions as source, not as libraries — so both settings currently decode identically. Kept because the preference is stored and takes effect the moment an extension decoder is bundled.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
