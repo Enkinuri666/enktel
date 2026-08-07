@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -50,7 +50,7 @@ jobs:
         working-directory: .
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Lint (both flavors, release variant)
         run: ./gradlew :app:lintTvRelease :app:lintMobileRelease --no-daemon
@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload TV debug APK
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-tv-debug-apk
           path: androidtv/app/build/outputs/apk/tv/debug/app-tv-debug.apk
@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload Mobile debug APK
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-mobile-debug-apk
           path: androidtv/app/build/outputs/apk/mobile/debug/app-mobile-debug.apk
@@ -82,7 +82,7 @@ jobs:
 
       - name: Set up Android SDK build-tools
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: 'build-tools;36.0.0 platforms;android-36'
 
@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload TV release APK
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-tv-release-apk
           path: androidtv/app/build/outputs/apk/tv/release/app-tv-release.apk
@@ -122,7 +122,7 @@ jobs:
 
       - name: Upload Mobile release APK
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-mobile-release-apk
           path: androidtv/app/build/outputs/apk/mobile/release/app-mobile-release.apk
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload TV release AAB (Google Play)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-tv-release-aab
           path: androidtv/app/build/outputs/bundle/tvRelease/app-tv-release.aab
@@ -138,7 +138,7 @@ jobs:
 
       - name: Upload Mobile release AAB (Google Play)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: enktel-mobile-release-aab
           path: androidtv/app/build/outputs/bundle/mobileRelease/app-mobile-release.aab
