@@ -136,11 +136,73 @@ class SettingsAdvisorTest {
 
     @Test fun `a healthy panel produces no changes at all`() {
         val changes = SettingsAdvisor.advise(
-            defaults.copy(streamFormat = "hls", vodForceMp4 = false, liveShiftEnabled = true),
+            defaults.copy(
+                streamFormat = "hls",
+                vodForceMp4 = false,
+                liveShiftEnabled = true,
+                allocatorSizeKb = 2048,
+            ),
             facts("HLS"),
             facts("MATROSKA"),
             CatchupFacts(tested = true, available = true, httpCode = 200, channelsWithArchive = 4),
         )
         assertTrue("nothing should need applying", changes.none { it.differs })
+    }
+
+    // ── v1.50.0 per-type buffer advice ─────────────────────────────────
+
+    @Test fun `broken ranges suggest deeper vod min buffer when custom`() {
+        val c = SettingsAdvisor.advise(
+            defaults.copy(vodBufferProfile = "custom", vodMinBufferMs = 10_000),
+            null,
+            facts("MP4", partial = false, midOk = false),
+            CatchupFacts(),
+        ).single { it.key == "vodMinBufferMs" }
+        assertEquals("30s", c.suggested)
+    }
+
+    @Test fun `auto vod buffer profile does not produce a min-buffer suggestion`() {
+        assertTrue(
+            SettingsAdvisor.advise(
+                defaults.copy(vodBufferProfile = "auto"),
+                null,
+                facts("MP4", partial = false, midOk = false),
+                CatchupFacts(),
+            ).none { it.key == "vodMinBufferMs" },
+        )
+    }
+
+    @Test fun `matroska vod suggests 2 MB allocator`() {
+        val c = SettingsAdvisor.advise(
+            defaults.copy(allocatorSizeKb = 0),
+            null,
+            facts("MATROSKA", mkv = Ebml.Head(isMatroska = true, hasSeekHead = true, hasCues = true)),
+            CatchupFacts(),
+        ).single { it.key == "allocatorSizeKb" }
+        assertEquals("2048 KB", c.suggested)
+    }
+
+    @Test fun `allocator already at 2 MB produces no suggestion for matroska`() {
+        assertTrue(
+            SettingsAdvisor.advise(
+                defaults.copy(allocatorSizeKb = 2048),
+                null,
+                facts("MATROSKA", mkv = Ebml.Head(isMatroska = true, hasSeekHead = true, hasCues = true)),
+                CatchupFacts(),
+            ).none { it.key == "allocatorSizeKb" },
+        )
+    }
+
+    @Test fun `dangling audio groups suggest deeper live min buffer when custom`() {
+        val hls = tv.enktel.app.data.diag.HlsInspector.Playlist(
+            kind = tv.enktel.app.data.diag.HlsInspector.Kind.MASTER,
+            danglingAudioGroups = listOf("aac"),
+        )
+        val live = ContainerFacts(detected = "HLS", hls = hls)
+        val c = SettingsAdvisor.advise(
+            defaults.copy(liveBufferProfile = "custom", liveMinBufferMs = 2_000),
+            live, null, CatchupFacts(),
+        ).single { it.key == "liveMinBufferMs" }
+        assertEquals("4s", c.suggested)
     }
 }

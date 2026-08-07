@@ -129,6 +129,27 @@ class SettingsStore(private val context: Context) {
     // running in the background.
     private val BACKGROUND_AUDIO = booleanPreferencesKey("background_audio")
 
+    // v1.50.0 — split buffer profiles for VOD vs Live IPTV. VOD prioritises
+    // stability (large buffer), Live prioritises latency (small buffer, fast
+    // channel zap). "auto" picks best-practice defaults per stream type.
+    private val VOD_BUFFER_PROFILE = stringPreferencesKey("vod_buffer_profile")
+    private val LIVE_BUFFER_PROFILE = stringPreferencesKey("live_buffer_profile")
+    private val VOD_MIN_BUFFER_MS = intPreferencesKey("vod_min_buffer_ms")
+    private val VOD_MAX_BUFFER_MS = intPreferencesKey("vod_max_buffer_ms")
+    private val VOD_PLAYBACK_MS = intPreferencesKey("vod_playback_ms")
+    private val VOD_REBUFFER_MS = intPreferencesKey("vod_rebuffer_ms")
+    private val LIVE_MIN_BUFFER_MS = intPreferencesKey("live_min_buffer_ms")
+    private val LIVE_MAX_BUFFER_MS = intPreferencesKey("live_max_buffer_ms")
+    private val LIVE_PLAYBACK_MS = intPreferencesKey("live_playback_ms")
+    private val LIVE_REBUFFER_MS = intPreferencesKey("live_rebuffer_ms")
+    // Memory allocator chunk size in KB. 0 = default (16 KB). Higher
+    // values (e.g. 2048 for 2 MB) help with 4K and large MKV buffering.
+    private val ALLOCATOR_SIZE_KB = intPreferencesKey("allocator_size_kb")
+    // v1.50.0 — trial-blocked flag. True when the device's free trial
+    // has been used and expired. Prevents further trial creations.
+    private val TRIAL_USED = booleanPreferencesKey("trial_used")
+    private val TRIAL_EXPIRES_AT = longPreferencesKey("trial_expires_at")
+
     // v1.22.0 download-manager overhaul.
     //   downloadEngine: "auto" (parallel when the source + target permit,
     //                   else falls back to system), "parallel" (force the
@@ -299,6 +320,36 @@ class SettingsStore(private val context: Context) {
     suspend fun setDialogueBoost(v: String) = context.dataStore.edit { it[DIALOGUE_BOOST] = v }
     val backgroundAudio: Flow<Boolean> = context.dataStore.data.map { it[BACKGROUND_AUDIO] ?: false }
     suspend fun setBackgroundAudio(v: Boolean) = context.dataStore.edit { it[BACKGROUND_AUDIO] = v }
+
+    // v1.50.0 — per-type buffer profiles.
+    val vodBufferProfile: Flow<String> = context.dataStore.data.map { it[VOD_BUFFER_PROFILE] ?: "auto" }
+    suspend fun setVodBufferProfile(v: String) = context.dataStore.edit { it[VOD_BUFFER_PROFILE] = v }
+    val liveBufferProfile: Flow<String> = context.dataStore.data.map { it[LIVE_BUFFER_PROFILE] ?: "auto" }
+    suspend fun setLiveBufferProfile(v: String) = context.dataStore.edit { it[LIVE_BUFFER_PROFILE] = v }
+    val vodMinBufferMs: Flow<Int> = context.dataStore.data.map { it[VOD_MIN_BUFFER_MS] ?: 25_000 }
+    suspend fun setVodMinBufferMs(v: Int) = context.dataStore.edit { it[VOD_MIN_BUFFER_MS] = v.coerceIn(2_000, 60_000) }
+    val vodMaxBufferMs: Flow<Int> = context.dataStore.data.map { it[VOD_MAX_BUFFER_MS] ?: 120_000 }
+    suspend fun setVodMaxBufferMs(v: Int) = context.dataStore.edit { it[VOD_MAX_BUFFER_MS] = v.coerceIn(10_000, 300_000) }
+    val vodPlaybackMs: Flow<Int> = context.dataStore.data.map { it[VOD_PLAYBACK_MS] ?: 2_000 }
+    suspend fun setVodPlaybackMs(v: Int) = context.dataStore.edit { it[VOD_PLAYBACK_MS] = v.coerceIn(500, 10_000) }
+    val vodRebufferMs: Flow<Int> = context.dataStore.data.map { it[VOD_REBUFFER_MS] ?: 5_000 }
+    suspend fun setVodRebufferMs(v: Int) = context.dataStore.edit { it[VOD_REBUFFER_MS] = v.coerceIn(1_000, 15_000) }
+    val liveMinBufferMs: Flow<Int> = context.dataStore.data.map { it[LIVE_MIN_BUFFER_MS] ?: 2_000 }
+    suspend fun setLiveMinBufferMs(v: Int) = context.dataStore.edit { it[LIVE_MIN_BUFFER_MS] = v.coerceIn(500, 15_000) }
+    val liveMaxBufferMs: Flow<Int> = context.dataStore.data.map { it[LIVE_MAX_BUFFER_MS] ?: 8_000 }
+    suspend fun setLiveMaxBufferMs(v: Int) = context.dataStore.edit { it[LIVE_MAX_BUFFER_MS] = v.coerceIn(3_000, 30_000) }
+    val livePlaybackMs: Flow<Int> = context.dataStore.data.map { it[LIVE_PLAYBACK_MS] ?: 500 }
+    suspend fun setLivePlaybackMs(v: Int) = context.dataStore.edit { it[LIVE_PLAYBACK_MS] = v.coerceIn(200, 5_000) }
+    val liveRebufferMs: Flow<Int> = context.dataStore.data.map { it[LIVE_REBUFFER_MS] ?: 1_500 }
+    suspend fun setLiveRebufferMs(v: Int) = context.dataStore.edit { it[LIVE_REBUFFER_MS] = v.coerceIn(500, 8_000) }
+    val allocatorSizeKb: Flow<Int> = context.dataStore.data.map { it[ALLOCATOR_SIZE_KB] ?: 0 }
+    suspend fun setAllocatorSizeKb(v: Int) = context.dataStore.edit { it[ALLOCATOR_SIZE_KB] = v.coerceIn(0, 4096) }
+    val trialUsed: Flow<Boolean> = context.dataStore.data.map { it[TRIAL_USED] ?: false }
+    suspend fun setTrialUsed(v: Boolean) = context.dataStore.edit { it[TRIAL_USED] = v }
+    suspend fun trialUsedNow(): Boolean = trialUsed.first()
+    val trialExpiresAt: Flow<Long> = context.dataStore.data.map { it[TRIAL_EXPIRES_AT] ?: 0L }
+    suspend fun setTrialExpiresAt(v: Long) = context.dataStore.edit { it[TRIAL_EXPIRES_AT] = v }
+    suspend fun trialExpiresAtNow(): Long = trialExpiresAt.first()
     val downloadEngine: Flow<String> = context.dataStore.data.map { it[DOWNLOAD_ENGINE] ?: "auto" }
     suspend fun setDownloadEngine(v: String) = context.dataStore.edit { it[DOWNLOAD_ENGINE] = v }
     suspend fun downloadEngineNow(): String = downloadEngine.first()

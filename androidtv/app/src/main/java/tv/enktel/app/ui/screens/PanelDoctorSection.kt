@@ -73,6 +73,17 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
         vodForceMp4 = graph.settings.vodForceMp4.first(),
         liveShiftEnabled = graph.settings.liveShiftEnabled.first(),
         customUserAgent = graph.settings.customUserAgent.first(),
+        vodBufferProfile = graph.settings.vodBufferProfile.first(),
+        liveBufferProfile = graph.settings.liveBufferProfile.first(),
+        vodMinBufferMs = graph.settings.vodMinBufferMs.first(),
+        vodMaxBufferMs = graph.settings.vodMaxBufferMs.first(),
+        vodPlaybackMs = graph.settings.vodPlaybackMs.first(),
+        vodRebufferMs = graph.settings.vodRebufferMs.first(),
+        liveMinBufferMs = graph.settings.liveMinBufferMs.first(),
+        liveMaxBufferMs = graph.settings.liveMaxBufferMs.first(),
+        livePlaybackMs = graph.settings.livePlaybackMs.first(),
+        liveRebufferMs = graph.settings.liveRebufferMs.first(),
+        allocatorSizeKb = graph.settings.allocatorSizeKb.first(),
     )
 
     fun run(force: Boolean) {
@@ -175,6 +186,12 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                         "vodForceMp4" -> graph.settings.setVodForceMp4(c.suggested == "on")
                         "liveShiftEnabled" -> graph.settings.setLiveShiftEnabled(c.suggested == "on")
                         "customUserAgent" -> graph.settings.setCustomUserAgent(c.suggested)
+                        "vodMinBufferMs" -> c.suggested.filter(Char::isDigit).toIntOrNull()
+                            ?.let { graph.settings.setVodMinBufferMs(it * 1000) }
+                        "liveMinBufferMs" -> c.suggested.filter(Char::isDigit).toIntOrNull()
+                            ?.let { graph.settings.setLiveMinBufferMs(it * 1000) }
+                        "allocatorSizeKb" -> c.suggested.filter(Char::isDigit).toIntOrNull()
+                            ?.let { graph.settings.setAllocatorSizeKb(it) }
                     }
                 }
             } catch (_: Exception) {

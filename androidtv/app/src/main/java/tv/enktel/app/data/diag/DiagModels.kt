@@ -109,6 +109,17 @@ data class PlaybackSettings(
     val liveShiftEnabled: Boolean = true,
     /** Blank = app default (VLC). */
     val customUserAgent: String = "",
+    val vodBufferProfile: String = "auto",
+    val liveBufferProfile: String = "auto",
+    val vodMinBufferMs: Int = 25_000,
+    val vodMaxBufferMs: Int = 120_000,
+    val vodPlaybackMs: Int = 2_000,
+    val vodRebufferMs: Int = 5_000,
+    val liveMinBufferMs: Int = 2_000,
+    val liveMaxBufferMs: Int = 8_000,
+    val livePlaybackMs: Int = 500,
+    val liveRebufferMs: Int = 1_500,
+    val allocatorSizeKb: Int = 0,
 )
 
 /** A complete diagnostic pass. */
