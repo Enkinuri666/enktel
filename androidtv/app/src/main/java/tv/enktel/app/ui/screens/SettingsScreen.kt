@@ -381,7 +381,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setDecoderMode("hw") } })
         }
         Text(
-            "HW+ asks the player to prefer software extension decoders over the SoC's own. This build ships none — Google publishes the FFmpeg and AV1 extensions as source, not as libraries — so both settings currently decode identically. Kept because the preference is stored and takes effect the moment an extension decoder is bundled.",
+            "HW+ prefers the bundled FFmpeg audio decoder over the SoC's own, which is what makes AC-3, E-AC-3, DTS and TrueHD play on hardware that decodes none of them — the usual cause of a channel with picture but no sound. HW-only skips it and uses the SoC alone: slightly lighter, and worth trying on a strong box like an Nvidia Shield or Fire Cube. Video decoding is unaffected either way.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 

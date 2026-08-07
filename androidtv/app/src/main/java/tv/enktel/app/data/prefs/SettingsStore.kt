@@ -116,12 +116,11 @@ class SettingsStore(private val context: Context) {
     // "hw" (hardware-only, no extensions — sharper on Nvidia Shield /
     // Fire Cube), "off" (extensions off, standard HW path).
     //
-    // Inert as of v1.51.0: no extension renderer is on the classpath, because
-    // Google publishes the FFmpeg/AV1/VP9 decoders as source in the media3
-    // tree rather than to Maven — see the probe result recorded in #121. Both
-    // modes therefore select the same renderers. The preference is still
-    // stored and still passed to DefaultRenderersFactory, so bundling an
-    // extension decoder is all it takes to make this mean something again.
+    // Live again as of v1.53.0: app/libs carries a prebuilt FFmpeg audio
+    // decoder, so "hwplus" now genuinely prefers it and is what makes AC-3,
+    // E-AC-3, DTS and TrueHD decode on hardware that cannot. It was inert
+    // between v1.51.0 and v1.52.0, when no extension renderer was on the
+    // classpath at all.
     private val DECODER_MODE = stringPreferencesKey("decoder_mode")
     // Manual override for the ExoPlayer LoadControl minimum buffer, in ms.
     // 0 = keep the profile default (Low / Balanced / Large / Auto). Any
