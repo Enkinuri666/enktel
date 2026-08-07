@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 12, // v12 adds the FTS4 search index over the VOD catalogue
+    version = 13, // v13 stores the TMDB plot, hero art and runtime the worker already fetched
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -220,12 +220,41 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Enrichment has always asked TMDB for the synopsis, the
+                // backdrop and the runtime — TmdbClient parsed all three into
+                // Enrichment — and then dropped them on the floor, because
+                // there was nowhere to put them. Movies did not even have a
+                // plot column. So every title in the catalogue was costing a
+                // request that returned a description nobody could read and a
+                // hero image nobody could see.
+                //
+                // Nullable-free with defaults: every consumer already treats ""
+                // and 0 as "we do not have this", and a NOT NULL DEFAULT keeps
+                // the Room-generated schema and these statements identical.
+                db.execSQL("ALTER TABLE movies ADD COLUMN plot TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE movies ADD COLUMN backdrop TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE movies ADD COLUMN runtimeMins INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE series ADD COLUMN backdrop TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE series ADD COLUMN runtimeMins INTEGER NOT NULL DEFAULT 0")
+
+                // Existing rows carry enrichedAt from before these columns
+                // existed, so the "needs enrichment" queries consider them done
+                // and would never backfill the new fields. Clearing the stamp
+                // puts the whole catalogue back in the queue; the worker chains
+                // itself until the backlog is gone, so it drains on its own.
+                db.execSQL("UPDATE movies SET enrichedAt = 0")
+                db.execSQL("UPDATE series SET enrichedAt = 0")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                    MIGRATION_10_11, MIGRATION_11_12,
+                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

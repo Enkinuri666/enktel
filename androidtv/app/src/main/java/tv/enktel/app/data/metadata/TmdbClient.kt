@@ -46,6 +46,7 @@ class TmdbClient(
         val releaseYear: Int,
         val runtimeMinutes: Int,
         val backdropPath: String,
+        val posterPath: String,
     )
 
     suspend fun movie(tmdbId: Long): Enrichment? = fetch("movie", tmdbId, isSeries = false)
@@ -246,6 +247,7 @@ class TmdbClient(
             releaseYear = year,
             runtimeMinutes = runtime,
             backdropPath = json.str("backdrop_path").orEmpty(),
+            posterPath = json.str("poster_path").orEmpty(),
         )
     }
 }

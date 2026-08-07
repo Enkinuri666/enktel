@@ -81,10 +81,17 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     }
     val url = graph.content.vodUrl(p, m)
 
+    // The panel's backdrop when it has one, otherwise the one enrichment
+    // stored from TMDB. `details` is a live fetch that only runs for Xtream
+    // profiles and only lands if the panel answers, so on an M3U line — or any
+    // time the panel is slow or down — the hero image was simply absent and
+    // the page opened on flat background. The enriched copy is already in the
+    // local row, so it costs nothing and is always there.
+    val hero = details?.backdrop?.takeIf { it.isNotBlank() } ?: m.backdrop
     Box(Modifier.fillMaxSize()) {
-        if (!details?.backdrop.isNullOrBlank()) {
+        if (hero.isNotBlank()) {
             AsyncImage(
-                model = details!!.backdrop, contentDescription = null,
+                model = hero, contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
                 alpha = 0.25f,
@@ -148,7 +155,10 @@ private fun MovieDetailsBody(
     ) {
         if (m.rating > 0) Badge("★ ${"%.1f".format(m.rating)}")
         if (details?.genre?.isNotBlank() == true) Badge(details.genre.take(30))
-        val mins = (details?.durationSecs ?: 0) / 60
+        // Same fallback as the hero image: TMDB's runtime is in the row
+        // already, so a panel that does not report a duration no longer means
+        // the badge disappears.
+        val mins = ((details?.durationSecs ?: 0L) / 60).toInt().takeIf { it > 0 } ?: m.runtimeMins
         if (mins > 0) Badge("$mins min")
     }
     Spacer(Modifier.height(14.dp))
@@ -200,8 +210,9 @@ private fun MovieDetailsBody(
         )
     }
     Spacer(Modifier.height(18.dp))
-    if (details?.plot?.isNotBlank() == true) {
-        Text(details.plot, color = Color.White.copy(0.9f), fontSize = 14.sp, lineHeight = 21.sp)
+    val plot = details?.plot?.takeIf { it.isNotBlank() } ?: m.plot
+    if (plot.isNotBlank()) {
+        Text(plot, color = Color.White.copy(0.9f), fontSize = 14.sp, lineHeight = 21.sp)
         Spacer(Modifier.height(16.dp))
     }
     if (details != null) {
@@ -303,6 +314,19 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     val posterW = if (narrow) 90.dp else 110.dp
     val posterH = if (narrow) 130.dp else 160.dp
     val gap = if (narrow) 14.dp else 24.dp
+    Box(Modifier.fillMaxSize()) {
+    if (s.backdrop.isNotBlank()) {
+        // Series never had a hero image at all — only films did, and only when
+        // the panel supplied one. This is the enriched TMDB backdrop, so it is
+        // there for every series TMDB knows.
+        AsyncImage(
+            model = s.backdrop, contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.25f,
+        )
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, EnktelBg))))
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = hPad, vertical = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(10.dp)).background(EnktelSurfaceHigh)) {
@@ -477,5 +501,6 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 }
             }
         }
+    }
     }
 }

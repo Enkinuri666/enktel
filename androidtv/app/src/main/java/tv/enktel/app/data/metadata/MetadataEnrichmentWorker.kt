@@ -85,14 +85,25 @@ class MetadataEnrichmentWorker(
                 year = if (e.releaseYear > 0) e.releaseYear else m.year,
                 cast = e.cast.joinToString(", ").ifBlank { m.cast },
                 director = e.directors.joinToString(", ").ifBlank { m.director },
+                plot = e.overview,
+                poster = TmdbImages.poster(e.posterPath),
+                backdrop = TmdbImages.backdrop(e.backdropPath),
+                runtimeMins = e.runtimeMinutes,
                 now = System.currentTimeMillis(),
             )
             // Also normalise the title if the sanitizer produced a
             // materially cleaner form; skip if unchanged so we don't
             // churn the Movie row on every run.
-            if (cleanName != m.name) dao.upsertMovies(listOf(m.copy(name = cleanName)))
+            if (cleanName != m.name) dao.renameMovie(m.key, cleanName)
             delay(RATE_LIMIT_DELAY_MS)
-            if (isStopped) return Result.success()
+            // retry, not success. Being stopped mid-catalogue is routine on a
+            // TV stick — the battery-not-low constraint drops, or the ten
+            // minute execution window runs out. Reporting success meant
+            // skipping the enqueueNext below, so the chain died where it stood
+            // and the rest of the catalogue stayed un-enriched until the user
+            // happened to re-sync. Retry hands the run back to WorkManager,
+            // which restarts it when the constraints hold again.
+            if (isStopped) return Result.retry()
         }
 
         val series = dao.seriesNeedingEnrichment(profileId, staleBefore, SERIES_PER_RUN)
@@ -114,11 +125,15 @@ class MetadataEnrichmentWorker(
                 year = if (e.releaseYear > 0) e.releaseYear else s.year,
                 cast = e.cast.joinToString(", ").ifBlank { s.cast },
                 director = e.directors.joinToString(", ").ifBlank { s.director },
+                plot = e.overview,
+                poster = TmdbImages.poster(e.posterPath),
+                backdrop = TmdbImages.backdrop(e.backdropPath),
+                runtimeMins = e.runtimeMinutes,
                 now = System.currentTimeMillis(),
             )
-            if (cleanName != s.name) dao.upsertSeries(listOf(s.copy(name = cleanName)))
+            if (cleanName != s.name) dao.renameSeries(s.key, cleanName)
             delay(RATE_LIMIT_DELAY_MS)
-            if (isStopped) return Result.success()
+            if (isStopped) return Result.retry()
         }
 
         // Keep going until the backlog is actually gone.
