@@ -1,0 +1,127 @@
+name: Build Media3 FFmpeg audio decoder
+
+# Produces the media3 FFmpeg audio extension AAR, which is the only way to get
+# AC-3, E-AC-3, DTS and TrueHD decoding onto devices whose SoC will not do it.
+# Google publishes this decoder as source in the media3 tree and not to Maven
+# (confirmed against the live group index in #121), so it has to be compiled.
+#
+# PlayerEngine already asks for EXTENSION_RENDERER_MODE_PREFER, and
+# DefaultRenderersFactory discovers FfmpegAudioRenderer by reflection, so once
+# the AAR is a dependency the existing "HW+" setting starts meaning something
+# with no player changes at all.
+#
+# PATENTS, not licences. The FFmpeg code is LGPL and fine to ship. AC-3/E-AC-3
+# (Dolby) and DTS (Xperi) are patent-encumbered, and this app is distributed
+# commercially. Dropping them is a one-line edit to the decoders input below,
+# and everything else in the default set is unencumbered.
+#
+# This is a build, not a release: the AAR lands as a workflow artifact so it
+# can be inspected and size-checked before anything depends on it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      media3_ref:
+        description: 'androidx/media tag to build from — must match the media3 version the app uses'
+        type: string
+        default: '1.11.0'
+      ffmpeg_branch:
+        description: 'FFmpeg release branch'
+        type: string
+        default: 'release/6.0'
+      abis:
+        description: 'Space-separated ABIs. Fire TV and Android TV are arm; x86 is emulators only.'
+        type: string
+        default: 'armeabi-v7a arm64-v8a'
+      decoders:
+        description: 'FFmpeg decoders to enable. ac3/eac3/dca/mlp/truehd are the patent-encumbered ones.'
+        type: string
+        default: 'vorbis opus flac alac pcm_mulaw pcm_alaw mp3 aac ac3 eac3 dca mlp truehd'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out androidx/media
+        uses: actions/checkout@v7
+        with:
+          repository: androidx/media
+          ref: ${{ inputs.media3_ref }}
+          path: media
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # The runner image ships an NDK, but which one moves over time and the
+      # build script needs an explicit path rather than a guess.
+      - name: Locate the NDK
+        id: ndk
+        run: |
+          if [ -n "${ANDROID_NDK_LATEST_HOME:-}" ] && [ -d "$ANDROID_NDK_LATEST_HOME" ]; then
+            NDK="$ANDROID_NDK_LATEST_HOME"
+          elif [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "$ANDROID_NDK_HOME" ]; then
+            NDK="$ANDROID_NDK_HOME"
+          else
+            NDK="$(find "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/ndk" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1)"
+          fi
+          if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
+            echo "::error::No Android NDK found on the runner." >&2
+            exit 1
+          fi
+          echo "path=$NDK" >> "$GITHUB_OUTPUT"
+          echo "Using NDK at $NDK"
+
+      # First run is a discovery run: the layout of build_ffmpeg.sh and the
+      # module name have moved between media3 versions, so show what is
+      # actually here rather than failing twenty minutes later on a wrong path.
+      - name: Show the decoder_ffmpeg layout
+        run: |
+          JNI="media/libraries/decoder_ffmpeg/src/main/jni"
+          if [ ! -d "$JNI" ]; then
+            echo "::error::$JNI does not exist at ref ${{ inputs.media3_ref }}. Check the tag and the module path." >&2
+            find media/libraries -maxdepth 1 -name 'decoder*' -type d || true
+            exit 1
+          fi
+          ls -la "$JNI"
+          echo "--- gradle modules matching ffmpeg ---"
+          grep -rn 'ffmpeg' media/core_settings.gradle media/settings.gradle 2>/dev/null || true
+
+      - name: Fetch FFmpeg
+        run: |
+          cd media/libraries/decoder_ffmpeg/src/main/jni
+          git clone --depth 1 --branch "${{ inputs.ffmpeg_branch }}" \
+            https://github.com/FFmpeg/FFmpeg.git ffmpeg
+          echo "FFmpeg at $(git -C ffmpeg describe --tags --always)"
+
+      - name: Build libffmpeg for each ABI
+        env:
+          NDK: ${{ steps.ndk.outputs.path }}
+          ABIS: ${{ inputs.abis }}
+          DECODERS: ${{ inputs.decoders }}
+        run: |
+          cd media/libraries/decoder_ffmpeg/src/main/jni
+          # The script takes the extension root, the NDK, the host tag, then
+          # the decoder list as trailing arguments.
+          ./build_ffmpeg.sh \
+            "$(cd ../../.. && pwd)" "$NDK" "linux-x86_64" $DECODERS
+          echo "--- produced libraries ---"
+          find . -name '*.so' -o -name '*.a' | head -40
+
+      - name: Assemble the AAR
+        run: |
+          cd media
+          ./gradlew :lib-decoder-ffmpeg:assembleRelease --no-daemon
+          find . -name '*.aar' -path '*decoder_ffmpeg*' -exec ls -la {} +
+
+      - name: Upload the AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: media3-decoder-ffmpeg-${{ inputs.media3_ref }}
+          path: media/libraries/decoder_ffmpeg/buildout/outputs/aar/*.aar
+          if-no-files-found: error
