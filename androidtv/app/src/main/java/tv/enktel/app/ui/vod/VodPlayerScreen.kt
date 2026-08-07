@@ -49,12 +49,11 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
@@ -65,6 +64,8 @@ import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.live.TrackPicker
+import tv.enktel.app.ui.player.AspectMode
+import tv.enktel.app.ui.player.SubtitleOverlay
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelTextDim
 import java.util.Locale
@@ -140,7 +141,7 @@ fun VodPlayerScreen(
     var controlsTick by remember { mutableIntStateOf(0) }
     var trackMenu by remember { mutableStateOf("") }
     var speed by remember { mutableFloatStateOf(1f) }
-    var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var aspect by remember { mutableStateOf(AspectMode.FIT) }
     var positionMs by remember { mutableLongStateOf(0L) }
     /** Seconds left on the countdown card, or null when it is not showing. */
     var nextUpSecs by remember { mutableStateOf<Int?>(null) }
@@ -521,20 +522,27 @@ fun VodPlayerScreen(
                 }
             },
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply { useController = false; setKeepContentOnPlayerReset(true) }
-            },
-            // Surface ownership is the session's — this screen and the mini
-            // window hand it back and forth with no guaranteed ordering.
-            update = { view ->
-                session.bind(view)
-                view.resizeMode = resizeMode
-                view.subtitleView?.let { sv ->
-                    tv.enktel.app.player.Subtitles.apply(sv, subScalePct, subColor, subEdge, subBgAlpha)
-                }
-            },
-            onRelease = { view -> session.unbind(view) },
+        // SURFACE_VIEW for the same reason as the live player: full-bleed,
+        // never clipped, never animated. The transport controls, the track
+        // menus and the next-episode card are Compose siblings drawn after it
+        // in this Box, so they land on top of it.
+        ContentFrame(
+            player = engine.player,
+            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+            contentScale = aspect.scale,
+            keepContentOnReset = true,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Captions. PlayerView built its own SubtitleView and this screen
+        // reached into it to style it; SubtitleOverlay is the same SubtitleView
+        // with the same styling, owned by the composition instead.
+        SubtitleOverlay(
+            player = engine.player,
+            scalePct = subScalePct,
+            color = subColor,
+            edge = subEdge,
+            bgAlpha = subBgAlpha,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -851,11 +859,8 @@ fun VodPlayerScreen(
                     }
                     item {
                         FocusButton("Aspect", onClick = {
-                            resizeMode = when (resizeMode) {
-                                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                                AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            }
+                            aspect = aspect.next()
+                            toaster.info("Aspect: ${aspect.label}")
                             controlsTick++
                         })
                     }

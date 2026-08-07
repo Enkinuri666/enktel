@@ -20,15 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
@@ -50,7 +49,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  *     decoration, and there is a hard timeout in case the player neither
  *     starts nor errors.
  *
- * Sizing is RESIZE_MODE_ZOOM: the source is 16:9 and real screens are not.
+ * Sizing is ContentScale.Crop: the source is 16:9 and real screens are not.
  * Letterboxing a full-bleed brand video looks broken, so it fills the surface
  * and crops the overflow — correct on a 16:9 TV, a 20:9 Galaxy S25 Ultra, and
  * a squarer tablet alike.
@@ -145,7 +144,7 @@ fun WelcomeSplash(onDone: () -> Unit) {
                 // Deliberately started here rather than in one of the two full
                 // players: this surface has no subtitles, no controls, and — the
                 // part that matters — no PlaybackSession.bind/unbind. It is a
-                // straight swap, so it proves PlayerSurface renders correctly in
+                // straight swap, so it proves the surface renders correctly in
                 // this app without touching the single-surface hand-off between
                 // the fullscreen player, the mini window and the guide dock,
                 // which is the mechanism behind two bugs shipped this week.
@@ -156,9 +155,17 @@ fun WelcomeSplash(onDone: () -> Unit) {
                 // difference between a smooth first frame and a stutter behind
                 // the splash. The trade-off is that it cannot be animated or
                 // z-ordered freely — irrelevant for a full-bleed background.
-                PlayerSurface(
+                //
+                // ContentScale.Crop is RESIZE_MODE_ZOOM, which is what the
+                // PlayerView here used: the splash is a full-bleed background,
+                // so it should fill the screen and lose the overhang rather
+                // than letterbox — but it must not distort, which is what a
+                // bare PlayerSurface would do on a display that is not the
+                // clip's aspect ratio.
+                ContentFrame(
                     player = player,
                     surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

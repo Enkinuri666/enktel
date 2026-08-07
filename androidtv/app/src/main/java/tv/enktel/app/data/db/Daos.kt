@@ -124,22 +124,69 @@ interface ContentDao {
     @Query("SELECT DISTINCT year FROM movies WHERE profileId = :profileId AND year > 0 ORDER BY year DESC")
     suspend fun distinctMovieYears(profileId: Long): List<Int>
 
-    /** Push enriched fields from the worker without rewriting the entire row. */
+    /**
+     * Push enriched fields from the worker without rewriting the entire row.
+     *
+     * The CASE guards are the whole point of writing this by hand rather than
+     * upserting the entity. TMDB is authoritative for the fields the panel
+     * usually leaves blank, but it is not always complete either — a
+     * straight assignment would let a title TMDB has no synopsis for erase a
+     * description the panel did supply, and the user would watch their
+     * catalogue get *worse* the longer enrichment ran.
+     *
+     * [poster] follows the opposite rule: it only fills a gap. The panel's
+     * artwork is what the user's provider chose and what the rest of the
+     * catalogue looks like, so TMDB's is a fallback for titles with no art at
+     * all, not a replacement. [backdrop] has no such conflict — nothing else
+     * ever writes it.
+     */
     @Query("""UPDATE movies SET tmdbId = :tmdbId, studios = :studios, tags = :tags,
              genre = :genre, year = :year, `cast` = :cast, director = :director,
+             plot = CASE WHEN :plot != '' THEN :plot ELSE plot END,
+             poster = CASE WHEN poster != '' THEN poster ELSE :poster END,
+             backdrop = CASE WHEN :backdrop != '' THEN :backdrop ELSE backdrop END,
+             runtimeMins = CASE WHEN :runtimeMins > 0 THEN :runtimeMins ELSE runtimeMins END,
              enrichedAt = :now WHERE key = :key""")
     suspend fun enrichMovie(
         key: String, tmdbId: Long, studios: String, tags: String,
-        genre: String, year: Int, cast: String, director: String, now: Long,
+        genre: String, year: Int, cast: String, director: String,
+        plot: String, poster: String, backdrop: String, runtimeMins: Int, now: Long,
     )
 
     @Query("""UPDATE series SET tmdbId = :tmdbId, studios = :studios, tags = :tags,
              genre = :genre, year = :year, `cast` = :cast, director = :director,
+             plot = CASE WHEN :plot != '' THEN :plot ELSE plot END,
+             poster = CASE WHEN poster != '' THEN poster ELSE :poster END,
+             backdrop = CASE WHEN :backdrop != '' THEN :backdrop ELSE backdrop END,
+             runtimeMins = CASE WHEN :runtimeMins > 0 THEN :runtimeMins ELSE runtimeMins END,
              enrichedAt = :now WHERE key = :key""")
     suspend fun enrichSeries(
         key: String, tmdbId: Long, studios: String, tags: String,
-        genre: String, year: Int, cast: String, director: String, now: Long,
+        genre: String, year: Int, cast: String, director: String,
+        plot: String, poster: String, backdrop: String, runtimeMins: Int, now: Long,
     )
+
+    /**
+     * Write back a sanitised title, and nothing else.
+     *
+     * The worker used to do this with `upsertMovies(listOf(m.copy(name = …)))`,
+     * and that row `m` was read *before* enrichMovie ran. REPLACE on the
+     * primary key is a delete-and-reinsert of the whole row, so the copy put
+     * the pre-enrichment values back over the ones just written — tmdbId,
+     * studios, tags, genre, year, cast, director and, worst of all,
+     * enrichedAt.
+     *
+     * Reverting enrichedAt to 0 put the row straight back at the top of
+     * moviesNeedingEnrichment, so every title the sanitizer touched — which on
+     * an IPTV catalogue is most of them, that being the sanitizer's entire
+     * purpose — was re-fetched from TMDB on every run and never kept anything.
+     * A targeted UPDATE cannot have that failure mode.
+     */
+    @Query("UPDATE movies SET name = :name WHERE key = :key")
+    suspend fun renameMovie(key: String, name: String)
+
+    @Query("UPDATE series SET name = :name WHERE key = :key")
+    suspend fun renameSeries(key: String, name: String)
 
     /**
      * Stamp an enrichment *attempt* without writing any metadata.

@@ -51,13 +51,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.BackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -82,6 +81,8 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import tv.enktel.app.ui.player.AspectMode
+import tv.enktel.app.ui.player.SubtitleOverlay
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
@@ -119,6 +120,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // flapping or micro-stalls during a screen-share.
     val minBufferMs = if (companionMode) maxOf(minBufferMsRaw, 30_000) else minBufferMsRaw
     val dialogueBoost by graph.settings.dialogueBoost.collectAsStateWithLifecycle(initialValue = "off")
+    val subScalePct by graph.settings.subScalePct.collectAsStateWithLifecycle(initialValue = 100)
+    val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
+    val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
+    val subBgAlpha by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
 
     // v1.38.0 — the engine belongs to the process, not to this screen, so
     // navigating away can dock the stream into the mini window instead of
@@ -174,7 +179,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     var showQuickMenu by remember { mutableStateOf(false) }
     var showStats by remember { mutableStateOf(false) }
     var trackMenu by remember { mutableStateOf("") } // "" | audio | subs
-    var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var aspect by remember { mutableStateOf(AspectMode.FIT) }
     var numberBuffer by remember { mutableStateOf("") }
     var recordingId by remember { mutableLongStateOf(0L) }
     var isFav by remember { mutableStateOf(false) }
@@ -533,21 +538,40 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 }
             },
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    useController = false
-                    setKeepContentOnPlayerReset(true)
-                }
-            },
-            // The surface is handed between this screen and the mini window, so
-            // both sides route through the session rather than assigning
-            // `view.player` directly — see PlaybackSession.bind.
-            update = { view ->
-                session.bind(view)
-                view.resizeMode = resizeMode
-            },
-            onRelease = { view -> session.unbind(view) },
+        // SURFACE_VIEW, unlike every other surface in the app.
+        //
+        // This one is full-bleed, never clipped, never animated and never
+        // moved, which is exactly the case a SurfaceView is for: it composites
+        // in the display pipeline instead of round-tripping through the GPU as
+        // a texture. On a Fire TV Stick that is the difference between a clean
+        // first frame on a zap and a visible hitch, and channel-surfing is the
+        // single most-repeated interaction in the app.
+        //
+        // The overlays above it — info bar, channel list, quick menu — are
+        // ordinary Compose siblings drawn after it in this Box, so they land on
+        // top. A SurfaceView only outranks its siblings when it is asked to
+        // z-order itself above the window, which this is not.
+        ContentFrame(
+            player = engine.player,
+            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+            contentScale = aspect.scale,
+            keepContentOnReset = true,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Captions, which PlayerView used to draw for free.
+        //
+        // They were never styled here: the live player fed a PlayerView and let
+        // it build its own SubtitleView, so the four caption settings applied
+        // on the VOD player did nothing on live TV. Routing through
+        // SubtitleOverlay renders them and honours the settings, which is a fix
+        // rather than a straight port.
+        SubtitleOverlay(
+            player = engine.player,
+            scalePct = subScalePct,
+            color = subColor,
+            edge = subEdge,
+            bgAlpha = subBgAlpha,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -737,11 +761,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     item { FocusButton("Subs", onClick = { trackMenu = "subs" }) }
                     item {
                         FocusButton("Aspect", onClick = {
-                            resizeMode = when (resizeMode) {
-                                AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                                AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            }
+                            aspect = aspect.next()
+                            toaster.info("Aspect: ${aspect.label}")
                         })
                     }
                     item {
@@ -852,11 +873,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 onAudio = { trackMenu = "audio"; showQuickMenu = false },
                 onSubs = { trackMenu = "subs"; showQuickMenu = false },
                 onAspect = {
-                    resizeMode = when (resizeMode) {
-                        AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                        AspectRatioFrameLayout.RESIZE_MODE_FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                        else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    }
+                    aspect = aspect.next()
+                    toaster.info("Aspect: ${aspect.label}")
                 },
                 onStats = { showStats = !showStats },
                 onFavorite = {

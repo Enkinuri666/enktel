@@ -31,12 +31,13 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
@@ -184,9 +185,17 @@ private fun Pane(engine: PlayerEngine, isPrimary: Boolean, channel: Channel, mod
         // simultaneous streams is already the most expensive thing this app
         // does, and correctness beats a saving that only materialises if the
         // surfaces render at all.
-        PlayerSurface(
+        // ContentFrame, not a bare PlayerSurface: PlayerSurface fills the box
+        // it is given, so a channel that is not 16:9 comes out stretched in a
+        // tile — which the PlayerView this replaced never did, because
+        // RESIZE_MODE_FIT is its default. keepContentOnReset likewise restores
+        // setKeepContentOnPlayerReset(true): swapping the channel in one pane
+        // re-prepares that engine, and without it the tile blinks black.
+        ContentFrame(
             player = engine.player,
             surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+            contentScale = ContentScale.Fit,
+            keepContentOnReset = true,
             modifier = Modifier.fillMaxSize(),
         )
         Row(

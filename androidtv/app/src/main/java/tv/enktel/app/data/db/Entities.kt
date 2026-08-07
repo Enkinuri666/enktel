@@ -111,6 +111,23 @@ data class Movie(
     val tags: String = "",
     /** Unix ms of the last successful TMDB enrichment — 0 means never. */
     val enrichedAt: Long = 0,
+    /**
+     * Synopsis. Movies had no plot column at all — Series has always had one —
+     * so a movie's description was whatever the details screen could fetch
+     * live from the panel, or nothing.
+     */
+    val plot: String = "",
+    /**
+     * Landscape hero art from TMDB, already a full URL (see [TmdbImages]).
+     *
+     * Separate from [poster] because they are different shapes for different
+     * jobs: the poster is 2:3 box art for a rail, this is 16:9 and is what the
+     * details page and the ambient glow behind a rail actually want. Blurring
+     * a poster to fill a 16:9 background is what they did before.
+     */
+    val backdrop: String = "",
+    /** Runtime in minutes from TMDB, 0 when unknown. */
+    val runtimeMins: Int = 0,
 )
 
 @Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId"), Index("tmdbId")])
@@ -134,6 +151,10 @@ data class Series(
     val studios: String = "",
     val tags: String = "",
     val enrichedAt: Long = 0,
+    /** See [Movie.backdrop]. */
+    val backdrop: String = "",
+    /** Average episode runtime in minutes from TMDB, 0 when unknown. */
+    val runtimeMins: Int = 0,
 )
 
 @Entity(tableName = "watchlist")

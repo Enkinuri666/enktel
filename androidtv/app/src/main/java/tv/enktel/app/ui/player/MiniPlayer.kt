@@ -33,16 +33,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import kotlinx.coroutines.delay
 import tv.enktel.app.player.PlaybackSession
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -204,16 +204,24 @@ fun BoxScope.MiniPlayer(
                     }
                 ),
         ) {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        useController = false
-                        setKeepContentOnPlayerReset(true)
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    }
-                },
-                update = { view -> session.bind(view) },
-                onRelease = { view -> session.unbind(view) },
+            // The mini window is the one host that genuinely moves: it snaps
+            // between the four corners, the whole card is clipped to a 12 dp
+            // rounded rectangle, and it draws over whatever screen is
+            // underneath. A SurfaceView is a separate window layer punched
+            // through the view hierarchy — it ignores the parent's clip and
+            // z-order, so it would show square corners and could surface above
+            // the controls row. TEXTURE_VIEW is the only correct choice here,
+            // and the window is small, so the texture round-trip is cheap.
+            //
+            // keepContentOnReset mirrors setKeepContentOnPlayerReset(true) on
+            // the PlayerView this replaces: docking happens across a screen
+            // change, and without it the window flashes black each time the
+            // engine re-prepares.
+            ContentFrame(
+                player = engine.player,
+                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                contentScale = ContentScale.Fit,
+                keepContentOnReset = true,
                 modifier = Modifier.fillMaxSize(),
             )
 
