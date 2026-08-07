@@ -183,6 +183,114 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        Spacer(Modifier.height(16.dp))
+        Text("VOD / LIVE BUFFER TUNING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        Text(
+            "Separate buffer windows for VOD (stability-first) and Live IPTV (latency-first). " +
+                "Auto uses best-practice defaults. Custom lets you set each value. Applies next player open.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        val vodBufProf by graph.settings.vodBufferProfile.collectAsStateWithLifecycle(initialValue = "auto")
+        val liveBufProf by graph.settings.liveBufferProfile.collectAsStateWithLifecycle(initialValue = "auto")
+        tv.enktel.app.ui.components.ChipRowLabel("VOD buffer profile")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Auto (recommended)", selected = vodBufProf == "auto",
+                onClick = { scope.launch { graph.settings.setVodBufferProfile("auto") } })
+            tv.enktel.app.ui.components.GlassChip("Custom", selected = vodBufProf == "custom",
+                onClick = { scope.launch { graph.settings.setVodBufferProfile("custom") } })
+        }
+        if (vodBufProf == "custom") {
+            val vMin by graph.settings.vodMinBufferMs.collectAsStateWithLifecycle(initialValue = 25_000)
+            val vMax by graph.settings.vodMaxBufferMs.collectAsStateWithLifecycle(initialValue = 120_000)
+            val vPlay by graph.settings.vodPlaybackMs.collectAsStateWithLifecycle(initialValue = 2_000)
+            val vRebuf by graph.settings.vodRebufferMs.collectAsStateWithLifecycle(initialValue = 5_000)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Min buffer")
+                listOf(10_000 to "10s", 15_000 to "15s", 20_000 to "20s", 25_000 to "25s", 30_000 to "30s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = vMin == v,
+                        onClick = { scope.launch { graph.settings.setVodMinBufferMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Max buffer")
+                listOf(60_000 to "60s", 90_000 to "90s", 120_000 to "120s", 180_000 to "180s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = vMax == v,
+                        onClick = { scope.launch { graph.settings.setVodMaxBufferMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Playback start")
+                listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = vPlay == v,
+                        onClick = { scope.launch { graph.settings.setVodPlaybackMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Rebuffer")
+                listOf(3_000 to "3s", 4_000 to "4s", 5_000 to "5s", 7_000 to "7s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = vRebuf == v,
+                        onClick = { scope.launch { graph.settings.setVodRebufferMs(v) } })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Live IPTV buffer profile")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Auto (recommended)", selected = liveBufProf == "auto",
+                onClick = { scope.launch { graph.settings.setLiveBufferProfile("auto") } })
+            tv.enktel.app.ui.components.GlassChip("Custom", selected = liveBufProf == "custom",
+                onClick = { scope.launch { graph.settings.setLiveBufferProfile("custom") } })
+        }
+        if (liveBufProf == "custom") {
+            val lMin by graph.settings.liveMinBufferMs.collectAsStateWithLifecycle(initialValue = 2_000)
+            val lMax by graph.settings.liveMaxBufferMs.collectAsStateWithLifecycle(initialValue = 8_000)
+            val lPlay by graph.settings.livePlaybackMs.collectAsStateWithLifecycle(initialValue = 500)
+            val lRebuf by graph.settings.liveRebufferMs.collectAsStateWithLifecycle(initialValue = 1_500)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Min buffer")
+                listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s", 5_000 to "5s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = lMin == v,
+                        onClick = { scope.launch { graph.settings.setLiveMinBufferMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Max buffer")
+                listOf(5_000 to "5s", 8_000 to "8s", 10_000 to "10s", 15_000 to "15s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = lMax == v,
+                        onClick = { scope.launch { graph.settings.setLiveMaxBufferMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Playback start")
+                listOf(300 to "300ms", 500 to "500ms", 800 to "800ms", 1_000 to "1s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = lPlay == v,
+                        onClick = { scope.launch { graph.settings.setLivePlaybackMs(v) } })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tv.enktel.app.ui.components.ChipRowLabel("Rebuffer")
+                listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s").forEach { (v, l) ->
+                    tv.enktel.app.ui.components.GlassChip(l, selected = lRebuf == v,
+                        onClick = { scope.launch { graph.settings.setLiveRebufferMs(v) } })
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Memory allocator chunk size")
+        val allocKb by graph.settings.allocatorSizeKb.collectAsStateWithLifecycle(initialValue = 0)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            listOf(0 to "Default (16 KB)", 256 to "256 KB", 1024 to "1 MB", 2048 to "2 MB").forEach { (v, l) ->
+                tv.enktel.app.ui.components.GlassChip(l, selected = allocKb == v,
+                    onClick = { scope.launch { graph.settings.setAllocatorSizeKb(v) } })
+            }
+        }
+        Text(
+            "Larger chunks reduce allocator overhead for 4K and large MKV files. " +
+                "2 MB recommended for 4K content. Leave at default for standard streams.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
         Spacer(Modifier.height(10.dp))
         tv.enktel.app.ui.components.ChipRowLabel("Force MP4 fallback (VOD)")
         val vodForceMp4 by graph.settings.vodForceMp4.collectAsStateWithLifecycle(initialValue = false)

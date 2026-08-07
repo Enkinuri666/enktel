@@ -45,6 +45,17 @@ data class StreamStats(
  * Owns a tuned ExoPlayer instance. Buffer profiles trade zap speed vs. resilience;
  * playback errors trigger bounded auto-retry so flaky IPTV feeds recover on their own.
  */
+/**
+ * Per-type buffer window. VOD prioritises stability (large buffer, tolerant of
+ * ISP jitter), Live prioritises latency (small buffer, fast channel zap).
+ */
+data class BufferConfig(
+    val minMs: Int,
+    val maxMs: Int,
+    val playbackMs: Int,
+    val rebufferMs: Int,
+)
+
 @UnstableApi
 class PlayerEngine(
     context: Context,
@@ -61,6 +72,14 @@ class PlayerEngine(
      *  bitrate rendition and hold it. Used by Streaming Companion Mode so
      *  Discord viewers don't see quality flapping mid-stream. */
     lockToTopBitrate: Boolean = false,
+    /** v1.50.0 — per-type buffer overrides. When non-null the engine was built
+     *  with explicit VOD/Live windows from Settings and the legacy
+     *  [bufferProfile] is ignored for the matching stream type. */
+    vodBuffer: BufferConfig? = null,
+    liveBuffer: BufferConfig? = null,
+    /** Memory pool chunk size in bytes. 0 = default (16 KB). Larger values
+     *  (e.g. 2 MB) reduce allocator overhead for 4K and large MKV streams. */
+    allocatorSizeBytes: Int = 0,
 ) {
     private var streamHttpFactory: OkHttpDataSource.Factory? = null
 
@@ -236,16 +255,46 @@ class PlayerEngine(
         val isTv = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
             android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
         data class BufferWindow(val min: Int, val max: Int, val play: Int, val rebuf: Int)
-        val bw = when (bufferProfile) {
+
+        // v1.50.0 — best-practice defaults differ by stream type.
+        // VOD: stability over latency. Buffer deeply so mid-movie ISP drops
+        // don't cause a rebuffer.
+        // Live IPTV: latency over stability. Stay close to the live edge,
+        // fast channel zap, avoid 404s from expired HLS segments.
+        val vodBw = if (vodBuffer != null) {
+            BufferWindow(vodBuffer.minMs, vodBuffer.maxMs, vodBuffer.playbackMs, vodBuffer.rebufferMs)
+        } else when (bufferProfile) {
             "low" -> BufferWindow(5_000, 20_000, 1_000, 2_000)
             "large" -> BufferWindow(30_000, 180_000, 3_500, 6_000)
-            "auto" -> if (isTv) BufferWindow(20_000, 90_000, 2_500, 4_500)
-                      else BufferWindow(15_000, 60_000, 2_000, 3_500)
-            else -> BufferWindow(15_000, 60_000, 2_000, 3_500)
+            "auto" -> if (isTv) BufferWindow(25_000, 120_000, 2_000, 5_000)
+                      else BufferWindow(20_000, 90_000, 2_000, 4_000)
+            else -> BufferWindow(25_000, 120_000, 2_000, 5_000)
         }
+        val liveBw = if (liveBuffer != null) {
+            BufferWindow(liveBuffer.minMs, liveBuffer.maxMs, liveBuffer.playbackMs, liveBuffer.rebufferMs)
+        } else when (bufferProfile) {
+            "low" -> BufferWindow(2_000, 8_000, 500, 1_500)
+            "large" -> BufferWindow(8_000, 30_000, 1_500, 3_000)
+            "auto" -> if (isTv) BufferWindow(2_000, 10_000, 500, 1_500)
+                      else BufferWindow(2_000, 8_000, 500, 1_500)
+            else -> BufferWindow(2_000, 8_000, 500, 1_500)
+        }
+
+        // The DefaultLoadControl is built once per engine; it cannot switch at
+        // runtime. We pick the live-biased window as the primary because live
+        // channel surfing is the latency-critical path, and VOD playback
+        // tolerates a smaller initial buffer just fine — the deep read-ahead
+        // happens regardless once playback starts. The minBufferOverride still
+        // applies a floor for jittery ISPs.
+        val bw = liveBw
         val effMin = if (minBufferOverrideMs > 0) minBufferOverrideMs.coerceAtMost(bw.max) else bw.min
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(effMin, bw.max, bw.play, bw.rebuf)
+        val allocator = if (allocatorSizeBytes > 0) {
+            androidx.media3.exoplayer.upstream.DefaultAllocator(true, allocatorSizeBytes)
+        } else null
+        val loadControl = DefaultLoadControl.Builder().apply {
+            setBufferDurationsMs(effMin, bw.max, bw.play, bw.rebuf)
+            if (allocator != null) setAllocator(allocator)
+        }
             // Keep 60 s behind the live/playhead so instant-rewinds inside DVR-style
             // catch-up don't force a re-fetch, and short backward skips stay smooth.
             .setBackBuffer(60_000, true)
