@@ -2,7 +2,6 @@ package tv.enktel.app.player
 
 import android.content.Context
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -131,9 +130,6 @@ class PlaybackSession(
 
     private var engineRef: PlayerEngine? = null
 
-    /** The single [PlayerView] currently rendering the engine. See [bind]. */
-    private var boundView: PlayerView? = null
-
     init {
         scope.launch {
             combine(
@@ -195,31 +191,23 @@ class PlaybackSession(
     /** The engine if one exists, without building one. */
     fun engineOrNull(): PlayerEngine? = engineRef
 
-    /**
-     * Point [view] at the engine, taking the surface off whichever view had it.
+    /*
+     * There is deliberately no bind/unbind pair here any more.
      *
-     * Handing a surface between the fullscreen player and the mini window is a
-     * two-sided operation with no ordering guarantee — Compose may mount the
-     * new host before it disposes the old one, or the other way round. Routing
-     * both sides through one owner makes the order irrelevant: a late
-     * [unbind] from the view that already lost the surface is a no-op instead
-     * of a black rectangle.
+     * It existed because a PlayerView has to be handed the player explicitly,
+     * and the fullscreen player, the mini window and the guide dock hand that
+     * one surface between them with no guaranteed ordering — Compose may mount
+     * the new host before disposing the old one, or the other way round, and a
+     * late detach from the loser left a black rectangle. Routing both sides
+     * through this class made the order irrelevant.
+     *
+     * Every host now renders through ContentFrame, which attaches and detaches
+     * with the composition, and ExoPlayer already guards the losing side:
+     * clearVideoSurfaceView and clearVideoTextureView both compare against the
+     * view that currently owns the surface and no-op otherwise. That is the
+     * same invariant, enforced one layer down, so keeping a second copy of it
+     * here would only be a thing to forget to update.
      */
-    fun bind(view: PlayerView) {
-        val e = engineRef
-        if (boundView !== view) {
-            boundView?.player = null
-            boundView = view
-        }
-        view.player = e?.player
-    }
-
-    fun unbind(view: PlayerView) {
-        if (boundView === view) {
-            view.player = null
-            boundView = null
-        }
-    }
 
     /** Screens call this as the content they're playing changes. */
     fun setNowPlaying(value: NowPlaying) {
@@ -258,8 +246,6 @@ class PlaybackSession(
     }
 
     private fun releaseEngine() {
-        boundView?.player = null
-        boundView = null
         engineRef?.let {
             tv.enktel.app.voice.ActivePlayerRef.unregister(it.player)
             it.release()
