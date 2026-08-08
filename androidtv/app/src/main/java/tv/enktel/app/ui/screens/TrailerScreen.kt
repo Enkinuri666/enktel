@@ -215,7 +215,14 @@ fun TrailerScreen(
     val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
         advance(YouTubeEmbed.errorReason(code))
     }
-    val bridge = remember {
+    // The explicit type is load-bearing, not style.
+    //
+    // Lint resolves the argument type of addJavascriptInterface to decide
+    // whether its methods carry @JavascriptInterface, and it cannot see through
+    // `remember`'s generic return type — it reports the type as the bare type
+    // variable "T" and concludes nothing was annotated. Naming the class was
+    // not enough on its own; the declaration has to say what it is.
+    val bridge: TrailerBridge = remember {
         TrailerBridge(
             main = Handler(Looper.getMainLooper()),
             playing = { reportPlaying.value() },
