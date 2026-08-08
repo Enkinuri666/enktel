@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Dvr
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LiveTv
@@ -54,6 +53,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
@@ -69,7 +69,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * v1.29.0 TV cinematic refactor phase 3 — collapsible left navigation
  * rail per the design brief.
  *
- *   - **Collapsed:** 64 dp wide, icon-only. This is the resting state
+ *   - **Collapsed:** 72 dp wide, icon-only. This is the resting state
  *     whenever focus lives inside the content area (the rail is out of
  *     the way so posters get the full width).
  *   - **Expanded:** 220 dp wide, icon + label + selection stripe.
@@ -88,6 +88,25 @@ data class TvNavItem(
     val icon: ImageVector,
     val route: String,
 )
+
+/** Icon column only. See the comment at the `width` animation for the arithmetic. */
+private val RAIL_COLLAPSED = 72.dp
+
+/** Icon + label. Comfortably clears the ~146 dp the widest label needs. */
+private val RAIL_EXPANDED = 220.dp
+
+/**
+ * Below this the rail is too narrow to hold a label, so it is not drawn.
+ *
+ * `expanded` flips the instant focus arrives, but the rail takes 220 ms to get
+ * there, so a label gated on the boolean was composed at full length into a
+ * column still only part-way open — and with maxLines = 1 and the default Clip
+ * overflow, it was cut mid-word. That is the "Watchli / My / Downlo / Record"
+ * in the screenshots: not a truncation bug, a frame caught mid-animation.
+ * Gating on the animated width means the label appears only once there is room
+ * for it, and the ellipsis covers a label longer than any shipped today.
+ */
+private val RAIL_LABEL_MIN = 150.dp
 
 /**
  * The rail used emoji for its icons, and that was the single biggest reason it
@@ -111,7 +130,7 @@ private val DEFAULT_ITEMS = listOf(
     TvNavItem("watchlist", "Watchlist", Icons.Rounded.BookmarkBorder, "watchlist"),
     TvNavItem("lists", "My Lists", Icons.AutoMirrored.Rounded.PlaylistPlay, "lists"),
     TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
-    TvNavItem("recordings", "Recordings", Icons.Rounded.FiberManualRecord, "recordings"),
+    TvNavItem("recordings", "Recordings", Icons.Rounded.Dvr, "recordings"),
     TvNavItem("catchup", "Catch-Up", Icons.Rounded.History, "catchup"),
     TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
     TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
@@ -136,7 +155,12 @@ fun TvNavShell(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val width by animateDpAsState(
-        targetValue = if (expanded) 220.dp else 64.dp,
+        // 72, not 64. A collapsed item needs 8+8 dp of nesting padding either
+        // side, a 3 dp stripe, a 10 dp gap and a 24 dp icon — 69 dp before the
+        // rail has drawn anything of its own. At 64 the row was over-constrained
+        // on every single frame, which is why the icons sat hard against the
+        // left edge and looked squeezed rather than centred in their column.
+        targetValue = if (expanded) RAIL_EXPANDED else RAIL_COLLAPSED,
         animationSpec = tween(durationMillis = 220),
         label = "tv-nav-rail-width",
     )
@@ -186,14 +210,19 @@ fun TvNavShell(
                 NavRailItem(
                     item = TvNavItem("nowPlaying", nowPlayingLabel.take(22), Icons.Rounded.PlayArrow, ""),
                     selected = true,
-                    expanded = expanded,
+                    showLabel = width >= RAIL_LABEL_MIN,
                     onClick = onNowPlaying,
                 )
                 Spacer(Modifier.height(14.dp))
             }
             items.forEach { item ->
                 val selected = currentRoute?.let { it.startsWith(item.route.substringBefore("?")) } == true
-                NavRailItem(item = item, selected = selected, expanded = expanded, onClick = { onSelect(item.route) })
+                NavRailItem(
+                    item = item,
+                    selected = selected,
+                    showLabel = width >= RAIL_LABEL_MIN,
+                    onClick = { onSelect(item.route) },
+                )
                 Spacer(Modifier.height(6.dp))
             }
             // Tail padding, so the last destination can scroll clear of the
@@ -238,7 +267,7 @@ fun TvNavShell(
 private fun NavRailItem(
     item: TvNavItem,
     selected: Boolean,
-    expanded: Boolean,
+    showLabel: Boolean,
     onClick: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -298,6 +327,20 @@ private fun NavRailItem(
         // fill, the border, the taller stripe, white text and the shadow — all
         // sharing one set of bounds with the selected state.
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        // No .focusable() here.
+        //
+        // tv-material's clickable Surface is already a focus target. Adding one
+        // put a second focusable node in the same chain, and the two disagreed:
+        // the Surface's own focused border tracked the node the D-pad actually
+        // moved to, while `focused` — driving the stripe, the elevation and the
+        // blue shadow — tracked the extra one, which was not always told when
+        // focus left. Items kept their focus treatment after focus had moved on,
+        // so walking down the rail accumulated focus rings: five lit at once in
+        // the reported screenshot, one per item visited.
+        //
+        // onFocusChanged observes the chain below it, which still includes the
+        // Surface's own focusable, so removing the duplicate keeps this working
+        // and leaves exactly one node to report state.
         modifier = Modifier
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
@@ -307,8 +350,7 @@ private fun NavRailItem(
                 clip = false,
                 spotColor = EnktelBlue,
             )
-            .onFocusChanged { focused = it.isFocused }
-            .focusable(),
+            .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -336,13 +378,15 @@ private fun NavRailItem(
                 // of staying a fixed colour the way an emoji had to.
                 Icon(item.icon, contentDescription = null, modifier = Modifier.size(21.dp))
             }
-            if (expanded) {
+            if (showLabel) {
                 Spacer(Modifier.width(12.dp))
                 Text(
                     item.label,
                     fontSize = 13.sp,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
