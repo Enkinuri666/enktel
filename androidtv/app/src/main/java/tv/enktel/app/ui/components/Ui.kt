@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -286,6 +287,23 @@ fun PosterCard(
      *  card into the hover auto-trailer; 0 leaves it a plain poster. */
     tmdbId: Long = 0,
     isSeries: Boolean = false,
+    /**
+     * 1-based position in a ranked rail (Trending, Top Rated, Top Picks).
+     * Non-zero draws the outlined numeral; 0 leaves the artwork alone.
+     */
+    rank: Int = 0,
+    /**
+     * How far through the title the viewer is, 0f..1f. Draws the resume bar
+     * along the bottom edge. 0f draws nothing, which is what every card that
+     * has never been played should pass.
+     */
+    progress: Float = 0f,
+    /**
+     * Text to sniff for a streaming-service or network brand — usually the
+     * catalogue category the title came from. A match draws the platform's
+     * badge on the artwork; anything unrecognised draws nothing.
+     */
+    platformHint: String = "",
 ) {
     val w = if (wide) 240.dp else 150.dp
     val h = if (wide) 135.dp else 210.dp
@@ -387,11 +405,37 @@ fun PosterCard(
                 .background(EnktelSurfaceHigh),
         ) {
             if (imageUrl.isNotBlank()) {
+                // Posters used to pop in from a flat grey plate.
+                //
+                // Shimmer.kt has held a skeleton treatment since v1.19 and
+                // nothing ever called it — `shimmer()` and `PosterSkeleton`
+                // had zero call sites in the whole app. On a Fire TV Stick
+                // fetching thirty posters over a domestic connection that is
+                // the first two seconds of every rail: a wall of identical
+                // dead rectangles, which is the single cheapest-looking
+                // moment in the product.
+                //
+                // The animation is bounded by load state rather than run
+                // unconditionally behind loaded art — an infinite transition
+                // per card, thirty cards to a rail, is exactly the kind of
+                // thing that costs frames on the hardware this has to run on.
+                var loading by remember(imageUrl) { mutableStateOf(true) }
+                if (loading) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .shimmer(
+                                baseColor = EnktelSurfaceHigh,
+                                highlightColor = EnktelBlue.copy(alpha = 0.10f),
+                            ),
+                    )
+                }
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
+                    onState = { loading = it is coil3.compose.AsyncImagePainter.State.Loading },
                 )
             } else {
                 Box(
@@ -419,6 +463,38 @@ fun PosterCard(
                         )
                     ),
             )
+            // Rank numeral, drawn over the art at the leading edge.
+            //
+            // The hero banner has said "#3 TOP 10" since v1.27 and the rails
+            // that are literally ranked orderings — Trending, Top Rated, Top
+            // Picks — said nothing, so their order carried no meaning a viewer
+            // could see. Outlined rather than filled because a solid numeral
+            // this large fights the artwork it sits on; a stroke reads as a
+            // number laid over a poster instead of a number stamped into it.
+            if (rank > 0) {
+                Text(
+                    "$rank",
+                    style = TextStyle(
+                        fontSize = if (wide) 44.sp else 54.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White.copy(alpha = 0.92f),
+                        drawStyle = Stroke(width = 3f),
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 6.dp, top = 2.dp),
+                )
+            }
+            // Platform badge. StreamingBadges has recognised eighty services
+            // and networks since v1.22 and was wired into exactly one screen
+            // (Manage Categories), so a catalogue full of "Netflix — Action"
+            // rows rendered the brand nowhere a viewer would ever browse.
+            if (platformHint.isNotBlank()) {
+                PlatformBadgeFor(
+                    platformHint,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                )
+            }
             Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                 Text(
                     title, fontSize = if (wide) 13.sp else 14.sp, fontWeight = FontWeight.Bold,
@@ -428,6 +504,31 @@ fun PosterCard(
                     Text(
                         subtitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         color = Color.White.copy(alpha = 0.75f),
+                    )
+                }
+            }
+            // Resume bar, flush to the bottom edge.
+            //
+            // Continue Watching encoded progress as " · 45%" appended to the
+            // subtitle at 11 sp — a figure nobody reads from a sofa, on the one
+            // rail whose entire purpose is "how far through am I". The bar is
+            // the idiom every streaming service uses because it answers the
+            // question pre-attentively, without the viewer parsing anything.
+            if (progress > 0f) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(Color.Black.copy(alpha = 0.55f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .height(4.dp)
+                            .background(
+                                Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple)),
+                            ),
                     )
                 }
             }
@@ -505,6 +606,27 @@ fun <T> ContentRail(
     accent: Color = EnktelBlue,
     subtitle: String = "",
     itemContent: @Composable (T) -> Unit,
+) = ContentRailIndexed(title, items, key, modifier, accent, subtitle) { _, item ->
+    itemContent(item)
+}
+
+/**
+ * [ContentRail] where the item builder is handed its position, so a rail that
+ * *is* an ordering — Trending, Top Rated, Top Picks — can pass the rank down
+ * to [PosterCard] and have the numeral drawn on the artwork.
+ *
+ * This exists as a second entry point rather than a changed signature because
+ * `ContentRail` has around thirty call sites and only three of them are ranked.
+ */
+@Composable
+fun <T> ContentRailIndexed(
+    title: String,
+    items: List<T>,
+    key: (T) -> Any,
+    modifier: Modifier = Modifier,
+    accent: Color = EnktelBlue,
+    subtitle: String = "",
+    itemContent: @Composable (Int, T) -> Unit,
 ) {
     if (items.isEmpty()) return
     // focusGroup() is what makes DOWN work on this screen.
@@ -567,7 +689,7 @@ fun <T> ContentRail(
             // separate cards.
             horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            items(items, key = key) { itemContent(it) }
+            itemsIndexed(items, key = { _, item -> key(item) }) { i, item -> itemContent(i, item) }
         }
     }
 }

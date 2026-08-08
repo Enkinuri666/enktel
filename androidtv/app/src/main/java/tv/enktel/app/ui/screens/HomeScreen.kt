@@ -221,12 +221,20 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                     subtitle = "pick up where you left off",
                     key = { it.key },
                 ) { cw ->
-                    val pct = if (cw.durationMs > 0) " · ${(cw.positionMs * 100 / cw.durationMs)}%" else ""
+                    // The percentage used to be appended to the subtitle as
+                    // text. It is now the bar along the bottom of the card,
+                    // which is the same fact stated in a form that survives a
+                    // ten-foot viewing distance, so the subtitle goes back to
+                    // saying what the action is.
+                    val frac = tv.enktel.app.data.repo.ResumePolicy
+                        .percent(cw.positionMs, cw.durationMs)
+                        ?.let { it / 100f } ?: 0f
                     PosterCard(
                         title = cw.name,
                         imageUrl = cw.poster,
-                        subtitle = "Resume$pct",
+                        subtitle = "Resume",
                         wide = true,
+                        progress = frac,
                         onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key)) },
                     )
                 }
@@ -274,6 +282,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         },
                         onClick = { nav.navigate("movie/${m.key}") },
                         tmdbId = m.tmdbId,
+                        platformHint = m.categoryId,
                     )
                 }
             }
@@ -294,7 +303,11 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         m.year > 0 -> "${m.year}"
                         else -> ""
                     }
-                    PosterCard(m.name, m.poster, subtitle = sub, onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
+                    PosterCard(
+                        m.name, m.poster, subtitle = sub,
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId,
+                        platformHint = m.categoryId,
+                    )
                 }
             }
         }
@@ -307,18 +320,29 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // filtered on one narrow subject, so on most catalogues they were
         // either empty or repeated the same handful of titles — occupying the
         // top of Home without earning it.
+        // Ranked rails carry their numeral.
+        //
+        // Top Rated, Trending and Top Picks are orderings — the position of a
+        // title in them is the whole point — and until now that order was
+        // invisible: thirty identical cards whose sequence a viewer had no
+        // reason to read as meaningful. The hero banner had been saying
+        // "#3 TOP 10" since v1.27; the rails that actually are a top ten said
+        // nothing. Only the first ten get a numeral, because that is the claim
+        // the rail can honestly make.
         if (topRated.isNotEmpty()) {
             item {
-                ContentRail(
+                tv.enktel.app.ui.components.ContentRailIndexed(
                     "★  Top Rated", topRated,
                     accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "highest rated in your playlist",
                     key = { it.key },
-                ) { m ->
+                ) { i, m ->
                     PosterCard(
                         m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else m.genre.take(24),
                         onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId,
+                        rank = if (i < 10) i + 1 else 0,
+                        platformHint = m.categoryId,
                     )
                 }
             }
@@ -391,29 +415,36 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (trending.isNotEmpty()) {
             item {
-                ContentRail(
+                tv.enktel.app.ui.components.ContentRailIndexed(
                     "Trending on EnkTel", trending,
                     accent = tv.enktel.app.ui.theme.EnktelLive,
                     subtitle = "everyone's watching",
                     key = { it.key },
-                ) { m ->
-                    PosterCard(m.name, m.poster, subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
-                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
+                ) { i, m ->
+                    PosterCard(
+                        m.name, m.poster,
+                        subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else "",
+                        onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId,
+                        rank = if (i < 10) i + 1 else 0,
+                        platformHint = m.categoryId,
+                    )
                 }
             }
         }
         if (topPicks.isNotEmpty()) {
             item {
-                ContentRail(
+                tv.enktel.app.ui.components.ContentRailIndexed(
                     "⭐  Top Picks", topPicks,
                     accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "TMDB-rated highlights from your library",
                     key = { it.key },
-                ) { m ->
+                ) { i, m ->
                     PosterCard(
                         m.name, m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else m.genre.take(20),
                         onClick = { nav.navigate("movie/${m.key}") },
+                        rank = if (i < 10) i + 1 else 0,
+                        platformHint = m.categoryId,
                     )
                 }
             }
