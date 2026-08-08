@@ -19,12 +19,22 @@ name: Build Media3 FFmpeg audio decoder
 # can be inspected and size-checked before anything depends on it.
 
 on:
+  # A media3 bump is the one change that invalidates the committed decoder, and
+  # it is also the change least likely to prompt anyone to think about it. So
+  # touching the version catalogue builds the extension against the new version
+  # — no commit, just proof that a decoder for it can be produced at all before
+  # the bump is merged. build-apk.yml separately refuses a version mismatch.
+  pull_request:
+    branches: [main]
+    paths:
+      - 'androidtv/gradle/libs.versions.toml'
+      - '.github/workflows/build-ffmpeg-extension.yml'
   workflow_dispatch:
     inputs:
       media3_ref:
-        description: 'androidx/media tag to build from — must match the media3 version the app uses'
+        description: 'androidx/media tag to build from. Empty reads the media3 version from the app version catalogue, which is almost always what you want.'
         type: string
-        default: '1.11.0'
+        default: ''
       ffmpeg_branch:
         description: 'FFmpeg release branch'
         type: string
@@ -58,11 +68,40 @@ jobs:
         with:
           path: app
 
+      # On a pull_request there are no dispatch inputs at all, so every value
+      # needs a source that does not depend on someone having typed it. The
+      # media3 version comes from the app's own version catalogue, which is
+      # also the right default for a manual run — building against anything
+      # else produces a decoder the app cannot use.
+      - name: Resolve build parameters
+        id: cfg
+        env:
+          IN_REF: ${{ inputs.media3_ref }}
+          IN_FFMPEG: ${{ inputs.ffmpeg_branch }}
+          IN_API: ${{ inputs.api_level }}
+          IN_DECODERS: ${{ inputs.decoders }}
+        run: |
+          REF="$IN_REF"
+          if [ -z "$REF" ]; then
+            REF="$(grep -oP '^media3\s*=\s*"\K[^"]+' app/androidtv/gradle/libs.versions.toml | head -1)"
+            echo "media3_ref not given; using $REF from the version catalogue"
+          fi
+          if [ -z "$REF" ]; then
+            echo "::error::Could not determine a media3 version to build against." >&2
+            exit 1
+          fi
+          {
+            echo "ref=$REF"
+            echo "ffmpeg=${IN_FFMPEG:-release/6.0}"
+            echo "api=${IN_API:-23}"
+            echo "decoders=${IN_DECODERS:-vorbis opus flac alac pcm_mulaw pcm_alaw mp3 aac ac3 eac3 dca mlp truehd}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Check out androidx/media
         uses: actions/checkout@v7
         with:
           repository: androidx/media
-          ref: ${{ inputs.media3_ref }}
+          ref: ${{ steps.cfg.outputs.ref }}
           path: media
 
       - name: Set up JDK 21
@@ -97,7 +136,7 @@ jobs:
         run: |
           JNI="media/libraries/decoder_ffmpeg/src/main/jni"
           if [ ! -d "$JNI" ]; then
-            echo "::error::$JNI does not exist at ref ${{ inputs.media3_ref }}. Check the tag and the module path." >&2
+            echo "::error::$JNI does not exist at ref ${{ steps.cfg.outputs.ref }}. Check the tag and the module path." >&2
             find media/libraries -maxdepth 1 -name 'decoder*' -type d || true
             exit 1
           fi
@@ -124,15 +163,15 @@ jobs:
       - name: Fetch FFmpeg
         run: |
           cd media/libraries/decoder_ffmpeg/src/main/jni
-          git clone --depth 1 --branch "${{ inputs.ffmpeg_branch }}" \
+          git clone --depth 1 --branch "${{ steps.cfg.outputs.ffmpeg }}" \
             https://github.com/FFmpeg/FFmpeg.git ffmpeg
           echo "FFmpeg at $(git -C ffmpeg describe --tags --always)"
 
       - name: Build libffmpeg for each ABI
         env:
           NDK: ${{ steps.ndk.outputs.path }}
-          API_LEVEL: ${{ inputs.api_level }}
-          DECODERS: ${{ inputs.decoders }}
+          API_LEVEL: ${{ steps.cfg.outputs.api }}
+          DECODERS: ${{ steps.cfg.outputs.decoders }}
         run: |
           cd media/libraries/decoder_ffmpeg/src/main/jni
           # Positional: <module path> <NDK> <host tag> <API level> <decoders...>
@@ -181,7 +220,7 @@ jobs:
       - name: Upload the AAR
         uses: actions/upload-artifact@v4
         with:
-          name: media3-decoder-ffmpeg-${{ inputs.media3_ref }}
+          name: media3-decoder-ffmpeg-${{ steps.cfg.outputs.ref }}
           path: aars/*.aar
           if-no-files-found: error
 
@@ -189,8 +228,8 @@ jobs:
         if: inputs.commit_branch != ''
         env:
           BRANCH: ${{ inputs.commit_branch }}
-          MEDIA3_REF: ${{ inputs.media3_ref }}
-          DECODERS: ${{ inputs.decoders }}
+          MEDIA3_REF: ${{ steps.cfg.outputs.ref }}
+          DECODERS: ${{ steps.cfg.outputs.decoders }}
         run: |
           # Exactly one AAR, named for the media3 version it was built from —
           # a decoder built against a different media3 than the app uses is
@@ -218,7 +257,7 @@ jobs:
           git commit -m "Add the prebuilt Media3 FFmpeg audio decoder ($MEDIA3_REF)
 
           Built by build-ffmpeg-extension.yml from androidx/media $MEDIA3_REF
-          against FFmpeg ${{ inputs.ffmpeg_branch }}, API ${{ inputs.api_level }}.
+          against FFmpeg ${{ steps.cfg.outputs.ffmpeg }}, API ${{ steps.cfg.outputs.api }}.
 
           Decoders: $DECODERS"
           git push -u origin "$BRANCH"
