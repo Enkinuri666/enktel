@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
+import tv.enktel.app.ui.components.AuthBackdrop
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.TvTextField
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -61,6 +62,11 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Sign-in was a bare Box over whatever happened to be behind it, so the
+    // first surface anyone saw was the flattest one in the app while every
+    // screen past it is layered artwork. AuthBackdrop draws the same brand
+    // gradients the rest of the UI uses, in slow motion.
+    AuthBackdrop {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             Modifier.width(560.dp).verticalScroll(rememberScrollState()).padding(vertical = 32.dp),
@@ -202,6 +208,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
             onConfirm = { showTrialExpired = false },
             onDismiss = { showTrialExpired = false },
         )
+    }
     }
 }
 
