@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -179,25 +178,3 @@ fun Modifier.dpadScrollable(
             true
         }
 }
-
-/**
- * Takes a whole subtree out of focus search while [blocked] is true.
- *
- * ### Why the first-run tour could not be reached
- *
- * The tour is drawn as a sibling of the app shell, so it covers the shell
- * visually and changes nothing about focus: the nav rail underneath was still
- * a perfectly good focus target, and it had already claimed focus on mount. The
- * result was precisely what a user sees and cannot explain — a dialog in front
- * of you, and a highlight moving around the menu behind it, with no key that
- * bridges the two. Touch worked because a tap addresses what it lands on
- * rather than searching for it.
- *
- * Compose has no z-order concept of modality; drawing on top of something does
- * not put it out of reach. Marking the focus group deactivated does, and unlike
- * trying to trap focus inside the dialog it cannot be defeated by a direction
- * nobody thought to handle.
- */
-fun Modifier.focusBlocked(blocked: Boolean): Modifier = this
-    .focusProperties { canFocus = !blocked }
-    .focusGroup()

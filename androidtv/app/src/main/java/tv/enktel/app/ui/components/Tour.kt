@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,6 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
@@ -77,12 +81,22 @@ private val TOUR: List<TourStep>
  * addresses whatever it lands on instead of searching for it — which is exactly
  * the asymmetry that was reported.
  *
- * Two halves to the fix, and both are needed. This claims focus onto its
- * primary action (retried, because the first frame after the welcome video
- * ends has nothing attached yet). The caller wraps the shell in
- * [Modifier.focusBlocked] so focus cannot wander back out into the menu —
- * Compose has no z-order notion of modality, and drawing on top of something
- * does not put it out of reach.
+ * Two halves to the fix, and the dialog owns both of them.
+ *
+ * It claims focus onto its forward action, retried for three seconds because
+ * a first run composes this over a cold Home screen, which is the slowest
+ * moment the app ever has. And it answers every directional key itself,
+ * moving between its own buttons by explicit [FocusRequester] and passing
+ * none of them on — so focus has no route back out into the menu.
+ *
+ * The first attempt at the second half deactivated the *shell's* focus
+ * subtree while the tour was up. That crashed the app at launch on a first
+ * run, which is the only time the tour is visible; and because a crashed tour
+ * cannot be dismissed, `firstRunDone` was never written and every relaunch
+ * crashed identically. The lesson is in the shape of the fix rather than the
+ * API: a component that governs its own input cannot break anything else,
+ * while one that reaches across the app to switch off everyone else's focus
+ * can — and did.
  *
  * Focus is re-claimed on every step because the button row's membership
  * changes as you move through it: "Back" appears after step 0 and "Next"
@@ -93,21 +107,62 @@ private val TOUR: List<TourStep>
 fun FirstRunTour(onFinish: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     val s = TOUR[step]
-    val primary = remember { FocusRequester() }
+    val hasBack = step > 0
 
-    LaunchedEffect(step) {
-        repeat(30) {
-            if (runCatching { primary.requestFocus() }.isSuccess) return@LaunchedEffect
+    // Buttons in screen order. Explicit requesters rather than focus search,
+    // because focus search is what could not be relied on here: the dialog is
+    // a sibling of the shell, so a search starting anywhere outside it has no
+    // reason to prefer it, and one that starts inside it has no reason to stay.
+    val backFr = remember { FocusRequester() }
+    val primaryFr = remember { FocusRequester() }
+    val skipFr = remember { FocusRequester() }
+    val order = if (hasBack) listOf(backFr, primaryFr, skipFr) else listOf(primaryFr, skipFr)
+
+    // Start on the forward action, so the whole tour can be walked with OK.
+    var idx by remember(step) { mutableIntStateOf(if (hasBack) 1 else 0) }
+
+    LaunchedEffect(step, idx) {
+        // Up to three seconds. The tour appears over a freshly-composed Home
+        // on a cold start, which on a Fire TV Stick is the slowest moment the
+        // app ever has, and giving up early is what leaves it unreachable.
+        repeat(60) {
+            if (runCatching { order[idx].requestFocus() }.isSuccess) return@LaunchedEffect
             delay(50)
         }
+        android.util.Log.w("FirstRunTour", "no focusable button took focus at step $step")
     }
-    // Back should step backwards through the tour and leave it at the start,
-    // rather than falling through to whatever is behind — which, while the
-    // tour is up, would be the app exiting on the first press.
+
+    // Back steps backwards, and dismisses at the start. This is also the
+    // escape hatch: if focus somehow never lands, Back still closes the tour
+    // rather than leaving someone with a dialog they cannot dismiss.
     BackHandler { if (step > 0) step-- else onFinish() }
 
     Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(0.75f)).focusGroup(),
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(0.75f))
+            // Every directional press is answered here and none are passed on,
+            // which is what keeps focus inside the dialog.
+            //
+            // The previous attempt did this by deactivating the shell's focus
+            // subtree while the tour was up. That is a much bigger hammer than
+            // the job needs — it reaches across the whole app from a component
+            // that should only govern itself — and on a first run it crashed
+            // the app at launch, which is the worst possible time given the
+            // tour cannot be dismissed and so came back on every relaunch.
+            // Consuming the keys is local, needs nothing from the shell, and
+            // cannot be defeated by a direction nobody thought about.
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> { idx = (idx - 1 + order.size) % order.size; true }
+                    Key.DirectionRight -> { idx = (idx + 1) % order.size; true }
+                    // Nothing sits above or below the button row, so these
+                    // would only ever be a way out into the menu behind.
+                    Key.DirectionUp, Key.DirectionDown -> true
+                    else -> false
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -140,23 +195,31 @@ fun FirstRunTour(onFinish: () -> Unit) {
                 Spacer(Modifier.fillMaxWidth().weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (step > 0) FocusButton("Back", onClick = { step-- })
-                // The forward action is where focus lands on every step, so
-                // the tour can be walked through on the OK button alone.
+                if (hasBack) {
+                    FocusButton(
+                        "Back",
+                        modifier = Modifier.focusRequester(backFr),
+                        onClick = { step-- },
+                    )
+                }
                 if (step < TOUR.lastIndex) {
                     FocusButton(
                         "Next", accent = true,
-                        modifier = Modifier.focusRequester(primary),
+                        modifier = Modifier.focusRequester(primaryFr),
                         onClick = { step++ },
                     )
                 } else {
                     FocusButton(
                         "Get started", accent = true,
-                        modifier = Modifier.focusRequester(primary),
+                        modifier = Modifier.focusRequester(primaryFr),
                         onClick = onFinish,
                     )
                 }
-                FocusButton("Skip", onClick = onFinish)
+                FocusButton(
+                    "Skip",
+                    modifier = Modifier.focusRequester(skipFr),
+                    onClick = onFinish,
+                )
             }
         }
     }

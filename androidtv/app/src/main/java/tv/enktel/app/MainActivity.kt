@@ -32,7 +32,6 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.components.FirstRunTour
-import tv.enktel.app.ui.components.focusBlocked
 import tv.enktel.app.ui.components.ToastHost
 import tv.enktel.app.ui.guide.GuideScreen
 import tv.enktel.app.ui.live.LivePlayerScreen
@@ -222,7 +221,23 @@ private fun MainNav(
     val start = if (profiles!!.isEmpty()) "onboarding" else "home"
 
     LaunchedEffect(firstRunDone, profiles) {
-        if (!firstRunDone && profiles!!.isNotEmpty()) tourVisible = true
+        if (!firstRunDone && profiles!!.isNotEmpty()) {
+            tourVisible = true
+            // Recorded when the tour is *shown*, not when it is completed.
+            //
+            // This flag is what turned the v1.58.0 crash from a bad bug into
+            // an unusable app. It was written by onFinish; a tour that crashed
+            // could never reach onFinish; so every relaunch met the same
+            // condition and crashed identically, with no way out from the
+            // device. Writing it up front breaks that loop for good — whatever
+            // goes wrong in this overlay in future, it gets one chance to do
+            // it rather than an unbounded number.
+            //
+            // The cost is that force-quitting mid-tour means not seeing the
+            // rest of it. A first-run walkthrough is a nicety; an app that
+            // cannot be started is not, and that is not a close trade.
+            runCatching { graph.settings.setFirstRunDone(true) }
+        }
     }
     // A catalog row or an Alexa "play X on EnkTel" arrives here.
     //
@@ -1188,11 +1203,18 @@ private fun MainNav(
     }
     }
 
-    // Drawing the tour on top of the shell does not put the shell out of reach:
-    // Compose has no z-order concept of modality, so the nav rail behind an
-    // overlay stays a perfectly good focus target and the D-pad keeps finding
-    // it. Deactivating the subtree is what actually makes the overlay modal.
-    Box(Modifier.fillMaxSize().focusBlocked(modalOverlay)) {
+    // No focus modifier here, deliberately.
+    //
+    // This wrapped the shell in a focus group that was deactivated whenever an
+    // overlay was up, to stop the D-pad reaching the nav rail behind the tour.
+    // It crashed the app at launch on a first run — the one moment the tour is
+    // visible — and because the tour could not then be dismissed, firstRunDone
+    // was never written and every relaunch crashed the same way.
+    //
+    // The overlay now confines the D-pad itself (see FirstRunTour), which is
+    // where that responsibility belongs: a component governing its own input
+    // rather than reaching across the app to switch off everyone else's.
+    Box(Modifier.fillMaxSize()) {
         shell()
         val np = nowPlaying
         if (docked && np != null) {
