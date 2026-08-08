@@ -99,6 +99,7 @@ object YouTubeEmbed {
      * letting focus into a WebView on a television is how someone ends up on a
      * page with no way back.
      */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
     fun configure(web: WebView, takesFocus: Boolean = false) {
         web.setBackgroundColor(android.graphics.Color.BLACK)
         web.isFocusable = takesFocus

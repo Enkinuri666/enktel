@@ -91,6 +91,45 @@ import tv.enktel.app.ui.theme.EnktelType
  */
 private const val START_TIMEOUT_MS = 9_000L
 
+/**
+ * What the IFrame page reports back through.
+ *
+ * ### Why this is a named, public class
+ *
+ * It began as an anonymous `object` inside the composable, which compiles and
+ * runs but fails lint: the detector resolves the argument's type, an anonymous
+ * object has no name to resolve, and it concludes that nothing was annotated —
+ * "None of the methods in the added interface (T) have been annotated with
+ * @android.webkit.JavascriptInterface". A named class gives it something to
+ * look at.
+ *
+ * Public, rather than `private` or `internal`, on purpose. `addJavascriptInterface`
+ * reaches these methods by reflection from outside this package: a `private`
+ * top-level class is package-private in the bytecode, and Kotlin mangles the
+ * names of `internal` members. Either would compile happily and then fail to
+ * find a callback at runtime — a release-only, silent failure of exactly the
+ * kind this whole change exists to remove.
+ *
+ * [main] is not decoration either. WebView invokes these on its own JavaScript
+ * thread, never the main one, and Compose state is not safe to write from
+ * there, so everything hops to the main looper before touching it.
+ */
+class TrailerBridge(
+    private val main: Handler,
+    private val playing: () -> Unit,
+    private val failed: (Int) -> Unit,
+) {
+    @JavascriptInterface
+    fun onPlaying() {
+        main.post { playing() }
+    }
+
+    @JavascriptInterface
+    fun onError(code: Int) {
+        main.post { failed(code) }
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun TrailerScreen(
@@ -165,35 +204,23 @@ fun TrailerScreen(
         onDispose { runCatching { web?.loadUrl("about:blank") } }
     }
 
-    // The bridge object is remembered once, for the life of the screen, because
-    // it is handed to a WebView that outlives any single composition. Two
-    // consequences, both of which are bugs if ignored:
+    // The lambdas the bridge calls, kept current behind a stable reference.
     //
-    //  - It must not capture composition state directly. `attempt` changes as
-    //    candidates fail, and a callback closed over the first composition's
-    //    value would keep retrying the upload that already failed.
-    //    rememberUpdatedState keeps the current lambda reachable behind a
-    //    stable reference.
-    //  - WebView invokes these on its own JavaScript thread, never the main
-    //    one, and Compose state is not safe to write from there. Everything
-    //    hops to the main looper before touching state.
-    val reportPlaying by rememberUpdatedState { started = true }
-    val reportError by rememberUpdatedState<(Int) -> Unit> { code ->
+    // The bridge itself is remembered once, for the life of the screen, because
+    // it is handed to a WebView that outlives any single composition — so it
+    // must not close over composition state directly. `attempt` changes as
+    // candidates fail, and a callback holding the first composition's copy
+    // would keep retrying the upload that had already failed.
+    val reportPlaying = rememberUpdatedState<() -> Unit> { started = true }
+    val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
         advance(YouTubeEmbed.errorReason(code))
     }
-    val main = remember { Handler(Looper.getMainLooper()) }
     val bridge = remember {
-        object {
-            @JavascriptInterface
-            fun onPlaying() {
-                main.post { reportPlaying() }
-            }
-
-            @JavascriptInterface
-            fun onError(code: Int) {
-                main.post { reportError(code) }
-            }
-        }
+        TrailerBridge(
+            main = Handler(Looper.getMainLooper()),
+            playing = { reportPlaying.value() },
+            failed = { code -> reportError.value(code) },
+        )
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
