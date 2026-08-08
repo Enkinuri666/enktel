@@ -76,7 +76,11 @@ import tv.enktel.app.ui.theme.EnktelFocusRingWidth
 import tv.enktel.app.ui.theme.EnktelFocusScale
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
+import tv.enktel.app.ui.theme.EnktelText
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextOnArt
+import tv.enktel.app.ui.theme.EnktelTextOnArtDim
+import tv.enktel.app.ui.theme.EnktelType
 
 /**
  * TV-material surfaces only react to DPAD select; on touchscreens (phones, tablets,
@@ -128,8 +132,7 @@ fun FocusButton(
         Text(
             text,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
+            style = EnktelType.label,
             maxLines = 1,
         )
     }
@@ -175,7 +178,7 @@ fun GlassChip(
         Text(
             text,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            fontSize = 12.sp,
+            style = EnktelType.caption,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
             maxLines = 1,
         )
@@ -188,9 +191,7 @@ fun ChipRowLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text.uppercase(),
         color = EnktelTextDim,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 1.5.sp,
+        style = EnktelType.overline,
         modifier = modifier,
     )
 }
@@ -228,7 +229,7 @@ fun TvTextField(
     LaunchedEffect(focused) { if (!focused) typing = false }
 
     Column(modifier.fillMaxWidth()) {
-        Text(label, color = EnktelTextDim, fontSize = 12.sp)
+        Text(label, color = EnktelTextDim, style = EnktelType.caption)
         Spacer(Modifier.height(4.dp))
         BasicTextField(
             value = value,
@@ -236,7 +237,7 @@ fun TvTextField(
             singleLine = true,
             readOnly = !editable,
             visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+            textStyle = EnktelType.subtitle.copy(color = EnktelText, fontSize = 16.sp),
             cursorBrush = SolidColor(EnktelBlue),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(
@@ -448,7 +449,7 @@ fun PosterCard(
                         title.take(2).uppercase(),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White.copy(0.7f),
+                        color = EnktelTextOnArt.copy(0.7f),
                     )
                 }
             }
@@ -498,12 +499,12 @@ fun PosterCard(
             Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                 Text(
                     title, fontSize = if (wide) 13.sp else 14.sp, fontWeight = FontWeight.Bold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = EnktelTextOnArt,
                 )
                 if (subtitle.isNotBlank()) {
                     Text(
-                        subtitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        color = Color.White.copy(alpha = 0.75f),
+                        subtitle, style = EnktelType.caption, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, color = EnktelTextOnArtDim,
                     )
                 }
             }
@@ -558,7 +559,7 @@ fun ThumbBox(label: String, imageUrl: String, modifier: Modifier = Modifier, siz
                 label.take(2).uppercase(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White.copy(0.7f),
+                color = EnktelText.copy(0.7f),
             )
         }
     }
@@ -584,9 +585,9 @@ fun ConfirmDialog(
             colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh, contentColor = Color.White),
         ) {
             Column(Modifier.padding(24.dp)) {
-                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(title, style = EnktelType.title, color = EnktelText)
                 Spacer(Modifier.height(8.dp))
-                Text(message, fontSize = 13.sp, color = EnktelTextDim)
+                Text(message, style = EnktelType.body, color = EnktelTextDim)
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FocusButton(confirmLabel, accent = true, onClick = onConfirm)
@@ -660,21 +661,18 @@ fun <T> ContentRailIndexed(
             Spacer(Modifier.width(10.dp))
             Text(
                 title,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                letterSpacing = 0.3.sp,
+                style = EnktelType.title,
+                color = EnktelText,
             )
             if (subtitle.isNotBlank()) {
                 Spacer(Modifier.width(10.dp))
-                Text(subtitle, fontSize = 12.sp, color = EnktelTextDim, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, style = EnktelType.caption, color = EnktelTextDim)
             }
             Spacer(Modifier.weight(1f))
             Text(
                 "${items.size}",
-                fontSize = 12.sp,
+                style = EnktelType.caption,
                 color = EnktelTextDim,
-                fontWeight = FontWeight.SemiBold,
             )
         }
         LazyRow(
@@ -702,7 +700,7 @@ fun Badge(text: String, color: Color = EnktelBlue) {
             .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(text, fontSize = 10.sp, color = color, fontWeight = FontWeight.Bold)
+        Text(text, style = EnktelType.overline, color = color)
     }
 }
 
@@ -731,13 +729,13 @@ fun ProgressBarThin(fraction: Float, modifier: Modifier = Modifier) {
 @Composable
 fun CenterMessage(text: String, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = EnktelTextDim, fontSize = 15.sp)
+        Text(text, color = EnktelTextDim, style = EnktelType.subtitle)
     }
 }
 
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = modifier)
+    Text(text, style = EnktelType.headline, color = EnktelText, modifier = modifier)
 }
 
 @Composable
@@ -760,7 +758,7 @@ fun PinDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = EnktelText, style = EnktelType.title)
             TvTextField(pin, { pin = it.filter(Char::isDigit).take(8) }, "PIN", password = true)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FocusButton("Unlock", accent = true, onClick = { onSubmit(pin) })
@@ -773,7 +771,7 @@ fun PinDialog(
 @Composable
 fun KeyValue(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Text(label, color = EnktelTextDim, fontSize = 12.sp, modifier = Modifier.width(140.dp))
-        Text(value, color = Color.White, fontSize = 12.sp)
+        Text(label, color = EnktelTextDim, style = EnktelType.caption, modifier = Modifier.width(140.dp))
+        Text(value, color = EnktelText, style = EnktelType.caption)
     }
 }

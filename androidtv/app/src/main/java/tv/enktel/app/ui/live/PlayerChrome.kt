@@ -56,6 +56,9 @@ import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.ui.theme.EnktelTextFaint
+import tv.enktel.app.ui.theme.EnktelTextOnArt
+import tv.enktel.app.ui.theme.EnktelTextOnArtDim
+import tv.enktel.app.ui.theme.EnktelType
 
 /**
  * Full-screen player chrome for the TV build.
@@ -117,12 +120,12 @@ fun LiveInfoOverlay(
         ) {
             Text(
                 TimeFormat.now("HH:mm"),
-                color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black,
+                color = EnktelTextOnArt, style = EnktelType.title,
             )
-            Text("  |  ", color = EnktelTextDim, fontSize = 15.sp)
+            Text("  |  ", color = EnktelTextDim, style = EnktelType.subtitle)
             Text(
                 TimeFormat.now("EEE, d MMM yyyy"),
-                color = Color.White.copy(0.92f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                color = EnktelTextOnArt.copy(0.92f), style = EnktelType.subtitle,
             )
         }
 
@@ -154,7 +157,7 @@ fun LiveInfoOverlay(
                         )
                     } else {
                         Text(
-                            channel.name.take(3).uppercase(), color = Color.White,
+                            channel.name.take(3).uppercase(), color = EnktelTextOnArt,
                             fontWeight = FontWeight.Black, fontSize = 20.sp,
                         )
                     }
@@ -176,14 +179,14 @@ fun LiveInfoOverlay(
                         if (channel.num > 0) {
                             Text(
                                 "${channel.num}",
-                                color = EnktelBlue, fontSize = 15.sp, fontWeight = FontWeight.Black,
-                                letterSpacing = 0.5.sp,
+                                color = EnktelBlue, style = EnktelType.subtitle,
+                                fontWeight = FontWeight.Black, letterSpacing = 0.5.sp,
                             )
                             Dot()
                         }
                         Text(
                             channel.name.uppercase(),
-                            color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                            color = EnktelTextOnArt, style = EnktelType.subtitle,
                             letterSpacing = 0.8.sp, maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false),
@@ -199,7 +202,7 @@ fun LiveInfoOverlay(
                         if (provenance.isNotBlank()) {
                             Dot()
                             Text(
-                                provenance, color = EnktelTextFaint, fontSize = 13.sp,
+                                provenance, color = EnktelTextFaint, style = EnktelType.label,
                                 fontWeight = FontWeight.Medium, maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
@@ -217,9 +220,8 @@ fun LiveInfoOverlay(
                     if (now != null) {
                         Spacer(Modifier.height(7.dp))
                         Text(
-                            now.title, color = Color.White, fontSize = 32.sp,
-                            fontWeight = FontWeight.Black, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis, letterSpacing = (-0.4).sp,
+                            now.title, color = EnktelTextOnArt, style = EnktelType.display,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                         Spacer(Modifier.height(12.dp))
                         val span = (now.endMs - now.startMs).coerceAtLeast(1)
@@ -231,7 +233,7 @@ fun LiveInfoOverlay(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 "${hhmm(now.startMs)} – ${hhmm(now.endMs)}",
-                                color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                                color = EnktelTextOnArt, style = EnktelType.subtitle,
                             )
                             Spacer(Modifier.width(14.dp))
                             // A full-width timeline rather than a fixed 300 dp
@@ -240,14 +242,14 @@ fun LiveInfoOverlay(
                             Spacer(Modifier.width(14.dp))
                             Text(
                                 remainingLabel(now.endMs),
-                                color = EnktelBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                color = EnktelBlue, style = EnktelType.label,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                         if (now.desc.isNotBlank()) {
                             Spacer(Modifier.height(11.dp))
                             Text(
-                                now.desc, color = EnktelTextDim, fontSize = 14.sp,
-                                lineHeight = 20.sp,
+                                now.desc, color = EnktelTextDim, style = EnktelType.body,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                         }
@@ -255,13 +257,13 @@ fun LiveInfoOverlay(
                         Spacer(Modifier.height(7.dp))
                         Text(
                             channel.name,
-                            color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black,
+                            color = EnktelTextOnArt, style = EnktelType.display,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
                             "No guide listing for this channel",
-                            color = EnktelTextFaint, fontSize = 14.sp,
+                            color = EnktelTextFaint, style = EnktelType.body,
                         )
                     }
                 }
@@ -274,18 +276,18 @@ fun LiveInfoOverlay(
                 if (next != null) {
                     Text(
                         "NEXT",
-                        color = EnktelTextFaint, fontSize = 10.sp, fontWeight = FontWeight.Black,
-                        letterSpacing = 1.4.sp,
+                        color = EnktelTextFaint, style = EnktelType.overline,
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         hhmm(next.startMs),
-                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        color = EnktelTextDim, style = EnktelType.label,
+                        fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        next.title, color = Color.White.copy(0.9f), fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold, maxLines = 1,
+                        next.title, color = EnktelTextOnArt.copy(0.9f), style = EnktelType.label,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                     )
                 }
@@ -305,7 +307,8 @@ fun LiveInfoOverlay(
                 Spacer(Modifier.width(14.dp))
                 Text(
                     "▼  Menu",
-                    color = EnktelTextFaint, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    color = EnktelTextFaint, style = EnktelType.caption,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -316,7 +319,7 @@ fun LiveInfoOverlay(
 @Composable
 private fun Dot() {
     Text(
-        "  ·  ", color = EnktelTextFaint, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+        "  ·  ", color = EnktelTextFaint, style = EnktelType.label, fontWeight = FontWeight.Bold,
     )
 }
 
@@ -347,8 +350,8 @@ internal fun remainingLabel(endMs: Long, nowMs: Long = System.currentTimeMillis(
 private fun Readout(text: String) {
     Text(
         text,
-        color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.4.sp,
+        color = EnktelTextDim, style = EnktelType.caption,
+        fontWeight = FontWeight.SemiBold, letterSpacing = 0.4.sp,
         modifier = Modifier.padding(start = 14.dp),
     )
 }
@@ -392,7 +395,7 @@ private fun ProgressTrack(frac: Float) {
 private fun StatusPill(text: String, color: Color) {
     Text(
         text,
-        color = color, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp,
+        color = color, style = EnktelType.overline, letterSpacing = 0.6.sp,
         modifier = Modifier
             .padding(end = 6.dp)
             .clip(RoundedCornerShape(4.dp))
@@ -445,7 +448,7 @@ fun QuickMenuBar(actions: List<QuickAction>, modifier: Modifier = Modifier) {
     ) {
         Text(
             "▲",
-            color = Color.White.copy(0.55f), fontSize = 13.sp,
+            color = EnktelTextOnArt.copy(0.55f), style = EnktelType.label,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         Spacer(Modifier.height(8.dp))
@@ -539,17 +542,17 @@ private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(a.glyph, fontSize = 19.sp, color = Color.White)
+                Text(a.glyph, fontSize = 19.sp, color = EnktelTextOnArt)
             }
             Spacer(Modifier.height(6.dp))
             Text(
                 a.label,
                 color = when {
-                    focused -> Color.White
+                    focused -> EnktelTextOnArt
                     a.active -> EnktelBlue
-                    else -> Color.White.copy(0.82f)
+                    else -> EnktelTextOnArtDim
                 },
-                fontSize = 11.sp,
+                style = EnktelType.caption,
                 fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
