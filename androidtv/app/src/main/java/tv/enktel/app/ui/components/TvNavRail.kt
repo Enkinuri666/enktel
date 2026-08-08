@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -110,6 +116,17 @@ private val RAIL_EXPANDED = 220.dp
 private val RAIL_LABEL_MIN = 150.dp
 
 /**
+ * How many frames to keep offering focus to a freshly-opened destination.
+ *
+ * One was the original bet and it lost on a Fire TV Stick, where a screen full
+ * of artwork needs several frames before anything in it is focusable. Twelve is
+ * about 200 ms at 60 Hz — long enough for the slowest destination in the app,
+ * short enough that a genuinely empty screen does not sit there trying. The
+ * loop exits on the first success, which is the common case.
+ */
+private const val FOCUS_HANDOFF_FRAMES = 12
+
+/**
  * The rail used emoji for its icons, and that was the single biggest reason it
  * read as cheap: a system emoji font renders roughly half of them as full-colour
  * pictures (🏠 📺 🗓 🎬 🎞 ⚽ 🔍) and the rest as hairline monochrome text glyphs
@@ -155,6 +172,9 @@ fun TvNavShell(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    // The content's FocusRequester is created below the rail, so a holder keeps
+    // the escape hatch from needing a forward reference.
+    val contentFocusRef = remember { mutableStateOf<FocusRequester?>(null) }
     val width by animateDpAsState(
         // 72, not 64. A collapsed item needs 8+8 dp of nesting padding either
         // side, a 3 dp stripe, a 10 dp gap and a 24 dp icon — 69 dp before the
@@ -196,11 +216,40 @@ fun TvNavShell(
         // you back to where you were when you return to a screen, instead of
         // resetting to the top-left every time.
         val contentFocus = remember { FocusRequester() }
+        SideEffect { contentFocusRef.value = contentFocus }
         LaunchedEffect(currentRoute) {
-            // A frame's grace: the destination's children are composed on the
-            // next pass, and requesting focus on an empty group throws.
-            withFrameNanos { }
-            runCatching { contentFocus.requestFocus() }
+            // One frame was a bet, and on a Fire TV Stick it lost.
+            //
+            // A fresh destination — posters, rails, artwork — does not finish
+            // composing its focusable children in a single frame on that
+            // hardware. requestFocus() then landed on a group with nothing
+            // focusable in it, threw, and runCatching discarded the error.
+            //
+            // Focus therefore never left the rail. Because `expanded` was
+            // `hasFocus`, the rail stayed open on every screen you selected,
+            // and with focus still inside it there was nothing to move right
+            // to. Nothing retried and nothing reported it, so the only way out
+            // was killing the app.
+            //
+            // Retry across frames instead of betting on one. The loop costs
+            // nothing once focus lands, which is the first attempt in the
+            // common case.
+            var landed = false
+            repeat(FOCUS_HANDOFF_FRAMES) {
+                if (landed) return@repeat
+                withFrameNanos { }
+                landed = runCatching { contentFocus.requestFocus() }.isSuccess
+            }
+            if (!landed) {
+                // The rail is the only thing focusable if this failed, so say
+                // so rather than leaving a silent trap. The D-pad-right escape
+                // below is what actually keeps the screen usable.
+                android.util.Log.w(
+                    "TvNavShell",
+                    "content did not take focus for route=$currentRoute after " +
+                        "$FOCUS_HANDOFF_FRAMES frames; rail keeps focus",
+                )
+            }
         }
         Box(
             Modifier
@@ -240,7 +289,36 @@ fun TvNavShell(
                 // version — it does; it lives in androidx.compose.foundation,
                 // not androidx.compose.ui.focus.)
                 .focusGroup()
-                .onFocusChanged { expanded = it.hasFocus }
+                // The escape hatch, and the only part of this that makes the
+                // trap impossible rather than merely unlikely.
+                //
+                // Everything else reduces the odds of the handoff losing its
+                // race. This does not care whether it lost: right always pushes
+                // focus into the content, so a remote can leave the rail even
+                // when nothing else worked. Without it, one lost race still
+                // costs a restart.
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                        expanded = false
+                        // Explicitly Boolean: requestFocus() returns Unit, so a
+                        // safe call on it is Unit? and the elvis/getOrDefault
+                        // forms widen to a nullable type the key handler cannot
+                        // return.
+                        val target = contentFocusRef.value
+                        if (target == null) {
+                            false
+                        } else {
+                            runCatching { target.requestFocus() }.isSuccess
+                        }
+                    } else {
+                        false
+                    }
+                }
+                // Open when focus is in the rail, but never *stay* open on a
+                // lost handoff: selecting a route closes it explicitly below,
+                // so a failed focus move cannot leave the menu covering the
+                // screen it just opened.
+                .onFocusChanged { if (it.hasFocus) expanded = true else expanded = false }
                 // The rail must scroll, and it did not.
                 //
                 // A 1080p Android TV reports 960×540 dp — the panel is 1080
@@ -275,7 +353,13 @@ fun TvNavShell(
                     item = item,
                     selected = selected,
                     showLabel = width >= RAIL_LABEL_MIN,
-                    onClick = { onSelect(item.route) },
+                    onClick = {
+                        // Collapse on selection rather than waiting for focus
+                        // to move. If the handoff below loses its race, the
+                        // rail is at least not left covering the screen.
+                        expanded = false
+                        onSelect(item.route)
+                    },
                 )
                 Spacer(Modifier.height(6.dp))
             }
