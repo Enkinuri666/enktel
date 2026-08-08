@@ -42,13 +42,16 @@ jobs:
       # String comparison, so it costs a second and runs before anything else.
       - name: Check the FFmpeg decoder matches media3
         run: |
-          AAR="$(ls androidtv/app/libs/media3-decoder-ffmpeg-*.aar 2>/dev/null | head -1)"
+          # Paths are relative to androidtv — this job sets working-directory,
+          # so repo-root paths resolve to androidtv/androidtv/... and find
+          # nothing.
+          AAR="$(ls app/libs/media3-decoder-ffmpeg-*.aar 2>/dev/null | head -1)"
           if [ -z "$AAR" ]; then
             echo "::error::No media3-decoder-ffmpeg AAR in androidtv/app/libs. Build one with build-ffmpeg-extension.yml." >&2
             exit 1
           fi
           AAR_VER="$(basename "$AAR" .aar | sed 's/^media3-decoder-ffmpeg-//')"
-          MEDIA3_VER="$(grep -oP '^media3\s*=\s*"\K[^"]+' androidtv/gradle/libs.versions.toml | head -1)"
+          MEDIA3_VER="$(grep -oP '^media3\s*=\s*"\K[^"]+' gradle/libs.versions.toml | head -1)"
           echo "AAR $AAR_VER vs media3 $MEDIA3_VER"
           if [ "$AAR_VER" != "$MEDIA3_VER" ]; then
             echo "::error::FFmpeg decoder was built against media3 $AAR_VER but the app uses $MEDIA3_VER. Re-run build-ffmpeg-extension.yml with media3_ref=$MEDIA3_VER and commit the result, or the decoder will fail at runtime." >&2
