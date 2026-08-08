@@ -215,20 +215,6 @@ fun TrailerScreen(
     val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
         advance(YouTubeEmbed.errorReason(code))
     }
-    // The explicit type is load-bearing, not style.
-    //
-    // Lint resolves the argument type of addJavascriptInterface to decide
-    // whether its methods carry @JavascriptInterface, and it cannot see through
-    // `remember`'s generic return type — it reports the type as the bare type
-    // variable "T" and concludes nothing was annotated. Naming the class was
-    // not enough on its own; the declaration has to say what it is.
-    val bridge: TrailerBridge = remember {
-        TrailerBridge(
-            main = Handler(Looper.getMainLooper()),
-            playing = { reportPlaying.value() },
-            failed = { code -> reportError.value(code) },
-        )
-    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (current != null && deadEnd == null) {
@@ -251,7 +237,31 @@ fun TrailerScreen(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                             )
                             YouTubeEmbed.configure(this, takesFocus = false)
-                            addJavascriptInterface(bridge, "EnktelTrailer")
+                            // Constructed inline, not hoisted into a variable.
+                            //
+                            // Lint decides whether these methods carry
+                            // @JavascriptInterface by resolving the type of
+                            // this argument expression, and it could not do
+                            // that through a local `val` captured across the
+                            // composable and factory lambdas — it reported the
+                            // bare type variable "T" whether the object was
+                            // anonymous, named, or explicitly typed. A direct
+                            // constructor call leaves nothing to infer.
+                            //
+                            // No `remember` needed either: the factory runs
+                            // once per WebView, which is exactly the lifetime
+                            // this object wants. The two State handles it
+                            // closes over are themselves stable across
+                            // recomposition, so the callbacks stay current as
+                            // candidates fail.
+                            addJavascriptInterface(
+                                TrailerBridge(
+                                    main = Handler(Looper.getMainLooper()),
+                                    playing = { reportPlaying.value() },
+                                    failed = { code -> reportError.value(code) },
+                                ),
+                                "EnktelTrailer",
+                            )
                             web = this
                         }
                     }.getOrElse {
