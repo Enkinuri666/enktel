@@ -1,9 +1,7 @@
 package tv.enktel.app.ui.components
 
 import android.annotation.SuppressLint
-import android.graphics.Color as AndroidColor
 import android.view.ViewGroup
-import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -149,20 +147,15 @@ private fun YouTubeSilentPlayer(videoId: String, modifier: Modifier = Modifier) 
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    setBackgroundColor(AndroidColor.BLACK)
-                    isFocusable = false
-                    isFocusableInTouchMode = false
+                    // Shared with the full-screen trailer screen. This used to
+                    // be a hand-rolled copy of the same settings, and it was
+                    // missing the WebChromeClient that HTML5 video will not
+                    // play without — so the hover previews were failing for the
+                    // same reason the full-screen trailers were.
+                    YouTubeEmbed.configure(this, takesFocus = false)
                     // The trailer is scenery: it must never steal D-pad focus or
                     // swallow touches meant for the poster grid on top of it.
                     isClickable = false
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        mediaPlaybackRequiresUserGesture = false
-                        loadWithOverviewMode = true
-                        useWideViewPort = true
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                    }
                 }
             }.getOrElse { android.view.View(ctx) }
         },

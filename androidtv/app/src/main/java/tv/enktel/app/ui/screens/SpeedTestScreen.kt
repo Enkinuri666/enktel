@@ -25,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.lazy.rememberLazyListState
+import tv.enktel.app.ui.components.dpadScrollable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -148,8 +150,14 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
+    // Diagnostics is a screen of readings, not controls — one focusable
+    // button in the first row and Text all the way down. Compose scrolls a
+    // lazy list as a side effect of focus entering an off-screen item, so
+    // with nothing below to focus, the results were unreachable by remote.
+    val listState = rememberLazyListState()
     LazyColumn(
-        Modifier.fillMaxSize(),
+        state = listState,
+        modifier = Modifier.fillMaxSize().dpadScrollable(listState, scope),
         contentPadding = PaddingValues(horizontal = shape.padH, vertical = shape.padV),
         verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {

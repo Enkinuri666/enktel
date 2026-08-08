@@ -169,10 +169,18 @@ private fun MovieDetailsBody(
     // having pasted a TMDB key into Settings first. It also resolves by title
     // when the panel published no TMDB id, which is most of the catalogue —
     // the old `if (m.tmdbId > 0)` guard is why the button was usually absent.
+    // The rest of the uploads TMDB knows about, so the player has somewhere to
+    // go when the first one turns out to be embed-disabled.
+    var trailerAlts by remember { mutableStateOf<List<String>>(emptyList()) }
     androidx.compose.runtime.LaunchedEffect(m.tmdbId, m.name) {
-        trailerKey = runCatching {
-            graph.trailers.trailerKey(m.tmdbId, m.name, isSeries = false)
-        }.getOrNull()
+        val keys = runCatching {
+            graph.trailers.trailerKeys(m.tmdbId, m.name, isSeries = false)
+        }.getOrDefault(emptyList())
+        trailerKey = keys.firstOrNull()
+            ?: runCatching {
+                graph.trailers.trailerKey(m.tmdbId, m.name, isSeries = false)
+            }.getOrNull()
+        trailerAlts = keys.drop(1)
     }
     // FlowRow so long action lists (Play + Resume + Trailer + Fav + Watchlist +
     // Download) wrap to a second row on narrow phones instead of clipping.
@@ -194,7 +202,10 @@ private fun MovieDetailsBody(
                 // Fire TV Stick has neither YouTube nor a browser installed, so
                 // both intents threw, both throws were swallowed by runCatching,
                 // and the button did nothing at all — no error, no trailer.
-                nav.navigate("trailer?key=$key&title=${tv.enktel.app.encode(m.name)}")
+                nav.navigate(
+                    "trailer?key=$key&title=${tv.enktel.app.encode(m.name)}" +
+                        "&alts=${trailerAlts.joinToString(",")}",
+                )
             })
         }
         FavButton(graph, p.id, "vod", m.streamId)
@@ -353,15 +364,24 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 // Series had no trailer button at all — only films did, for no
                 // reason other than nobody having added one.
                 var seriesTrailer by remember { mutableStateOf<String?>(null) }
+                var seriesAlts by remember { mutableStateOf<List<String>>(emptyList()) }
                 androidx.compose.runtime.LaunchedEffect(s.tmdbId, s.name) {
-                    seriesTrailer = runCatching {
-                        graph.trailers.trailerKey(s.tmdbId, s.name, isSeries = true)
-                    }.getOrNull()
+                    val keys = runCatching {
+                        graph.trailers.trailerKeys(s.tmdbId, s.name, isSeries = true)
+                    }.getOrDefault(emptyList())
+                    seriesTrailer = keys.firstOrNull()
+                        ?: runCatching {
+                            graph.trailers.trailerKey(s.tmdbId, s.name, isSeries = true)
+                        }.getOrNull()
+                    seriesAlts = keys.drop(1)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     seriesTrailer?.let { key ->
                         FocusButton("🎬 Trailer", onClick = {
-                            nav.navigate("trailer?key=$key&title=${tv.enktel.app.encode(s.name)}")
+                            nav.navigate(
+                                "trailer?key=$key&title=${tv.enktel.app.encode(s.name)}" +
+                                    "&alts=${seriesAlts.joinToString(",")}",
+                            )
                         })
                     }
                     FavButton(graph, p.id, "series", s.seriesId)

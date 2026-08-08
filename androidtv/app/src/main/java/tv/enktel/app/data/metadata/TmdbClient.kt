@@ -109,10 +109,33 @@ class TmdbClient(
      * all. English is tried first and then the unfiltered list, because a lot of
      * non-US catalogue titles only carry a trailer in their original language.
      */
-    suspend fun trailerKey(tmdbId: Long, isSeries: Boolean): String? = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
+    suspend fun trailerKey(tmdbId: Long, isSeries: Boolean): String? =
+        trailerKeys(tmdbId, isSeries, limit = 1).firstOrNull()
+
+    /**
+     * The same ranking, but every candidate rather than only the winner.
+     *
+     * A YouTube video that its owner has switched embedding off for will never
+     * play inside the app, no matter how correctly the player is configured —
+     * the IFrame API answers error 101/150 and that is the end of it. Studios
+     * do this to individual uploads fairly often, so the difference between
+     * "trailers are broken for this film" and "trailers work" is frequently
+     * just having a second id to try. Returning the list is what lets the
+     * player fall through to the teaser instead of giving up.
+     */
+    suspend fun trailerKeys(
+        tmdbId: Long,
+        isSeries: Boolean,
+        limit: Int = 4,
+    ): List<String> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank() || tmdbId <= 0) return@withContext emptyList()
         val kind = if (isSeries) "tv" else "movie"
-        pickTrailer(videos(kind, tmdbId, LANG)) ?: pickTrailer(videos(kind, tmdbId, null))
+        // English first, then unfiltered: a lot of non-US catalogue titles only
+        // carry a trailer in their original language, and a localised list that
+        // came back empty should not mask one that would not have.
+        val ordered = rankTrailers(videos(kind, tmdbId, LANG)) +
+            rankTrailers(videos(kind, tmdbId, null))
+        ordered.distinct().take(limit)
     }
 
     private fun videos(kind: String, tmdbId: Long, language: String?): List<JsonElement> {
@@ -135,19 +158,32 @@ class TmdbClient(
         } catch (_: Throwable) { emptyList() }
     }
 
-    private fun pickTrailer(results: List<JsonElement>): String? {
-        if (results.isEmpty()) return null
+    /**
+     * Every YouTube id in [results], best first.
+     *
+     * The order is "what a viewer would call *the* trailer": an official
+     * trailer, then any trailer, then a teaser, then a clip, then whatever is
+     * left. Previously this picked one and discarded the rest, which is why a
+     * single un-embeddable upload meant no trailer at all.
+     */
+    private fun rankTrailers(results: List<JsonElement>): List<String> {
+        if (results.isEmpty()) return emptyList()
         val youtube = results.filter { it.str("site").equals("YouTube", ignoreCase = true) }
-        if (youtube.isEmpty()) return null
-        fun ofType(type: String, officialOnly: Boolean) = youtube.firstOrNull {
-            it.str("type").equals(type, ignoreCase = true) &&
-                (!officialOnly || it.bool("official"))
-        }?.str("key")
-        return ofType("Trailer", officialOnly = true)
-            ?: ofType("Trailer", officialOnly = false)
-            ?: ofType("Teaser", officialOnly = false)
-            ?: ofType("Clip", officialOnly = false)
-            ?: youtube.firstOrNull()?.str("key")
+        if (youtube.isEmpty()) return emptyList()
+        fun rank(v: JsonElement): Int {
+            val type = v.str("type").orEmpty().lowercase()
+            val official = v.bool("official")
+            return when {
+                type == "trailer" && official -> 0
+                type == "trailer" -> 1
+                type == "teaser" -> 2
+                type == "clip" -> 3
+                else -> 4
+            }
+        }
+        return youtube
+            .sortedBy(::rank)
+            .mapNotNull { it.str("key")?.takeIf(String::isNotBlank) }
     }
 
     /**

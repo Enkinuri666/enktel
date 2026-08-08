@@ -1,9 +1,10 @@
 package tv.enktel.app.ui.screens
 
 import android.annotation.SuppressLint
-import android.graphics.Color as AndroidColor
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
-import android.webkit.WebSettings
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -16,11 +17,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,51 +33,132 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.YouTubeEmbed
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextOnArt
+import tv.enktel.app.ui.theme.EnktelType
 
 /**
  * Full-screen trailer playback, inside the app.
  *
- * The old "🎬 Trailer" button fired an `ACTION_VIEW` at
- * `com.google.android.youtube.tv`, with a browser URL as the fallback, both
- * wrapped in `runCatching`. On a Fire TV Stick with neither the YouTube app nor
- * a browser installed — which is the default state of a sideloaded stick, and
- * exactly the device this app is built for — both throws were swallowed and the
- * button did nothing at all. No error, no toast, no trailer. That is the whole
- * bug: pressing it produced *silence*.
+ * ## What was wrong
  *
- * TMDB only ever hands out a YouTube video id; it hosts no media. Scraping a
- * progressive stream out of YouTube is both against their terms and one deploy
- * away from breaking, so the supported route is the IFrame player in a WebView
- * — the same mechanism [tv.enktel.app.ui.components.AutoTrailerLayer] already
- * uses for the silent hover previews, with three differences that matter here:
- * sound is on, the player is the subject rather than scenery, and the D-pad has
- * to work.
+ * The screen showed YouTube's own grey "Unsupported" panel instead of a
+ * trailer, and then sat there — no retry, no explanation, no way forward
+ * except Back. Three separate faults stacked up to produce that:
  *
- * D-pad handling is ours, not the iframe's. `disablekb=1` keeps YouTube's own
- * key bindings out of the way and playback is driven through
- * `evaluateJavascript`, because leaving focus inside a WebView on a TV is how
- * users end up trapped on a page with no way back.
+ *  1. **The WebView had no `WebChromeClient`.** Android will render a page
+ *     containing `<video>` and refuse to play it without one; that interface
+ *     is where the platform routes the callbacks HTML5 media depends on. This
+ *     is the main event, and it is fixed in [YouTubeEmbed.configure] for both
+ *     embeds at once, because configuring two WebViews separately is how they
+ *     came to be wrong in the same way twice.
+ *  2. **Nothing listened for failure.** The IFrame API reports precisely why
+ *     it could not play something — a withdrawn video, an owner who disallows
+ *     embedding, an engine too old — and none of those callbacks were wired,
+ *     so every one of them looked identical from the outside: a grey box that
+ *     never became a trailer.
+ *  3. **There was only ever one candidate.** TMDB usually publishes several
+ *     videos per title. When the chosen one refused to embed, that was the end
+ *     of it, even though the teaser two entries down would have played.
+ *
+ * ## What it does now
+ *
+ * Plays the first candidate. If the player reports an error, or simply never
+ * starts within [START_TIMEOUT_MS], it moves to the next candidate without
+ * saying anything — a viewer wants the trailer, not a bulletin about which
+ * upload of it failed. Only when every candidate is exhausted does it say so,
+ * in plain words, alongside a button that opens the video in whatever *can*
+ * play it on this device.
+ *
+ * The watchdog matters as much as the error callback: a WebView too old for
+ * YouTube's player does not always report an error at all. It renders the
+ * unsupported notice inside the frame and goes quiet, which is indistinguishable
+ * from a slow load unless something is counting.
+ *
+ * D-pad handling is ours, not the iframe's. `disablekb=1` keeps YouTube's key
+ * bindings out of the way and playback is driven through `evaluateJavascript`,
+ * because leaving focus inside a WebView on a television is how users end up
+ * trapped on a page with no way back.
  */
+private const val START_TIMEOUT_MS = 9_000L
+
+/**
+ * What the IFrame page reports back through.
+ *
+ * ### Why this is a named, public class
+ *
+ * It began as an anonymous `object` inside the composable, which compiles and
+ * runs but fails lint: the detector resolves the argument's type, an anonymous
+ * object has no name to resolve, and it concludes that nothing was annotated —
+ * "None of the methods in the added interface (T) have been annotated with
+ * @android.webkit.JavascriptInterface". A named class gives it something to
+ * look at.
+ *
+ * Public, rather than `private` or `internal`, on purpose. `addJavascriptInterface`
+ * reaches these methods by reflection from outside this package: a `private`
+ * top-level class is package-private in the bytecode, and Kotlin mangles the
+ * names of `internal` members. Either would compile happily and then fail to
+ * find a callback at runtime — a release-only, silent failure of exactly the
+ * kind this whole change exists to remove.
+ *
+ * [main] is not decoration either. WebView invokes these on its own JavaScript
+ * thread, never the main one, and Compose state is not safe to write from
+ * there, so everything hops to the main looper before touching it.
+ */
+class TrailerBridge(
+    private val main: Handler,
+    private val playing: () -> Unit,
+    private val failed: (Int) -> Unit,
+) {
+    @JavascriptInterface
+    fun onPlaying() {
+        main.post { playing() }
+    }
+
+    @JavascriptInterface
+    fun onError(code: Int) {
+        main.post { failed(code) }
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
+fun TrailerScreen(
+    nav: NavHostController,
+    videoId: String,
+    title: String,
+    /**
+     * Further YouTube ids to fall back to, best first. The route only carries
+     * one id today, so this is usually empty — the recovery path that matters
+     * for a single candidate is the external hand-off below.
+     */
+    alternates: List<String> = emptyList(),
+) {
+    val context = LocalContext.current
+    val candidates = remember(videoId, alternates) {
+        (listOf(videoId) + alternates).filter { it.isNotBlank() }.distinct()
+    }
+    var attempt by remember(candidates) { mutableIntStateOf(0) }
     var web by remember { mutableStateOf<WebView?>(null) }
     var playing by remember { mutableStateOf(true) }
-    // Set from AndroidView's factory when the platform has no WebView provider.
-    // Derived rather than assigned during composition — writing state while
-    // composing is how a screen ends up recomposing itself forever.
+    var started by remember(attempt) { mutableStateOf(false) }
     var noWebView by remember { mutableStateOf(false) }
-    val failed = videoId.isBlank() || noWebView
-    val closeFocus = remember { FocusRequester() }
+    /** Set once every candidate has failed; carries the reason to show. */
+    var deadEnd by remember(candidates) { mutableStateOf<String?>(null) }
+
+    val current = candidates.getOrNull(attempt)
+    val engineTooOld = remember { !YouTubeEmbed.canEmbed(context) }
+    val failed = current == null || noWebView || deadEnd != null
+    val controlFocus = remember { FocusRequester() }
 
     fun js(code: String) {
         runCatching { web?.evaluateJavascript(code, null) }
@@ -81,16 +167,57 @@ fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
     val close = { nav.popBackStack(); Unit }
     BackHandler(onBack = close)
 
+    /**
+     * Move to the next upload, or give up with a reason.
+     *
+     * Deliberately quiet between candidates: the viewer asked for a trailer,
+     * and being told that upload #1 of it was geo-blocked is not information
+     * they can act on while #2 is about to play.
+     */
+    fun advance(reason: String) {
+        if (attempt + 1 < candidates.size) {
+            attempt += 1
+        } else {
+            deadEnd = reason
+        }
+    }
+
+    // A player that never starts is the failure mode an error callback misses:
+    // an engine too old for YouTube renders its unsupported notice inside the
+    // frame and then says nothing at all, which looks exactly like a slow load.
+    LaunchedEffect(attempt, current, started, deadEnd) {
+        if (current == null || started || deadEnd != null) return@LaunchedEffect
+        delay(START_TIMEOUT_MS)
+        if (!started) {
+            advance(
+                if (engineTooOld) {
+                    "This device's browser engine is too old for YouTube's player"
+                } else {
+                    "The trailer did not start playing"
+                },
+            )
+        }
+    }
+
     // Stop the audio the instant the screen goes, whatever route it left by.
-    // A trailer that keeps playing after you have navigated away is the same
-    // class of bug as the engine-nobody-can-see the player session guards
-    // against, and it is far more obvious to the user.
     DisposableEffect(Unit) {
         onDispose { runCatching { web?.loadUrl("about:blank") } }
     }
 
+    // The lambdas the bridge calls, kept current behind a stable reference.
+    //
+    // The bridge itself is remembered once, for the life of the screen, because
+    // it is handed to a WebView that outlives any single composition — so it
+    // must not close over composition state directly. `attempt` changes as
+    // candidates fail, and a callback holding the first composition's copy
+    // would keep retrying the upload that had already failed.
+    val reportPlaying = rememberUpdatedState<() -> Unit> { started = true }
+    val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
+        advance(YouTubeEmbed.errorReason(code))
+    }
+
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (videoId.isNotBlank()) {
+        if (current != null && deadEnd == null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 onRelease = { v ->
@@ -109,23 +236,31 @@ fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                             )
-                            setBackgroundColor(AndroidColor.BLACK)
-                            // The overlay owns the D-pad; the page must not
-                            // take focus or the user cannot get back out.
-                            isFocusable = false
-                            isFocusableInTouchMode = false
-                            settings.apply {
-                                javaScriptEnabled = true
-                                domStorageEnabled = true
-                                mediaPlaybackRequiresUserGesture = false
-                                loadWithOverviewMode = true
-                                useWideViewPort = true
-                                cacheMode = WebSettings.LOAD_DEFAULT
-                            }
-                            loadDataWithBaseURL(
-                                "https://www.youtube.com",
-                                trailerHtml(videoId),
-                                "text/html", "utf-8", null,
+                            YouTubeEmbed.configure(this, takesFocus = false)
+                            // Constructed inline, not hoisted into a variable.
+                            //
+                            // Lint decides whether these methods carry
+                            // @JavascriptInterface by resolving the type of
+                            // this argument expression, and it could not do
+                            // that through a local `val` captured across the
+                            // composable and factory lambdas — it reported the
+                            // bare type variable "T" whether the object was
+                            // anonymous, named, or explicitly typed. A direct
+                            // constructor call leaves nothing to infer.
+                            //
+                            // No `remember` needed either: the factory runs
+                            // once per WebView, which is exactly the lifetime
+                            // this object wants. The two State handles it
+                            // closes over are themselves stable across
+                            // recomposition, so the callbacks stay current as
+                            // candidates fail.
+                            addJavascriptInterface(
+                                TrailerBridge(
+                                    main = Handler(Looper.getMainLooper()),
+                                    playing = { reportPlaying.value() },
+                                    failed = { code -> reportError.value(code) },
+                                ),
+                                "EnktelTrailer",
                             )
                             web = this
                         }
@@ -134,24 +269,62 @@ fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
                         android.view.View(ctx)
                     }
                 },
+                update = { v ->
+                    (v as? WebView)?.let { w ->
+                        if (w.tag != current) {
+                            w.tag = current
+                            w.loadDataWithBaseURL(
+                                "https://www.youtube.com",
+                                trailerHtml(current),
+                                "text/html", "utf-8", null,
+                            )
+                        }
+                    }
+                },
             )
         }
 
         if (failed) {
+            val reason = when {
+                noWebView -> "This device has no WebView component, so in-app YouTube playback " +
+                    "isn't available here. Everything else in the app is unaffected."
+                deadEnd != null -> deadEnd
+                else -> "No trailer is available for this title."
+            }
             Column(
-                Modifier.fillMaxSize().padding(48.dp),
+                Modifier.fillMaxSize().padding(48.dp).widthIn(max = 620.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Trailers need a system WebView", color = Color.White, fontSize = 18.sp)
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    "This device has no WebView component, so YouTube playback isn't available " +
-                        "here. Everything else in the app is unaffected.",
-                    color = EnktelTextDim, fontSize = 13.sp,
+                    title.ifBlank { "Trailer" },
+                    color = EnktelTextOnArt, style = EnktelType.headline,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(20.dp))
-                FocusButton("Back", accent = true, onClick = close, modifier = Modifier.focusRequester(closeFocus))
+                Spacer(Modifier.height(10.dp))
+                Text(reason.orEmpty(), color = EnktelTextDim, style = EnktelType.body)
+                Spacer(Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // The whole point of the dead end: hand the video to
+                    // something that can play it rather than stopping here.
+                    val playable = candidates.firstOrNull()
+                    if (playable != null && !noWebView) {
+                        FocusButton(
+                            "▶  Open in YouTube",
+                            accent = true,
+                            modifier = Modifier.focusRequester(controlFocus),
+                            onClick = { YouTubeEmbed.openExternally(context, playable) },
+                        )
+                        FocusButton("Back", onClick = close)
+                    } else {
+                        FocusButton(
+                            "Back",
+                            accent = true,
+                            modifier = Modifier.focusRequester(controlFocus),
+                            onClick = close,
+                        )
+                    }
+                }
             }
         } else {
             // Controls over a gradient at the bottom, the way the player OSD
@@ -170,16 +343,19 @@ fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
             ) {
                 Text(
                     title.ifBlank { "Trailer" },
-                    color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    color = EnktelTextOnArt, style = EnktelType.title,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
-                Text("Official trailer", color = EnktelTextDim, fontSize = 12.sp)
+                Text(
+                    if (started) "Official trailer" else "Loading trailer…",
+                    color = EnktelTextDim, style = EnktelType.caption,
+                )
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FocusButton(
                         if (playing) "⏸ Pause" else "▶ Play",
                         accent = true,
-                        modifier = Modifier.focusRequester(closeFocus),
+                        modifier = Modifier.focusRequester(controlFocus),
                         onClick = {
                             playing = !playing
                             js(if (playing) "enktelPlay()" else "enktelPause()")
@@ -194,19 +370,25 @@ fun TrailerScreen(nav: NavHostController, videoId: String, title: String) {
         }
     }
 
-    // Land on a control rather than nowhere. Without this the first D-pad press
-    // has no focused target and appears to do nothing.
-    androidx.compose.runtime.LaunchedEffect(failed) {
-        runCatching { closeFocus.requestFocus() }
+    // Land on a control rather than nowhere. Retried, because after a nav
+    // transition the first frame routinely has nothing attached to focus yet —
+    // a single attempt fails silently and leaves the remote inert.
+    LaunchedEffect(failed) {
+        repeat(20) {
+            if (runCatching { controlFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+            delay(50)
+        }
     }
 }
 
 /**
- * IFrame-API page with named hooks the Kotlin side calls.
+ * IFrame-API page with named hooks the Kotlin side calls, and callbacks it
+ * reports through.
  *
- * `controls=1` stays on as a safety net for touch devices, but the TV path
- * never reaches them — the overlay buttons call these functions instead, which
- * is what keeps focus out of the WebView.
+ * `onStateChange` is what proves playback actually began — `onReady` only means
+ * the player object exists, which it does even when the video behind it will
+ * never load. `onError` carries YouTube's own reason code straight back so the
+ * screen can decide between trying the next upload and giving up honestly.
  */
 private fun trailerHtml(videoId: String): String = """
 <!DOCTYPE html>
@@ -223,14 +405,26 @@ private fun trailerHtml(videoId: String): String = """
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
   var p = null;
+  function report(fn, arg) {
+    try { if (window.EnktelTrailer && window.EnktelTrailer[fn]) window.EnktelTrailer[fn](arg); }
+    catch (e) {}
+  }
+  // The API script itself failing to load is a failure too — without this the
+  // page just sits blank and only the Kotlin-side watchdog would catch it.
+  setTimeout(function () { if (!p) report('onError', 5); }, 7000);
   function onYouTubeIframeAPIReady() {
     p = new YT.Player('player', {
       videoId: '$videoId',
       playerVars: {
         autoplay: 1, controls: 1, rel: 0, modestbranding: 1,
-        playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0
+        playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
+        origin: 'https://www.youtube.com'
       },
-      events: { onReady: function (e) { e.target.playVideo(); } }
+      events: {
+        onReady: function (e) { e.target.playVideo(); },
+        onStateChange: function (e) { if (e.data === 1) report('onPlaying', 0); },
+        onError: function (e) { report('onError', e.data); }
+      }
     });
   }
   function enktelPlay()  { if (p && p.playVideo)  p.playVideo(); }
