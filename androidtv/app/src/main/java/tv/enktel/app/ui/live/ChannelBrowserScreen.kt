@@ -60,6 +60,8 @@ import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.TvTextField
 import tv.enktel.app.ui.components.tapClick
+import tv.enktel.app.ui.components.tvGridFocus
+import tv.enktel.app.ui.components.tvRailFocus
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -192,6 +194,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
 
         // Mode chips: favourites, radio, hidden.
         LazyRow(
+            modifier = Modifier.tvRailFocus(),
             contentPadding = PaddingValues(horizontal = hPad),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -223,6 +226,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
 
         // Category chips, each with its own count.
         LazyRow(
+            modifier = Modifier.tvRailFocus(),
             contentPadding = PaddingValues(horizontal = hPad),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -273,7 +277,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(if (isMobile) 116.dp else 168.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().tvGridFocus(),
             contentPadding = PaddingValues(horizontal = hPad, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

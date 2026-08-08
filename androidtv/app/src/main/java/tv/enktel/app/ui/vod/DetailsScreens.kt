@@ -60,6 +60,7 @@ import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
+import tv.enktel.app.ui.components.tvRailFocus
 
 // Lint false-positive: produceState's vararg-keys overload isn't recognized by the
 // ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
@@ -417,7 +418,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             })
         }
         Spacer(Modifier.height(6.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(seasons.keys.toList()) { sn ->
                 tv.enktel.app.ui.components.GlassChip(
                     "S$sn", selected = sn == season,

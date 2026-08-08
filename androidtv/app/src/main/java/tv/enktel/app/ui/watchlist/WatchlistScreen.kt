@@ -28,6 +28,7 @@ import tv.enktel.app.ui.components.ChipRowLabel
 import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.theme.EnktelPurple
 
 @Suppress("ProduceStateDoesNotAssignValue")
@@ -71,7 +72,7 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
             contentPadding = PaddingValues(24.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().tvGridFocus(),
         ) {
             items(items, key = { it.key }) { w ->
                 PosterCard(

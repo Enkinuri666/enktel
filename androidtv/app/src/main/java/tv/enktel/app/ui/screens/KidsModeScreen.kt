@@ -46,6 +46,7 @@ import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.PinDialog
 import tv.enktel.app.ui.components.PosterCard
+import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.theme.EnktelBg
 
 /**
@@ -99,7 +100,7 @@ fun KidsModeScreen(graph: AppGraph, nav: NavHostController) {
                     contentPadding = PaddingValues(24.dp),
                     horizontalArrangement = Arrangement.spacedBy(18.dp),
                     verticalArrangement = Arrangement.spacedBy(22.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().tvGridFocus(),
                 ) {
                     items(channels, key = { "ch:${it.key}" }) { ch ->
                         PosterCard(

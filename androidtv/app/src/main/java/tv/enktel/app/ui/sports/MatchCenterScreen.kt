@@ -59,6 +59,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import tv.enktel.app.ui.components.tvRailFocus
 
 /** Route for [MatchCenterScreen]. */
 fun matchCenterRoute(eventId: String, title: String = ""): String =
@@ -234,7 +235,7 @@ fun MatchCenterScreen(
                         Column(Modifier.padding(14.dp)) {
                             SubHeader("OFFICIAL BROADCASTERS")
                             Spacer(Modifier.height(8.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(broadcasters, key = { it.channel + it.country }) { b -> BroadcasterChip(b) }
                             }
                         }

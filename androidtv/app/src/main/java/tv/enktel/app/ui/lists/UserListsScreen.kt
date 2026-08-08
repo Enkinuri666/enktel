@@ -51,6 +51,7 @@ import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.TvTextField
+import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
@@ -123,7 +124,7 @@ fun UserListsScreen(graph: AppGraph, nav: NavHostController) {
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(if (isMobile) 150.dp else 220.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().tvGridFocus(),
             contentPadding = PaddingValues(horizontal = hPad, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -212,7 +213,7 @@ private fun ListDetail(
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(130.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().tvGridFocus(),
             contentPadding = PaddingValues(horizontal = hPad, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
