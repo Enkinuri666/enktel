@@ -25,10 +25,6 @@ on:
         description: 'Extra notes prepended to the auto-generated changelog.'
         type: string
         required: false
-      include_aab:
-        description: 'Also attach the Play Store bundles (.aab). Off by default — end users cannot install an AAB.'
-        type: boolean
-        default: false
       prerelease:
         description: 'Mark as a pre-release'
         type: boolean
@@ -153,8 +149,8 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testTvDebugUnitTest :app:testMobileDebugUnitTest --no-daemon
 
-      - name: Build signed release APKs + AABs (tv + mobile)
-        run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease :app:bundleTvRelease :app:bundleMobileRelease --no-daemon
+      - name: Build signed release APKs (tv + mobile)
+        run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease --no-daemon
 
       # v1 (JAR) signing is not optional: devices below API 24 cannot verify
       # v2/v3, so an APK without a v1 signature is silently uninstallable on
@@ -181,7 +177,6 @@ jobs:
       # downloads folder.
       - name: Stage release assets
         env:
-          INCLUDE_AAB: ${{ inputs.include_aab }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir -p "$RUNNER_TEMP/assets"
@@ -189,12 +184,6 @@ jobs:
              "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.apk"
           cp app/build/outputs/apk/mobile/release/app-mobile-release.apk \
              "$RUNNER_TEMP/assets/enktel-mobile-${VERSION}.apk"
-          if [ "$INCLUDE_AAB" = "true" ]; then
-            cp app/build/outputs/bundle/tvRelease/app-tv-release.aab \
-               "$RUNNER_TEMP/assets/enktel-tv-${VERSION}.aab"
-            cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab \
-               "$RUNNER_TEMP/assets/enktel-mobile-${VERSION}.aab"
-          fi
           ls -la "$RUNNER_TEMP/assets"
 
       # Always, so a failed build never leaves the signing key on the runner.
@@ -208,7 +197,6 @@ jobs:
           TAG: ${{ inputs.tag }}
           TITLE: ${{ inputs.name }}
           NOTES: ${{ inputs.notes }}
-          INCLUDE_AAB: ${{ inputs.include_aab }}
           PRERELEASE: ${{ inputs.prerelease }}
           DRAFT: ${{ inputs.draft }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -223,10 +211,6 @@ jobs:
             echo "| :--- | :--- |"
             echo "| \`enktel-tv-${VERSION}.apk\` | Fire TV / Android TV — sideload |"
             echo "| \`enktel-mobile-${VERSION}.apk\` | Phone / tablet — sideload |"
-            if [ "$INCLUDE_AAB" = "true" ]; then
-              echo "| \`enktel-tv-${VERSION}.aab\` | Google Play upload only (not installable directly) |"
-              echo "| \`enktel-mobile-${VERSION}.aab\` | Google Play upload only (not installable directly) |"
-            fi
             echo
             echo "Both APKs are signed with the release key and carry v1 + v2 + v3 signatures,"
             echo "so they install across the whole supported range (see minSdk in app/build.gradle.kts)"
