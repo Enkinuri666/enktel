@@ -260,18 +260,54 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        // First, before the object graph exists. A crash while building the
+        // graph is exactly the case that leaves a tester with a dead app and
+        // nothing to send us, so the black box has to be running before
+        // anything that could fail.
+        tv.enktel.app.data.diag.CrashLog.install(this)
         graph = AppGraph(this)
-        tv.enktel.app.data.net.ThermalGuard.install(this)
-        tv.enktel.app.data.net.NetworkClass.install(this)
+
+        // Everything below is optional infrastructure: thermal monitoring,
+        // network classification, the system monitor's context, the EPG
+        // refresh schedule and the DVR notification channel. None of it is
+        // needed to show a screen, and each one talks to a platform service
+        // whose behaviour differs across the eight Android versions this app
+        // supports — the app runs on Fire OS 6 and on current phones from the
+        // same binary.
+        //
+        // They were called bare, so a throw in any of them killed the app
+        // before the first frame, on the devices where that platform service
+        // behaves unusually. That is the worst possible failure mode for the
+        // least important code: an app that will not start at all because its
+        // temperature sensor hookup did not like something.
+        //
+        // Each is isolated and its failure named in the log. If one of these is
+        // ever the reason a device misbehaves, `adb logcat -s EnktelApp` says
+        // which — and the app still starts.
+        startupStep("thermal guard") { tv.enktel.app.data.net.ThermalGuard.install(this) }
+        startupStep("network class") { tv.enktel.app.data.net.NetworkClass.install(this) }
         // Hands the monitor an application Context. It doesn't sample until the
         // System Monitor screen asks it to — see SystemMonitor.start().
-        tv.enktel.app.data.net.SystemMonitor.install(this)
-        tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this)
-        if (Build.VERSION.SDK_INT >= 26) {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(
-                NotificationChannel(DVR_CHANNEL, "DVR Recordings", NotificationManager.IMPORTANCE_LOW)
-            )
+        startupStep("system monitor") { tv.enktel.app.data.net.SystemMonitor.install(this) }
+        startupStep("epg schedule") { tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this) }
+        startupStep("dvr channel") {
+            if (Build.VERSION.SDK_INT >= 26) {
+                val nm = getSystemService(NotificationManager::class.java)
+                nm.createNotificationChannel(
+                    NotificationChannel(DVR_CHANNEL, "DVR Recordings", NotificationManager.IMPORTANCE_LOW)
+                )
+            }
+        }
+    }
+
+    /**
+     * Runs one optional piece of startup wiring, and lets the app live if it
+     * fails. Deliberately not silent — a swallowed exception that nobody can
+     * see is how a real fault turns into a mystery.
+     */
+    private inline fun startupStep(name: String, block: () -> Unit) {
+        runCatching(block).onFailure {
+            android.util.Log.w("EnktelApp", "startup step '$name' failed; continuing without it", it)
         }
     }
 

@@ -1052,6 +1052,44 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Version ${tv.enktel.app.BuildConfig.VERSION_NAME} (${tv.enktel.app.BuildConfig.VERSION_CODE})",
             color = EnktelTextDim, fontSize = 12.sp,
         )
+
+        // Last crash, if there was one.
+        //
+        // Shown rather than only written to a file because the file lives at
+        // Android/data/<package>/files, which is reachable but not obvious. A
+        // tester who can open Settings can read the first lines here and paste
+        // them straight into Telegram; one who cannot open the app at all still
+        // has the file. Between them that covers every case we have hit.
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        var crash by remember {
+            mutableStateOf(tv.enktel.app.data.diag.CrashLog.read(ctx))
+        }
+        crash?.let { report ->
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "LAST CRASH",
+                color = tv.enktel.app.ui.theme.EnktelLive,
+                fontSize = 12.sp, fontWeight = FontWeight.Black,
+            )
+            Text(
+                "The app closed unexpectedly. Send these lines to t.me/EnkTel — " +
+                    "the full report is also saved to " +
+                    (tv.enktel.app.data.diag.CrashLog.externalPath(ctx) ?: "the app's files folder"),
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                report.lineSequence().take(14).joinToString("\n"),
+                color = Color.White, fontSize = 10.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                lineHeight = 14.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            FocusButton("Clear crash report", onClick = {
+                tv.enktel.app.data.diag.CrashLog.clear(ctx)
+                crash = null
+            })
+        }
         }
         }
     }
