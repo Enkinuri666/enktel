@@ -300,7 +300,16 @@ fun TvNavShell(
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
                         expanded = false
-                        runCatching { contentFocusRef.value?.requestFocus() }.getOrDefault(false)
+                        // Explicitly Boolean: requestFocus() returns Unit, so a
+                        // safe call on it is Unit? and the elvis/getOrDefault
+                        // forms widen to a nullable type the key handler cannot
+                        // return.
+                        val target = contentFocusRef.value
+                        if (target == null) {
+                            false
+                        } else {
+                            runCatching { target.requestFocus() }.isSuccess
+                        }
                     } else {
                         false
                     }
