@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.components.FirstRunTour
+import tv.enktel.app.ui.components.focusBlocked
 import tv.enktel.app.ui.components.ToastHost
 import tv.enktel.app.ui.guide.GuideScreen
 import tv.enktel.app.ui.live.LivePlayerScreen
@@ -958,9 +959,15 @@ private fun MainNav(
     var welcomeDone by remember { mutableStateOf(false) }
     val showWelcome = welcomeSeen == false && !welcomeDone
 
+    // Suppressed while anything modal is covering the shell. The welcome video
+    // was already handled; the first-run tour was not, and that was half of why
+    // its buttons could not be reached — the shell kept claiming focus back
+    // into the nav rail underneath the dialog. Both flags are in the key set,
+    // so focus is re-claimed the moment the overlay goes.
+    val modalOverlay = showWelcome || tourVisible
     val contentFocus = tv.enktel.app.ui.components.rememberScreenFocus(
         currentRoute, isMobileShell,
-        enabled = !showWelcome,
+        enabled = !modalOverlay,
     )
 
     val navHost = @Composable { padding: androidx.compose.foundation.layout.PaddingValues ->
@@ -1037,11 +1044,20 @@ private fun MainNav(
         // you were already watching, so nothing in the app could answer "which
         // channels have an archive?" — the commonest question about it.
         composable("catchup") { tv.enktel.app.ui.screens.CatchupBrowseScreen(graph, nav) }
-        composable("trailer?key={key}&title={title}") { back ->
+        composable("trailer?key={key}&title={title}&alts={alts}") { back ->
+            // `alts` carries the other uploads TMDB knows about, comma-joined.
+            // The player falls through them when one refuses to embed, which is
+            // a thing studios do to individual uploads routinely — see
+            // TrailerRepository.trailerKeys.
             tv.enktel.app.ui.screens.TrailerScreen(
                 nav,
                 videoId = back.arguments?.getString("key").orEmpty(),
                 title = decode(back.arguments?.getString("title").orEmpty()),
+                alternates = back.arguments?.getString("alts")
+                    .orEmpty()
+                    .split(',')
+                    .map(String::trim)
+                    .filter { it.isNotBlank() },
             )
         }
         composable("sports") { SportsHubScreen(graph, nav) }
@@ -1172,7 +1188,11 @@ private fun MainNav(
     }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // Drawing the tour on top of the shell does not put the shell out of reach:
+    // Compose has no z-order concept of modality, so the nav rail behind an
+    // overlay stays a perfectly good focus target and the D-pad keeps finding
+    // it. Deactivating the subtree is what actually makes the overlay modal.
+    Box(Modifier.fillMaxSize().focusBlocked(modalOverlay)) {
         shell()
         val np = nowPlaying
         if (docked && np != null) {

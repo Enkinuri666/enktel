@@ -22,6 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.lazy.rememberLazyListState
+import tv.enktel.app.ui.components.dpadScrollable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,8 +92,12 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
     val isMobile = BuildConfig.FLAVOR == "mobile"
     val hPad = if (isMobile) 20.dp else 48.dp
 
+    // Same as Diagnostics: a wall of readings with nothing focusable in it,
+    // so the D-pad had no way to move the list.
+    val listState = rememberLazyListState()
     LazyColumn(
-        Modifier.fillMaxSize().background(EnktelBg),
+        state = listState,
+        modifier = Modifier.fillMaxSize().background(EnktelBg).dpadScrollable(listState, scope),
         contentPadding = PaddingValues(horizontal = hPad, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

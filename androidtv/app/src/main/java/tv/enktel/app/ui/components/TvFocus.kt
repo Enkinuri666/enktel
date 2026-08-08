@@ -1,13 +1,26 @@
 package tv.enktel.app.ui.components
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Claims D-pad focus for a screen once it is actually on-screen.
@@ -108,3 +121,83 @@ fun Modifier.tvRailFocus(): Modifier = this.focusGroup().focusRestorer()
  * point instead of failing the move.
  */
 fun Modifier.tvGridFocus(): Modifier = this.focusRestorer()
+
+/**
+ * Makes a list of *unfocusable* content scrollable with the D-pad.
+ *
+ * ### Why Diagnostics could not be scrolled from a remote
+ *
+ * Compose scrolls a lazy list as a side effect of focus moving into an item
+ * that is off-screen. That works for a grid of posters, where every item is a
+ * button, and fails completely for a screen of readings — Connection
+ * Diagnostics is a `LazyColumn` of `Text`, with exactly one focusable thing in
+ * it (the Run button, in the first row). Once focus left that button there was
+ * nothing below for it to move to, so the list had no reason to scroll and the
+ * results underneath were literally unreachable without a touchscreen. That is
+ * the bug as reported: fine with a finger, impossible with a remote.
+ *
+ * So the container itself becomes the focus target and turns vertical presses
+ * into scrolling. Movement is handed back at the ends — [LazyListState] knows
+ * whether there is anything left in each direction, and returning false there
+ * lets focus leave normally instead of trapping the user in a wall of text.
+ *
+ * @param step fraction of the viewport to move per press. Less than a full
+ *   page on purpose: a screenful per press gives the reader no overlap and
+ *   makes it easy to skip a line while hunting for a number.
+ */
+@Composable
+fun Modifier.dpadScrollable(
+    state: LazyListState,
+    scope: CoroutineScope,
+    step: Float = 0.75f,
+): Modifier {
+    val focusManager = LocalFocusManager.current
+    return this
+        .focusable()
+        .onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val direction = when (event.key) {
+                Key.DirectionDown -> FocusDirection.Down
+                Key.DirectionUp -> FocusDirection.Up
+                else -> return@onPreviewKeyEvent false
+            }
+            // Perform the ordinary focus move first, and explicitly, rather
+            // than assuming anything about whether this handler runs before or
+            // after Compose's own. Diagnostics does have one focusable control
+            // — the Run button — and a handler that swallowed every vertical
+            // press to scroll would strand focus on it permanently, trading
+            // one unreachable thing for another.
+            if (focusManager.moveFocus(direction)) return@onPreviewKeyEvent true
+            // Nothing focusable that way. Scroll instead of doing nothing,
+            // which is the whole point.
+            val delta = if (direction == FocusDirection.Down) 1f else -1f
+            val canScroll = if (delta > 0) state.canScrollForward else state.canScrollBackward
+            if (!canScroll) return@onPreviewKeyEvent false
+            val viewport = state.layoutInfo.viewportSize.height.toFloat()
+            if (viewport <= 0f) return@onPreviewKeyEvent false
+            scope.launch { state.animateScrollBy(viewport * step * delta) }
+            true
+        }
+}
+
+/**
+ * Takes a whole subtree out of focus search while [blocked] is true.
+ *
+ * ### Why the first-run tour could not be reached
+ *
+ * The tour is drawn as a sibling of the app shell, so it covers the shell
+ * visually and changes nothing about focus: the nav rail underneath was still
+ * a perfectly good focus target, and it had already claimed focus on mount. The
+ * result was precisely what a user sees and cannot explain — a dialog in front
+ * of you, and a highlight moving around the menu behind it, with no key that
+ * bridges the two. Touch worked because a tap addresses what it lands on
+ * rather than searching for it.
+ *
+ * Compose has no z-order concept of modality; drawing on top of something does
+ * not put it out of reach. Marking the focus group deactivated does, and unlike
+ * trying to trap focus inside the dialog it cannot be defeated by a direction
+ * nobody thought to handle.
+ */
+fun Modifier.focusBlocked(blocked: Boolean): Modifier = this
+    .focusProperties { canFocus = !blocked }
+    .focusGroup()

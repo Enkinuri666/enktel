@@ -73,6 +73,33 @@ class TrailerRepository(
      * enrichment has ground through thousands of rows at one request per
      * 250 ms.
      */
+    /**
+     * Every candidate for [tmdbId] / [title], best first.
+     *
+     * A YouTube upload whose owner disallows embedding cannot be played inside
+     * any app — the IFrame player answers error 101/150 and stops — and studios
+     * do that to individual uploads often enough that the difference between
+     * "this film has no trailer" and "trailers work" is frequently just having
+     * a second id to try. The full-screen player falls through this list.
+     *
+     * Only the direct-TMDB path can produce more than one: enktel.tv's proxy
+     * answers with a single `key`, so users without a personal key get one
+     * candidate and rely on the external hand-off instead. That is a limitation
+     * of the endpoint, not of the player.
+     */
+    suspend fun trailerKeys(tmdbId: Long, title: String, isSeries: Boolean): List<String> {
+        if (tmdbId <= 0 && title.isBlank()) return emptyList()
+        val apiKey = try { settings.tmdbApiKey.first() } catch (_: Throwable) { "" }
+        if (apiKey.isBlank()) return listOfNotNull(trailerKey(tmdbId, title, isSeries))
+        return try {
+            val client = TmdbClient(http, apiKey)
+            val id = if (tmdbId > 0) tmdbId else client.search(title, 0, isSeries)
+            if (id == null || id <= 0) emptyList() else client.trailerKeys(id, isSeries)
+        } catch (_: Throwable) {
+            listOfNotNull(trailerKey(tmdbId, title, isSeries))
+        }
+    }
+
     suspend fun trailerKey(tmdbId: Long, title: String, isSeries: Boolean): String? {
         if (tmdbId <= 0 && title.isBlank()) return null
         // Cache on the title when there is no id, so a miss is remembered too
