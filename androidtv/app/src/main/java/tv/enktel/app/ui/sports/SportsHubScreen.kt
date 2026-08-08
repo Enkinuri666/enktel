@@ -71,6 +71,7 @@ import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
+import tv.enktel.app.ui.components.tvRailFocus
 
 @Suppress("ProduceStateDoesNotAssignValue")
 @Composable
@@ -243,6 +244,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
             item {
                 LazyRow(
+                    modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -320,6 +322,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             item { SectionHeader("⚡ LIVE SCORES", EnktelOk, padHoriz) }
             item {
                 LazyRow(
+                    modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -361,6 +364,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             item { SectionHeader("📡 OFFICIAL SCHEDULE — TODAY", EnktelBlue, padHoriz) }
             item {
                 LazyRow(
+                    modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -387,6 +391,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             item { SectionHeader("🎞 HIGHLIGHTS — LATEST PACKAGES", EnktelOk, padHoriz) }
             item {
                 LazyRow(
+                    modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {

@@ -55,6 +55,8 @@ import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.components.tvRailFocus
+import tv.enktel.app.ui.components.tvGridFocus
 
 /** Shared PIN gate for locked VOD/series categories. */
 class ParentalGateState {
@@ -146,7 +148,7 @@ private fun CategoryChipRow(
     Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp)) {
         SectionTitle(title)
         Spacer(Modifier.height(6.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             item {
                 tv.enktel.app.ui.components.GlassChip(
                     "All", selected = selected == null,
@@ -368,7 +370,7 @@ private fun MoviesGrid(
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().tvGridFocus(),
             ) {
                     val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
                         ?: movies.firstOrNull { it.poster.isNotBlank() }
@@ -441,7 +443,7 @@ private fun SeriesGrid(
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().tvGridFocus(),
             ) {
                 val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
                     ?: series.firstOrNull { it.poster.isNotBlank() }
@@ -630,7 +632,7 @@ private fun FilterBar(
                 "Genre",
                 modifier = Modifier.padding(bottom = 6.dp),
             )
-            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     tv.enktel.app.ui.components.GlassChip(
                         "All", selected = genreFilter == null,
@@ -652,7 +654,7 @@ private fun FilterBar(
             "Year",
             modifier = Modifier.padding(bottom = 6.dp),
         )
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 tv.enktel.app.ui.components.GlassChip(
                     "Any", selected = decadeFilter == null,

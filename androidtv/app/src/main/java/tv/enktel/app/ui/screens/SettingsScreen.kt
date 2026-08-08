@@ -36,6 +36,7 @@ import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.components.tvRailFocus
 
 @Composable
 fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
@@ -104,6 +105,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
 
         androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.tvRailFocus(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(CATEGORIES) { c ->

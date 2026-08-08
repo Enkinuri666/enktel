@@ -66,6 +66,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import tv.enktel.app.ui.components.tvRailFocus
 
 /**
  * Phone-optimised TV Guide.
@@ -199,6 +200,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
 
         // Day picker chip strip
         LazyRow(
+            modifier = Modifier.tvRailFocus(),
             contentPadding = PaddingValues(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -217,6 +219,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         // Category picker. Counts sit in the label so an empty filter explains
         // itself instead of just showing nothing.
         LazyRow(
+            modifier = Modifier.tvRailFocus(),
             contentPadding = PaddingValues(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -263,6 +266,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
 
         // Channel rail — 48 dp min tap target, the whole filtered list.
         LazyRow(
+            modifier = Modifier.tvRailFocus(),
             state = railState,
             contentPadding = PaddingValues(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -92,6 +92,7 @@ import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.components.tvRailFocus
 
 private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
 
@@ -722,7 +723,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 LazyRow(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .tvRailFocus(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     item {

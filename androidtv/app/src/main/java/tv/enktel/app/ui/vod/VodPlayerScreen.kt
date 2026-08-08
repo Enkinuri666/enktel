@@ -69,6 +69,7 @@ import tv.enktel.app.ui.player.SubtitleOverlay
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelTextDim
 import java.util.Locale
+import tv.enktel.app.ui.components.tvRailFocus
 
 private fun fmtTime(ms: Long): String {
     if (ms <= 0) return "0:00"
@@ -833,7 +834,7 @@ fun VodPlayerScreen(
                 val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
                 val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
                 val hudToaster = tv.enktel.app.ui.components.LocalToaster.current
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     item {
                         FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
                             if (engine.player.isPlaying) engine.player.pause() else engine.player.play()

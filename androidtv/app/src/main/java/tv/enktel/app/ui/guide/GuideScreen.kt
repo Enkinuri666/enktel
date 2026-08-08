@@ -74,6 +74,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import tv.enktel.app.ui.components.tvRailFocus
 
 private val HOUR = 3_600_000L
 private val DP_PER_HOUR = 220.dp
@@ -202,6 +203,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
         // a single click instead of six D-pad presses.
         androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.tvRailFocus(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {

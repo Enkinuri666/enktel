@@ -1,5 +1,7 @@
 package tv.enktel.app.ui.live
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +22,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -467,9 +474,32 @@ fun QuickMenuBar(actions: List<QuickAction>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
+    // The strip drew no focus state at all.
+    //
+    // The intent was documented — "the focused item becomes a filled disc" —
+    // but the code that implemented it read `a.active`, which is whether the
+    // *feature* is on (subtitles enabled, recording running), not where the
+    // D-pad is. Both container colours were Transparent, there was no border
+    // and no focusedScale, so nothing on screen changed as focus moved. On a
+    // strip of sixteen near-identical glyph discs that makes the menu look
+    // frozen: you press right, nothing moves, you press right again, and now
+    // you are two actions past the one you wanted.
+    //
+    // Focus and active are genuinely different things and both need saying, so
+    // they are drawn differently: focus is the brand-gradient fill plus a lift,
+    // active is a small dot under the label. A recording that is running still
+    // reads as running when the D-pad is elsewhere.
+    var focused by remember { mutableStateOf(false) }
+    val discScale by animateFloatAsState(
+        targetValue = if (focused) 1.12f else 1f,
+        animationSpec = tween(durationMillis = 140),
+        label = "quickActionDisc",
+    )
     Surface(
         onClick = a.onClick,
-        modifier = modifier.tapClick(a.onClick),
+        modifier = modifier
+            .tapClick(a.onClick)
+            .onFocusChanged { focused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -482,15 +512,30 @@ private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
             Modifier.width(94.dp).padding(vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // The focused item becomes a filled disc, which is what makes the
-            // current position findable on a strip of near-identical glyphs.
             Box(
                 Modifier
                     .size(46.dp)
+                    .scale(discScale)
                     .clip(CircleShape)
                     .background(
-                        if (a.active) Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))
-                        else Brush.linearGradient(listOf(Color.White.copy(0.08f), Color.White.copy(0.08f))),
+                        when {
+                            focused -> Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))
+                            a.active -> Brush.linearGradient(
+                                listOf(EnktelBlue.copy(0.30f), EnktelPurple.copy(0.30f)),
+                            )
+                            else -> Brush.linearGradient(
+                                listOf(Color.White.copy(0.08f), Color.White.copy(0.08f)),
+                            )
+                        },
+                    )
+                    .border(
+                        width = if (focused) 2.dp else 1.dp,
+                        color = when {
+                            focused -> Color.White
+                            a.active -> EnktelBlue.copy(0.55f)
+                            else -> Color.White.copy(0.10f)
+                        },
+                        shape = CircleShape,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -499,10 +544,26 @@ private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(6.dp))
             Text(
                 a.label,
-                color = if (a.active) EnktelBlue else Color.White.copy(0.82f),
-                fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                color = when {
+                    focused -> Color.White
+                    a.active -> EnktelBlue
+                    else -> Color.White.copy(0.82f)
+                },
+                fontSize = 11.sp,
+                fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
+            // "This one is currently on" — kept separate from the focus
+            // treatment so the two never have to compete for the same pixels.
+            if (a.active) {
+                Spacer(Modifier.height(3.dp))
+                Box(
+                    Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(EnktelBlue),
+                )
+            }
         }
     }
 }

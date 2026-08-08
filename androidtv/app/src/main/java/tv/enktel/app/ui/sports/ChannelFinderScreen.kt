@@ -50,6 +50,7 @@ import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.LocalToaster
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.tapClick
+import tv.enktel.app.ui.components.tvRailFocus
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
@@ -158,6 +159,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
         if (sports.isNotEmpty()) {
             item {
                 LazyRow(
+                    modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = pad),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
