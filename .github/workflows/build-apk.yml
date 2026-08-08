@@ -34,6 +34,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # The FFmpeg decoder is a checked-in binary compiled against one specific
+      # media3 version, and the two can drift apart silently: bumping media3 in
+      # the version catalogue still compiles, still links, still passes lint,
+      # and then fails on a real device when the renderer meets a media3 ABI it
+      # was not built for. Nothing else in the build notices, so this does.
+      # String comparison, so it costs a second and runs before anything else.
+      - name: Check the FFmpeg decoder matches media3
+        run: |
+          # Paths are relative to androidtv — this job sets working-directory,
+          # so repo-root paths resolve to androidtv/androidtv/... and find
+          # nothing.
+          AAR="$(ls app/libs/media3-decoder-ffmpeg-*.aar 2>/dev/null | head -1)"
+          if [ -z "$AAR" ]; then
+            echo "::error::No media3-decoder-ffmpeg AAR in androidtv/app/libs. Build one with build-ffmpeg-extension.yml." >&2
+            exit 1
+          fi
+          AAR_VER="$(basename "$AAR" .aar | sed 's/^media3-decoder-ffmpeg-//')"
+          MEDIA3_VER="$(grep -oP '^media3\s*=\s*"\K[^"]+' gradle/libs.versions.toml | head -1)"
+          echo "AAR $AAR_VER vs media3 $MEDIA3_VER"
+          if [ "$AAR_VER" != "$MEDIA3_VER" ]; then
+            echo "::error::FFmpeg decoder was built against media3 $AAR_VER but the app uses $MEDIA3_VER. Re-run build-ffmpeg-extension.yml with media3_ref=$MEDIA3_VER and commit the result, or the decoder will fail at runtime." >&2
+            exit 1
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
