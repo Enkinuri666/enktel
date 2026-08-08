@@ -93,6 +93,14 @@ import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.ui.components.tvRailFocus
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.tv.material3.ClickableSurfaceDefaults
+import tv.enktel.app.ui.components.tvGridFocus
+import tv.enktel.app.ui.theme.EnktelBorder
+import tv.enktel.app.ui.theme.EnktelSurfaceHigh
+import tv.enktel.app.ui.theme.EnktelText
+import tv.enktel.app.ui.theme.EnktelType
 
 private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
 
@@ -1521,30 +1529,116 @@ fun TrackPicker(
     onClose: () -> Unit,
     offLabel: String = "Off",
 ) {
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.6f)), contentAlignment = Alignment.Center) {
+    // Two things were wrong with this dialog beyond how it looked.
+    //
+    // It claimed no focus when it opened, so the first D-pad press after
+    // asking for the audio menu went nowhere — the same fault that made the
+    // player's quick menu feel unresponsive, and the reason "I can't change
+    // the audio track" is a plausible thing to conclude from a working build.
+    //
+    // And it laid the tracks out in a plain Column. A multi-language stream
+    // with a dozen audio tracks — routine on an international IPTV line — ran
+    // straight off the bottom of the screen with no way to reach the tracks
+    // underneath, so the languages a viewer was most likely to be hunting for
+    // were the ones they could not select.
+    val first = remember { FocusRequester() }
+    LaunchedEffect(title) {
+        repeat(20) {
+            if (runCatching { first.requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(50)
+        }
+    }
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.72f)), contentAlignment = Alignment.Center) {
         Column(
             Modifier
-                .padding(horizontal = 24.dp)
-                .widthIn(max = 360.dp)
+                .padding(horizontal = 24.dp, vertical = 32.dp)
+                .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .background(EnktelSurface, RoundedCornerShape(12.dp))
+                .background(EnktelSurface, RoundedCornerShape(14.dp))
+                .border(1.dp, EnktelBorder, RoundedCornerShape(14.dp))
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            if (tracks.isEmpty()) Text("No tracks available", color = EnktelTextDim, fontSize = 13.sp)
-            // For video-quality, the "Off" row means "let ExoPlayer pick
-            // adaptively" — clearing the override falls back to the
-            // AdaptiveTrackSelection factory the engine is wired with.
-            if (allowOff) FocusButton(offLabel, onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth())
-            tracks.forEach { t ->
-                FocusButton(
-                    (if (t.selected) "✓ " else "") + t.name,
-                    onClick = { onPick(t) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Text(title, color = EnktelText, style = EnktelType.title)
+            if (tracks.isEmpty()) {
+                Text("No tracks available", color = EnktelTextDim, style = EnktelType.body)
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .tvGridFocus(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // For video-quality, the "Off" row means "let ExoPlayer pick
+                // adaptively" — clearing the override falls back to the
+                // AdaptiveTrackSelection factory the engine is wired with.
+                if (allowOff) {
+                    item {
+                        TrackRow(
+                            label = offLabel,
+                            selected = tracks.none { it.selected },
+                            onClick = { onPick(null) },
+                            modifier = Modifier.focusRequester(first),
+                        )
+                    }
+                }
+                itemsIndexed(tracks) { i, t ->
+                    TrackRow(
+                        label = t.name,
+                        selected = t.selected,
+                        onClick = { onPick(t) },
+                        modifier = if (!allowOff && i == 0) Modifier.focusRequester(first) else Modifier,
+                    )
+                }
             }
             FocusButton("Cancel", onClick = onClose, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * One track in the picker.
+ *
+ * The list used to be uniform FocusButtons with a "✓ " prefix glued onto the
+ * selected one's text, which put the only indication of what you are currently
+ * listening to inside the label, at the same weight as the label, in a column
+ * of identically-styled buttons. The current track now carries the accent and
+ * a check in its own column, so "which one is on" and "which one am I about to
+ * choose" are answered by two different signals instead of competing for one.
+ */
+@Composable
+private fun TrackRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) EnktelBlue.copy(alpha = 0.18f) else EnktelSurfaceHigh,
+            focusedContainerColor = EnktelBlue,
+            contentColor = if (selected) EnktelBlue else EnktelText,
+            focusedContentColor = Color.White,
+        ),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = EnktelType.label,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (selected) {
+                Spacer(Modifier.width(10.dp))
+                Text("✓", style = EnktelType.subtitle)
+            }
         }
     }
 }

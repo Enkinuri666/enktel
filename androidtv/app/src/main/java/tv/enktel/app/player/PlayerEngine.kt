@@ -955,22 +955,48 @@ class PlayerEngine(
             for (ti in 0 until group.length) {
                 if (!group.isTrackSupported(ti)) continue
                 val f = group.getTrackFormat(ti)
-                val name = buildString {
-                    val lang = f.language?.takeIf { it.isNotBlank() && it != "und" }
-                    // Video quality picker prefers "1080p · 5.2 Mbps · H.265"
-                    // over the format's raw label (which is usually blank on
-                    // Xtream). Audio picker gets language/channels; text
-                    // stays as-is.
-                    if (type == C.TRACK_TYPE_VIDEO) {
+                // The picker used to print whatever the stream happened to
+                // carry: Format.label when the provider set one, and the raw
+                // ISO code when it didn't. On an Xtream panel the label is
+                // almost always null, so choosing a dub meant reading
+                // "eng · 6ch" / "spa · 2ch" — codes and channel counts instead
+                // of languages and layouts. See TrackLabels.
+                val name = when (type) {
+                    C.TRACK_TYPE_VIDEO -> buildString {
                         val res = if (f.height > 0) "${f.height}p" else null
                         val br = if (f.bitrate > 0) "%.1f Mbps".format(f.bitrate / 1_000_000.0) else null
                         val codec = f.sampleMimeType?.substringAfterLast('/')?.uppercase()
                         val parts = listOfNotNull(res, br, codec).filter { it.isNotBlank() }
                         if (parts.isNotEmpty()) append(parts.joinToString(" · "))
                         else append(f.label ?: "Track ${out.size + 1}")
-                    } else {
-                        append(f.label ?: lang ?: "Track ${out.size + 1}")
-                        if (type == C.TRACK_TYPE_AUDIO && f.channelCount > 0) append(" · ${f.channelCount}ch")
+                    }
+                    C.TRACK_TYPE_AUDIO -> {
+                        // Language leads, because it is what the viewer is
+                        // choosing between. The provider's own label is kept as
+                        // a fallback and never discarded — some panels do set
+                        // something useful ("Director's commentary").
+                        val lead = TrackLabels.languageName(f.language)
+                            ?: f.label
+                            ?: "Track ${out.size + 1}"
+                        val parts = listOfNotNull(
+                            lead,
+                            TrackLabels.channelLayout(f.channelCount),
+                            TrackLabels.codecName(f.sampleMimeType),
+                        )
+                        parts.joinToString(" · ")
+                    }
+                    else -> buildString {
+                        append(
+                            TrackLabels.languageName(f.language)
+                                ?: f.label
+                                ?: "Track ${out.size + 1}",
+                        )
+                        // A forced track carries only the subtitles for
+                        // dialogue in another language, and picking one when
+                        // you wanted full subtitles looks like the feature is
+                        // broken. Saying so costs one word.
+                        if (f.selectionFlags and C.SELECTION_FLAG_FORCED != 0) append(" · Forced")
+                        if (f.roleFlags and C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND != 0) append(" · SDH")
                     }
                 }
                 out += TrackChoice(name, gi, ti, group.isTrackSelected(ti))
