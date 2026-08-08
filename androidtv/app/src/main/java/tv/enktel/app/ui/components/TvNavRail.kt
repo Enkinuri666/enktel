@@ -6,13 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -76,8 +76,9 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  *     Triggered automatically the moment focus lands in the rail
  *     (D-Pad-Left from the leftmost content column).
  *   - Animation: `tween(220 ms)` matches the design brief's "smooth"
- *     expansion, run through `animateDpAsState` so the content Row
- *     (rail | main) re-lays out incrementally.
+ *     expansion, run through `animateDpAsState`. The rail overlays the
+ *     content rather than sharing a Row with it, so widening repaints the
+ *     rail alone and leaves the content where it is.
  *
  * Screens are opted in via the [TvNavShell] wrapper in MainActivity;
  * immersive routes (players, onboarding, first-run tour) skip it.
@@ -165,7 +166,53 @@ fun TvNavShell(
         label = "tv-nav-rail-width",
     )
 
-    Row(Modifier.fillMaxWidth()) {
+    // The rail overlays the content instead of sharing a Row with it.
+    //
+    // As a Row child the rail's width was part of the layout, so every
+    // expansion re-laid out the whole content area — hero image, every row,
+    // every poster — and shoved it 148 dp sideways and back. That is the
+    // content shifting between screenshots, and on a Fire TV stick it is also
+    // 220 ms of layout work each time focus enters or leaves the rail.
+    //
+    // Content is now permanently inset by the collapsed width and never moves.
+    // The rail draws over it while expanded, which its near-opaque background
+    // already supports. Collapsed, the two arrangements are pixel-identical.
+    //
+    // Content is declared first so the rail paints on top of it.
+    Box(Modifier.fillMaxSize()) {
+        // Focus has to land *somewhere* when a screen opens, and it did not.
+        //
+        // Of the twenty-four content screens in this app, not one asked for
+        // focus on mount. Compose leaves focus unset until something claims it,
+        // so arriving anywhere — Home, Movies, Settings, the guide — left the
+        // first D-pad press with no origin to search from. It either did
+        // nothing or jumped somewhere arbitrary, and on a remote that is
+        // indistinguishable from a dropped button press. Every screen change
+        // cost the user a wasted press, on every screen, which is most of what
+        // "the remote isn't fully functional" describes.
+        //
+        // Doing it here rather than in twenty-four screens means it cannot be
+        // forgotten by the next screen someone adds. focusRestorer also brings
+        // you back to where you were when you return to a screen, instead of
+        // resetting to the top-left every time.
+        val contentFocus = remember { FocusRequester() }
+        LaunchedEffect(currentRoute) {
+            // A frame's grace: the destination's children are composed on the
+            // next pass, and requesting focus on an empty group throws.
+            withFrameNanos { }
+            runCatching { contentFocus.requestFocus() }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .focusGroup()
+                .focusRestorer()
+                .focusRequester(contentFocus),
+        ) {
+            // MainActivity applies this to the NavHost root, so every screen
+            // inherits the inset without needing to know the rail exists.
+            content(PaddingValues(start = RAIL_COLLAPSED))
+        }
         Column(
             Modifier
                 .width(width)
@@ -228,37 +275,6 @@ fun TvNavShell(
             // Tail padding, so the last destination can scroll clear of the
             // bottom edge instead of sitting flush against it.
             Spacer(Modifier.height(24.dp))
-        }
-        // Focus has to land *somewhere* when a screen opens, and it did not.
-        //
-        // Of the twenty-four content screens in this app, not one asked for
-        // focus on mount. Compose leaves focus unset until something claims it,
-        // so arriving anywhere — Home, Movies, Settings, the guide — left the
-        // first D-pad press with no origin to search from. It either did
-        // nothing or jumped somewhere arbitrary, and on a remote that is
-        // indistinguishable from a dropped button press. Every screen change
-        // cost the user a wasted press, on every screen, which is most of what
-        // "the remote isn't fully functional" describes.
-        //
-        // Doing it here rather than in twenty-four screens means it cannot be
-        // forgotten by the next screen someone adds. focusRestorer also brings
-        // you back to where you were when you return to a screen, instead of
-        // resetting to the top-left every time.
-        val contentFocus = remember { FocusRequester() }
-        LaunchedEffect(currentRoute) {
-            // A frame's grace: the destination's children are composed on the
-            // next pass, and requesting focus on an empty group throws.
-            withFrameNanos { }
-            runCatching { contentFocus.requestFocus() }
-        }
-        Box(
-            Modifier
-                .weight(1f)
-                .focusGroup()
-                .focusRestorer()
-                .focusRequester(contentFocus),
-        ) {
-            content(PaddingValues(0.dp))
         }
     }
 }
