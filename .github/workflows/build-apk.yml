@@ -1,4 +1,4 @@
-name: Build & Sign APK/AAB
+name: Build & Sign APK
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: 'Build a signed release APK + AAB (requires keystore secrets)'
+        description: 'Build a signed release APK (requires keystore secrets)'
         type: boolean
         default: false
 
@@ -120,9 +120,9 @@ jobs:
           echo "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" | base64 -d > "$ENKTEL_KEYSTORE"
           test -s "$ENKTEL_KEYSTORE"
 
-      - name: Build signed release APKs + AABs (tv + mobile)
+      - name: Build signed release APKs (tv + mobile)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease :app:bundleTvRelease :app:bundleMobileRelease --no-daemon
+        run: ./gradlew :app:assembleTvRelease :app:assembleMobileRelease --no-daemon
 
       - name: Verify APK signatures
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
@@ -150,20 +150,4 @@ jobs:
         with:
           name: enktel-mobile-release-apk
           path: androidtv/app/build/outputs/apk/mobile/release/app-mobile-release.apk
-          if-no-files-found: error
-
-      - name: Upload TV release AAB (Google Play)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: enktel-tv-release-aab
-          path: androidtv/app/build/outputs/bundle/tvRelease/app-tv-release.aab
-          if-no-files-found: error
-
-      - name: Upload Mobile release AAB (Google Play)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: enktel-mobile-release-aab
-          path: androidtv/app/build/outputs/bundle/mobileRelease/app-mobile-release.aab
           if-no-files-found: error

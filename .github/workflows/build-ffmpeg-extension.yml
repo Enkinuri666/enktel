@@ -10,10 +10,13 @@ name: Build Media3 FFmpeg audio decoder
 # the AAR is a dependency the existing "HW+" setting starts meaning something
 # with no player changes at all.
 #
-# PATENTS, not licences. The FFmpeg code is LGPL and fine to ship. AC-3/E-AC-3
-# (Dolby) and DTS (Xperi) are patent-encumbered, and this app is distributed
-# commercially. Dropping them is a one-line edit to the decoders input below,
-# and everything else in the default set is unencumbered.
+# PATENTS, not licences. The FFmpeg code is LGPL and fine either way. AC-3/E-AC-3
+# (Dolby) and DTS (Xperi) are patent-encumbered, and the licensing programmes for
+# both are aimed at products being distributed. This app is built for private,
+# closed use, which is the same footing as VLC or Kodi decoding the same streams
+# on a desktop, so the full decoder set is enabled. Were it ever distributed
+# commercially that calculus changes, and dropping those four is an edit to the
+# decoders input below — everything else in the default set is unencumbered.
 #
 # This is a build, not a release: the AAR lands as a workflow artifact so it
 # can be inspected and size-checked before anything depends on it.
