@@ -1,6 +1,7 @@
 package tv.enktel.app.ui.components
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -44,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -217,9 +217,16 @@ fun TvNavShell(
             Modifier
                 .width(width)
                 .fillMaxHeight()
+                // The panel used to end on a hard vertical cut against the
+                // artwork, which is most of why the rail read as pasted on
+                // rather than part of the screen. Opaque where the labels sit,
+                // fading out over the last stretch so the edge dissolves into
+                // whatever is behind it.
                 .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xEA0B0C10), Color(0xEA0A0B0F)),
+                    Brush.horizontalGradient(
+                        0f to Color(0xF2090A0E),
+                        0.70f to Color(0xE60B0C10),
+                        1f to Color(0x000B0C10),
                     ),
                 )
                 // `hasFocus` on the outer Column covers any descendant, so the
@@ -288,26 +295,28 @@ private fun NavRailItem(
 ) {
     var focused by remember { mutableStateOf(false) }
 
-    // The rail read as cheap because focus barely moved anything: scale was
-    // pinned at 1.0 and the only change was a background alpha step. On a TV,
-    // where the D-pad is the whole interaction model, focus needs to be
-    // unmistakable — it is the cursor.
-    // 8 dp, not 12: at 12 the brand-tinted spot colour spread far enough past
-    // the item to read as a second rectangle floating behind the first rather
-    // than as depth under it — the other half of the reported "weird box".
-    val elevation by animateDpAsState(
-        targetValue = if (focused) 8.dp else 0.dp,
-        animationSpec = tween(if (focused) 160 else 240),
-        label = "navItemElevation",
+    // Focus is carried by one thing now: a filled gradient.
+    //
+    // It was carried by four at once — a 1.5 dp bright border, a blue drop
+    // shadow, a translucent fill and a taller stripe — and stacking them is
+    // what made the focused item read as a chunky outlined button rather than
+    // a selection. The border was the worst of it: a hard bright rectangle at
+    // 10 foot has no depth, and next to a selected item that also drew a
+    // stripe, one row could show four separate focus signals at once.
+    //
+    // The border and the shadow are gone. Focus is a brand gradient filling
+    // the row; selection is a dimmer fill plus the stripe. They read as
+    // different states without competing, and neither moves the geometry.
+    val fillAlpha by animateFloatAsState(
+        targetValue = if (focused) 1f else 0f,
+        animationSpec = tween(if (focused) 140 else 200),
+        label = "navFillAlpha",
     )
-    // The selection stripe grows into place rather than blinking on, and
-    // focus extends it further, so moving through the rail feels continuous.
+    // The stripe marks the current route, so it tracks selection alone. Tying
+    // it to focus as well meant the focused row grew a stripe it did not need
+    // and the selected row lost emphasis the moment focus moved past it.
     val stripeHeight by animateDpAsState(
-        targetValue = when {
-            focused -> 30.dp
-            selected -> 24.dp
-            else -> 0.dp
-        },
+        targetValue = if (selected) 26.dp else 0.dp,
         animationSpec = tween(200),
         label = "navStripeHeight",
     )
@@ -315,44 +324,33 @@ private fun NavRailItem(
     Surface(
         onClick = { NavSounds.click(); onClick() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        // Both containers transparent: the fill is a gradient drawn on the Row
+        // below, which a flat container colour cannot express.
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) EnktelBlue.copy(alpha = 0.20f) else Color.Transparent,
-            focusedContainerColor = EnktelBlue.copy(alpha = 0.35f),
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
             contentColor = if (selected) Color.White else EnktelTextDim,
             focusedContentColor = Color.White,
         ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, EnktelBlue),
-                shape = RoundedCornerShape(10.dp),
-            ),
-        ),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border.None),
         // Focus must NOT change this item's geometry.
         //
-        // A focusedScale of 1.04 was producing the misaligned "weird box"
-        // reported on Fire TV: tv-material applies its scale to the surface's
-        // own graphics layer, but our .shadow() below sits outside that layer,
-        // so the blue-tinted shadow kept drawing at 100 % while the bordered
-        // surface drew at 104 %. Two rectangles of different sizes around one
-        // menu item — which is exactly what it looked like. The scaled surface
-        // also grew wider than the row it labels, so the focused item no longer
-        // lined up with the selected item directly above it.
+        // A focusedScale of 1.04 once produced a misaligned "weird box" on Fire
+        // TV: tv-material scales the surface's own graphics layer, and anything
+        // drawn outside that layer kept its original size, so one menu item
+        // showed two rectangles at different scales. A stacked, full-width rail
+        // item has nowhere to grow into anyway.
         //
-        // A stacked, full-width rail item has nowhere to grow into anyway. Focus
-        // is now carried entirely by things that do not move the box: a brighter
-        // fill, the border, the taller stripe, white text and the shadow — all
-        // sharing one set of bounds with the selected state.
+        // Focus is carried entirely by the gradient fill below, which shares
+        // one set of bounds with every other state.
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         // No .focusable() here.
         //
         // tv-material's clickable Surface is already a focus target. Adding one
-        // put a second focusable node in the same chain, and the two disagreed:
-        // the Surface's own focused border tracked the node the D-pad actually
-        // moved to, while `focused` — driving the stripe, the elevation and the
-        // blue shadow — tracked the extra one, which was not always told when
-        // focus left. Items kept their focus treatment after focus had moved on,
-        // so walking down the rail accumulated focus rings: five lit at once in
-        // the reported screenshot, one per item visited.
+        // put a second focusable node in the same chain, and the two disagreed
+        // about which item held focus — so items kept their focus treatment
+        // after focus had moved on, and walking down the rail lit one ring per
+        // item visited.
         //
         // onFocusChanged observes the chain below it, which still includes the
         // Surface's own focusable, so removing the duplicate keeps this working
@@ -360,17 +358,34 @@ private fun NavRailItem(
         modifier = Modifier
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(10.dp),
-                clip = false,
-                spotColor = EnktelBlue,
-            )
             .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                // Selected sits under focus rather than beside it, so a row
+                // that is both does not double up — the focus gradient simply
+                // covers the quieter selected wash.
+                .background(
+                    if (selected) {
+                        Brush.horizontalGradient(
+                            listOf(EnktelBlue.copy(alpha = 0.16f), Color.Transparent),
+                        )
+                    } else {
+                        Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                    },
+                )
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            EnktelBlue.copy(alpha = 0.55f * fillAlpha),
+                            EnktelPurple.copy(alpha = 0.30f * fillAlpha),
+                        ),
+                    ),
+                )
+                .padding(vertical = 10.dp, horizontal = 8.dp),
         ) {
             // 3 dp brand-color selection stripe on the left, so users can spot the
             // active route even in the collapsed 64 dp state.
@@ -380,7 +395,7 @@ private fun NavRailItem(
                     .height(stripeHeight)
                     .clip(RoundedCornerShape(2.dp))
                     .background(
-                        if (selected || focused) {
+                        if (selected) {
                             Brush.verticalGradient(listOf(EnktelBlue, EnktelPurple))
                         } else {
                             Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
