@@ -145,6 +145,27 @@ class PlayerEngine(
     private var lastRenderSampleNs = 0L
     private var measuredFps = 0f
 
+    /**
+     * The measured rate, once it has held still long enough to be believed.
+     *
+     * Published exactly once per stream, and that is not a nicety. The only
+     * consumer of [videoFrameRate] is RefreshRateMatcher, which sets
+     * `preferredDisplayModeId` — an HDMI mode change that blanks a television
+     * for a second or two. Publishing a *measurement* every second turned that
+     * into a recurring event: 24 and 25 fps sit one frame apart, the original
+     * snap tolerance was 1.5, so the decision boundary fell at 24.5 and half a
+     * frame of sampling noise walked back and forth across it. A tester saw a
+     * stream play, cut out, recover and cut out again on a full 15 s buffer
+     * with zero dropped frames — not buffering at all, the panel resyncing.
+     *
+     * So the rate is latched: agree with itself for [FrameRates.AGREE_SAMPLES]
+     * consecutive seconds, publish once, and never again for this stream. A
+     * declared rate still wins outright and needs none of this, because a
+     * container does not change its mind mid-stream.
+     */
+    private var latchedFps = 0f
+    private val fpsLatch = FrameRates.Latch()
+
     private var retries = 0
     private var lastUrl: String? = null
     // Fallback-chain state: remaining candidate URLs to try (in priority
@@ -723,39 +744,26 @@ class PlayerEngine(
         lastRenderSampleNs = now
     }
 
-    /**
-     * Pull a measured rate onto the nearest real broadcast rate.
-     *
-     * Two reasons, and the second is the important one. Video is not shot at
-     * 49.8 fps — a sample near it is a 50 fps stream plus measurement noise,
-     * so snapping is more accurate than the raw figure, not less.
-     *
-     * And it makes the value *stable*. [videoFrameRate] drives
-     * [RefreshRateMatcher], which changes the display mode; an unsnapped
-     * measurement drifts a little every second, and since a `StateFlow` only
-     * suppresses re-emission of *equal* values, each wobble would arrive as a
-     * fresh reading and ask the television to switch modes once a second.
-     *
-     * Anything further than 1.5 fps from a known rate is left alone rather
-     * than forced — an unusual rate should read as itself, not as a lie about
-     * the nearest familiar one.
-     */
-    private fun snapToBroadcastRate(fps: Float): Float {
-        val known = floatArrayOf(23.976f, 24f, 25f, 29.97f, 30f, 50f, 59.94f, 60f, 100f, 120f)
-        val nearest = known.minByOrNull { kotlin.math.abs(it - fps) } ?: return fps
-        return if (kotlin.math.abs(nearest - fps) <= 1.5f) nearest else fps
-    }
-
     fun push() {
         sampleFrameRate()
         // The container's own figure wins when it has one — it is exact, and a
         // measurement can only approximate it. This fills the gap rather than
         // replacing it.
-        val effectiveFps =
-            if (declaredFps > 0f) declaredFps
-            else if (measuredFps > 0f) snapToBroadcastRate(measuredFps)
-            else 0f
-        if (declaredFps <= 0f && effectiveFps > 0f) videoFrameRate.value = effectiveFps
+        // Published once, when the measurement has settled — see FrameRates.
+        // The consumer changes the display mode, which blanks a television for
+        // a second or two, so a rate that is still moving must not reach it.
+        if (declaredFps <= 0f && latchedFps <= 0f) {
+            val settled = fpsLatch.offer(measuredFps)
+            if (settled > 0f) {
+                latchedFps = settled
+                videoFrameRate.value = settled
+            }
+        }
+        // The readout follows the same rule as the display: show a figure once
+        // it has settled, not while it is still moving. A number flickering
+        // between 24 and 25 tells a tester nothing except that we are unsure,
+        // and "—" says that more honestly.
+        val effectiveFps = if (declaredFps > 0f) declaredFps else latchedFps
         stats.value = stats.value.copy(
             frameRate = effectiveFps,
             bandwidthEstimate = bandwidthMeter.bitrateEstimate,
@@ -845,6 +853,8 @@ class PlayerEngine(
         // the display to it before a single frame of this one has rendered.
         declaredFps = 0f
         measuredFps = 0f
+        latchedFps = 0f
+        fpsLatch.reset()
         lastRenderedFrames = 0L
         lastRenderSampleNs = 0L
         error.value = null
