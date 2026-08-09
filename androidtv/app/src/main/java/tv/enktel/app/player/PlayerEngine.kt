@@ -549,6 +549,16 @@ class PlayerEngine(
                     val next = candidateQueue.removeAt(0)
                     retries = 0
                     playInternal(next, candidateLive, candidateStartMs, candidateSubUrl)
+                } else if (lastUrl?.startsWith("rtmp://", ignoreCase = true) == true) {
+                    // RTMP was dropped from the build — see the comment on the
+                    // absent media3-datasource-rtmp dependency. Named here
+                    // because the alternative is silence dressed as a codec
+                    // fault: DefaultDataSource quietly falls back to the HTTP
+                    // source for an unknown scheme, so the failure arrives as
+                    // a parsing error about a container nobody chose. And
+                    // diagnose() cannot help — it speaks HTTP, and would throw
+                    // on the scheme before reaching the panel.
+                    error.value = "RTMP streams are not supported by this build"
                 } else {
                     error.value = err.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ')
                     // Every shape failed. Ask the panel what it is actually

@@ -18,8 +18,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 121
-        versionName = "1.60.1"
+        versionCode = 122
+        versionName = "1.60.2"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -169,10 +169,21 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.ui.compose)
     implementation(libs.media3.datasource.okhttp)
-    // rtmp:// sources. DefaultDataSource instantiates RtmpDataSource by
-    // reflection when it sees the scheme, so this is a dependency-only
-    // change — no wiring in PlayerEngine.
-    implementation(libs.media3.datasource.rtmp)
+    // No media3-datasource-rtmp, deliberately.
+    //
+    // Its librtmp-jni.so ships from Google's AAR with 4 KB ELF segment
+    // alignment (p_align 0x1000). Android 15+ devices with 16 KB memory pages
+    // refuse to load such a library, and because it is a prebuilt binary in a
+    // published artifact there is no local fix — the alignment is baked in.
+    // It was the only 64-bit library in the APK that was not 16 KB-clean, so
+    // dropping it makes the arm64 build load correctly on 16 KB hardware.
+    //
+    // The cost is rtmp:// playback, which this deployment does not use. If it
+    // is ever needed again, take the dependency back and check
+    // `readelf -lW lib/arm64-v8a/librtmp-jni.so` for a 0x4000 LOAD alignment
+    // first. PlayerEngine names the scheme in its error path so a stray
+    // rtmp:// URL says what is wrong rather than failing as a generic
+    // container error.
     // Software AC-3 / E-AC-3 / DTS / TrueHD audio, for the Fire TV hardware
     // that decodes none of them and plays those streams silently. Built by
     // build-ffmpeg-extension.yml from androidx/media 1.11.0 — Google ships
