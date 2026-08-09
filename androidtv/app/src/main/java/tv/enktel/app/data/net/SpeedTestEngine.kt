@@ -452,17 +452,6 @@ object SpeedTestEngine {
             simulateUrlShapes(http, profile)
         else UrlShapeSimulation()
 
-        // Concurrent-connection cap detector — opens N parallel range GETs
-        // against a stream URL and reports how many the panel accepts before
-        // rejecting. Tells the user their real per-IP connection allotment.
-        onProgress("Detecting connection cap…")
-        val cap = if (streamSampleUrl != null)
-            // Pass the line's stated cap so the probe cannot exceed it. The
-            // server-info call above has already run, so on an Xtream profile
-            // this is known by now.
-            detectConnectionCap(http, streamSampleUrl, server.maxConnections)
-        else ConnectionCap(0, 0, 0)
-
         // VOD first. A live channel is served at its own bitrate, so measuring
         // against one reports the channel, not the connection. VOD is a plain
         // file the panel sends as fast as the line allows, which is the thing
@@ -490,6 +479,29 @@ object SpeedTestEngine {
         val throughput = try {
             measureThroughputMbps(http, speedUrl, onSpeedSample)
         } catch (_: Exception) { 0.0 }
+
+        // Last, and deliberately so.
+        //
+        // This is the only probe that opens connections in parallel — up to one
+        // past the line's stated cap, which is the point of it. Panels commonly
+        // hold a slot for thirty seconds or more after the client disconnects,
+        // so anything measured straight afterwards is measured on a line this
+        // test has just filled. It used to run immediately before the
+        // throughput sample, which meant the headline bandwidth figure was
+        // taken against a saturated connection allowance: a tester on a 50 Mbps
+        // line watched the meter open at 9.9 Mbps and collapse to 368 kbps.
+        // Everything else here makes one short request at a time and can go
+        // first; this one goes at the end, where the only thing it can starve
+        // is itself.
+        // Opens N parallel range GETs against a stream URL and reports how many
+        // the panel accepts before rejecting — the line's real per-IP allotment.
+        onProgress("Detecting connection cap…")
+        val cap = if (streamSampleUrl != null)
+            // Pass the line's stated cap so the probe cannot exceed it. The
+            // server-info call above has already run, so on an Xtream profile
+            // this is known by now.
+            detectConnectionCap(http, streamSampleUrl, server.maxConnections)
+        else ConnectionCap(0, 0, 0)
 
         val kind = NetworkClass.kind.value
         val recommendation = recommend(throughput, pingMs, packetLossPct, speedSource)
