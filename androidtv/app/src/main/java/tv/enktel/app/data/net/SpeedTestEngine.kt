@@ -55,6 +55,32 @@ object SpeedTestEngine {
      */
     const val WINDOW_SEC = 17L
 
+    /** A VOD asset — a plain file, sent as fast as the line allows. The only
+     *  source that measures the connection rather than the content. */
+    const val SOURCE_VOD = "vod"
+
+    /** A live channel — paced at its own bitrate by the broadcaster, so the
+     *  result is a floor on the line speed, never a measurement of it. */
+    const val SOURCE_LIVE = "live"
+
+    /** The panel API itself. A few kilobytes of JSON: far too little to
+     *  measure anything, and reported as such rather than as a number. */
+    const val SOURCE_API = "api"
+
+    /** Nothing was measured. */
+    const val SOURCE_NONE = "none"
+
+    /** True when [source] cannot support a meaningful throughput claim. */
+    fun sourceIsCapped(source: String): Boolean = source == SOURCE_LIVE || source == SOURCE_API
+
+    /** How a given source should be described to a human, in one clause. */
+    fun sourceLabel(source: String): String = when (source) {
+        SOURCE_VOD -> "a VOD file (measures the connection)"
+        SOURCE_LIVE -> "a live channel (paced at the channel's own bitrate)"
+        SOURCE_API -> "the panel API (too small to measure)"
+        else -> "nothing"
+    }
+
     /** Result of a HEAD/GET probe against a single stream URL — used to
      *  identify what the panel actually serves for a live channel or a VOD
      *  asset (HLS playlist vs. raw MPEG-TS vs. progressive MP4, etc.). */
@@ -163,6 +189,20 @@ object SpeedTestEngine {
         val jitterMs: Int,
         val packetLossPct: Int,
         val downloadMbps: Double,
+        /**
+         * What the throughput figure was actually measured against.
+         *
+         * A speed test is only a speed test when the far end sends as fast as
+         * the line allows. A VOD file does; a live channel does not — it is
+         * paced at its own bitrate, so measuring one reports the channel and
+         * calls it the connection. The engine prefers VOD and falls back, and
+         * that fallback used to be silent: a 6 Mbps channel on a 200 Mbps line
+         * produced "6 Mbps", which reads as a broadband fault rather than as a
+         * measurement of the wrong thing.
+         *
+         * One of [SOURCE_VOD], [SOURCE_LIVE], [SOURCE_API], [SOURCE_NONE].
+         */
+        val speedSource: String = SpeedTestEngine.SOURCE_NONE,
         val connectionType: NetworkClass.Kind,
         val recommendation: String,
         val bufferProjection: String,
@@ -201,6 +241,7 @@ object SpeedTestEngine {
             appendLine("Jitter: ${jitterMs} ms")
             appendLine("Packet loss (probe failures): $packetLossPct%")
             appendLine("Download throughput: %.2f Mbps".format(downloadMbps))
+            appendLine("  measured against: " + SpeedTestEngine.sourceLabel(speedSource))
             appendLine("Connection type: $connectionType")
             if (device.linkDownKbps > 0) {
                 appendLine("Link estimate (OS): %.1f Mbps".format(device.linkDownKbps / 1000.0))
@@ -422,24 +463,43 @@ object SpeedTestEngine {
             detectConnectionCap(http, streamSampleUrl, server.maxConnections)
         else ConnectionCap(0, 0, 0)
 
-        onProgress("Measuring download throughput…")
         // VOD first. A live channel is served at its own bitrate, so measuring
         // against one reports the channel, not the connection. VOD is a plain
         // file the panel sends as fast as the line allows, which is the thing
         // a speed test is actually asking about.
+        //
+        // The fallback chain stays, because a number with a caveat beats no
+        // number — but which link was taken is now carried out with the
+        // result. Silently measuring a live channel and printing the answer as
+        // "download throughput" is how a healthy 200 Mbps line gets reported
+        // as 6 Mbps, and the user goes to argue with their ISP about a figure
+        // that was only ever the channel's bitrate.
         val speedUrl = vodSampleUrl ?: streamSampleUrl ?: serverUrl
+        val speedSource = when {
+            vodSampleUrl != null -> SOURCE_VOD
+            streamSampleUrl != null -> SOURCE_LIVE
+            else -> SOURCE_API
+        }
+        onProgress(
+            when (speedSource) {
+                SOURCE_VOD -> "Measuring download throughput…"
+                SOURCE_LIVE -> "Measuring against a live channel (no VOD available)…"
+                else -> "No stream to measure against…"
+            },
+        )
         val throughput = try {
             measureThroughputMbps(http, speedUrl, onSpeedSample)
         } catch (_: Exception) { 0.0 }
 
         val kind = NetworkClass.kind.value
-        val recommendation = recommend(throughput, pingMs, packetLossPct)
+        val recommendation = recommend(throughput, pingMs, packetLossPct, speedSource)
         val bufferProjection = projectBufferHealth(throughput, jitterMs, packetLossPct)
         val suggestions = buildSuggestions(
             pingMs = pingMs,
             jitterMs = jitterMs,
             lossPct = packetLossPct,
             mbps = throughput,
+            speedSource = speedSource,
             server = server,
             live = liveProbe,
             vod = vodProbe,
@@ -455,6 +515,7 @@ object SpeedTestEngine {
             jitterMs = jitterMs,
             packetLossPct = packetLossPct,
             downloadMbps = throughput,
+            speedSource = if (throughput > 0) speedSource else SOURCE_NONE,
             connectionType = kind,
             recommendation = recommendation,
             bufferProjection = bufferProjection,
@@ -730,6 +791,7 @@ object SpeedTestEngine {
         jitterMs: Int,
         lossPct: Int,
         mbps: Double,
+        speedSource: String = SOURCE_VOD,
         server: ServerInfo,
         live: StreamProbe?,
         vod: StreamProbe?,
@@ -740,7 +802,22 @@ object SpeedTestEngine {
         if (pingMs < 0) out += "TCP connection failed — check the panel URL / port, and that the profile isn't expired."
         if (lossPct >= 20) out += "Packet loss ≥ 20%: try a wired connection or a different network path (VPN off, or on)."
         if (jitterMs >= 150) out += "High jitter — switch buffer profile to Large under Settings → Playback."
-        if (mbps in 0.1..4.9) out += "Bandwidth < 5 Mbps — SD only. Consider a lower-bitrate 480p variant."
+        // Bandwidth advice, but only where the number means what it says. A
+        // live channel is paced by the broadcaster, so "< 5 Mbps" off a live
+        // sample is a description of the channel and telling the user to drop
+        // to 480p over it is advice about a problem they may not have.
+        if (sourceIsCapped(speedSource)) {
+            out += when (speedSource) {
+                SOURCE_LIVE ->
+                    "Throughput was measured against a live channel because this profile has no " +
+                        "VOD available. A live stream is sent at its own bitrate, so %.1f Mbps is a floor on your connection, not a measurement of it — your line is at least this fast and probably much faster.".format(mbps)
+                else ->
+                    "No stream was available to measure against, so the throughput figure is not meaningful. " +
+                        "Sync the catalogue (Settings → Refresh catalogue) and run this again."
+            }
+        } else if (mbps in 0.1..4.9) {
+            out += "Bandwidth < 5 Mbps — SD only. Consider a lower-bitrate 480p variant."
+        }
         // Per-HTTP-code guidance, applied to both probes. Live and VOD failures
         // often have different root causes (auth vs. stream ID vs. transcoder),
         // so the message calls out which one failed.
@@ -975,8 +1052,19 @@ object SpeedTestEngine {
     }
 
     @VisibleForTesting
-    internal fun recommend(mbps: Double, pingMs: Int, lossPct: Int): String = when {
+    internal fun recommend(
+        mbps: Double,
+        pingMs: Int,
+        lossPct: Int,
+        speedSource: String = SOURCE_VOD,
+    ): String = when {
         pingMs < 0 || lossPct >= 50 -> "Connection too unstable to recommend a format — check your network or VPN."
+        // Format advice needs a number that describes the line. Off a live
+        // channel it describes the channel, and recommending 480p because a
+        // 6 Mbps broadcast was measured at 6 Mbps is advice about nothing.
+        sourceIsCapped(speedSource) ->
+            "Throughput could not be measured against a VOD file, so no format recommendation is offered — " +
+                "the figure shown is a floor, not your line speed. Latency, loss and the URL probes above are still accurate."
         mbps >= 25 -> "Your network comfortably supports 4K HLS / direct MPEG-TS without buffering."
         mbps >= 12 -> "Your network supports 1080p HLS reliably; 4K may occasionally buffer."
         mbps >= 5 -> "Your network supports 720p reliably. Consider Balanced or Low buffer profile for 1080p."

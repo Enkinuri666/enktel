@@ -1089,10 +1089,23 @@ private fun StatsOverlay(s: StreamStats, format: String, modifier: Modifier) {
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text("STREAM STATS", color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Text("Resolution  ${s.width}×${s.height} @ ${"%.0f".format(s.frameRate)}fps", color = Color.White, fontSize = 12.sp)
+        // Unknown is "—", not "0". Every other row here already said so; frame
+        // rate printed the unset value as a number, and "0fps" on a stream that
+        // is visibly playing reads as a fault rather than as missing metadata.
+        val fps = if (s.frameRate > 0f) "%.0f".format(s.frameRate) + "fps" else "—"
+        Text("Resolution  ${s.width}×${s.height} @ $fps", color = Color.White, fontSize = 12.sp)
         Text("Video  ${s.videoCodec.ifBlank { "—" }}  ·  Audio  ${s.audioCodec.ifBlank { "—" }}", color = Color.White, fontSize = 12.sp)
         Text("Bitrate  ${if (s.videoBitrate > 0) "${s.videoBitrate / 1000} kbps" else "—"}", color = Color.White, fontSize = 12.sp)
-        Text("Network  ${s.bandwidthEstimate / 1000} kbps est.", color = Color.White, fontSize = 12.sp)
+        // Six figures of kbps is not a readable number. Anything at or above
+        // 10 Mbps reads as Mbps, which is how a person would say it.
+        val net = s.bandwidthEstimate
+        val netLabel = when {
+            net <= 0 -> "—"
+            net >= 10_000_000 -> "%.0f Mbps".format(net / 1_000_000.0)
+            net >= 1_000_000 -> "%.1f Mbps".format(net / 1_000_000.0)
+            else -> "${net / 1000} kbps"
+        }
+        Text("Network  $netLabel est.", color = Color.White, fontSize = 12.sp)
         Text("Buffer  ${s.bufferAheadMs / 1000}.${s.bufferAheadMs % 1000 / 100}s ahead", color = Color.White, fontSize = 12.sp)
         Text("Dropped frames  ${s.droppedFrames}", color = Color.White, fontSize = 12.sp)
         Text("Decoder  ${s.decoder.ifBlank { "—" }}  ·  ${format.uppercase()}", color = Color.White, fontSize = 12.sp)

@@ -177,7 +177,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
                                 if (pinging) return@FocusButton
                                 pinging = true
                                 scope.launch {
-                                    ping = SystemMonitor.probeLatency(graph.http, pingTarget(p))
+                                    ping = SystemMonitor.probeLatency(graph.diagHttp, pingTarget(p))
                                     pinging = false
                                 }
                             },

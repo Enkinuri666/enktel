@@ -141,7 +141,10 @@ fun PanelDoctorSection(graph: AppGraph, profile: Profile, scope: CoroutineScope)
                 }
 
                 val r = PanelDoctor.run(
-                    http = graph.http,
+                    // Diagnostics client: a 403 from the panel is a finding to
+                    // report, not a condition to fail over out of. See
+                    // AppGraph.diagHttp.
+                    http = graph.diagHttp,
                     profile = profile,
                     xtream = graph.xtream,
                     liveUrl = liveUrl,

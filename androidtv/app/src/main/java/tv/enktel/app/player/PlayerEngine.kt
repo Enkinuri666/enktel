@@ -137,6 +137,14 @@ class PlayerEngine(
      *  UI observes this so it can command a matching HDMI refresh rate. */
     val videoFrameRate = MutableStateFlow(0f)
     private var dropped = 0
+
+    // Rendered-frame bookkeeping for the measured frame rate. See [push].
+    /** Frame rate the container declared, 0 when it declared none. */
+    private var declaredFps = 0f
+    private var lastRenderedFrames = 0L
+    private var lastRenderSampleNs = 0L
+    private var measuredFps = 0f
+
     private var retries = 0
     private var lastUrl: String? = null
     // Fallback-chain state: remaining candidate URLs to try (in priority
@@ -492,10 +500,15 @@ class PlayerEngine(
                 format: Format,
                 decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
             ) {
+                // Held separately from stats.frameRate, which [push] also
+                // writes: reading the published value back would make a
+                // measured rate indistinguishable from a declared one, and the
+                // measurement would then latch itself in as gospel.
+                if (format.frameRate > 0) declaredFps = format.frameRate
                 stats.value = stats.value.copy(
                     width = format.width.coerceAtLeast(0),
                     height = format.height.coerceAtLeast(0),
-                    frameRate = if (format.frameRate > 0) format.frameRate else stats.value.frameRate,
+                    frameRate = if (declaredFps > 0f) declaredFps else stats.value.frameRate,
                     videoCodec = format.sampleMimeType.orEmpty().substringAfterLast('/'),
                     videoBitrate = format.bitrate.coerceAtLeast(0),
                 )
@@ -660,8 +673,91 @@ class PlayerEngine(
         }
     }
 
+    /**
+     * Frames actually put on the screen in the last second.
+     *
+     * The declared frame rate is not available on most of what this app plays.
+     * MPEG-TS carries no frame rate at the container level and an HLS variant
+     * playlist rarely advertises one, so `Format.frameRate` comes back unset
+     * and the readout showed `0fps` — which looked like a stalled picture on a
+     * stream that was playing perfectly well.
+     *
+     * That was not only cosmetic. `LivePlayerScreen` only asks
+     * [RefreshRateMatcher] to switch the display when it has a frame rate, so
+     * an undeclared rate meant no rate matching at all: 50 fps European
+     * broadcasts rendering on a 60 Hz panel with no attempt to match it, which
+     * is judder, and on a marginal buffer, dropped frames.
+     *
+     * Counting what the renderer actually released sidesteps the container
+     * entirely. It is sampled rather than declared, so it is smoothed — a raw
+     * per-second count visibly wobbles between 49 and 51 — and only trusted
+     * while playing, since a paused player renders nothing and would otherwise
+     * report a very confident zero.
+     */
+    private fun sampleFrameRate() {
+        val counters = player.videoDecoderCounters
+        if (counters == null || !player.isPlaying) {
+            // Keep the last good reading and restart the window, so a pause
+            // does not produce a fictitious 0 fps on resume.
+            lastRenderSampleNs = 0L
+            return
+        }
+        counters.ensureUpdated()
+        val frames = counters.renderedOutputBufferCount.toLong()
+        val now = System.nanoTime()
+        if (lastRenderSampleNs != 0L && frames >= lastRenderedFrames) {
+            val elapsedSec = (now - lastRenderSampleNs) / 1_000_000_000.0
+            if (elapsedSec >= 0.5) {
+                val instant = ((frames - lastRenderedFrames) / elapsedSec).toFloat()
+                // Ignore an implausible spike from a decoder flush after a seek
+                // or a track change, which dumps a burst of buffers at once.
+                if (instant in 1f..240f) {
+                    measuredFps =
+                        if (measuredFps <= 0f) instant else measuredFps * 0.6f + instant * 0.4f
+                }
+            } else {
+                return // too short a window to divide by
+            }
+        }
+        lastRenderedFrames = frames
+        lastRenderSampleNs = now
+    }
+
+    /**
+     * Pull a measured rate onto the nearest real broadcast rate.
+     *
+     * Two reasons, and the second is the important one. Video is not shot at
+     * 49.8 fps — a sample near it is a 50 fps stream plus measurement noise,
+     * so snapping is more accurate than the raw figure, not less.
+     *
+     * And it makes the value *stable*. [videoFrameRate] drives
+     * [RefreshRateMatcher], which changes the display mode; an unsnapped
+     * measurement drifts a little every second, and since a `StateFlow` only
+     * suppresses re-emission of *equal* values, each wobble would arrive as a
+     * fresh reading and ask the television to switch modes once a second.
+     *
+     * Anything further than 1.5 fps from a known rate is left alone rather
+     * than forced — an unusual rate should read as itself, not as a lie about
+     * the nearest familiar one.
+     */
+    private fun snapToBroadcastRate(fps: Float): Float {
+        val known = floatArrayOf(23.976f, 24f, 25f, 29.97f, 30f, 50f, 59.94f, 60f, 100f, 120f)
+        val nearest = known.minByOrNull { kotlin.math.abs(it - fps) } ?: return fps
+        return if (kotlin.math.abs(nearest - fps) <= 1.5f) nearest else fps
+    }
+
     fun push() {
+        sampleFrameRate()
+        // The container's own figure wins when it has one — it is exact, and a
+        // measurement can only approximate it. This fills the gap rather than
+        // replacing it.
+        val effectiveFps =
+            if (declaredFps > 0f) declaredFps
+            else if (measuredFps > 0f) snapToBroadcastRate(measuredFps)
+            else 0f
+        if (declaredFps <= 0f && effectiveFps > 0f) videoFrameRate.value = effectiveFps
         stats.value = stats.value.copy(
+            frameRate = effectiveFps,
             bandwidthEstimate = bandwidthMeter.bitrateEstimate,
             droppedFrames = dropped,
             bufferAheadMs = (player.totalBufferedDuration).coerceAtLeast(0),
@@ -744,6 +840,13 @@ class PlayerEngine(
         if (candidate.mimeType.isNotBlank()) forcedMimeType = candidate.mimeType
         retries = 0
         dropped = 0
+        // A new stream is a new measurement. Carrying the old frame rate over
+        // would hand RefreshRateMatcher the previous channel's rate and switch
+        // the display to it before a single frame of this one has rendered.
+        declaredFps = 0f
+        measuredFps = 0f
+        lastRenderedFrames = 0L
+        lastRenderSampleNs = 0L
         error.value = null
         seekSupport.value = SeekSupport.UNKNOWN
         isLiveStream = live

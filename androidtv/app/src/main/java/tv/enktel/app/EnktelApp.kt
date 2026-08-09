@@ -97,6 +97,31 @@ class AppGraph(app: Application) {
         // becomes trusted.
         .let { tv.enktel.app.data.net.LegacyTls.install(it) }
         .build()
+
+    /**
+     * The same client, minus the automatic failover — for anything whose job
+     * is to *report* what the panel did rather than to get a stream playing.
+     *
+     * [tv.enktel.app.data.net.StreamHealthInterceptor] turns a 403 into a
+     * thrown `IOException` when no backup gateway is configured. That is right
+     * for playback: a blocked request should fail over or fail fast, and the
+     * user wants a picture, not a status code. It is exactly wrong for a
+     * diagnostic. `SystemMonitor.probeLatency` documents that "403 and 404 are
+     * successful round trips here" — and then never sees one, because the
+     * interceptor has already converted it to a transport error. The panel
+     * answers, the ping reports no reply, and the tester is sent looking for a
+     * network fault that does not exist. The speed test's probes had the same
+     * blind spot, which is how a reply became `HTTP 0` in the report.
+     *
+     * Built by removing one interceptor rather than by assembling a second
+     * client, so the timeouts, TLS/cipher fallbacks, NO_PROXY and user agent
+     * cannot drift from the client whose behaviour these tools exist to
+     * measure.
+     */
+    val diagHttp: OkHttpClient = http.newBuilder()
+        .apply { interceptors().removeAll { it is tv.enktel.app.data.net.StreamHealthInterceptor } }
+        .build()
+
     val xtream = XtreamClient(http)
     val trialClient = tv.enktel.app.data.net.EagleTrialClient(http)
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream, trialClient)
