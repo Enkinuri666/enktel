@@ -83,7 +83,11 @@ object ChannelStatus {
             if (!safeToProbe()) return
             val url = runCatching { graph.content.liveUrl(profile, ch, format) }.getOrNull()
             if (url.isNullOrBlank()) continue
-            val state = probe(graph.http, url)
+            // diagHttp, not http: this probe exists to say whether a
+            // channel answers. The failover interceptor turns a 403 into a
+            // thrown IOException, which would report a channel that is
+            // blocked — a real, actionable state — as simply dead.
+            val state = probe(graph.diagHttp, url)
             checkedAt[ch.key] = System.currentTimeMillis()
             _states.value = _states.value + (ch.key to state)
             kotlinx.coroutines.delay(SPACING_MS)

@@ -195,4 +195,84 @@ class SpeedTestAdviceTest {
         assertEquals("expired today", expiryLabel(now - 3_600_000L, now))
         assertEquals("expired 3 days ago", expiryLabel(now - 3 * 86_400_000L, now))
     }
+
+    // ── throughput measured against the wrong thing ────────────────────
+    //
+    // A speed test only measures a connection when the far end sends as fast
+    // as the line allows. A live channel does not — the broadcaster paces it —
+    // so a 6 Mbps stream on a 200 Mbps line measured 6 Mbps and the report
+    // called that the download speed. These pin the fix: the number survives,
+    // the claim about what it means does not.
+
+    @Test
+    fun `throughput off a live channel is reported as a floor, not a measurement`() {
+        val out = SpeedTestEngine.buildSuggestions(
+            pingMs = 20, jitterMs = 5, lossPct = 0, mbps = 6.0,
+            speedSource = SpeedTestEngine.SOURCE_LIVE,
+            server = noServer, live = null, vod = null,
+        )
+        assertTrue(
+            "must say the figure is a floor rather than the line speed: $out",
+            out.any { it.contains("floor on your connection", ignoreCase = true) },
+        )
+        assertFalse(
+            "must not advise dropping to SD over a number that measured the channel: $out",
+            out.any { it.contains("SD only", ignoreCase = true) },
+        )
+    }
+
+    @Test
+    fun `throughput off a VOD file keeps the ordinary bandwidth advice`() {
+        val out = SpeedTestEngine.buildSuggestions(
+            pingMs = 20, jitterMs = 5, lossPct = 0, mbps = 3.0,
+            speedSource = SpeedTestEngine.SOURCE_VOD,
+            server = noServer, live = null, vod = null,
+        )
+        assertTrue(
+            "a real VOD measurement below 5 Mbps is still worth acting on: $out",
+            out.any { it.contains("SD only", ignoreCase = true) },
+        )
+    }
+
+    @Test
+    fun `no stream to measure against says so instead of printing a number`() {
+        val out = SpeedTestEngine.buildSuggestions(
+            pingMs = 20, jitterMs = 5, lossPct = 0, mbps = 0.4,
+            speedSource = SpeedTestEngine.SOURCE_API,
+            server = noServer, live = null, vod = null,
+        )
+        assertTrue(
+            "must name the cause rather than imply a slow line: $out",
+            out.any { it.contains("not meaningful", ignoreCase = true) },
+        )
+    }
+
+    @Test
+    fun `a capped sample yields no format recommendation`() {
+        val text = SpeedTestEngine.recommend(
+            mbps = 6.0, pingMs = 30, lossPct = 0,
+            speedSource = SpeedTestEngine.SOURCE_LIVE,
+        )
+        assertTrue(text.contains("floor", ignoreCase = true))
+        assertFalse(
+            "480p advice off a live sample is advice about the channel: $text",
+            text.contains("480p", ignoreCase = true),
+        )
+    }
+
+    @Test
+    fun `an uncapped sample still recommends a format`() {
+        val text = SpeedTestEngine.recommend(
+            mbps = 30.0, pingMs = 30, lossPct = 0,
+            speedSource = SpeedTestEngine.SOURCE_VOD,
+        )
+        assertTrue(text.contains("4K", ignoreCase = true))
+    }
+
+    @Test
+    fun `only VOD is treated as a real measurement of the line`() {
+        assertFalse(SpeedTestEngine.sourceIsCapped(SpeedTestEngine.SOURCE_VOD))
+        assertTrue(SpeedTestEngine.sourceIsCapped(SpeedTestEngine.SOURCE_LIVE))
+        assertTrue(SpeedTestEngine.sourceIsCapped(SpeedTestEngine.SOURCE_API))
+    }
 }

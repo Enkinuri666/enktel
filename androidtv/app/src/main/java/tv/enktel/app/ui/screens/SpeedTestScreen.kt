@@ -127,7 +127,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             val device = withContext(Dispatchers.IO) { DeviceProbe.snapshot(ctx) }
             val catalogue = withContext(Dispatchers.IO) { readCatalogue(graph, p) }
             val r = SpeedTestEngine.run(
-                http = graph.http,
+                http = graph.diagHttp,
                 serverUrl = p.server,
                 streamSampleUrl = liveUrl,
                 vodSampleUrl = vodUrl,
@@ -235,9 +235,17 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // "≥" rather than a bare figure when the sample came off a
+                    // live channel: the broadcaster paced it, so the number is
+                    // a floor. Grading it as if it measured the line would
+                    // paint a healthy connection amber for a fault it doesn't
+                    // have — so a capped sample is left ungraded.
+                    val capped = SpeedTestEngine.sourceIsCapped(r.speedSource)
                     ScoreTile(
-                        "Download", "%.1f".format(r.downloadMbps), "Mbps",
-                        rate(r.downloadMbps, good = 15.0, fair = 5.0),
+                        "Download",
+                        (if (capped) "≥" else "") + "%.1f".format(r.downloadMbps),
+                        "Mbps",
+                        if (capped) Grade.NEUTRAL else rate(r.downloadMbps, good = 15.0, fair = 5.0),
                         Modifier.weight(1f),
                     )
                     ScoreTile(
@@ -625,6 +633,17 @@ private enum class Grade(val label: String) {
     GOOD("Good"),
     FAIR("Fair"),
     BAD("Poor"),
+
+    /**
+     * Measured, but not gradeable.
+     *
+     * For a figure that is real yet cannot be compared against a threshold —
+     * throughput taken off a live channel, which the broadcaster paced. The
+     * honest options were to grade it anyway or to hide it, and both mislead:
+     * grading paints a fast line "Poor" for a fault it does not have, hiding
+     * loses a number that is still a useful lower bound.
+     */
+    NEUTRAL("Not measurable"),
 }
 
 @Composable
@@ -632,6 +651,7 @@ private fun gradeColor(g: Grade): Color = when (g) {
     Grade.GOOD -> EnktelOk
     Grade.FAIR -> Color(0xFFFBBF24)
     Grade.BAD -> EnktelLive
+    Grade.NEUTRAL -> EnktelTextDim
 }
 
 /** Higher is better (throughput). */
@@ -652,8 +672,16 @@ private fun rateLower(v: Double, good: Double, fair: Double): Grade =
  */
 @Composable
 private fun VerdictBanner(r: SpeedTestEngine.Result) {
-    val grades = listOf(
-        rate(r.downloadMbps, 15.0, 5.0),
+    // A throughput figure taken off a live channel is dropped from the verdict
+    // rather than graded. It is a lower bound on the line, so scoring it can
+    // only understate — and one understated reading is enough to declare a
+    // healthy connection "will struggle", which is the opposite of what this
+    // banner is for.
+    val throughputGrade =
+        if (SpeedTestEngine.sourceIsCapped(r.speedSource)) null
+        else rate(r.downloadMbps, 15.0, 5.0)
+    val grades = listOfNotNull(
+        throughputGrade,
         if (r.pingMs < 0) Grade.BAD else rateLower(r.pingMs.toDouble(), 80.0, 200.0),
         rateLower(r.jitterMs.toDouble(), 20.0, 60.0),
         rateLower(r.packetLossPct.toDouble(), 0.5, 5.0),
@@ -664,10 +692,15 @@ private fun VerdictBanner(r: SpeedTestEngine.Result) {
         else -> Grade.GOOD
     }
     val worstColor = gradeColor(worst)
+    val partial = throughputGrade == null
     val headline = when (worst) {
-        Grade.GOOD -> "Your connection is in good shape"
+        // "so far" because throughput is missing from this verdict — claiming
+        // the connection is simply fine on three readings out of four would be
+        // a stronger statement than the measurements support.
+        Grade.GOOD -> if (partial) "Good so far — throughput could not be measured" else "Your connection is in good shape"
         Grade.FAIR -> "Workable, but there is a weak link"
         Grade.BAD -> "This connection will struggle"
+        Grade.NEUTRAL -> "Not enough measurements to judge this connection"
     }
     Row(
         Modifier
