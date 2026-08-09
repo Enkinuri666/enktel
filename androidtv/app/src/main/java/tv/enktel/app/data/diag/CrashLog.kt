@@ -59,6 +59,30 @@ object CrashLog {
         }
     }
 
+    /**
+     * Startup steps that failed and were survived.
+     *
+     * Isolating the optional startup wiring stopped a failure there from
+     * killing the app — but "the app starts now" is only half an answer. If the
+     * EPG scheduler is the thing throwing, the guide quietly stops refreshing
+     * itself; if it is the thermal guard, overheat protection is off. Both look
+     * exactly like a working app until much later.
+     *
+     * So the failures are kept and shown. This is what turns "something is
+     * wrong somewhere in startup" into a line a tester can read off the screen
+     * without owning a computer.
+     */
+    private val startupFailures = mutableListOf<String>()
+
+    @Synchronized
+    fun noteStartupFailure(step: String, error: Throwable) {
+        val line = "$step — ${error::class.java.simpleName}: ${error.message ?: "no message"}"
+        if (startupFailures.none { it == line }) startupFailures += line
+    }
+
+    @Synchronized
+    fun startupFailures(): List<String> = startupFailures.toList()
+
     /** The last recorded crash, or null when the app has not crashed. */
     fun read(ctx: Context): String? =
         runCatching { File(ctx.filesDir, FILE_NAME).takeIf { it.exists() }?.readText() }

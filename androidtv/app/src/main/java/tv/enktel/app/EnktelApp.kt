@@ -308,6 +308,11 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
     private inline fun startupStep(name: String, block: () -> Unit) {
         runCatching(block).onFailure {
             android.util.Log.w("EnktelApp", "startup step '$name' failed; continuing without it", it)
+            // Recorded as well as logged. "The app starts now" is only half an
+            // answer — a caught failure here means a subsystem is quietly off,
+            // and the tester who can see which one is the tester who can tell
+            // us. Settings ▸ About shows this without needing a computer.
+            tv.enktel.app.data.diag.CrashLog.noteStartupFailure(name, it)
         }
     }
 
