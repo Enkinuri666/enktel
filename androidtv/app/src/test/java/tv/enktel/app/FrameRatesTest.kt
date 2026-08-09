@@ -26,10 +26,14 @@ class FrameRatesTest {
 
     @Test
     fun `a measurement near a real rate is called that rate`() {
+        // Deliberately inside the tolerance rather than on it. 60.4 was the
+        // first choice and CI rejected it: in float32 |60 - 60.4| is
+        // 0.40000153, a hair over a 0.4 tolerance, so the case tested how the
+        // literal happened to round rather than whether snapping works.
         assertEquals(25f, FrameRates.snap(24.8f))
         assertEquals(25f, FrameRates.snap(25.3f))
         assertEquals(50f, FrameRates.snap(49.7f))
-        assertEquals(60f, FrameRates.snap(60.4f))
+        assertEquals(60f, FrameRates.snap(60.3f))
     }
 
     @Test
