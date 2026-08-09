@@ -1053,6 +1053,37 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             color = EnktelTextDim, fontSize = 12.sp,
         )
 
+        // Startup steps that failed and were survived.
+        //
+        // Shown above the crash report because it is the more common case: the
+        // app is running, so nobody thinks to look, and meanwhile something
+        // like the guide's refresh schedule is quietly not happening.
+        val startupIssues = remember { tv.enktel.app.data.diag.CrashLog.startupFailures() }
+        if (startupIssues.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "STARTUP WARNINGS",
+                color = tv.enktel.app.ui.theme.EnktelLive,
+                fontSize = 12.sp, fontWeight = FontWeight.Black,
+            )
+            Text(
+                "The app started, but ${startupIssues.size} optional component" +
+                    (if (startupIssues.size == 1) "" else "s") +
+                    " did not. The app is usable; the affected feature is not. " +
+                    "Please send these lines to t.me/EnkTel.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            startupIssues.forEach { line ->
+                Text(
+                    "• $line",
+                    color = Color.White, fontSize = 10.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    lineHeight = 14.sp,
+                )
+            }
+        }
+
         // Last crash, if there was one.
         //
         // Shown rather than only written to a file because the file lives at
