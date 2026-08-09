@@ -127,4 +127,36 @@ class BufferProfilesTest {
                 BufferProfiles.allocationChunkBytes(lowRam = false),
         )
     }
+
+    // ── live target offset ─────────────────────────────────────────────
+    //
+    // Nothing pinned the player to a distance behind the live edge, so it sat
+    // wherever the panel's playlist put it — often under a second, which
+    // leaves no headroom and turns any late segment into dropped frames.
+
+    @Test
+    fun `the live target offset leaves room to start playing`() {
+        // Playback cannot begin until playMs is buffered. An offset smaller
+        // than that would put the start position past the edge, and the player
+        // would spend the first seconds catching up to content that does not
+        // exist yet.
+        val starts = listOf("low", "balanced", "large").map { p ->
+            BufferProfiles.window(p, live = true, isTv = false).playMs
+        }
+        assertTrue(
+            "offset must exceed every live start threshold: $starts",
+            starts.all { BufferProfiles.LIVE_TARGET_OFFSET_MS > it },
+        )
+    }
+
+    @Test
+    fun `the live target offset stays inside a typical provider window`() {
+        // Same reasoning as LIVE_MAX_CEILING_MS: asking to sit further back
+        // than a provider keeps means asking for segments that have rolled
+        // off. Media3 clamps rather than fails, but requesting something
+        // unservable is not a thing to rely on being rescued from.
+        assertTrue(
+            BufferProfiles.LIVE_TARGET_OFFSET_MS <= BufferProfiles.LIVE_MAX_CEILING_MS,
+        )
+    }
 }

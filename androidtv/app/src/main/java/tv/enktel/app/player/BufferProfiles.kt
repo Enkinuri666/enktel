@@ -57,6 +57,32 @@ object BufferProfiles {
     const val LIVE_MAX_CEILING_MS = 15_000
 
     /**
+     * How far behind the live edge a live stream plays.
+     *
+     * Nothing set this before, so the player sat wherever the provider's
+     * playlist put it — which on IPTV panels is routinely a second or less.
+     * A stream running one second from the edge has no headroom at all: every
+     * segment that arrives a moment late arrives too late to show, and the
+     * renderer drops the frame. A tester reported 703 dropped frames on a
+     * 720p AVC channel with a 140 Mbps connection and a hardware decoder that
+     * handles 4K, which is not a bandwidth problem and not a decode problem.
+     * It is a stream with nowhere to fall back to.
+     *
+     * Six seconds buys that headroom. The cost is being six seconds further
+     * behind the broadcast, which is the trade being made deliberately: this
+     * is a stability setting, not a latency one.
+     *
+     * Media3 clamps the request to what the live window can actually support,
+     * so a panel with a short playlist gets as much offset as it has rather
+     * than a request to seek behind content that has already rolled off.
+     *
+     * One number to change if the balance is ever wrong — and worth knowing
+     * that the "low" buffer profile exists for viewers who complain about
+     * being behind the broadcast, so it feels this most.
+     */
+    const val LIVE_TARGET_OFFSET_MS = 6_000L
+
+    /**
      * Live buffering is meaningless without somewhere to put it, but a big
      * allocation on a 1 GB stick is how you get an OOM instead of a stall.
      * 2 MB matches the chunk size ExoPlayer's own guidance suggests for
