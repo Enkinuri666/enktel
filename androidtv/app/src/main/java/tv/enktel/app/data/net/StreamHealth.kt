@@ -1,5 +1,6 @@
 package tv.enktel.app.data.net
 
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,65 +39,127 @@ object StreamHealth {
     private val _state = MutableStateFlow(Snapshot())
     val state: StateFlow<Snapshot> = _state.asStateFlow()
 
-    // Ring buffer of latencies — cheap rolling average without a coroutine.
-    private const val WINDOW = 16
-    private val ring = IntArray(WINDOW)
-    private var ringIdx = 0
-    private var ringFilled = 0
+    /**
+     * How far back a reading still counts.
+     *
+     * Everything here used to be a lifetime total, and that produced the two
+     * complaints this window fixes. `timeouts` and `blocked403` only ever went
+     * up — `resetErrors()` existed but nothing called it — so three timeouts
+     * anywhere in the session pinned quality to POOR until the process died,
+     * and a single 403 pinned it to BLOCKED. Every channel the user tuned to
+     * afterwards showed the same stuck chip, because the chip was never about
+     * the channel: it reports one process-wide snapshot.
+     *
+     * The latency figure had the matching problem in the other direction. The
+     * mean was recomputed only when a request *completed*, and steady playback
+     * of a live stream is one long-lived connection making very few new
+     * requests — so the number froze at whatever the last burst measured
+     * (catalogue load, EPG fetch, artwork) and sat there looking current.
+     *
+     * A minute is long enough to survive an ad break or a channel change
+     * without the chip flickering, short enough that a fault which has cleared
+     * stops being reported as present.
+     */
+    private const val WINDOW_MS = 60_000L
+
+    /** Samples are timestamped so they can age out; see [WINDOW_MS]. */
+    private data class Sample(val atMs: Long, val ms: Int)
+
+    private val latencies = ArrayDeque<Sample>()
+    private val timeoutsAt = ArrayDeque<Long>()
+    private val blockedAt = ArrayDeque<Long>()
+    private var lastError: String? = null
+    private var lastErrorAtMs = 0L
+    private var gateway: String? = null
+
+    /**
+     * Wall clock rather than [android.os.SystemClock]: this object is plain
+     * Kotlin with no Android dependency, which keeps it unit-testable. A
+     * backwards clock jump can only park a sample slightly too long, and the
+     * window flushes itself within the minute.
+     */
+    @VisibleForTesting
+    internal var nowMs: () -> Long = { System.currentTimeMillis() }
 
     @Synchronized
     fun recordSuccess(latencyMs: Long) {
-        ring[ringIdx] = latencyMs.toInt().coerceAtLeast(1)
-        ringIdx = (ringIdx + 1) % WINDOW
-        if (ringFilled < WINDOW) ringFilled++
+        latencies.addLast(Sample(nowMs(), latencyMs.toInt().coerceAtLeast(1)))
         publish()
     }
 
     @Synchronized
     fun recordBlocked(host: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
-            blocked403 = cur.blocked403 + 1,
-            lastError = "403 from $host",
-            quality = Quality.BLOCKED,
-        )
+        blockedAt.addLast(nowMs())
+        lastError = "403 from $host"
+        lastErrorAtMs = nowMs()
+        publish()
     }
 
     @Synchronized
     fun recordTimeout(host: String, why: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
-            timeouts = cur.timeouts + 1,
-            lastError = "$why · $host",
-            quality = if (cur.timeouts + 1 >= 3) Quality.POOR else cur.quality,
-        )
+        timeoutsAt.addLast(nowMs())
+        lastError = "$why · $host"
+        lastErrorAtMs = nowMs()
+        publish()
     }
 
     @Synchronized
     fun setActiveGateway(host: String?) {
-        _state.value = _state.value.copy(activeGateway = host)
+        gateway = host
+        publish()
     }
 
+    /**
+     * Re-evaluate without a new reading.
+     *
+     * The chip is driven by this on a timer. Without it a fault that has
+     * stopped recurring never clears, because clearing depends on old readings
+     * ageing out and nothing ages them out except another request arriving —
+     * which, on a healthy long-lived stream, may be minutes away.
+     */
     @Synchronized
-    fun resetErrors() {
-        val cur = _state.value
-        _state.value = cur.copy(
-            blocked403 = 0, timeouts = 0, lastError = null,
-        )
+    fun refresh() = publish()
+
+    /** Drop everything. For a profile switch, where none of it applies. */
+    @Synchronized
+    fun reset() {
+        latencies.clear()
+        timeoutsAt.clear()
+        blockedAt.clear()
+        lastError = null
+        lastErrorAtMs = 0L
+        gateway = null
+        _state.value = Snapshot()
+    }
+
+    private fun prune(now: Long) {
+        while (latencies.isNotEmpty() && now - latencies.first().atMs > WINDOW_MS) latencies.removeFirst()
+        while (timeoutsAt.isNotEmpty() && now - timeoutsAt.first() > WINDOW_MS) timeoutsAt.removeFirst()
+        while (blockedAt.isNotEmpty() && now - blockedAt.first() > WINDOW_MS) blockedAt.removeFirst()
+        if (lastError != null && now - lastErrorAtMs > WINDOW_MS) lastError = null
     }
 
     private fun publish() {
-        if (ringFilled == 0) return
-        var sum = 0L
-        for (i in 0 until ringFilled) sum += ring[i]
-        val mean = (sum / ringFilled).toInt()
+        val now = nowMs()
+        prune(now)
+        val mean = if (latencies.isEmpty()) 0 else (latencies.sumOf { it.ms.toLong() } / latencies.size).toInt()
         val q = when {
-            _state.value.blocked403 > 0 -> Quality.BLOCKED
-            _state.value.timeouts >= 3 -> Quality.POOR
+            blockedAt.isNotEmpty() -> Quality.BLOCKED
+            timeoutsAt.size >= 3 -> Quality.POOR
+            // No recent reading is not a verdict. Reporting the last known
+            // mean here is what made a stale number look live.
+            latencies.isEmpty() -> Quality.UNKNOWN
             mean > 2000 -> Quality.POOR
             mean > 900 -> Quality.FAIR
             else -> Quality.GOOD
         }
-        _state.value = _state.value.copy(quality = q, meanLatencyMs = mean)
+        _state.value = Snapshot(
+            quality = q,
+            meanLatencyMs = mean,
+            blocked403 = blockedAt.size,
+            timeouts = timeoutsAt.size,
+            lastError = lastError,
+            activeGateway = gateway,
+        )
     }
 }

@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +42,21 @@ fun StreamHealthChip(modifier: Modifier = Modifier) {
     val snap by StreamHealth.state.collectAsStateWithLifecycle(
         initialValue = StreamHealth.Snapshot(),
     )
+    // Age the window while the chip is on screen.
+    //
+    // Readings expire on a clock, but nothing was turning that clock: the
+    // snapshot was only recomputed when a *new* request completed, and a live
+    // stream holding one connection open can go minutes without making one. So
+    // a fault that had already cleared kept its chip, and the latency beside it
+    // was whatever the last burst of requests happened to measure. Ticking here
+    // costs one recomputation a second over a handful of samples, and only
+    // while a player screen is actually showing.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            StreamHealth.refresh()
+        }
+    }
     val label: String
     val color: Color
     when {
