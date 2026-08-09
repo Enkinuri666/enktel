@@ -858,7 +858,20 @@ class PlayerEngine(
             // hint to select the extractor directly rather than sniffing.
             if (forcedMimeType.isNotBlank()) setMimeType(forcedMimeType)
             if (live) setLiveConfiguration(
-                MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.03f).build()
+                MediaItem.LiveConfiguration.Builder()
+                    // Sit a fixed distance behind the live edge rather than
+                    // wherever the panel's playlist lands us. See
+                    // BufferProfiles.LIVE_TARGET_OFFSET_MS for why.
+                    .setTargetOffsetMs(BufferProfiles.LIVE_TARGET_OFFSET_MS)
+                    .setMaxPlaybackSpeed(1.03f)
+                    // Without a minimum the offset control loop is one-way: it
+                    // can speed up to close a gap but never ease off to open
+                    // one, so a player that drifts up to the edge — which is
+                    // the state being corrected here — has no way back to the
+                    // target. 3 % either side is below the threshold where
+                    // pitch correction becomes audible.
+                    .setMinPlaybackSpeed(0.97f)
+                    .build()
             )
             if (externalSubUrl.isNotBlank()) {
                 val mime = when {
