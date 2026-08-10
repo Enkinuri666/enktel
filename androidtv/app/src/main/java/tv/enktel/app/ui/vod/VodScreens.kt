@@ -237,7 +237,7 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val categories by graph.content.categories(p.id, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
     val raw by (if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "name")
+    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by remember { mutableStateOf<String?>(null) }
     var decadeFilter by remember { mutableStateOf<Int?>(null) }
@@ -487,7 +487,7 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val raw by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val gate = rememberParentalGate(graph, "series")
-    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "name")
+    val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by remember { mutableStateOf<String?>(null) }
     var decadeFilter by remember { mutableStateOf<Int?>(null) }
