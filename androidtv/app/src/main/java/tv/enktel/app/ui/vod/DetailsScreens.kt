@@ -189,11 +189,11 @@ private fun MovieDetailsBody(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         FocusButton("▶ Play", accent = true, onClick = {
-            nav.navigate(vodPlayerRoute(url, m.name, progressKey))
+            nav.navigate(vodPlayerRoute(url, m.name, progressKey, poster = m.poster))
         })
         if (resumeMs > 60_000) {
             FocusButton("Resume ${resumeMs / 60000}m", onClick = {
-                nav.navigate(vodPlayerRoute(url, m.name, progressKey))
+                nav.navigate(vodPlayerRoute(url, m.name, progressKey, poster = m.poster))
             })
         }
         trailerKey?.let { key ->
@@ -466,13 +466,14 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                             XtreamClient.episodeUrl(p, it.id, it.ext),
                             "${s.name} S${it.season}E${it.episode} · ${it.title}",
                             "${p.id}:episode:${it.id}",
+                            poster = s.poster,
                         )
                     }.orEmpty()
                     val nextLabel = next?.let { "S${it.season} E${it.episode} · ${it.title}" }.orEmpty()
                     nav.navigate(
                         vodPlayerRoute(
                             url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk,
-                            nextRoute = nextRoute, nextLabel = nextLabel,
+                            nextRoute = nextRoute, nextLabel = nextLabel, poster = s.poster,
                         ),
                     )
                 }

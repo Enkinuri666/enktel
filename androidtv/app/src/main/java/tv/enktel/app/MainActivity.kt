@@ -1023,7 +1023,7 @@ private fun MainNav(
         composable("seriesDetails/{key}") { back ->
             SeriesDetailsScreen(graph, nav, key = back.arguments?.getString("key").orEmpty())
         }
-        composable("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}") { back ->
+        composable("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") { back ->
             val a = back.arguments
             VodPlayerScreen(
                 graph,
@@ -1034,6 +1034,7 @@ private fun MainNav(
                 isLive = a?.getString("live") == "1",
                 nextRoute = decode(a?.getString("nr").orEmpty()),
                 nextLabel = decode(a?.getString("nl").orEmpty()),
+                posterUrl = decode(a?.getString("ps").orEmpty()),
             )
         }
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
@@ -1269,9 +1270,22 @@ fun vodPlayerRoute(
     nextRoute: String = "",
     /** "S2 E4 · The Bells" — what the countdown card announces. */
     nextLabel: String = "",
+    /**
+     * Artwork for this title, carried so the player can store it with the
+     * resume point.
+     *
+     * The player has never had it, so every `WatchProgress` row it wrote left
+     * `poster` empty and the Continue Watching rail on Home rendered cards
+     * with no image. It cannot be looked up afterwards either: a film's key is
+     * "profileId:streamId" and could be rebuilt from the progress key, but an
+     * episode's progress key carries the episode id and not the series id, so
+     * there is nothing to join a series poster back to. The caller has the
+     * artwork in hand; passing it is the only route that covers both.
+     */
+    poster: String = "",
 ): String =
     "vodPlayer?url=${encode(url)}&title=${encode(title)}&pk=$progressKey&live=${if (live) 1 else 0}" +
-        "&nr=${encode(nextRoute)}&nl=${encode(nextLabel)}"
+        "&nr=${encode(nextRoute)}&nl=${encode(nextLabel)}&ps=${encode(poster)}"
 
 private data class Quadruple<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
