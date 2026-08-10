@@ -335,6 +335,8 @@ private fun ChannelCard(
     onAddToList: (Long) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val shareToaster = tv.enktel.app.ui.components.LocalToaster.current
     Surface(
         onClick = { if (menuOpen) menuOpen = false else onPlay() },
         onLongClick = { menuOpen = !menuOpen },
@@ -436,6 +438,18 @@ private fun ChannelCard(
                         if (isHidden) "Unhide" else "Hide",
                         Modifier.weight(1f),
                     ) { onToggleHidden(); menuOpen = false }
+                }
+                Spacer(Modifier.height(3.dp))
+                // Send this channel to somebody. The link opens the same
+                // channel in their EnkTel, or tells them plainly that their
+                // line does not carry it — see ContentRepository.resolveShared.
+                OverflowAction("↗ Share channel", Modifier.fillMaxWidth()) {
+                    menuOpen = false
+                    val shared = tv.enktel.app.ui.components.shareTarget(
+                        context,
+                        tv.enktel.app.DeepLink.Target.Channel(channel.streamId, channel.name),
+                    )
+                    if (!shared) shareToaster.info("Link copied to the clipboard")
                 }
                 // Themed lists, when the user has any. No "create list" here on
                 // purpose — a naming field inside a grid tile is a bad place to

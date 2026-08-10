@@ -39,10 +39,17 @@ import java.net.URLEncoder
 object DeepLink {
 
     sealed interface Target {
-        data class Movie(val streamId: Long) : Target
-        data class Series(val seriesId: Long) : Target
-        data class Channel(val streamId: Long) : Target
-        data class Search(val query: String) : Target
+        /** Carried so a link that resolves to nothing can still name what it
+         *  was, and so a differently-numbered panel can be matched by name.
+         *  Empty on the Amazon catalog links, which predate it. */
+        val name: String
+
+        data class Movie(val streamId: Long, override val name: String = "") : Target
+        data class Series(val seriesId: Long, override val name: String = "") : Target
+        data class Channel(val streamId: Long, override val name: String = "") : Target
+        data class Search(val query: String) : Target {
+            override val name: String get() = query
+        }
     }
 
     /** Reads [intent], or null when it carries no link we recognise. */
@@ -88,13 +95,24 @@ object DeepLink {
         // happens to live at stream 0.
         val id = parts.getOrNull(1)?.toLongOrNull() ?: return null
         if (id <= 0) return null
+        val name = query(uri.rawQuery, "n")
         return when (kind) {
-            "movie", "vod" -> Target.Movie(id)
-            "series", "show", "tv" -> Target.Series(id)
-            "channel", "live" -> Target.Channel(id)
+            "movie", "vod" -> Target.Movie(id, name)
+            "series", "show", "tv" -> Target.Series(id, name)
+            "channel", "live" -> Target.Channel(id, name)
             else -> null
         }
     }
+
+    /** One decoded query parameter, or "" when absent. */
+    private fun query(rawQuery: String?, key: String): String =
+        rawQuery.orEmpty()
+            .split('&')
+            .firstOrNull { it.startsWith("$key=") }
+            ?.removePrefix("$key=")
+            ?.let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull() }
+            ?.trim()
+            .orEmpty()
 
     /**
      * The URI to publish for [target] in the Amazon catalog feed.
@@ -104,13 +122,40 @@ object DeepLink {
      * production, on someone else's television.
      */
     fun uriFor(target: Target): String = when (target) {
-        is Target.Movie -> "enktel://play/movie/${target.streamId}"
-        is Target.Series -> "enktel://play/series/${target.seriesId}"
-        is Target.Channel -> "enktel://play/channel/${target.streamId}"
+        is Target.Movie -> "enktel://play/movie/${target.streamId}" + nameQuery(target.name)
+        is Target.Series -> "enktel://play/series/${target.seriesId}" + nameQuery(target.name)
+        is Target.Channel -> "enktel://play/channel/${target.streamId}" + nameQuery(target.name)
         // URLEncoder is form encoding, which spells a space "+". A URI path
         // query accepts it, but %20 is what every other producer emits and what
         // a human reading the feed expects.
         is Target.Search ->
-            "enktel://play/search?q=" + URLEncoder.encode(target.query, "UTF-8").replace("+", "%20")
+            "enktel://play/search?q=" + esc(target.query)
     }
+
+    /**
+     * The link to hand to another person.
+     *
+     * `https` rather than the custom scheme, because that is the half that
+     * survives being pasted into a messaging app: a chat client will linkify
+     * an http(s) URL and leave `enktel://` as plain text, and someone without
+     * the app installed gets a web page rather than a dead tap. Android's app
+     * links filter claims it back for us when EnkTel is installed.
+     *
+     * The title travels with it. Ids are the panel's, and while every EnkTel
+     * line is served from the same panel today, a name gives the recipient's
+     * app something to match on if that ever stops being true — and gives it
+     * something to *say* when the title is genuinely not on their line.
+     */
+    fun shareUrl(target: Target): String = when (target) {
+        is Target.Movie -> "https://enktel.tv/play/movie/${target.streamId}" + nameQuery(target.name)
+        is Target.Series -> "https://enktel.tv/play/series/${target.seriesId}" + nameQuery(target.name)
+        is Target.Channel -> "https://enktel.tv/play/channel/${target.streamId}" + nameQuery(target.name)
+        is Target.Search -> "https://enktel.tv/play/search?q=" + esc(target.query)
+    }
+
+    private fun nameQuery(name: String): String =
+        if (name.isBlank()) "" else "?n=" + esc(name)
+
+    private fun esc(s: String): String =
+        URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 }
