@@ -70,6 +70,27 @@ import tv.enktel.app.ui.theme.EnktelType
  *     videos per title. When the chosen one refused to embed, that was the end
  *     of it, even though the teaser two entries down would have played.
  *
+ * ## And then it broke again, differently
+ *
+ * A tester saw YouTube's grey "Video unavailable" panel and then this screen
+ * announcing that *this device's browser engine could not play it* — on a
+ * modern phone, which plainly could. Two more faults:
+ *
+ *  4. **The page declared an `origin` it did not have.** The document is
+ *     loaded through `loadDataWithBaseURL`, whose origin is not an ordinary
+ *     page origin however convincing the base URL looks. Handing YouTube an
+ *     `origin` player var gave it something to check the postMessage channel
+ *     against; it did not match, and the player answered with its own grey
+ *     panel and error 5. Error 5 was then reported to the viewer as a fault in
+ *     their device. It was not. The var is gone, which is what every working
+ *     Android embed does.
+ *  5. **The fall-through had nothing to fall through to.** Alternates come
+ *     from TMDB, and only a *personal* TMDB key yields more than one — the
+ *     site's lookup proxy answers with a single key, which is what almost
+ *     everybody uses. So the recovery path built for embed-refusals never ran
+ *     for almost anybody. Each upload is now tried on both embed hosts, which
+ *     gives a real second attempt whether or not TMDB supplied a second video.
+ *
  * ## What it does now
  *
  * Plays the first candidate. If the player reports an error, or simply never
@@ -147,15 +168,19 @@ fun TrailerScreen(
     val candidates = remember(videoId, alternates) {
         (listOf(videoId) + alternates).filter { it.isNotBlank() }.distinct()
     }
-    var attempt by remember(candidates) { mutableIntStateOf(0) }
+    // Each upload is worth trying on both embed hosts before it is written
+    // off. Most catalogues supply exactly one upload, so without this the
+    // whole recovery path amounted to "give up".
+    val plan = remember(candidates) { YouTubeEmbed.attempts(candidates) }
+    var attempt by remember(plan) { mutableIntStateOf(0) }
     var web by remember { mutableStateOf<WebView?>(null) }
     var playing by remember { mutableStateOf(true) }
     var started by remember(attempt) { mutableStateOf(false) }
     var noWebView by remember { mutableStateOf(false) }
     /** Set once every candidate has failed; carries the reason to show. */
-    var deadEnd by remember(candidates) { mutableStateOf<String?>(null) }
+    var deadEnd by remember(plan) { mutableStateOf<String?>(null) }
 
-    val current = candidates.getOrNull(attempt)
+    val current = plan.getOrNull(attempt)
     val engineTooOld = remember { !YouTubeEmbed.canEmbed(context) }
     val failed = current == null || noWebView || deadEnd != null
     val controlFocus = remember { FocusRequester() }
@@ -168,19 +193,23 @@ fun TrailerScreen(
     BackHandler(onBack = close)
 
     /**
-     * Move to the next upload, or give up with a reason.
+     * Move to the next thing worth trying, or give up with a reason.
      *
-     * Deliberately quiet between candidates: the viewer asked for a trailer,
-     * and being told that upload #1 of it was geo-blocked is not information
-     * they can act on while #2 is about to play.
+     * Deliberately quiet between attempts: the viewer asked for a trailer, and
+     * being told that upload #1 was geo-blocked is not information they can act
+     * on while #2 is about to play.
      */
-    fun advance(reason: String) {
-        if (attempt + 1 < candidates.size) {
-            attempt += 1
+    fun advance(code: Int, reason: String) {
+        val next = if (YouTubeEmbed.isTerminal(code)) {
+            plan.size
         } else {
-            deadEnd = reason
+            YouTubeEmbed.nextAttempt(attempt, plan, code)
         }
+        if (next < plan.size) attempt = next else deadEnd = reason
     }
+
+    /** The Kotlin-side watchdog has no YouTube code to reason about. */
+    fun advanceOnStall(reason: String) = advance(Int.MIN_VALUE, reason)
 
     // A player that never starts is the failure mode an error callback misses:
     // an engine too old for YouTube renders its unsupported notice inside the
@@ -189,7 +218,7 @@ fun TrailerScreen(
         if (current == null || started || deadEnd != null) return@LaunchedEffect
         delay(START_TIMEOUT_MS)
         if (!started) {
-            advance(
+            advanceOnStall(
                 if (engineTooOld) {
                     "This device's browser engine is too old for YouTube's player"
                 } else {
@@ -213,7 +242,7 @@ fun TrailerScreen(
     // would keep retrying the upload that had already failed.
     val reportPlaying = rememberUpdatedState<() -> Unit> { started = true }
     val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
-        advance(YouTubeEmbed.errorReason(code))
+        advance(code, YouTubeEmbed.errorReason(code))
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -273,9 +302,12 @@ fun TrailerScreen(
                     (v as? WebView)?.let { w ->
                         if (w.tag != current) {
                             w.tag = current
+                            // Base URL is the embed host being attempted, so the
+                            // API script, the frame and the document agree about
+                            // where they are.
                             w.loadDataWithBaseURL(
-                                "https://www.youtube.com",
-                                trailerHtml(current),
+                                current.host,
+                                trailerHtml(current.videoId, current.host),
                                 "text/html", "utf-8", null,
                             )
                         }
@@ -390,7 +422,7 @@ fun TrailerScreen(
  * never load. `onError` carries YouTube's own reason code straight back so the
  * screen can decide between trying the next upload and giving up honestly.
  */
-private fun trailerHtml(videoId: String): String = """
+private fun trailerHtml(videoId: String, host: String): String = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -411,14 +443,29 @@ private fun trailerHtml(videoId: String): String = """
   }
   // The API script itself failing to load is a failure too — without this the
   // page just sits blank and only the Kotlin-side watchdog would catch it.
-  setTimeout(function () { if (!p) report('onError', 5); }, 7000);
+  // Reported under its own code rather than as YouTube's HTML5 error, because
+  // "the script never arrived" and "YouTube refused the video" want different
+  // things said and different things done about them.
+  setTimeout(function () { if (!p) report('onError', ${YouTubeEmbed.ERR_NO_PLAYER}); }, 7000);
   function onYouTubeIframeAPIReady() {
     p = new YT.Player('player', {
       videoId: '$videoId',
+      host: '$host',
       playerVars: {
         autoplay: 1, controls: 1, rel: 0, modestbranding: 1,
         playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
-        origin: 'https://www.youtube.com'
+        enablejsapi: 1,
+        // No `origin` player var, deliberately.
+        //
+        // This document is loaded through loadDataWithBaseURL, so its origin
+        // is not a normal page origin however convincing the base URL looks.
+        // Declaring one anyway gives YouTube a value to check the postMessage
+        // channel against, it does not match, and the player answers by
+        // showing its own grey "Video unavailable" panel and reporting error
+        // 5 — which reads as a broken device and is nothing of the sort.
+        // Omitted, the API derives what it needs from the frame itself, which
+        // is what every working Android embed does.
+        widget_referrer: 'https://enktel.tv'
       },
       events: {
         onReady: function (e) { e.target.playVideo(); },
