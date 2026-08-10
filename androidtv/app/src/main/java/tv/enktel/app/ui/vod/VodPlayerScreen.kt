@@ -429,7 +429,8 @@ fun VodPlayerScreen(
 
     val rootFocus = remember { FocusRequester() }
     val seekFocus = remember { FocusRequester() }
-    LaunchedEffect(trackMenu, showControls) {
+    val controlsFocus = remember { FocusRequester() }
+    LaunchedEffect(trackMenu, showControls, durationMs > 0) {
         if (trackMenu.isEmpty() && !showControls) {
             runCatching { rootFocus.requestFocus() }
         } else if (trackMenu.isEmpty() && showControls && !isLive) {
@@ -437,8 +438,15 @@ fun VodPlayerScreen(
             // claimed focus here before, so on TV the controls appeared and the
             // D-pad still had nowhere to go — the scrub bar was reachable in
             // code and unreachable in practice.
+            //
+            // The scrubber only exists when the media has a length, so when it
+            // does not, the same reasoning points at the transport row instead:
+            // aiming at a composable that is not there would retry ten times
+            // and then leave the remote stranded, which is the very fault this
+            // block was written to fix.
+            val target = if (durationMs > 0) seekFocus else controlsFocus
             repeat(10) {
-                if (runCatching { seekFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                if (runCatching { target.requestFocus() }.isSuccess) return@LaunchedEffect
                 delay(40)
             }
         }
@@ -802,7 +810,30 @@ fun VodPlayerScreen(
                         })
                     }
                 }
-                if (!isLive) {
+                // A scrubber needs a length. Without one it is not a scrubber.
+                //
+                // v1.32.0 made the bar render at durationMs == 0 so it would be
+                // in place the moment a duration arrived. On panels that never
+                // declare one it never arrives, and what is left looks like a
+                // seek bar and is not: frac pins to 0 so the rail is empty and
+                // the thumb sits hard left; `pointerInput` returns early, so
+                // drag and tap do nothing; the D-pad path clamps its target to
+                // `coerceAtMost(0)`, so scrubbing does nothing either; and the
+                // right-hand label reads "live buffer" — on a film.
+                //
+                // Nor does the warning above cover it, because `canSeek` is
+                // about whether the panel serves byte ranges, which is a
+                // different question from whether it said how long the file is.
+                // A panel can answer ranges perfectly and still declare no
+                // length, and that combination produced a dead rail with no
+                // explanation next to it. Reported as the seek bar being
+                // missing, which is exactly what it looks like.
+                //
+                // So: a real bar when there is a length, and an honest line
+                // when there is not. The skip buttons work either way — they
+                // seek relative to the current position and never needed a
+                // duration.
+                if (!isLive && durationMs > 0) {
                     SeekBar(
                         focusRequester = seekFocus,
                         positionMs = positionMs,
@@ -817,15 +848,26 @@ fun VodPlayerScreen(
                     Row(Modifier.fillMaxWidth()) {
                         Text(fmtTime(positionMs), color = Color.White, fontSize = 12.sp)
                         Spacer(Modifier.weight(1f))
-                        if (durationMs > 0) {
-                            Text("-${fmtTime(durationMs - positionMs)}", color = EnktelTextDim, fontSize = 12.sp)
-                            Spacer(Modifier.width(14.dp))
-                            Text(fmtTime(durationMs), color = EnktelTextDim, fontSize = 12.sp)
-                        } else {
-                            Text("live buffer", color = EnktelTextDim, fontSize = 12.sp)
-                        }
+                        Text("-${fmtTime(durationMs - positionMs)}", color = EnktelTextDim, fontSize = 12.sp)
+                        Spacer(Modifier.width(14.dp))
+                        Text(fmtTime(durationMs), color = EnktelTextDim, fontSize = 12.sp)
                     }
                     Spacer(Modifier.height(10.dp))
+                } else if (!isLive) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(fmtTime(positionMs), color = Color.White, fontSize = 12.sp)
+                        Text(
+                            "Length unknown — this panel didn't declare one, so there's " +
+                                "nothing to scrub along. Use −10s and +30s.",
+                            color = EnktelTextDim,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
                 // v1.26.0 — hoist Discord state above the LazyRow. LazyListScope's
                 // `item {}` builder isn't @Composable, so remember* / collectAsState
@@ -834,7 +876,10 @@ fun VodPlayerScreen(
                 val discordUrl by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
                 val voiceChan by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
                 val hudToaster = tv.enktel.app.ui.components.LocalToaster.current
-                androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier.focusRequester(controlsFocus).tvRailFocus(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     item {
                         FocusButton(if (playing) "⏸  Pause" else "▶  Play", accent = true, onClick = {
                             if (engine.player.isPlaying) engine.player.pause() else engine.player.play()
