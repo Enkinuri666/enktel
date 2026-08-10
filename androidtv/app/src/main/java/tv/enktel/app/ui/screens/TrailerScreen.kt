@@ -138,10 +138,36 @@ private const val START_TIMEOUT_MS = 9_000L
 class TrailerBridge(
     private val main: Handler,
     private val playing: () -> Unit,
+    private val ended: () -> Unit,
     private val failed: (Int) -> Unit,
 ) {
+    /**
+     * The clip finished and the page rewound it rather than letting YouTube
+     * paint its end screen. Told to the screen so its transport button reads
+     * "Play" and not "Pause" over a stopped picture.
+     */
     @JavascriptInterface
-    fun onPlaying() {
+    fun onEnded(unused: Int) {
+        main.post { ended() }
+    }
+
+    /**
+     * The trailer is alive. Takes an argument it ignores, and that is the
+     * point.
+     *
+     * The bridge resolves a call by name *and arity*: JavaScript calling
+     * `onPlaying(0)` against a zero-argument method finds nothing and fails
+     * silently, which is precisely what happened. Nothing ever reported that
+     * playback had begun, so the nine-second watchdog — whose whole job is to
+     * catch a player that never starts — fired on a player that had started,
+     * moved to the next candidate, and did it again. A trailer that played for
+     * eight seconds, stopped, and restarted as the next one, forever.
+     *
+     * It went unnoticed because until the embed itself was fixed nothing ever
+     * got as far as playing, so the signal was never missed.
+     */
+    @JavascriptInterface
+    fun onPlaying(unused: Int) {
         main.post { playing() }
     }
 
@@ -241,6 +267,7 @@ fun TrailerScreen(
     // candidates fail, and a callback holding the first composition's copy
     // would keep retrying the upload that had already failed.
     val reportPlaying = rememberUpdatedState<() -> Unit> { started = true }
+    val reportEnded = rememberUpdatedState<() -> Unit> { playing = false }
     val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
         advance(code, YouTubeEmbed.errorReason(code))
     }
@@ -287,6 +314,7 @@ fun TrailerScreen(
                                 TrailerBridge(
                                     main = Handler(Looper.getMainLooper()),
                                     playing = { reportPlaying.value() },
+                                    ended = { reportEnded.value() },
                                     failed = { code -> reportError.value(code) },
                                 ),
                                 "EnktelTrailer",
@@ -379,7 +407,9 @@ fun TrailerScreen(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (started) "Official trailer" else "Loading trailer…",
+                    // Neutral wording: this screen serves highlight packages
+                    // and match replays as well as trailers now.
+                    if (started) "Playing in EnkTel" else "Loading…",
                     color = EnktelTextDim, style = EnktelType.caption,
                 )
                 Spacer(Modifier.height(14.dp))
@@ -429,7 +459,20 @@ private fun trailerHtml(videoId: String, host: String): String = """
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <style>
   html, body { margin:0; padding:0; height:100%; width:100%; background:#000; overflow:hidden; }
-  #player { position:absolute; top:0; left:0; width:100%; height:100%; }
+  #player, #player iframe {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    /* Nothing inside the frame is touchable.
+       `controls: 0` removes the transport bar, and this removes the rest of
+       what YouTube draws on interaction: the title and channel overlay that
+       slides in on a tap, the "Watch on YouTube" link that leaves the app,
+       the share and copy-link buttons, and the clickable cards. All of it is
+       reachable through the iframe even with the controls off, and none of it
+       belongs on a screen whose whole purpose is to keep playback in EnkTel.
+       Costs nothing: this screen drives the player through evaluateJavascript
+       and draws its own transport bar in Compose, above the WebView, so the
+       viewer's presses never needed to reach the frame in the first place. */
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -452,7 +495,15 @@ private fun trailerHtml(videoId: String, host: String): String = """
       videoId: '$videoId',
       host: '$host',
       playerVars: {
-        autoplay: 1, controls: 1, rel: 0, modestbranding: 1,
+        // controls: 0 — YouTube's own chrome is off entirely.
+        //
+        // This screen already draws a transport bar of its own and drives the
+        // player through evaluateJavascript, so YouTube's controls were a
+        // second set of buttons layered under ours, in a different visual
+        // language, that a D-pad could not reach anyway. rel: 0 and
+        // iv_load_policy: 3 keep the end-card grid and the annotation layer out
+        // of it, so what plays is the video and nothing else.
+        autoplay: 1, controls: 0, rel: 0, modestbranding: 1,
         playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
         enablejsapi: 1,
         // No `origin` player var, deliberately.
@@ -469,7 +520,23 @@ private fun trailerHtml(videoId: String, host: String): String = """
       },
       events: {
         onReady: function (e) { e.target.playVideo(); },
-        onStateChange: function (e) { if (e.data === 1) report('onPlaying', 0); },
+        // 1 is playing, 3 is buffering. Buffering counts: it proves the video
+        // resolved and the player is working on it, and the watchdog exists to
+        // catch a player that never becomes a trailer — not to punish a slow
+        // line by moving to the next upload while this one is loading.
+        onStateChange: function (e) {
+          if (e.data === 1 || e.data === 3) report('onPlaying', 0);
+          // 0 is ENDED, and ENDED is when YouTube paints its end screen — the
+          // grid of further videos, over the top of the frame. `rel: 0` limits
+          // what goes in it but does not stop it appearing. Rewinding to the
+          // first frame and pausing leaves the picture on the opening shot
+          // with our own controls over it, which is the honest end of a
+          // trailer rather than an invitation to leave.
+          if (e.data === 0 && p) {
+            try { p.seekTo(0, true); p.pauseVideo(); } catch (err) {}
+            report('onEnded', 0);
+          }
+        },
         onError: function (e) { report('onError', e.data); }
       }
     });

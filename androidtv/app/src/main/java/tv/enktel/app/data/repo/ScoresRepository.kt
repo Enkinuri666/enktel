@@ -284,6 +284,78 @@ class ScoresRepository(
         }.sortedBy { it.minute.toIntOrNull() ?: Int.MAX_VALUE }
     }
 
+    // ---- Following ---------------------------------------------------------
+
+    /**
+     * Something the user can follow, as the sports database actually spells it.
+     *
+     * [name] is the canonical spelling to store — the whole point, because a
+     * followed name is matched against programme titles and channel names, and
+     * "man utd" matches nothing that "Manchester United" matches.
+     */
+    data class Followable(
+        val name: String,
+        val kind: String,
+        /** "English Premier League · Soccer" — enough to tell two apart. */
+        val detail: String,
+        val badge: String = "",
+    )
+
+    /**
+     * Teams and leagues matching [query].
+     *
+     * Exists because the Settings field took any text at all and gave no sign
+     * whether it had landed on something real. A typo, an abbreviation or a
+     * nickname was stored just as readily as a name, matched nothing for ever
+     * after, and looked exactly like a feature that does nothing.
+     *
+     * Empty on any failure, which the caller reports as "could not check"
+     * rather than "not found" — the two deserve different answers, and telling
+     * someone their team does not exist because a lookup timed out is worse
+     * than saying nothing.
+     */
+    suspend fun searchFollowable(query: String): List<Followable> = withContext(Dispatchers.IO) {
+        val q = query.trim()
+        if (q.length < 2) return@withContext emptyList()
+        val teams = fetchArray("$base/searchteams.php?t=${enc(q)}", "teams").mapNotNull { t ->
+            val name = t.str("strTeam")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            Followable(
+                name = name,
+                kind = "team",
+                detail = listOfNotNull(
+                    t.str("strLeague")?.takeIf { it.isNotBlank() },
+                    t.str("strSport")?.takeIf { it.isNotBlank() },
+                ).joinToString(" · "),
+                badge = t.str("strBadge") ?: t.str("strTeamBadge").orEmpty(),
+            )
+        }
+        // Leagues come from the full list rather than a search endpoint,
+        // because the only league search TheSportsDB offers is by country.
+        // It is one small request and it is cached for the session.
+        val leagues = allLeagues()
+            .filter { it.name.contains(q, ignoreCase = true) }
+            .take(6)
+        (teams.take(8) + leagues).distinctBy { it.name.lowercase() }.take(12)
+    }
+
+    @Volatile private var leagueCache: List<Followable>? = null
+
+    private suspend fun allLeagues(): List<Followable> {
+        leagueCache?.let { return it }
+        val fetched = fetchArray("$base/all_leagues.php", "leagues").mapNotNull { l ->
+            val name = l.str("strLeague")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            Followable(
+                name = name,
+                kind = "league",
+                detail = l.str("strSport").orEmpty(),
+            )
+        }
+        if (fetched.isNotEmpty()) leagueCache = fetched
+        return fetched
+    }
+
+    private fun enc(s: String): String = java.net.URLEncoder.encode(s, "UTF-8")
+
     // ---- Official broadcast guide -----------------------------------------
 
     /**

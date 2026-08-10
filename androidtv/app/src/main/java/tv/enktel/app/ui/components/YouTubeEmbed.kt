@@ -163,6 +163,30 @@ object YouTubeEmbed {
     data class Attempt(val videoId: String, val host: String)
 
     /**
+     * The video id inside a YouTube link, or null when there is not one.
+     *
+     * Highlight packages arrive from TheSportsDB as links rather than ids, in
+     * every shape YouTube has ever published — and they used to be handed
+     * straight to an `ACTION_VIEW` intent, which leaves the app. Pulling the id
+     * out is what lets them play in the in-app player instead.
+     *
+     * Handles `watch?v=`, `youtu.be/`, `/embed/`, `/shorts/` and `/v/`, with or
+     * without a scheme, with any surrounding query string.
+     */
+    fun videoIdFrom(url: String): String? {
+        if (url.isBlank()) return null
+        val id = Regex(
+            """(?:youtu\.be/|youtube\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|v/|live/))([A-Za-z0-9_-]{11})""",
+            RegexOption.IGNORE_CASE,
+        ).find(url)?.groupValues?.get(1)
+        return id?.takeIf { it.length == 11 }
+    }
+
+    /** True when [url] points at YouTube at all, id extractable or not. */
+    fun isYouTube(url: String): Boolean =
+        url.contains("youtube.com", true) || url.contains("youtu.be", true)
+
+    /**
      * Everything worth trying, in order, for a list of candidate uploads.
      *
      * Both hosts for the first upload before moving to the second, because a
@@ -175,7 +199,12 @@ object YouTubeEmbed {
      */
     fun attempts(videoIds: List<String>): List<Attempt> =
         videoIds.filter { it.isNotBlank() }.distinct().flatMap { id ->
-            listOf(Attempt(id, HOST_DEFAULT), Attempt(id, HOST_NOCOOKIE))
+            // Privacy-enhanced host first, on evidence: a tester reported the
+            // default host answering with the grey "Video unavailable" panel
+            // and the retry then playing the same trailer. One device and one
+            // video is not proof, but the order costs nothing when both work
+            // and saves a failed attempt when they do not.
+            listOf(Attempt(id, HOST_NOCOOKIE), Attempt(id, HOST_DEFAULT))
         }
 
     /**

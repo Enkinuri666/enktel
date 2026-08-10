@@ -904,30 +904,108 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("🔎  Live sport finder", onClick = { nav.navigate("sportsFinder") })
             FocusButton("🏟  Sports Hub", onClick = { nav.navigate("sports") })
         }
+        Spacer(Modifier.height(14.dp))
+        Text("FOLLOWING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        // What it does, said once and plainly. Without this the field was a box
+        // that swallowed text: no confirmation, no effect anyone could point
+        // at, and no statement anywhere of what following was for.
+        Text(
+            "A followed team or league is matched against programme titles and channel names. " +
+                "Its fixtures pin to the top of the Live sport finder and the Sports Hub, and the " +
+                "Hub's \"my teams\" filter shows only those. Teams and leagues work; player names " +
+                "do not — nothing broadcasts under a player's name.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
         val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
         var newTeam by remember { mutableStateOf("") }
+        var checking by remember { mutableStateOf(false) }
+        var suggestions by remember {
+            mutableStateOf<List<tv.enktel.app.data.repo.ScoresRepository.Followable>>(emptyList())
+        }
+        var followNote by remember { mutableStateOf("") }
+
+        /** Store one, under the spelling the sports database uses. */
+        fun addFollow(displayName: String, kind: String) {
+            scope.launch {
+                graph.db.sportsDao().follow(
+                    tv.enktel.app.data.db.FollowedTeam(
+                        name = displayName.lowercase().trim(),
+                        displayName = displayName.trim(),
+                        kind = kind,
+                    )
+                )
+                newTeam = ""
+                suggestions = emptyList()
+                followNote = "Following $displayName"
+            }
+        }
+
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).widthIn(max = 260.dp)) {
-                tv.enktel.app.ui.components.TvTextField(newTeam, { newTeam = it }, "Follow team or league")
+                tv.enktel.app.ui.components.TvTextField(newTeam, { newTeam = it }, "Team or league name")
             }
-            FocusButton("Add", onClick = {
-                if (newTeam.isNotBlank()) scope.launch {
-                    graph.db.sportsDao().follow(
-                        tv.enktel.app.data.db.FollowedTeam(name = newTeam.lowercase(), displayName = newTeam.trim())
-                    )
-                    newTeam = ""
+            FocusButton(if (checking) "Checking…" else "Look up", accent = true, onClick = {
+                val q = newTeam.trim()
+                if (q.isBlank() || checking) return@FocusButton
+                scope.launch {
+                    checking = true
+                    followNote = ""
+                    val found = try {
+                        graph.scores.searchFollowable(q)
+                    } catch (_: Throwable) { null }
+                    checking = false
+                    suggestions = found.orEmpty()
+                    followNote = when {
+                        // A failed lookup and a genuine miss are different
+                        // answers, and telling somebody their team does not
+                        // exist because a request timed out is the worse one.
+                        found == null -> "Could not reach the sports database — you can still add it as typed."
+                        found.isEmpty() -> "No team or league found for \"$q\". Add it as typed if your guide spells it that way."
+                        else -> "Pick the one you meant:"
+                    }
                 }
             })
+            FocusButton("Add as typed", onClick = {
+                if (newTeam.isNotBlank()) addFollow(newTeam.trim(), "team")
+            })
+        }
+        if (followNote.isNotBlank()) {
+            Text(followNote, color = EnktelTextDim, fontSize = 11.sp)
+        }
+        // Confirmed candidates, with enough detail to tell two Uniteds apart.
+        suggestions.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { s ->
+                    FocusButton(
+                        "＋ ${s.name}" + if (s.detail.isNotBlank()) "  ·  ${s.detail}" else "",
+                        onClick = { addFollow(s.name, s.kind) },
+                    )
+                }
+            }
+        }
+        if (followed.isEmpty()) {
+            Text(
+                "Not following anything yet.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        } else {
+            Text(
+                "Following ${followed.size} — press one to stop:",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
         }
         followed.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { t ->
                     FocusButton("★ ${t.displayName}  ✕", onClick = {
-                        scope.launch { graph.db.sportsDao().unfollow(t.name) }
+                        scope.launch {
+                            graph.db.sportsDao().unfollow(t.name)
+                            followNote = "Stopped following ${t.displayName}"
+                        }
                     })
                 }
             }
