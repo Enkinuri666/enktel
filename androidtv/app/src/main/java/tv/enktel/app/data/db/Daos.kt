@@ -469,9 +469,22 @@ interface DownloadDao {
     suspend fun setStatus(id: String, status: String, now: Long = System.currentTimeMillis())
 
     /** Persist the byte offsets each range-worker reached so a resume can pick
-     *  up mid-file. Written on every progress tick and on pause. */
+     *  up mid-file. Written on a slow clock while a download runs, and on pause. */
     @Query("UPDATE downloads SET resumeState = :state, progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, updatedAt = :now WHERE id = :id")
     suspend fun updateResumeState(id: String, state: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())
+
+    /**
+     * Progress without the resume record.
+     *
+     * The record is a few kilobytes joined from every chunk in the plan, and it
+     * only has to be good enough to survive a crash — whereas the progress bar
+     * wants updating several times a second. Rebuilding and rewriting the
+     * former at the rate of the latter is work a streaming stick does not have
+     * to spare while it is also taking delivery of the file. Leaving
+     * `resumeState` alone here keeps the last one written intact.
+     */
+    @Query("UPDATE downloads SET progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, updatedAt = :now WHERE id = :id")
+    suspend fun updateProgress(id: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())
 
     @Query("UPDATE downloads SET status = 'PAUSED', resumeState = :state, progressPct = :pct, downloadedBytes = :downloaded, sizeBytes = :size, errorMessage = '', updatedAt = :now WHERE id = :id")
     suspend fun markPaused(id: String, state: String, pct: Int, downloaded: Long, size: Long, now: Long = System.currentTimeMillis())

@@ -76,6 +76,11 @@ class DownloadHub(
     private val jobsLock = Any()
     private var poll: Job? = null
 
+    /** Last percentage the rail totals were recomputed at, so a whole-table
+     *  recount happens once per twenty-percent mark rather than once per tick
+     *  spent inside it. */
+    @Volatile private var lastTotalsPct = -1
+
     private val _totalBytes = MutableStateFlow(0L)
     val totalBytes: kotlinx.coroutines.flow.StateFlow<Long> = _totalBytes.asStateFlow()
 
@@ -468,13 +473,26 @@ class DownloadHub(
             onProgress = { downloaded, total, state ->
                 scope.launch {
                     val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
-                    // Persisting the segment offsets alongside the progress is
-                    // what makes an interrupted download resumable rather than
-                    // restartable — it costs one extra column on a write we
-                    // were already doing.
-                    dao.updateResumeState(id, state, pct, downloaded, total)
+                    // Persisting the segment offsets is what makes an
+                    // interrupted download resumable rather than restartable.
+                    // It arrives on a slower clock than the progress itself
+                    // (see ProgressTicker), and a blank one means "no new
+                    // record this tick" — writing it anyway would erase the
+                    // offsets and turn every resume into a restart.
+                    if (state.isNotBlank()) {
+                        dao.updateResumeState(id, state, pct, downloaded, total)
+                    } else {
+                        dao.updateProgress(id, pct, downloaded, total)
+                    }
                     recordRate(id, downloaded)
-                    if (pct % 20 == 0) refreshTotals()
+                    // Only when the number actually changes. `pct % 20 == 0`
+                    // is true for every tick inside a whole percent, so each
+                    // twenty-percent mark fired a full-table recount ten or
+                    // more times over rather than once.
+                    if (pct != lastTotalsPct && pct % 20 == 0) {
+                        lastTotalsPct = pct
+                        refreshTotals()
+                    }
                 }
             },
             onDone = { path ->
