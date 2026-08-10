@@ -147,6 +147,9 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         RegexOption.IGNORE_CASE,
     )
 
+    /** How many alternative feeds of one fixture the Channel Finder offers. */
+    private val FEEDS_PER_FIXTURE = 4
+
     private val GENERIC_KEYWORDS = listOf(
         "match", "highlights", "vs ", "vs.", "v.", "playoff", "quarter-final",
         "semi-final", "final", "tournament", "cup", "league", "grand prix", "derby",
@@ -340,7 +343,12 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         val hits = ArrayList<LiveSportsChannel>()
         for ((epgId, programmes) in airing) {
             val prog = programmes.firstOrNull { it.startMs <= now && it.endMs > now } ?: continue
-            for (ch in byEpgId[epgId].orEmpty()) {
+            // Capped, because "all of them" is its own kind of useless: a big
+            // playlist can carry a dozen lines of one broadcaster and they
+            // would sort adjacently, burying the next fixture below a screenful
+            // of the same one. A handful is what the user actually wants — one
+            // to tune, the rest to fall back on when it stalls.
+            for (ch in byEpgId[epgId].orEmpty().take(FEEDS_PER_FIXTURE)) {
                 val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
                 // Followed teams are matched against the channel name as well
                 // as the programme title: event and pay-per-view lines usually
