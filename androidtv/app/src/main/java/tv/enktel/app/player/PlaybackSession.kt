@@ -273,6 +273,29 @@ class PlaybackSession(
         _now.value = value
     }
 
+    private val claims = PlaybackClaims()
+
+    /**
+     * Take ownership of the session. Called from a player screen's composition,
+     * paired with [stopIfOwner] on the way out.
+     *
+     * The comment on [engine] notes that during a navigation transition the
+     * outgoing screen still exists while the incoming one mounts, and that the
+     * outgoing screen's `stop()` on dispose would land on the incoming screen's
+     * engine. It guarded the engine against that and left the teardown
+     * unguarded, so player-to-player navigation — the next-episode card — still
+     * released the engine the new screen was already playing on. This is the
+     * other half.
+     */
+    fun claim(): Long = claims.claim()
+
+    /** [stop], unless another player screen has taken the session over. */
+    fun stopIfOwner(token: Long): Boolean {
+        if (!claims.isOwner(token)) return false
+        stop()
+        return true
+    }
+
     /**
      * True when a live engine is already loaded with [contentId] — i.e. a
      * screen is mounting over a running stream rather than starting one.

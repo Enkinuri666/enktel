@@ -322,7 +322,14 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         val channels = content.channels(profileId).first()
         if (channels.isEmpty()) return@withContext emptyList()
 
-        val byEpgId = channels.filter { it.epgId.isNotBlank() }.associateBy { it.epgId }
+        // Grouped, not keyed. A playlist carries the same broadcaster several
+        // times over — SD, HD, FHD, a backup feed, one per country prefix — and
+        // every one of those lines shares a single epgId. `associateBy` keeps
+        // the last of each collision, so the finder offered exactly one feed
+        // per fixture and silently discarded the rest; if that survivor was a
+        // dead backup, the answer to "which channel is the game on" was a
+        // channel that doesn't play.
+        val byEpgId = channels.filter { it.epgId.isNotBlank() }.groupBy { it.epgId }
         if (byEpgId.isEmpty()) return@withContext emptyList()
 
         // A 60-second window returns each channel's currently-airing programme
@@ -332,11 +339,17 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
 
         val hits = ArrayList<LiveSportsChannel>()
         for ((epgId, programmes) in airing) {
-            val ch = byEpgId[epgId] ?: continue
             val prog = programmes.firstOrNull { it.startMs <= now && it.endMs > now } ?: continue
-            val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
-            val followed = teams.isNotEmpty() && teams.any { it in prog.title.lowercase() }
-            hits += LiveSportsChannel(ch, prog, sport, confidence, followed)
+            for (ch in byEpgId[epgId].orEmpty()) {
+                val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
+                // Followed teams are matched against the channel name as well
+                // as the programme title: event and pay-per-view lines usually
+                // carry the fixture in the channel name itself and have no EPG
+                // worth the name — "UK: PPV 04 | Arsenal vs Chelsea".
+                val haystack = (prog.title + " " + ch.name).lowercase()
+                val followed = teams.isNotEmpty() && teams.any { it in haystack }
+                hits += LiveSportsChannel(ch, prog, sport, confidence, followed)
+            }
         }
 
         hits.asSequence()

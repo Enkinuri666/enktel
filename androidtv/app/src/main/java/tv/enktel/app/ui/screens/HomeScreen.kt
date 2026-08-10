@@ -68,6 +68,11 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
 
     val continueWatching by graph.content.continueWatching(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    // Resume points written before the player carried artwork have no poster,
+    // and this is the screen that shows them. Films can be matched back to the
+    // catalogue; the rail redraws itself when the UPDATE lands, because the
+    // query above is a Flow. See UserDao.backfillProgressArtwork.
+    LaunchedEffect(p.id) { graph.content.backfillProgressArtwork(p.id) }
     val favChannels by graph.content.favoriteChannels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val recentMovies by graph.content.recentMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
     val favMovies by graph.content.favoriteMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
