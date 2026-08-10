@@ -175,7 +175,12 @@ object YouTubeEmbed {
      */
     fun attempts(videoIds: List<String>): List<Attempt> =
         videoIds.filter { it.isNotBlank() }.distinct().flatMap { id ->
-            listOf(Attempt(id, HOST_DEFAULT), Attempt(id, HOST_NOCOOKIE))
+            // Privacy-enhanced host first, on evidence: a tester reported the
+            // default host answering with the grey "Video unavailable" panel
+            // and the retry then playing the same trailer. One device and one
+            // video is not proof, but the order costs nothing when both work
+            // and saves a failed attempt when they do not.
+            listOf(Attempt(id, HOST_NOCOOKIE), Attempt(id, HOST_DEFAULT))
         }
 
     /**

@@ -30,9 +30,12 @@ class YouTubeEmbedTest {
         // a dead end.
         val plan = YouTubeEmbed.attempts(listOf("abc"))
         assertEquals(2, plan.size)
-        assertEquals(YouTubeEmbed.HOST_DEFAULT, plan[0].host)
-        assertEquals(YouTubeEmbed.HOST_NOCOOKIE, plan[1].host)
+        // Privacy-enhanced host first — see the note in `attempts`. A tester
+        // saw the default host refuse and the retry play the same trailer.
+        assertEquals(YouTubeEmbed.HOST_NOCOOKIE, plan[0].host)
+        assertEquals(YouTubeEmbed.HOST_DEFAULT, plan[1].host)
         assertTrue(plan.all { it.videoId == "abc" })
+        assertEquals(2, plan.map { it.host }.distinct().size)
     }
 
     @Test

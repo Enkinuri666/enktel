@@ -140,8 +140,23 @@ class TrailerBridge(
     private val playing: () -> Unit,
     private val failed: (Int) -> Unit,
 ) {
+    /**
+     * The trailer is alive. Takes an argument it ignores, and that is the
+     * point.
+     *
+     * The bridge resolves a call by name *and arity*: JavaScript calling
+     * `onPlaying(0)` against a zero-argument method finds nothing and fails
+     * silently, which is precisely what happened. Nothing ever reported that
+     * playback had begun, so the nine-second watchdog — whose whole job is to
+     * catch a player that never starts — fired on a player that had started,
+     * moved to the next candidate, and did it again. A trailer that played for
+     * eight seconds, stopped, and restarted as the next one, forever.
+     *
+     * It went unnoticed because until the embed itself was fixed nothing ever
+     * got as far as playing, so the signal was never missed.
+     */
     @JavascriptInterface
-    fun onPlaying() {
+    fun onPlaying(unused: Int) {
         main.post { playing() }
     }
 
@@ -469,7 +484,11 @@ private fun trailerHtml(videoId: String, host: String): String = """
       },
       events: {
         onReady: function (e) { e.target.playVideo(); },
-        onStateChange: function (e) { if (e.data === 1) report('onPlaying', 0); },
+        // 1 is playing, 3 is buffering. Buffering counts: it proves the video
+        // resolved and the player is working on it, and the watchdog exists to
+        // catch a player that never becomes a trailer — not to punish a slow
+        // line by moving to the next upload while this one is loading.
+        onStateChange: function (e) { if (e.data === 1 || e.data === 3) report('onPlaying', 0); },
         onError: function (e) { report('onError', e.data); }
       }
     });
