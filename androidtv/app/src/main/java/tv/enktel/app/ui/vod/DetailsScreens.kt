@@ -55,6 +55,7 @@ import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.KeyValue
+import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
@@ -232,6 +233,67 @@ private fun MovieDetailsBody(
         if (details.director.isNotBlank()) KeyValue("Director", details.director)
         if (details.releaseDate.isNotBlank()) KeyValue("Released", details.releaseDate)
     }
+
+    // Somewhere to go. The page used to describe a title and stop: whoever had
+    // decided against it had only Back, and whoever liked it had no way to
+    // find its neighbours — while the app knew exactly what else was on the
+    // line and never said.
+    val allMovies by remember(p.id) { graph.content.movies(p.id) }
+        .collectAsStateWithLifecycle(initialValue = emptyList<Movie>())
+    val similar = remember(m.key, allMovies) {
+        tv.enktel.app.data.repo.SimilarTitles.rank(
+            seed = tv.enktel.app.data.repo.SimilarTitles.of(m),
+            pool = allMovies,
+            facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
+        )
+    }
+    SimilarRail(
+        titles = similar,
+        poster = { it.poster },
+        label = { it.name },
+        subtitle = { if (it.year > 0) it.year.toString() else "" },
+        onOpen = { nav.navigate("movie/${it.key}") },
+    )
+}
+
+/**
+ * "More like this", for either kind of title.
+ *
+ * Drawn only when there is something to draw — a heading over an empty row
+ * reads as a fault, and a title with nothing in common with anything is a
+ * perfectly ordinary thing for a catalogue to contain.
+ */
+@Composable
+private fun <T> SimilarRail(
+    titles: List<T>,
+    poster: (T) -> String,
+    label: (T) -> String,
+    subtitle: (T) -> String,
+    onOpen: (T) -> Unit,
+) {
+    if (titles.isEmpty()) return
+    Spacer(Modifier.height(24.dp))
+    Text(
+        "MORE LIKE THIS",
+        color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black,
+        letterSpacing = 1.4.sp,
+    )
+    Spacer(Modifier.height(10.dp))
+    LazyRow(
+        modifier = Modifier.tvRailFocus(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(titles.size) { i ->
+            val t = titles[i]
+            PosterCard(
+                title = label(t),
+                imageUrl = poster(t),
+                subtitle = subtitle(t),
+                onClick = { onOpen(t) },
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
@@ -317,6 +379,19 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     var season by remember { mutableIntStateOf(-1) }
     val seasons = details?.seasons ?: emptyMap()
     if (season == -1 && seasons.isNotEmpty()) season = seasons.keys.first()
+
+    // Other series on this line that resemble this one. The catalogue itself,
+    // not a recommendation service — a rail of titles the playlist does not
+    // carry would be an advert for somebody else's library.
+    val allSeries by remember(p.id) { graph.content.series(p.id) }
+        .collectAsStateWithLifecycle(initialValue = emptyList<Series>())
+    val similarSeries = remember(s.key, allSeries) {
+        tv.enktel.app.data.repo.SimilarTitles.rank(
+            seed = tv.enktel.app.data.repo.SimilarTitles.of(s),
+            pool = allSeries,
+            facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
+        )
+    }
 
     // v1.28.1 — narrower horizontal padding on phones so the metadata column
     // isn't squeezed to ~180 dp with 48 dp side gutters.
@@ -521,6 +596,20 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                         )
                     }
                 }
+            }
+            // Inside the list rather than under it: the episode list already
+            // owns the remaining height, so anything placed after it would be
+            // squeezed to nothing. As the last item it simply scrolls into
+            // view once the season has been read through, which is also when
+            // somebody is most likely to want the next thing to watch.
+            item {
+                SimilarRail(
+                    titles = similarSeries,
+                    poster = { it.poster },
+                    label = { it.name },
+                    subtitle = { if (it.year > 0) it.year.toString() else "" },
+                    onOpen = { nav.navigate("seriesDetails/${'$'}{it.key}") },
+                )
             }
         }
     }
