@@ -87,12 +87,11 @@ class ParallelDownloader(
         private const val MAX_STREAMS = 4
         /** Below this, connection setup costs more than parallelism saves. */
         private const val PARALLEL_MIN_BYTES = 8L * 1024 * 1024
-        /** Target size of one work chunk. See [planSegments] for why the file is
-         *  cut into more chunks than there are workers. */
-        private const val TARGET_CHUNK_BYTES = 16L * 1024 * 1024
-        /** Ceiling on chunks per worker, so a 40 GB file doesn't produce a
-         *  resume blob with a thousand entries in it. */
-        private const val MAX_CHUNKS_PER_STREAM = 8
+        // Chunk sizing moved to DownloadPlan. It used to live here as a target
+        // size and a per-worker ceiling on the count, which contradicted each
+        // other above 512 MB: the ceiling won, the size grew to hundreds of
+        // megabytes, and the last connection standing was left alone with all
+        // of it. That is the download that starts fast and decays.
         /** 256 KB read buffer: syscall overhead is already negligible here and
          *  smaller blocks keep progress (and pause latency) responsive. */
         private const val READ_BUFFER_BYTES = 256 * 1024
@@ -100,6 +99,9 @@ class ParallelDownloader(
         private const val PROGRESS_TICK_BYTES = 4L * 1024 * 1024
         /** …and at most this often, by wall clock. */
         private const val PROGRESS_TICK_MS = 900L
+        /** How often the resume record itself is rebuilt and stored. Slower
+         *  than the progress tick on purpose — see [ProgressTicker.add]. */
+        private const val STATE_TICK_MS = 5_000L
         /** Attempts per range worker, counted from its last real progress,
          *  before the download is declared failed. */
         private const val MAX_SEGMENT_ATTEMPTS = 6
@@ -461,15 +463,27 @@ class ParallelDownloader(
         private val downloaded = AtomicLong(segments.sumOf { it.done })
         private val nextTickBytes = AtomicLong(downloaded.get() + PROGRESS_TICK_BYTES)
         @Volatile private var lastTickMs = 0L
+        @Volatile private var lastStateMs = 0L
 
         fun add(bytes: Int) {
             val now = downloaded.addAndGet(bytes.toLong())
             val nowMs = System.currentTimeMillis()
-            if (now >= nextTickBytes.get() || nowMs - lastTickMs >= PROGRESS_TICK_MS) {
-                nextTickBytes.set(now + PROGRESS_TICK_BYTES)
-                lastTickMs = nowMs
-                onProgress(now, total, encode(total, segments))
-            }
+            if (now < nextTickBytes.get() && nowMs - lastTickMs < PROGRESS_TICK_MS) return
+            nextTickBytes.set(now + PROGRESS_TICK_BYTES)
+            lastTickMs = nowMs
+            // The resume record is rebuilt on a slower clock than the progress
+            // bar. It is a few kilobytes of string joined from every chunk in
+            // the plan and then written to the database, and at speed the byte
+            // trigger above fires several times a second — so it was being
+            // rebuilt and rewritten five times a second on a device with one
+            // slow flash chip that is also busy taking delivery of the file.
+            //
+            // Its only job is to survive a crash. Once every few seconds loses
+            // at most a few seconds of a resumable transfer, which the segment
+            // cursors would recover from anyway.
+            val withState = nowMs - lastStateMs >= STATE_TICK_MS
+            if (withState) lastStateMs = nowMs
+            onProgress(now, total, if (withState) encode(total, segments) else "")
         }
 
         fun flush() = onProgress(downloaded.get(), total, encode(total, segments))
@@ -524,18 +538,12 @@ class ParallelDownloader(
      * connection simply take more of them, and keeps every stream busy until
      * the file is actually finished.
      */
-    private fun planSegments(total: Long, streams: Int): List<Segment> {
-        val n = streams.coerceAtLeast(1)
-        val count = (total / TARGET_CHUNK_BYTES)
-            .coerceIn(n.toLong(), (n.toLong() * MAX_CHUNKS_PER_STREAM))
-            .toInt()
-        val chunk = max(total / count, 1L)
-        return (0 until count).map { i ->
-            val start = i * chunk
-            val end = if (i == count - 1) total - 1 else min(start + chunk - 1, total - 1)
-            Segment(start, end, 0)
-        }.filter { it.start <= it.end }
-    }
+    /**
+     * See [DownloadPlan] — the sizing lives there because it decides how fast
+     * a download finishes and it was silently wrong, which is worth a test.
+     */
+    private fun planSegments(total: Long, streams: Int): List<Segment> =
+        DownloadPlan.segments(total, streams).map { Segment(it.start, it.end, 0) }
 
     private suspend fun runParallel(
         url: String, ua: String, writer: Writer, segments: List<Segment>,
