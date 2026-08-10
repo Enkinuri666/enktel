@@ -138,8 +138,19 @@ private const val START_TIMEOUT_MS = 9_000L
 class TrailerBridge(
     private val main: Handler,
     private val playing: () -> Unit,
+    private val ended: () -> Unit,
     private val failed: (Int) -> Unit,
 ) {
+    /**
+     * The clip finished and the page rewound it rather than letting YouTube
+     * paint its end screen. Told to the screen so its transport button reads
+     * "Play" and not "Pause" over a stopped picture.
+     */
+    @JavascriptInterface
+    fun onEnded(unused: Int) {
+        main.post { ended() }
+    }
+
     /**
      * The trailer is alive. Takes an argument it ignores, and that is the
      * point.
@@ -256,6 +267,7 @@ fun TrailerScreen(
     // candidates fail, and a callback holding the first composition's copy
     // would keep retrying the upload that had already failed.
     val reportPlaying = rememberUpdatedState<() -> Unit> { started = true }
+    val reportEnded = rememberUpdatedState<() -> Unit> { playing = false }
     val reportError = rememberUpdatedState<(Int) -> Unit> { code ->
         advance(code, YouTubeEmbed.errorReason(code))
     }
@@ -302,6 +314,7 @@ fun TrailerScreen(
                                 TrailerBridge(
                                     main = Handler(Looper.getMainLooper()),
                                     playing = { reportPlaying.value() },
+                                    ended = { reportEnded.value() },
                                     failed = { code -> reportError.value(code) },
                                 ),
                                 "EnktelTrailer",
@@ -446,7 +459,20 @@ private fun trailerHtml(videoId: String, host: String): String = """
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <style>
   html, body { margin:0; padding:0; height:100%; width:100%; background:#000; overflow:hidden; }
-  #player { position:absolute; top:0; left:0; width:100%; height:100%; }
+  #player, #player iframe {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    /* Nothing inside the frame is touchable.
+       `controls: 0` removes the transport bar, and this removes the rest of
+       what YouTube draws on interaction: the title and channel overlay that
+       slides in on a tap, the "Watch on YouTube" link that leaves the app,
+       the share and copy-link buttons, and the clickable cards. All of it is
+       reachable through the iframe even with the controls off, and none of it
+       belongs on a screen whose whole purpose is to keep playback in EnkTel.
+       Costs nothing: this screen drives the player through evaluateJavascript
+       and draws its own transport bar in Compose, above the WebView, so the
+       viewer's presses never needed to reach the frame in the first place. */
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -498,7 +524,19 @@ private fun trailerHtml(videoId: String, host: String): String = """
         // resolved and the player is working on it, and the watchdog exists to
         // catch a player that never becomes a trailer — not to punish a slow
         // line by moving to the next upload while this one is loading.
-        onStateChange: function (e) { if (e.data === 1 || e.data === 3) report('onPlaying', 0); },
+        onStateChange: function (e) {
+          if (e.data === 1 || e.data === 3) report('onPlaying', 0);
+          // 0 is ENDED, and ENDED is when YouTube paints its end screen — the
+          // grid of further videos, over the top of the frame. `rel: 0` limits
+          // what goes in it but does not stop it appearing. Rewinding to the
+          // first frame and pausing leaves the picture on the opening shot
+          // with our own controls over it, which is the honest end of a
+          // trailer rather than an invitation to leave.
+          if (e.data === 0 && p) {
+            try { p.seekTo(0, true); p.pauseVideo(); } catch (err) {}
+            report('onEnded', 0);
+          }
+        },
         onError: function (e) { report('onError', e.data); }
       }
     });
