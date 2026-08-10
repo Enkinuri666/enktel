@@ -125,4 +125,45 @@ class YouTubeEmbedTest {
             assertTrue("code $code has no reason", YouTubeEmbed.errorReason(code).isNotBlank())
         }
     }
+
+    // ── reading an id out of a link ────────────────────────────────────
+
+    @Test
+    fun `a highlights link yields the id it plays`() {
+        // TheSportsDB publishes highlights as links, in every shape YouTube
+        // has ever used. Each one used to be handed to an intent that left the
+        // app; the id is what lets them play inside it.
+        val id = "dQw4w9WgXcQ"
+        for (url in listOf(
+            "https://www.youtube.com/watch?v=$id",
+            "http://youtube.com/watch?v=$id&t=42s",
+            "https://www.youtube.com/watch?feature=share&v=$id",
+            "https://youtu.be/$id",
+            "https://youtu.be/$id?t=90",
+            "https://www.youtube.com/embed/$id",
+            "https://www.youtube.com/shorts/$id",
+            "https://www.youtube.com/v/$id",
+            "www.youtube.com/watch?v=$id",
+            "//www.youtube.com/watch?v=$id",
+        )) {
+            assertEquals("failed on $url", id, YouTubeEmbed.videoIdFrom(url))
+        }
+    }
+
+    @Test
+    fun `a link with no video in it yields nothing`() {
+        assertEquals(null, YouTubeEmbed.videoIdFrom(""))
+        assertEquals(null, YouTubeEmbed.videoIdFrom("https://www.youtube.com/"))
+        assertEquals(null, YouTubeEmbed.videoIdFrom("https://www.youtube.com/@somechannel"))
+        assertEquals(null, YouTubeEmbed.videoIdFrom("https://example.com/clip.mp4"))
+        // Eleven characters is the id length; anything shorter is not one.
+        assertEquals(null, YouTubeEmbed.videoIdFrom("https://youtu.be/short"))
+    }
+
+    @Test
+    fun `a direct media file is not mistaken for YouTube`() {
+        assertTrue(YouTubeEmbed.isYouTube("https://youtu.be/dQw4w9WgXcQ"))
+        assertTrue(YouTubeEmbed.isYouTube("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertFalse(YouTubeEmbed.isYouTube("https://cdn.example.com/highlights/final.mp4"))
+    }
 }

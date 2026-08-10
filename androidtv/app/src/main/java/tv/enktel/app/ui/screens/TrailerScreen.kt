@@ -394,7 +394,9 @@ fun TrailerScreen(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (started) "Official trailer" else "Loading trailer…",
+                    // Neutral wording: this screen serves highlight packages
+                    // and match replays as well as trailers now.
+                    if (started) "Playing in EnkTel" else "Loading…",
                     color = EnktelTextDim, style = EnktelType.caption,
                 )
                 Spacer(Modifier.height(14.dp))
@@ -467,7 +469,15 @@ private fun trailerHtml(videoId: String, host: String): String = """
       videoId: '$videoId',
       host: '$host',
       playerVars: {
-        autoplay: 1, controls: 1, rel: 0, modestbranding: 1,
+        // controls: 0 — YouTube's own chrome is off entirely.
+        //
+        // This screen already draws a transport bar of its own and drives the
+        // player through evaluateJavascript, so YouTube's controls were a
+        // second set of buttons layered under ours, in a different visual
+        // language, that a D-pad could not reach anyway. rel: 0 and
+        // iv_load_policy: 3 keep the end-card grid and the annotation layer out
+        // of it, so what plays is the video and nothing else.
+        autoplay: 1, controls: 0, rel: 0, modestbranding: 1,
         playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0,
         enablejsapi: 1,
         // No `origin` player var, deliberately.

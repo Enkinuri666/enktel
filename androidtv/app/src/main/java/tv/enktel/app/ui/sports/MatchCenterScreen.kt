@@ -325,9 +325,21 @@ fun MatchCenterScreen(
 }
 
 /**
- * Opens a highlights clip. TheSportsDB links are almost always YouTube, which
- * ExoPlayer can't play directly, so those hand off to whatever app the device
- * uses for them; anything that looks like a direct media file plays in-app.
+ * Opens a highlights clip, in this app.
+ *
+ * TheSportsDB publishes highlights as YouTube links, and this used to fire an
+ * `ACTION_VIEW` at them — which leaves EnkTel entirely, drops the viewer into
+ * the YouTube app with its own recommendations and chrome, and on a sideloaded
+ * Fire TV Stick with no YouTube app installed did nothing at all.
+ *
+ * The app already owns an in-app YouTube player, built for trailers. A
+ * highlights package is the same problem, so it goes to the same screen: the
+ * video plays full-bleed with YouTube's own controls suppressed and EnkTel's
+ * overlay on top. The intent survives only as the last resort behind the
+ * "Open in YouTube" button on that screen's dead end.
+ *
+ * Anything that is not a YouTube link is a direct media file and goes to the
+ * ordinary player, as before.
  */
 internal fun openHighlight(
     context: android.content.Context,
@@ -336,18 +348,21 @@ internal fun openHighlight(
     url: String,
     title: String,
 ) {
-    val isYouTube = url.contains("youtube.com", true) || url.contains("youtu.be", true)
-    if (isYouTube) {
+    if (!tv.enktel.app.ui.components.YouTubeEmbed.isYouTube(url)) {
+        nav.navigate(tv.enktel.app.vodPlayerRoute(url, title))
+        return
+    }
+    val id = tv.enktel.app.ui.components.YouTubeEmbed.videoIdFrom(url)
+    if (id == null) {
+        // A YouTube link we cannot read an id out of — a playlist, a channel,
+        // something new. Nothing to embed, so hand it over rather than fail.
         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url.toUri())
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            context.startActivity(intent)
-        } catch (_: Throwable) {
-            toaster.error("No app on this device can open YouTube links")
-        }
-    } else {
-        nav.navigate(tv.enktel.app.vodPlayerRoute(url, title))
+        if (runCatching { context.startActivity(intent); true }.getOrDefault(false)) return
+        toaster.error("No app on this device can open that link")
+        return
     }
+    nav.navigate("trailer?key=$id&title=${tv.enktel.app.encode(title)}&alts=")
 }
 
 @Composable
