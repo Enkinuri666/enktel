@@ -218,7 +218,21 @@ class SettingsStore(private val context: Context) {
     val recSuffixMin: Flow<Int> = context.dataStore.data.map { it[REC_SUFFIX_MIN] ?: 5 }
     val autoEpgHours: Flow<Int> = context.dataStore.data.map { it[AUTO_EPG_HOURS] ?: 12 }
     val hiddenChannels: Flow<Set<String>> = context.dataStore.data.map { it[HIDDEN_CHANNELS] ?: emptySet() }
-    val vodSort: Flow<String> = context.dataStore.data.map { it[VOD_SORT] ?: "name" } // name|rating|added
+    /**
+     * How Movies and Series are ordered until the user says otherwise.
+     *
+     * Was "name". On a catalogue of 200,000 films that means the app opened,
+     * every single time, on whatever begins with a digit or the letter A — the
+     * same screenful for every user on every visit, and no evidence anywhere in
+     * it that the library is large or that anything was ever added to it. A
+     * tester put it exactly: it seems to show the same old content.
+     *
+     * "added" opens on what the panel most recently ingested, so the first
+     * screen changes as the catalogue does. Anyone who prefers alphabetical
+     * still has it — this is a default, not a rule, and a stored choice
+     * overrides it.
+     */
+    val vodSort: Flow<String> = context.dataStore.data.map { it[VOD_SORT] ?: "added" } // name|rating|added|year
     val recentChannels: Flow<List<String>> = context.dataStore.data.map {
         it[RECENT_CHANNELS]?.split('|')?.filter(String::isNotBlank) ?: emptyList()
     }

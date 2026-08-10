@@ -248,11 +248,34 @@ private fun MainNav(
     LaunchedEffect(deepLink, activeId) {
         val target = deepLink ?: return@LaunchedEffect
         if (activeId <= 0) return@LaunchedEffect
-        when (target) {
-            is DeepLink.Target.Movie -> nav.navigate("movie/$activeId:${target.streamId}")
-            is DeepLink.Target.Series -> nav.navigate("series/$activeId:${target.seriesId}")
-            is DeepLink.Target.Channel -> nav.navigate("live?ch=$activeId:${target.streamId}")
-            is DeepLink.Target.Search -> nav.navigate("search?q=${encode(target.query)}")
+        if (target is DeepLink.Target.Search) {
+            nav.navigate("search?q=${encode(target.query)}")
+            return@LaunchedEffect
+        }
+        // Resolved before navigating, not after.
+        //
+        // The comment that used to sit here claimed a title the line no longer
+        // carries "lands on Home rather than on a dead detail screen". It did
+        // not: the detail screens return early when their row is null, so an
+        // unresolvable link opened a blank page and stayed there. That is the
+        // worst possible answer to a link a friend sent you, and it is the one
+        // the app gave.
+        //
+        // The id is tried first because it is exact. The name is the fallback,
+        // for a line numbered differently from the sender's — and when neither
+        // finds anything, the app says which title it was and that this line
+        // does not carry it, rather than showing nothing and letting the
+        // viewer conclude the app is broken.
+        val resolved = graph.content.resolveShared(activeId, target)
+        if (resolved != null) {
+            nav.navigate(resolved)
+        } else {
+            val kind = when (target) {
+                is DeepLink.Target.Series -> "series"
+                is DeepLink.Target.Channel -> "channel"
+                else -> "film"
+            }
+            nav.navigate("unavailable?n=${encode(target.name)}&k=$kind")
         }
     }
     LaunchedEffect(initialChannelKey) {
@@ -1083,6 +1106,15 @@ private fun MainNav(
                 graph, nav,
                 eventId = back.arguments?.getString("event").orEmpty(),
                 fallbackTitle = back.arguments?.getString("title").orEmpty(),
+            )
+        }
+        // Where a shared link lands when this line does not carry what it
+        // points at. See ContentRepository.resolveShared.
+        composable("unavailable?n={n}&k={k}") { back ->
+            tv.enktel.app.ui.screens.UnavailableScreen(
+                nav,
+                name = decode(back.arguments?.getString("n").orEmpty()),
+                kind = back.arguments?.getString("k").orEmpty(),
             )
         }
         composable("systemMonitor") { tv.enktel.app.ui.screens.SystemMonitorScreen(graph, nav) }

@@ -221,6 +221,9 @@ private fun MovieDetailsBody(
             poster = m.poster,
             sourceUrl = url,
         )
+        tv.enktel.app.ui.components.ShareButton(
+            tv.enktel.app.DeepLink.Target.Movie(m.streamId, m.name)
+        )
     }
     Spacer(Modifier.height(18.dp))
     val plot = details?.plot?.takeIf { it.isNotBlank() } ?: m.plot
@@ -461,6 +464,9 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     }
                     FavButton(graph, p.id, "series", s.seriesId)
                     WatchlistButton(graph, p.id, "series", s.seriesId, s.name, s.poster)
+                    tv.enktel.app.ui.components.ShareButton(
+                        tv.enktel.app.DeepLink.Target.Series(s.seriesId, s.name)
+                    )
                 }
             }
         }

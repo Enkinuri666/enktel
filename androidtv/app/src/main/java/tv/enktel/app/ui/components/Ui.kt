@@ -775,3 +775,57 @@ fun KeyValue(label: String, value: String) {
         Text(value, color = EnktelText, style = EnktelType.caption)
     }
 }
+
+/**
+ * Hands a link to whatever the device shares with.
+ *
+ * The link is the https one rather than the `enktel://` scheme, because that
+ * is the half that survives a messaging app: a chat client linkifies an http(s)
+ * URL and leaves a custom scheme as plain text, so a friend without the app
+ * gets a web page instead of a dead tap. Android's app-links filter claims it
+ * back for EnkTel when it is installed.
+ *
+ * Silent when nothing on the device can share — a bare Fire TV Stick has no
+ * share target at all, and a button that reports failure it cannot fix is
+ * worse than one that just isn't there.
+ */
+/**
+ * Fires the system share sheet for [target]. Returns false when the device has
+ * nothing to share with, so the caller can fall back.
+ *
+ * The link is the https one rather than the `enktel://` scheme, because that is
+ * the half that survives a messaging app: a chat client linkifies an http(s)
+ * URL and leaves a custom scheme as plain text, so a friend without the app
+ * installed gets a web page instead of a dead tap. Android's app-links filter
+ * claims it back for EnkTel when it is installed.
+ */
+fun shareTarget(context: android.content.Context, target: tv.enktel.app.DeepLink.Target): Boolean {
+    val url = tv.enktel.app.DeepLink.shareUrl(target)
+    val text = if (target.name.isBlank()) url else "${target.name}\n$url"
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_TEXT, text)
+        putExtra(android.content.Intent.EXTRA_SUBJECT, target.name)
+    }
+    val chooser = android.content.Intent.createChooser(send, "Share with")
+        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    if (runCatching { context.startActivity(chooser); true }.getOrDefault(false)) return true
+    // A bare Fire TV Stick has no share target at all. The clipboard is on
+    // every device, so the link still goes somewhere the user can use.
+    val clip = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+        as? android.content.ClipboardManager ?: return false
+    clip.setPrimaryClip(android.content.ClipData.newPlainText(target.name, url))
+    return false
+}
+
+@Composable
+fun ShareButton(
+    target: tv.enktel.app.DeepLink.Target,
+    label: String = "\u2197  Share",
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val toaster = LocalToaster.current
+    FocusButton(label, onClick = {
+        if (!shareTarget(context, target)) toaster.info("Link copied to the clipboard")
+    })
+}

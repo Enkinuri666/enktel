@@ -136,6 +136,53 @@ class ContentRepository(
     suspend fun channelByNum(profileId: Long, num: Int) = content.channelByNum(profileId, num)
     suspend fun movie(key: String) = content.movie(key)
     suspend fun oneSeries(key: String) = content.oneSeries(key)
+
+    /**
+     * The route a shared link should open on *this* line, or null when the line
+     * does not carry it.
+     *
+     * Two passes. The id first, because it is exact and every EnkTel line is
+     * served from the same panel, so the sender's id is the recipient's id. The
+     * title second, for the case that is not true — a differently numbered
+     * panel, or a title the provider re-ingested under a new id — where a name
+     * match is the difference between opening the right page and telling
+     * somebody their friend sent them a dead link.
+     *
+     * Null is a real answer and the caller shows it as one. Guessing at a near
+     * match would be worse: opening the wrong film is more confusing than
+     * being told plainly that this one is not on your playlist.
+     */
+    suspend fun resolveShared(
+        profileId: Long,
+        target: tv.enktel.app.DeepLink.Target,
+    ): String? = withContext(Dispatchers.IO) {
+        fun sameName(a: String, b: String) =
+            a.isNotBlank() && a.trim().equals(b.trim(), ignoreCase = true)
+        when (target) {
+            is tv.enktel.app.DeepLink.Target.Movie -> {
+                val key = "$profileId:${target.streamId}"
+                if (movie(key) != null) return@withContext "movie/$key"
+                movies(profileId).first()
+                    .firstOrNull { sameName(target.name, it.name) }
+                    ?.let { "movie/${it.key}" }
+            }
+            is tv.enktel.app.DeepLink.Target.Series -> {
+                val key = "$profileId:${target.seriesId}"
+                if (oneSeries(key) != null) return@withContext "seriesDetails/$key"
+                series(profileId).first()
+                    .firstOrNull { sameName(target.name, it.name) }
+                    ?.let { "seriesDetails/${it.key}" }
+            }
+            is tv.enktel.app.DeepLink.Target.Channel -> {
+                val key = "$profileId:${target.streamId}"
+                if (channel(key) != null) return@withContext "live?ch=$key"
+                channels(profileId).first()
+                    .firstOrNull { sameName(target.name, it.name) }
+                    ?.let { "live?ch=${it.key}" }
+            }
+            is tv.enktel.app.DeepLink.Target.Search -> "search"
+        }
+    }
     suspend fun searchChannels(profileId: Long, q: String) = content.searchChannels(profileId, q)
     suspend fun searchMovies(profileId: Long, q: String) = content.searchMovies(profileId, q)
     suspend fun searchSeries(profileId: Long, q: String) = content.searchSeries(profileId, q)

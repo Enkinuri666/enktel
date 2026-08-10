@@ -27,9 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,8 +58,15 @@ import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.voice.VoiceCommandBus
 
-/** A tab entry.  `special == "mic"` renders as the centered brand FAB and fires the
- *  voice-command bus instead of navigating; other tabs behave normally. */
+/**
+ * A tab entry.
+ *
+ * `special == "mic"` renders as the centred brand tile and fires the
+ * voice-command bus instead of navigating. No tab declares it any more — the
+ * voice tile was spending the largest slot on the bar on the least-used action
+ * — but the branch stays because it is the mechanism, not the decision, and
+ * reinstating it is a one-line change to [MOBILE_TABS].
+ */
 data class MobileTab(
     val label: String,
     val icon: ImageVector,
@@ -68,11 +74,36 @@ data class MobileTab(
     val special: String? = null,
 )
 
+/**
+ * The six destinations on the bar, in the order a viewer reaches for them.
+ *
+ * ### What this used to be, and why it changed
+ *
+ * `Home · Live TV · Search · Enki · Sports · More` — which put the two largest
+ * things in the catalogue, **Movies and Series**, behind a menu. A subscription
+ * of 200,000 films and 35,000 series was reachable only by opening a sheet, so
+ * the app looked like it had live television and not much else, and a tester
+ * said exactly that: the good stuff is hidden and it seems to show the same old
+ * content.
+ *
+ * Meanwhile the biggest, brightest element on the bar — the centre Enki button,
+ * rendered as a raised brand-gradient tile — navigated nowhere. It opened a
+ * voice prompt, which is a thing people use by *speaking* (the wake word and
+ * the remote's microphone both still work, and the entry survives in the menu),
+ * and it was spending the most valuable slot in the interface on the least-used
+ * action.
+ *
+ * So: Movies and Series come out of the menu and sit next to Live TV, and the
+ * voice tile gives up its slot. Six is the practical maximum on a phone, which
+ * makes Search the one that moves — it is an action rather than a section,
+ * every screen it matters on can reach it, and it now leads the menu rather
+ * than being buried in it.
+ */
 val MOBILE_TABS = listOf(
     MobileTab("Home", Icons.Filled.Home, "home"),
     MobileTab("Live TV", Icons.Filled.LiveTv, "channels"),
-    MobileTab("Search", Icons.Filled.Search, "search"),
-    MobileTab("Enki", Icons.Filled.Mic, "__mic", special = "mic"),
+    MobileTab("Movies", Icons.Filled.Movie, "movies"),
+    MobileTab("Series", Icons.Filled.Tv, "series"),
     MobileTab("Sports", Icons.Filled.SportsSoccer, "sports"),
     MobileTab("More", Icons.Filled.Menu, "__more"),
 )
@@ -270,7 +301,11 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
 internal fun activeTabRoute(route: String): String = when {
     route == "home" -> "home"
     route.startsWith("channels") || route.startsWith("live") -> "channels"
-    route.startsWith("search") -> "search"
+    // Detail pages light their own tab. Reading a film's page is being in
+    // Movies, and a bar that goes blank the moment you open something is a bar
+    // that stops telling you where you are.
+    route.startsWith("movies") || route.startsWith("movie/") -> "movies"
+    route.startsWith("series") || route.startsWith("seriesDetails") -> "series"
     route.startsWith("sports") || route.startsWith("matchCenter") -> "sports"
     MORE_ROUTES.any { route.startsWith(it) } -> "__more"
     else -> ""
@@ -278,9 +313,8 @@ internal fun activeTabRoute(route: String): String = when {
 
 /** Everything reachable from the More sheet, including its detail sub-routes. */
 private val MORE_ROUTES = listOf(
-    "movies", "movie/", "series", "guide", "watchlist", "downloads",
-    "recordings", "catchup", "settings", "lists", "speedTest",
-    "manageCategories", "systemMonitor",
+    "guide", "watchlist", "downloads", "recordings", "catchup", "settings",
+    "lists", "speedTest", "manageCategories", "systemMonitor", "search",
 )
 
 @Composable
@@ -438,13 +472,16 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
             )
             listOf(
-                "🎬  Movies" to "movies",
-                "🎮  Series" to "series",
+                // Search leads. It came off the bar to make room for Movies and
+                // Series, and a thing people reach for often belongs at the top
+                // of the sheet rather than in the middle of it.
+                "🔎  Search" to "search",
                 "📺  TV Guide" to "guide",
+                "⏪  Catch-Up" to "catchup",
                 "☆  Watchlist" to "watchlist",
+                "≡  My Lists" to "lists",
                 "⬇  Downloads" to "downloads",
                 "⏺  Recordings" to "recordings",
-                "⏪  Catch-Up" to "catchup",
                 "⚙  Settings" to "settings",
             ).forEach { (label, route) ->
                 Row(
