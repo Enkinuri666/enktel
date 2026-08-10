@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.positionChanged
@@ -100,6 +101,8 @@ fun VodPlayerScreen(
     nextRoute: String = "",
     /** "S2 E4 · The Bells" — what the countdown card announces. */
     nextLabel: String = "",
+    /** Artwork for this title, stored with the resume point. See vodPlayerRoute. */
+    posterUrl: String = "",
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
@@ -171,7 +174,7 @@ fun VodPlayerScreen(
                 contentId = url,
                 title = title,
                 subtitle = if (isLive) "Live" else "",
-                returnRoute = tv.enktel.app.vodPlayerRoute(url, title, progressKey, isLive),
+                returnRoute = tv.enktel.app.vodPlayerRoute(url, title, progressKey, isLive, poster = posterUrl),
             )
         )
         // Replaying here would drop the user back to the start of the film and
@@ -260,7 +263,7 @@ fun VodPlayerScreen(
                 profileId = progressKey.substringBefore(':').toLongOrNull() ?: 0,
                 kind = progressKey.split(':').getOrElse(1) { "vod" },
                 refId = progressKey.substringAfterLast(':').toLongOrNull() ?: 0,
-                name = title, url = url,
+                name = title, url = url, poster = posterUrl,
                 positionMs = atMs, durationMs = totalMs,
             )
         )
@@ -509,6 +512,15 @@ fun VodPlayerScreen(
             }
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown || trackMenu.isNotEmpty() || showControls) return@onPreviewKeyEvent false
+                // Hands the remote to the next-episode card while it is up.
+                //
+                // Every arrow key is consumed below — up/down to wake the HUD,
+                // left/right to skip — so focus could never travel off this Box
+                // and onto the card's buttons. The card was focusable in code
+                // and unreachable in practice: the countdown ran, "Play now"
+                // and "Not now" could not be selected, and the only way on was
+                // to leave playback and pick the episode by hand.
+                if (nextUpSecs != null && !nextUpCancelled) return@onPreviewKeyEvent false
                 when (ev.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER,
                     AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_DPAD_DOWN -> { poke(); true }
@@ -566,7 +578,7 @@ fun VodPlayerScreen(
                 // back stack twenty episodes deep — Back should return to the
                 // series, not walk backwards through everything just watched.
                 nav.navigate(nextRoute) {
-                    popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}") {
+                    popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") {
                         inclusive = true
                     }
                     launchSingleTop = true
@@ -577,9 +589,26 @@ fun VodPlayerScreen(
             androidx.compose.runtime.LaunchedEffect(secs, nextUpCancelled) {
                 if (secs <= 0 && !nextUpCancelled) go()
             }
+            // Focus lands on "Play now" as the card appears, so a remote has
+            // somewhere to be. Retried because the button is composed in this
+            // same frame and is not attached the first time we ask.
+            val nextUpFocus = remember { FocusRequester() }
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                repeat(12) {
+                    if (runCatching { nextUpFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                    delay(40)
+                }
+            }
             Column(
                 Modifier
                     .align(Alignment.BottomEnd)
+                    // Above the transport controls, which are a later sibling in
+                    // this Box and so were painted over the card — covering it
+                    // whenever the HUD was open, which a tap on the card itself
+                    // caused. That is why tapping "Play now" appeared to do
+                    // nothing: the tap opened the controls, and the controls
+                    // took the next one.
+                    .zIndex(2f)
                     .padding(32.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color.Black.copy(alpha = 0.88f))
@@ -601,7 +630,12 @@ fun VodPlayerScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    tv.enktel.app.ui.components.FocusButton("▶ Play now", accent = true, onClick = go)
+                    tv.enktel.app.ui.components.FocusButton(
+                        "▶ Play now",
+                        accent = true,
+                        onClick = go,
+                        modifier = Modifier.focusRequester(nextUpFocus),
+                    )
                     // Dismissal has to stick. Without the flag the card would
                     // reappear on the next position tick, a quarter of a second
                     // later, and the viewer could not get rid of it at all.

@@ -235,7 +235,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         subtitle = "Resume",
                         wide = true,
                         progress = frac,
-                        onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key)) },
+                        onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key, poster = cw.poster)) },
                     )
                 }
             }
