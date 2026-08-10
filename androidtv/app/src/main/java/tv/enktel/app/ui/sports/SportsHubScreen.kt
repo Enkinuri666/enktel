@@ -120,6 +120,10 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     // populate on a playlist with no guide data at all.
     var todaysFixtures by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
     var highlightClips by remember { mutableStateOf<List<tv.enktel.app.data.repo.HighlightClip>>(emptyList()) }
+    /** Official broadcasters for today's fixtures, keyed by event id. */
+    var broadcastsByEvent by remember {
+        mutableStateOf<Map<String, List<tv.enktel.app.data.repo.Broadcast>>>(emptyMap())
+    }
 
     var scanCoverage by remember {
         mutableStateOf(tv.enktel.app.data.repo.SportsRepository.ScanCoverage())
@@ -160,7 +164,25 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             graph.scores.highlights(days = 2, sport = sportQuery)
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (_: Throwable) { emptyList() }
+        // One request for the whole day's broadcaster listings, so every
+        // fixture in the rail can say where it is on. Per-fixture lookups would
+        // be forty calls to a rate-limited free tier, which is why this used to
+        // live one screen deeper in the Match Centre and most people never
+        // found it.
+        broadcastsByEvent = try {
+            graph.scores.broadcastsForDay(System.currentTimeMillis(), sportQuery)
+        } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
+        } catch (_: Throwable) { emptyMap() }
     }
+
+    // The user's own channel list, for turning a broadcaster's published name
+    // into a line they can actually tune. Deliberately not the EPG: guide data
+    // is the thing that is unreliable here, channel names are not.
+    // Remembered on the profile, not rebuilt per recomposition: this screen
+    // re-renders on a thirty-second tick and re-subscribing a query over a
+    // fifteen-thousand-row table that often is a cost for nothing.
+    val channelsFlow = remember(p.id) { graph.content.channels(p.id) }
+    val allChannelsForMatch by channelsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val allSports = remember(events) {
         try { graph.sports.sportsInSet(events) } catch (_: Throwable) { emptyList() }
@@ -372,13 +394,36 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         todaysFixtures.take(40),
                         key = { "${it.eventId}-${it.home}-${it.away}" },
                     ) { f ->
+                        val casts = broadcastsByEvent[f.eventId].orEmpty()
+                        // The published broadcaster, resolved against this
+                        // playlist. Remembered per fixture because it walks
+                        // every channel, and the rail recomposes as it scrolls.
+                        val mine = remember(f.eventId, casts, allChannelsForMatch) {
+                            tv.enktel.app.data.repo.BroadcastMatcher.findAny(
+                                broadcasters = casts.map { it.channel },
+                                channels = allChannelsForMatch,
+                                key = { it.key },
+                                name = { it.name },
+                            )
+                        }
                         FixtureChip(
                             fixture = f,
+                            broadcasters = casts.map { it.channel },
+                            tuneTo = mine.firstOrNull()?.channel,
                             onTap = {
-                                if (f.eventId.isNotBlank()) {
-                                    nav.navigate(matchCenterRoute(f.eventId, "${f.home} v ${f.away}"))
-                                } else {
-                                    toaster.info("No match data published for that fixture yet")
+                                // Tuning beats reading about it. Only when the
+                                // published broadcaster resolved to a real line
+                                // on this playlist — otherwise the Match Centre,
+                                // which is still the place to read the rest.
+                                val ch = mine.firstOrNull()?.channel
+                                when {
+                                    ch != null -> {
+                                        toaster.info("Tuning to ${ch.name}")
+                                        nav.navigate("live?ch=${ch.key}")
+                                    }
+                                    f.eventId.isNotBlank() ->
+                                        nav.navigate(matchCenterRoute(f.eventId, "${f.home} v ${f.away}"))
+                                    else -> toaster.info("No match data published for that fixture yet")
                                 }
                             },
                         )
@@ -847,10 +892,17 @@ private fun LiveScoreChip(
  * Centre alongside the broadcaster list.
  */
 @Composable
-private fun FixtureChip(fixture: tv.enktel.app.data.repo.LiveScore, onTap: () -> Unit) {
+private fun FixtureChip(
+    fixture: tv.enktel.app.data.repo.LiveScore,
+    /** Officially published broadcasters, best first. May be empty. */
+    broadcasters: List<String> = emptyList(),
+    /** The line on this playlist that carries it, when one was matched. */
+    tuneTo: tv.enktel.app.data.db.Channel? = null,
+    onTap: () -> Unit,
+) {
     Column(
         Modifier
-            .widthIn(min = 150.dp, max = 210.dp)
+            .widthIn(min = 150.dp, max = 230.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(EnktelSurfaceHigh.copy(0.5f))
             .border(1.dp, EnktelBlue.copy(0.3f), RoundedCornerShape(12.dp))
@@ -871,6 +923,34 @@ private fun FixtureChip(fixture: tv.enktel.app.data.repo.LiveScore, onTap: () ->
             Text(
                 fixture.league, color = EnktelTextDim, fontSize = 11.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Where it is on. The published broadcaster first, because that is the
+        // fact — then the line on this playlist that carries it, which is what
+        // the user can actually press. Without this the hub named a fixture and
+        // left finding it as an exercise.
+        if (broadcasters.isNotEmpty()) {
+            Spacer(Modifier.height(7.dp))
+            Text(
+                "📡 ${broadcasters.take(2).joinToString(" · ")}",
+                color = EnktelTextDim, fontSize = 10.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (tuneTo != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "▶ ${tuneTo.name}",
+                color = EnktelOk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        } else if (broadcasters.isNotEmpty()) {
+            // Said plainly rather than left blank. A broadcaster your line does
+            // not carry is a real answer — it stops the search before it starts.
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Not matched on your playlist",
+                color = EnktelTextDim, fontSize = 10.sp, maxLines = 1,
             )
         }
     }

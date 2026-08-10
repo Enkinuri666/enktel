@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -103,6 +104,25 @@ fun MatchCenterScreen(
     var broadcasters by remember(eventId) { mutableStateOf<List<Broadcast>>(emptyList()) }
     var loading by remember(eventId) { mutableStateOf(true) }
     var tick by remember(eventId) { mutableIntStateOf(0) }
+
+    // Resolving the published broadcaster names against this playlist. Channel
+    // names, not the EPG — the guide is the unreliable part, which is the whole
+    // reason this screen could not answer "which channel is it on".
+    val profileForMatch by androidx.compose.runtime.produceState<tv.enktel.app.data.db.Profile?>(null) {
+        value = try { graph.playlists.activeProfile() } catch (_: Throwable) { null }
+    }
+    val matchProfileId = profileForMatch?.id ?: -1L
+    val channelsFlow = remember(matchProfileId) { graph.content.channels(matchProfileId) }
+    val playlistChannels by channelsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val myChannels = remember(broadcasters, playlistChannels) {
+        tv.enktel.app.data.repo.BroadcastMatcher.findAny(
+            broadcasters = broadcasters.map { it.channel },
+            channels = playlistChannels,
+            limit = 6,
+            key = { it.key },
+            name = { it.name },
+        )
+    }
 
     LaunchedEffect(eventId, tick) {
         if (eventId.isBlank()) { loading = false; return@LaunchedEffect }
@@ -237,6 +257,33 @@ fun MatchCenterScreen(
                             Spacer(Modifier.height(8.dp))
                             LazyRow(modifier = Modifier.tvRailFocus(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(broadcasters, key = { it.channel + it.country }) { b -> BroadcasterChip(b) }
+                            }
+                            // Naming the broadcaster and stopping there is what
+                            // sent people back to scroll fifteen thousand rows.
+                            // These are the lines on their own playlist that
+                            // carry it, and pressing one tunes.
+                            Spacer(Modifier.height(12.dp))
+                            SubHeader("ON YOUR PLAYLIST")
+                            Spacer(Modifier.height(8.dp))
+                            if (myChannels.isEmpty()) {
+                                Text(
+                                    "None of your channels matched those broadcaster names. " +
+                                        "Providers rename lines freely, so it may still be " +
+                                        "carried under something else — try the Channel Finder.",
+                                    color = EnktelTextDim, fontSize = 12.sp,
+                                )
+                            } else {
+                                LazyRow(
+                                    modifier = Modifier.tvRailFocus(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    items(myChannels, key = { it.channel.key }) { hit ->
+                                        FocusButton("▶  ${hit.channel.name}", accent = true, onClick = {
+                                            toaster.info("Tuning to ${hit.channel.name}")
+                                            nav.navigate("live?ch=${hit.channel.key}")
+                                        })
+                                    }
+                                }
                             }
                         }
                     }

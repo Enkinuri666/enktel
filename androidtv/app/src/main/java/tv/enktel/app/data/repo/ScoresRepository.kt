@@ -302,6 +302,41 @@ class ScoresRepository(
     }
 
     /**
+     * Every broadcaster listing for a calendar day, keyed by event id.
+     *
+     * One request for the whole day rather than [broadcasts] per fixture. That
+     * is the difference between showing "where is this on" beside forty
+     * fixtures in a rail and making forty calls to a rate-limited free tier to
+     * do it — which is why the Sports Hub showed no broadcaster at all and left
+     * the answer buried one screen deeper, in the Match Centre.
+     *
+     * Empty on any failure. A rail with no broadcaster line is the behaviour
+     * this replaces, so degrading to it costs nothing.
+     */
+    suspend fun broadcastsForDay(
+        dayMs: Long,
+        sport: String = "",
+    ): Map<String, List<Broadcast>> = withContext(Dispatchers.IO) {
+        val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(dayMs))
+        val url = buildString {
+            append(base).append("/eventstv.php?d=").append(day)
+            if (sport.isNotBlank()) append("&s=").append(sport.replace(" ", "_"))
+        }
+        fetchArray(url, ROOT_TVEVENT)
+            .mapNotNull { b ->
+                val id = b.str("idEvent")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val channel = b.str("strChannel")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                id to Broadcast(
+                    channel = channel,
+                    country = b.str("strCountry").orEmpty(),
+                    logo = b.str("strLogo").orEmpty(),
+                )
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, v) -> v.distinctBy { it.channel + it.country } }
+    }
+
+    /**
      * The official schedule for a calendar day, optionally narrowed to one
      * sport ("Soccer", "Basketball", …). Used for the Sports Hub's broadcast
      * guide, which lists fixtures the user's own EPG may not carry at all.
