@@ -315,6 +315,7 @@ internal fun activeTabRoute(route: String): String = when {
 private val MORE_ROUTES = listOf(
     "guide", "watchlist", "downloads", "recordings", "catchup", "settings",
     "lists", "speedTest", "manageCategories", "systemMonitor", "search",
+    "comingSoon",
 )
 
 @Composable
@@ -476,6 +477,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                 // Series, and a thing people reach for often belongs at the top
                 // of the sheet rather than in the middle of it.
                 "🔎  Search" to "search",
+                "🎟  Coming Soon" to "comingSoon",
                 "📺  TV Guide" to "guide",
                 "⏪  Catch-Up" to "catchup",
                 "☆  Watchlist" to "watchlist",

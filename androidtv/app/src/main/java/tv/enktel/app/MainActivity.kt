@@ -1117,6 +1117,7 @@ private fun MainNav(
                 kind = back.arguments?.getString("k").orEmpty(),
             )
         }
+        composable("comingSoon") { tv.enktel.app.ui.screens.ComingSoonScreen(graph, nav) }
         composable("systemMonitor") { tv.enktel.app.ui.screens.SystemMonitorScreen(graph, nav) }
         composable("watchlist") { WatchlistScreen(graph, nav) }
         composable("multi?left={left}&right={right}") { back ->

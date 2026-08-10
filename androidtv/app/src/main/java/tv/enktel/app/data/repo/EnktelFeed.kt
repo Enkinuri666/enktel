@@ -65,6 +65,23 @@ class EnktelFeed(private val http: OkHttpClient) {
     private val fetchedAt = HashMap<String, Long>()
 
     /**
+     * Drop the cache so the next read goes to the network.
+     *
+     * Called when the catalogue re-syncs. The feed is published by enktel.tv
+     * and has nothing to do with anyone's playlist, so strictly it does not
+     * need to — but a re-sync is the moment a user has asked, in as many words,
+     * for everything to be brought up to date, and answering that with a
+     * six-hour-old cache is the kind of small dishonesty that makes an app feel
+     * stale.
+     */
+    suspend fun invalidate() {
+        lock.withLock {
+            cache.clear()
+            fetchedAt.clear()
+        }
+    }
+
+    /**
      * Upcoming titles, soonest first. Only genuinely future dates survive.
      *
      * The filter is not belt-and-braces: the feed itself carries already-released

@@ -129,6 +129,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 FocusButton("Sync now", onClick = {
                     scope.launch {
                         status = "Syncing ${p.name}…"
+                        // A re-sync is the user asking for everything to be
+                        // brought up to date, published feeds included.
+                        runCatching { graph.feed.invalidate() }
                         status = runCatching { graph.content.refreshAll(p) }
                             .fold({ "Synced: $it" }, { "Sync failed: ${it.message}" })
                         graph.playlists.markSynced(p)
