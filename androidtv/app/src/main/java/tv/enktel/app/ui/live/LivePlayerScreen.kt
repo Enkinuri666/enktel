@@ -168,13 +168,20 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // lifetimes: an engine nobody can see is exactly the defect shipped in
     // v1.35.1, and hoisting the engine out of the screen removes the automatic
     // teardown that used to mask it.
+    //
+    // Gated on still owning the session, for the same reason the VOD player is:
+    // when one player screen replaces another, Compose mounts the incoming one
+    // first, so an unconditional stop() here would release the engine the new
+    // screen is already playing on. See PlaybackClaims.
+    val claim = remember { session.claim() }
     DisposableEffect(Unit) {
         onDispose {
             if (session.mode.value != tv.enktel.app.player.PlaybackSession.Mode.DOCKED) {
-                (ctxForRefresh as? android.app.Activity)?.let {
-                    tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                if (session.stopIfOwner(claim)) {
+                    (ctxForRefresh as? android.app.Activity)?.let {
+                        tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                    }
                 }
-                session.stop()
             }
         }
     }

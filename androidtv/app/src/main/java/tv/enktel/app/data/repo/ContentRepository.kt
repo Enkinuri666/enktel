@@ -230,6 +230,8 @@ class ContentRepository(
     suspend fun saveProgress(p: WatchProgress) = user.saveProgress(p)
     suspend fun progress(key: String) = user.progress(key)
     suspend fun clearProgress(key: String) = user.clearProgress(key)
+    /** See UserDao.backfillProgressArtwork. Cheap, idempotent, safe to re-run. */
+    suspend fun backfillProgressArtwork(profileId: Long) = user.backfillProgressArtwork(profileId)
 
     /** Full catalogue sync for a profile. Returns human-readable summary. */
     suspend fun refreshAll(p: Profile): String = withContext(Dispatchers.IO) {

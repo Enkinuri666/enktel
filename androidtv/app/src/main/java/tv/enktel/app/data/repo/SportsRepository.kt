@@ -147,6 +147,9 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         RegexOption.IGNORE_CASE,
     )
 
+    /** How many alternative feeds of one fixture the Channel Finder offers. */
+    private val FEEDS_PER_FIXTURE = 4
+
     private val GENERIC_KEYWORDS = listOf(
         "match", "highlights", "vs ", "vs.", "v.", "playoff", "quarter-final",
         "semi-final", "final", "tournament", "cup", "league", "grand prix", "derby",
@@ -322,7 +325,14 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         val channels = content.channels(profileId).first()
         if (channels.isEmpty()) return@withContext emptyList()
 
-        val byEpgId = channels.filter { it.epgId.isNotBlank() }.associateBy { it.epgId }
+        // Grouped, not keyed. A playlist carries the same broadcaster several
+        // times over — SD, HD, FHD, a backup feed, one per country prefix — and
+        // every one of those lines shares a single epgId. `associateBy` keeps
+        // the last of each collision, so the finder offered exactly one feed
+        // per fixture and silently discarded the rest; if that survivor was a
+        // dead backup, the answer to "which channel is the game on" was a
+        // channel that doesn't play.
+        val byEpgId = channels.filter { it.epgId.isNotBlank() }.groupBy { it.epgId }
         if (byEpgId.isEmpty()) return@withContext emptyList()
 
         // A 60-second window returns each channel's currently-airing programme
@@ -332,11 +342,22 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
 
         val hits = ArrayList<LiveSportsChannel>()
         for ((epgId, programmes) in airing) {
-            val ch = byEpgId[epgId] ?: continue
             val prog = programmes.firstOrNull { it.startMs <= now && it.endMs > now } ?: continue
-            val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
-            val followed = teams.isNotEmpty() && teams.any { it in prog.title.lowercase() }
-            hits += LiveSportsChannel(ch, prog, sport, confidence, followed)
+            // Capped, because "all of them" is its own kind of useless: a big
+            // playlist can carry a dozen lines of one broadcaster and they
+            // would sort adjacently, burying the next fixture below a screenful
+            // of the same one. A handful is what the user actually wants — one
+            // to tune, the rest to fall back on when it stalls.
+            for (ch in byEpgId[epgId].orEmpty().take(FEEDS_PER_FIXTURE)) {
+                val (sport, confidence) = scoreAsSport(prog, ch) ?: continue
+                // Followed teams are matched against the channel name as well
+                // as the programme title: event and pay-per-view lines usually
+                // carry the fixture in the channel name itself and have no EPG
+                // worth the name — "UK: PPV 04 | Arsenal vs Chelsea".
+                val haystack = (prog.title + " " + ch.name).lowercase()
+                val followed = teams.isNotEmpty() && teams.any { it in haystack }
+                hits += LiveSportsChannel(ch, prog, sport, confidence, followed)
+            }
         }
 
         hits.asSequence()

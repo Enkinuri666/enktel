@@ -280,6 +280,29 @@ interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveProgress(p: WatchProgress)
     @Query("SELECT * FROM progress WHERE key = :key") suspend fun progress(key: String): WatchProgress?
+
+    /**
+     * Give old resume points their artwork back.
+     *
+     * The player wrote `poster` empty for its whole life — it was never given
+     * the artwork to write — so every row made before that was fixed renders as
+     * a blank card on the Continue Watching rail. New rows carry it now, but
+     * only from the next time each title is played, and a rail that fills in
+     * one title at a time over a fortnight is not really fixed.
+     *
+     * Films can be recovered outright: a film's progress key is
+     * "profileId:vod:streamId" and the catalogue row's key is
+     * "profileId:streamId", so the two join. Episodes cannot — an episode's
+     * refId is the episode id, episodes are not stored locally at all (they are
+     * fetched per-series from the panel), and nothing in the row leads back to
+     * the series that owns the artwork. Those fill in as they are watched.
+     */
+    @Query(
+        """UPDATE progress SET poster = COALESCE(
+               (SELECT m.poster FROM movies m WHERE m.key = progress.profileId || ':' || progress.refId), '')
+           WHERE profileId = :profileId AND kind = 'vod' AND poster = ''"""
+    )
+    suspend fun backfillProgressArtwork(profileId: Long)
     /**
      * The Continue Watching rail: things actually worth picking up again.
      *

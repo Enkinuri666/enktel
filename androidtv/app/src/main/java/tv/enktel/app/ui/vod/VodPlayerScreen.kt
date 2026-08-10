@@ -79,13 +79,9 @@ private fun fmtTime(ms: Long): String {
     else String.format(Locale.US, "%d:%02d", s / 60, s % 60)
 }
 
-/**
- * How long before the end the "next episode" card appears.
- *
- * Thirty seconds is roughly one set of closing credits: long enough to read the
- * card and decide, short enough that it does not cover the last scene.
- */
-private const val NEXT_UP_WINDOW_MS = 30_000L
+// How long before the end the "next episode" card appears — thirty seconds,
+// roughly one set of closing credits — now lives on NextUp with the arithmetic
+// that reads it. See NextUp.WINDOW_MS.
 
 /** Full-featured VOD / catch-up / recording player with DPAD seeking. */
 @UnstableApi
@@ -131,6 +127,10 @@ fun VodPlayerScreen(
     // arriving through the VOD player, so the kind follows the route flag
     // rather than the screen.
     val engine = session.engine(live = isLive)
+    // Claimed during composition, deliberately: rolling into the next episode
+    // mounts a second copy of this screen before the first one is disposed, and
+    // the claim has to be taken before that disposal runs. See PlaybackClaims.
+    val claim = remember { session.claim() }
     LaunchedEffect(Unit) { session.expand() }
     val playError by engine.error.collectAsStateWithLifecycle()
     val extSubUrl by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
@@ -233,13 +233,22 @@ fun VodPlayerScreen(
     // The engine now outlives this composable, so the teardown that used to
     // happen implicitly has to be stated. Getting this wrong is precisely the
     // v1.35.1 audio-after-exit defect.
+    //
+    // ...and getting it *too* right is the next-episode defect: this screen
+    // navigating to itself means the incoming copy has already claimed the
+    // session and started the next episode by the time this runs, so an
+    // unconditional stop() released the engine that was mid-play. Hence
+    // stopIfOwner: the last screen standing tears down, a superseded one
+    // doesn't. Both the reset and the stop are gated, because resetting the
+    // display mode would blank the television the new episode is playing on.
     DisposableEffect(Unit) {
         onDispose {
             if (session.mode.value != tv.enktel.app.player.PlaybackSession.Mode.DOCKED) {
-                (ctxForRefresh as? android.app.Activity)?.let {
-                    tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                if (session.stopIfOwner(claim)) {
+                    (ctxForRefresh as? android.app.Activity)?.let {
+                        tv.enktel.app.player.RefreshRateMatcher.reset(it)
+                    }
                 }
-                session.stop()
             }
         }
     }
@@ -289,16 +298,12 @@ fun VodPlayerScreen(
             // Not shown when the user has scrubbed backwards into the last
             // thirty seconds on purpose — they are looking at something, and a
             // countdown over it is an interruption rather than a convenience.
-            if (nextRoute.isNotBlank() && durationMs > 0 && !isLive) {
-                val leftMs = durationMs - positionMs
-                if (leftMs in 1..NEXT_UP_WINDOW_MS && engine.player.isPlaying) {
-                    nextUpSecs = ((leftMs + 999) / 1000).toInt().coerceAtMost((NEXT_UP_WINDOW_MS / 1000).toInt())
-                } else if (leftMs > NEXT_UP_WINDOW_MS) {
-                    // Scrubbing back out of the window dismisses it, and a
-                    // later approach shows it again.
-                    nextUpSecs = null
-                    nextUpCancelled = false
-                }
+            if (nextRoute.isNotBlank() && !isLive) {
+                val secs = NextUp.secondsLeft(durationMs, positionMs)
+                nextUpSecs = secs
+                // Scrubbing back out of the window dismisses it, and a later
+                // approach shows it again.
+                if (secs == null) nextUpCancelled = false
             }
             playing = engine.player.isPlaying
             val now = System.currentTimeMillis()
@@ -358,6 +363,9 @@ fun VodPlayerScreen(
     BackHandler {
         when {
             trackMenu.isNotEmpty() -> trackMenu = ""
+            // Back dismisses the card, the same as "Not now" — otherwise the
+            // only way out of it was to leave playback entirely.
+            nextUpSecs != null && !nextUpCancelled -> { nextUpCancelled = true; nextUpSecs = null }
             showControls -> showControls = false
             backAction == "dock" -> dockAndBrowse("home")
             else -> {
@@ -372,6 +380,50 @@ fun VodPlayerScreen(
     }
 
     fun poke() { showControls = true; controlsTick++ }
+
+    /** True while the next-episode card is on screen. It owns the remote. */
+    val nextUpShowing = nextUpSecs != null && !nextUpCancelled
+
+    /**
+     * Roll into the next episode.
+     *
+     * Hoisted out of the card so the countdown, the button and the end of the
+     * stream can all reach it — the auto-advance used to live inside the card
+     * and fire on a countdown that could not reach zero.
+     */
+    fun playNext() {
+        if (nextRoute.isBlank()) return
+        nextUpCancelled = true
+        // popUpTo the current entry so a binged season does not build a back
+        // stack twenty episodes deep — Back should return to the series, not
+        // walk backwards through everything just watched.
+        nav.navigate(nextRoute) {
+            popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") {
+                inclusive = true
+            }
+            launchSingleTop = true
+        }
+    }
+
+    /** Which card button the remote is on: 0 = Play now, 1 = Not now. */
+    var nextUpChoice by remember { mutableIntStateOf(0) }
+    // The card is a fresh decision every time it appears.
+    LaunchedEffect(nextUpShowing) { if (nextUpShowing) { nextUpChoice = 0; showControls = false } }
+
+    // End of stream is the backstop for the countdown. A panel that reports a
+    // duration a second or two short of the real runtime — common enough on
+    // Xtream VOD — would otherwise sit at "0s" with the picture still running.
+    DisposableEffect(engine) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == androidx.media3.common.Player.STATE_ENDED &&
+                    autoplayNextEp && !nextUpCancelled
+                ) playNext()
+            }
+        }
+        engine.player.addListener(listener)
+        onDispose { engine.player.removeListener(listener) }
+    }
 
     val seekSupport by engine.seekSupport.collectAsStateWithLifecycle()
     val canSeek = seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.CONTAINER &&
@@ -478,7 +530,11 @@ fun VodPlayerScreen(
             .focusable()
             // Touchscreen support: tap toggles the control bar.
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { showControls = true; controlsTick++ })
+                // Not while the next-episode card is up: opening the HUD is
+                // what covered the card and made a tap on it look ignored.
+                detectTapGestures(onTap = {
+                    if (nextUpSecs == null || nextUpCancelled) { showControls = true; controlsTick++ }
+                })
             }
             // Left half of the screen tunes brightness, right half tunes volume.
             .pointerInput(Unit) {
@@ -511,16 +567,33 @@ fun VodPlayerScreen(
                 )
             }
             .onPreviewKeyEvent { ev ->
-                if (ev.type != KeyEventType.KeyDown || trackMenu.isNotEmpty() || showControls) return@onPreviewKeyEvent false
-                // Hands the remote to the next-episode card while it is up.
+                if (ev.type != KeyEventType.KeyDown || trackMenu.isNotEmpty()) return@onPreviewKeyEvent false
+                // The next-episode card takes the remote for as long as it is up.
                 //
-                // Every arrow key is consumed below — up/down to wake the HUD,
-                // left/right to skip — so focus could never travel off this Box
-                // and onto the card's buttons. The card was focusable in code
-                // and unreachable in practice: the countdown ran, "Play now"
-                // and "Not now" could not be selected, and the only way on was
-                // to leave playback and pick the episode by hand.
-                if (nextUpSecs != null && !nextUpCancelled) return@onPreviewKeyEvent false
+                // It used to be given focus instead, and focus never arrived.
+                // Every arrow key was consumed here — up/down to wake the HUD,
+                // left/right to skip — so nothing could travel off this Box; and
+                // when that was fixed by standing aside, the card was still a
+                // descendant of a focusable full-screen Box competing with the
+                // transport row for the same presses. Driving the two buttons
+                // from a selection index removes the whole question: this
+                // handler already sees every key before anything else does,
+                // because a preview handler runs from the root down.
+                if (nextUpShowing) {
+                    return@onPreviewKeyEvent when (ev.key.nativeKeyCode) {
+                        AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { nextUpChoice = 0; true }
+                        AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { nextUpChoice = 1; true }
+                        AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
+                            if (nextUpChoice == 0) playNext() else { nextUpCancelled = true; nextUpSecs = null }
+                            true
+                        }
+                        // Swallowed rather than passed on: waking the HUD over
+                        // the card is what made it look unresponsive.
+                        AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_DPAD_DOWN -> true
+                        else -> false
+                    }
+                }
+                if (showControls) return@onPreviewKeyEvent false
                 when (ev.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER,
                     AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_DPAD_DOWN -> { poke(); true }
@@ -572,42 +645,19 @@ fun VodPlayerScreen(
 
         // Next-episode card, bottom right over the closing credits.
         nextUpSecs?.takeIf { !nextUpCancelled }?.let { secs ->
-            val go = {
-                nextUpCancelled = true
-                // popUpTo the current entry so a binged season does not build a
-                // back stack twenty episodes deep — Back should return to the
-                // series, not walk backwards through everything just watched.
-                nav.navigate(nextRoute) {
-                    popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-                Unit
-            }
-            // Auto-advance only at zero, and only if it was never dismissed.
+            // Auto-advance at zero, if the viewer left it alone and has not
+            // turned auto-play off in Settings → Playback. That setting was
+            // read by this screen and never consulted — the card rolled over
+            // regardless, or rather it would have, had the countdown been able
+            // to reach zero at all.
             androidx.compose.runtime.LaunchedEffect(secs, nextUpCancelled) {
-                if (secs <= 0 && !nextUpCancelled) go()
-            }
-            // Focus lands on "Play now" as the card appears, so a remote has
-            // somewhere to be. Retried because the button is composed in this
-            // same frame and is not attached the first time we ask.
-            val nextUpFocus = remember { FocusRequester() }
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                repeat(12) {
-                    if (runCatching { nextUpFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-                    delay(40)
-                }
+                if (secs <= 0 && autoplayNextEp && !nextUpCancelled) playNext()
             }
             Column(
                 Modifier
                     .align(Alignment.BottomEnd)
                     // Above the transport controls, which are a later sibling in
-                    // this Box and so were painted over the card — covering it
-                    // whenever the HUD was open, which a tap on the card itself
-                    // caused. That is why tapping "Play now" appeared to do
-                    // nothing: the tap opened the controls, and the controls
-                    // took the next one.
+                    // this Box and so were painted over the card.
                     .zIndex(2f)
                     .padding(32.dp)
                     .clip(RoundedCornerShape(14.dp))
@@ -626,21 +676,24 @@ fun VodPlayerScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Playing in ${secs}s", color = EnktelTextDim, fontSize = 13.sp,
+                    if (autoplayNextEp) "Playing in ${secs}s" else "Press OK to play",
+                    color = EnktelTextDim, fontSize = 13.sp,
                 )
                 Spacer(Modifier.height(12.dp))
+                // `accent` is the selection the remote is on, set by the key
+                // handler above rather than by focus. onClick stays for touch.
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     tv.enktel.app.ui.components.FocusButton(
                         "▶ Play now",
-                        accent = true,
-                        onClick = go,
-                        modifier = Modifier.focusRequester(nextUpFocus),
+                        accent = nextUpChoice == 0,
+                        onClick = { playNext() },
                     )
                     // Dismissal has to stick. Without the flag the card would
                     // reappear on the next position tick, a quarter of a second
                     // later, and the viewer could not get rid of it at all.
                     tv.enktel.app.ui.components.FocusButton(
                         "✕ Not now",
+                        accent = nextUpChoice == 1,
                         onClick = { nextUpCancelled = true; nextUpSecs = null },
                     )
                 }
