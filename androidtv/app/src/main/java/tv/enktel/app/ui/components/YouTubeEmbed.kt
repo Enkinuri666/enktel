@@ -148,16 +148,83 @@ object YouTubeEmbed {
     }
 
     /**
+     * The two hosts a YouTube embed can be served from.
+     *
+     * They are not interchangeable in practice. The privacy-enhanced host is a
+     * different embed path with different referrer handling, and a video that
+     * the default host refuses with a grey "Video unavailable" will often play
+     * there — so it is worth a second attempt before concluding anything about
+     * the video or the device.
+     */
+    const val HOST_DEFAULT = "https://www.youtube.com"
+    const val HOST_NOCOOKIE = "https://www.youtube-nocookie.com"
+
+    /** One thing to try: a video, served from a particular embed host. */
+    data class Attempt(val videoId: String, val host: String)
+
+    /**
+     * Everything worth trying, in order, for a list of candidate uploads.
+     *
+     * Both hosts for the first upload before moving to the second, because a
+     * host change is far more likely to help than a different upload is: the
+     * alternates are ordered best-first by TMDB, and most catalogues supply
+     * only one of them anyway (see TrailerRepository.trailerKeys — the site's
+     * lookup proxy answers with a single key, so users without a personal TMDB
+     * key have no alternates at all and the fall-through to another upload,
+     * which is what the recovery path was built around, never runs for them).
+     */
+    fun attempts(videoIds: List<String>): List<Attempt> =
+        videoIds.filter { it.isNotBlank() }.distinct().flatMap { id ->
+            listOf(Attempt(id, HOST_DEFAULT), Attempt(id, HOST_NOCOOKIE))
+        }
+
+    /**
+     * Where to go after the attempt at [index] failed.
+     *
+     * A code that condemns the *video* skips that video's remaining hosts —
+     * an upload whose owner has switched embedding off is switched off on both
+     * hosts, and trying the second one only makes the viewer wait. Anything
+     * else advances by one, so the host retry happens.
+     *
+     * Returns an index past the end when there is nothing left to try.
+     */
+    fun nextAttempt(index: Int, attempts: List<Attempt>, code: Int): Int {
+        if (index !in attempts.indices) return attempts.size
+        if (!isPermanent(code)) return index + 1
+        val exhausted = attempts[index].videoId
+        var i = index + 1
+        while (i < attempts.size && attempts[i].videoId == exhausted) i++
+        return i
+    }
+
+    /**
+     * Reported by the page itself when the IFrame API never came up, as
+     * distinct from the API coming up and refusing.
+     *
+     * Outside YouTube's own numbering deliberately — it is not their error. It
+     * means the script did not load, which is a blocked or broken connection,
+     * and it is worth saying so rather than blaming the video or the device.
+     */
+    const val ERR_NO_PLAYER = -1
+
+    /**
      * The IFrame API's error codes, as the reasons they actually are.
      *
      * Worth distinguishing because they call for different responses: a video
      * whose owner has switched embedding off will never play here no matter
-     * what, and moving on to the next trailer is the only useful reaction,
-     * whereas an HTML5 failure may well be this device rather than this video.
+     * what, and moving on is the only useful reaction, whereas a refusal to
+     * embed may be the host rather than the video and is worth retrying.
      */
     fun errorReason(code: Int): String = when (code) {
+        ERR_NO_PLAYER -> "YouTube's player did not load — check this device's connection"
         2 -> "That trailer's video id was rejected by YouTube"
-        5 -> "This device's browser engine could not play it"
+        // Not "this device could not play it". Code 5 is the HTML5 player
+        // error, and YouTube returns it for an embed it has decided not to
+        // serve as readily as for a codec it cannot decode — the grey "Video
+        // unavailable" panel inside the frame is the same refusal. Blaming the
+        // browser engine sent people looking for a fault on their own device
+        // that was not there.
+        5 -> "YouTube would not play this trailer in an embedded player"
         100 -> "The trailer has been removed from YouTube"
         101, 150 -> "The owner does not allow this trailer to be embedded"
         else -> "YouTube reported an error playing this trailer"
@@ -165,4 +232,13 @@ object YouTubeEmbed {
 
     /** True when [code] means "this video will never embed", not "try again". */
     fun isPermanent(code: Int): Boolean = code == 2 || code == 100 || code == 101 || code == 150
+
+    /**
+     * True when [code] means there is no point trying anything else at all.
+     *
+     * The API script failing to load is not about this video, so working
+     * through the remaining candidates would be fourteen more seconds of
+     * staring at black before the same dead end.
+     */
+    fun isTerminal(code: Int): Boolean = code == ERR_NO_PLAYER
 }
