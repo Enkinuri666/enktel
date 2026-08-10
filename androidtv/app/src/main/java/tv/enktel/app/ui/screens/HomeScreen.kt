@@ -122,6 +122,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         syncing = true
         syncStatus = "Downloading your playlist…"
         try {
+            runCatching { graph.feed.invalidate() }
             val summary = graph.content.refreshAll(p)
             syncStatus = "Downloading TV guide… ($summary)"
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
