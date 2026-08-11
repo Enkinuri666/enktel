@@ -437,6 +437,9 @@ class SettingsStore(private val context: Context) {
     suspend fun setParentalPin(hash: String) = context.dataStore.edit { it[PARENTAL_PIN] = hash }
     suspend fun setLockedCategories(set: Set<String>) = context.dataStore.edit { it[LOCKED_CATEGORIES] = set }
     suspend fun setEpgOffsetMin(v: Int) = context.dataStore.edit { it[EPG_OFFSET_MIN] = v }
+
+    /** Read once, for EpgRepository — see EpgShift. */
+    suspend fun epgOffsetMinNow(): Int = epgOffsetMin.first()
     suspend fun setSubScalePct(v: Int) = context.dataStore.edit { it[SUB_SCALE] = v }
     suspend fun setSubStyle(v: String) = context.dataStore.edit { it[SUB_STYLE] = v }
     suspend fun setRecPrefixMin(v: Int) = context.dataStore.edit { it[REC_PREFIX_MIN] = v }

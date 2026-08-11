@@ -1,15 +1,21 @@
 package tv.enktel.app.ui.screens
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
@@ -34,8 +40,13 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelSurfaceHigh
+import tv.enktel.app.ui.theme.EnktelText
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextFaint
+import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.components.tvRailFocus
 
 @Composable
@@ -104,14 +115,56 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
 
-        androidx.compose.foundation.lazy.LazyRow(
-            modifier = Modifier.tvRailFocus(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Sections down the side, not along the top.
+        //
+        // Eight categories in a horizontal chip rail meant scrolling sideways
+        // to reach the last three, on the axis a television has most of and a
+        // remote traverses worst — and the rail showed only names, so choosing
+        // between "Network" and "Playback" for a buffer setting was a guess
+        // with nothing on screen to settle it. A side list shows all eight at
+        // once with a line each saying what is inside, which is the difference
+        // between navigating and hunting.
+        //
+        // Narrow portrait keeps the rail: there is no room for two panes on a
+        // phone held upright, and a full-width list would push the actual
+        // settings off the bottom.
+        val twoPane = !shape.narrow
+
+        Row(
+            Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(if (twoPane) 18.dp else 0.dp),
         ) {
-            items(CATEGORIES) { c ->
-                GlassChip(c, selected = c == category, onClick = { category = c })
+            if (twoPane) {
+                Column(
+                    Modifier
+                        .width(236.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    SETTINGS_CATEGORIES.forEach { c ->
+                        SettingsNavItem(
+                            category = c,
+                            selected = c.name == category,
+                            onClick = { category = c.name },
+                        )
+                    }
+                }
             }
-        }
+
+            Column(
+                Modifier.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (!twoPane) {
+                    androidx.compose.foundation.lazy.LazyRow(
+                        modifier = Modifier.tvRailFocus(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(CATEGORIES) { c ->
+                            GlassChip(c, selected = c == category, onClick = { category = c })
+                        }
+                    }
+                }
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -1203,12 +1256,102 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
         }
         }
+            } // content column
+        } // two-pane Row
         }
     }
 }
 
-private val CATEGORIES = listOf(
-    "Playlists", "Playback", "Recording", "Sports & Voice",
-    "Parental", "Network", "Appearance", "About",
+/**
+ * One row of the settings side list.
+ *
+ * Selection is carried by a filled accent bar down the leading edge rather
+ * than by tinting the whole row. On a ten-foot display the selected section
+ * and the focused section are two different things that are both on screen at
+ * once — you can be reading Playback while the remote sits over Network — and
+ * a full-row tint for one leaves nothing distinct for the other. An edge bar
+ * says "this is the section you are in" while the focus ring keeps saying
+ * "this is what OK will do".
+ */
+@Composable
+private fun SettingsNavItem(
+    category: SettingsCategory,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().tapClick(onClick),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
+            RoundedCornerShape(10.dp),
+        ),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) EnktelSurfaceHigh else Color.Transparent,
+            focusedContainerColor = EnktelBlue,
+            contentColor = if (selected) EnktelText else EnktelTextDim,
+            focusedContentColor = Color.White,
+        ),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(28.dp)
+                    .background(
+                        if (selected) EnktelBlue else Color.Transparent,
+                        RoundedCornerShape(2.dp),
+                    ),
+            )
+            Text(category.glyph, fontSize = 15.sp)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    category.name,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    category.blurb,
+                    fontSize = 10.sp,
+                    color = EnktelTextFaint,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A settings section: what it is called, what it holds, and its glyph.
+ *
+ * The name alone was doing all the work in an eight-item chip rail, and names
+ * are a poor index — "Network" and "Playback" both plausibly hold the buffer
+ * settings, "Sports & Voice" reads as two unrelated things bolted together,
+ * and nothing on screen resolved either guess. The subtitle is what turns the
+ * list from a set of labels into a table of contents.
+ */
+internal data class SettingsCategory(
+    val name: String,
+    val glyph: String,
+    val blurb: String,
 )
+
+internal val SETTINGS_CATEGORIES = listOf(
+    SettingsCategory("Playlists", "📺", "Accounts, sources, catalogue sync"),
+    SettingsCategory("Playback", "▶", "Buffering, decoder, subtitles, audio"),
+    SettingsCategory("Recording", "⏺", "DVR, storage, padding, downloads"),
+    SettingsCategory("Sports & Voice", "⚽", "Scores, teams, Match Center, Enki"),
+    SettingsCategory("Parental", "🔒", "PIN, kids mode, locked categories"),
+    SettingsCategory("Network", "🌐", "Guide offset, user agent, gateways"),
+    SettingsCategory("Appearance", "🎨", "Theme, text size, startup"),
+    SettingsCategory("About", "ⓘ", "Version, diagnostics, support"),
+)
+
+internal val CATEGORIES = SETTINGS_CATEGORIES.map { it.name }
 

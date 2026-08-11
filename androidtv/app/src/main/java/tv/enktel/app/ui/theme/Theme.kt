@@ -161,9 +161,25 @@ private val PaletteEnktelNeon = EnktelPalette(
 private val PaletteCinematic = EnktelPalette(
     id = "cinematic", label = "Cinematic (Midnight Pro)",
     bg = Color(0xFF0B0C10), surface = Color(0xFF12141D), surfaceHigh = Color(0xFF1A1D28),
-    text = Color(0xFFF3F4F8), textDim = Color(0xFF7A8298),
-    primary = Color(0xFF5A52FF), primaryDeep = Color(0xFF3A34C8), secondary = Color(0xFF00F2FE),
-    live = Color(0xFF00F2FE), ok = Color(0xFF34D399), border = Color(0x1AFFFFFF),
+    text = Color(0xFFF3F4F8), textDim = Color(0xFF8C94AC),
+    // Indigo lifted from #5A52FF to #8A83FF.
+    //
+    // The original sat at 3.80:1 against this background — the weakest accent
+    // of any palette here by a wide margin, and the one place it could least
+    // afford to be, because [primary] is what draws the D-pad focus ring. A
+    // focus indicator that low in contrast is legible on a monitor at desk
+    // distance and genuinely hard to find on a television across a room, which
+    // is the only distance this app is used at. The lift takes it to 6.30:1
+    // while staying recognisably Electric Indigo; primaryDeep rises with it so
+    // pressed and secondary states keep their relationship.
+    primary = Color(0xFF8A83FF), primaryDeep = Color(0xFF4F47D6), secondary = Color(0xFF00F2FE),
+    // Opaque, like every other palette. This was `0x1AFFFFFF` — white at 10 %
+    // — which is a different kind of value from the structural colours the
+    // other themes use, so a divider composited differently here than
+    // everywhere else depending on what sat behind it.
+    live = Color(0xFF00F2FE), ok = Color(0xFF34D399), border = Color(0xFF262B3A),
+    focusRingWidth = 4.dp, focusGlowRadius = 16.dp, focusGlowAlpha = 0.45f, focusScale = 1.06f,
+    textFaint = Color(0xFF5F677D),
 )
 
 /**
@@ -176,9 +192,15 @@ private val PaletteCinematic = EnktelPalette(
 private val PaletteObsidian = EnktelPalette(
     id = "obsidian", label = "Obsidian (Premium)",
     bg = Color(0xFF050608), surface = Color(0xFF0C1017), surfaceHigh = Color(0xFF141A26),
-    text = Color(0xFFF1F5FA), textDim = Color(0xFF7A8598),
+    text = Color(0xFFF1F5FA), textDim = Color(0xFF8B95A8),
     primary = Color(0xFF38BDF8), primaryDeep = Color(0xFF0284C7), secondary = Color(0xFFA855F7),
-    live = Color(0xFFF43F5E), ok = Color(0xFF22D3EE), border = Color(0xFF1B2436),
+    // Border raised from #1B2436 (1.23:1 against the surface — effectively an
+    // invisible divider) to 1.62:1. Structure you cannot see is structure the
+    // layout does not have, and on a dense grid it is the difference between
+    // rows reading as grouped and reading as floating.
+    live = Color(0xFFF43F5E), ok = Color(0xFF22D3EE), border = Color(0xFF2A3850),
+    focusRingWidth = 4.dp, focusGlowRadius = 16.dp, focusGlowAlpha = 0.42f, focusScale = 1.06f,
+    textFaint = Color(0xFF5C6678),
 )
 private val PaletteEnktelBlue = EnktelPalette(
     id = "enktel_blue", label = "EnkTel Blue",
@@ -187,36 +209,111 @@ private val PaletteEnktelBlue = EnktelPalette(
     primary = Color(0xFF3B9DFF), primaryDeep = Color(0xFF1B6AE5), secondary = Color(0xFF8B5CF6),
     live = Color(0xFFEF4444), ok = Color(0xFF34D399), border = Color(0xFF2A3550),
 )
-private val PaletteCrimson = PaletteEnktelBlue.copy(
+// ---------------------------------------------------------------------------
+// The three accent themes.
+//
+// These were `PaletteEnktelBlue.copy(primary = …, secondary = …)`: the blue
+// theme's navy-tinted greys with one colour swapped. That is why they never
+// felt like separate designs — every surface, border and dim-text value in
+// "Crimson Wolf" was still tuned to sit under a blue accent, so the accent read
+// as applied to the theme rather than as the theme's own.
+//
+// Each now carries a surface ramp tinted a few points toward its own hue. The
+// shift is small on purpose — these are near-blacks, and pushing the saturation
+// far enough to name the colour is what makes a dark UI look tinted rather than
+// deep. It is enough that a red accent lands on faintly warm greys and a green
+// one on faintly cool greys, which is what stops an accent looking pasted on.
+//
+// Every one also states its own focus geometry rather than inheriting the
+// v1.30.0 defaults, so the ring and glow are tuned to how bright the accent
+// actually is: a luminous amber needs less glow than a deep red to read as
+// equally focused.
+// ---------------------------------------------------------------------------
+
+private val PaletteCrimson = EnktelPalette(
     id = "crimson", label = "Crimson Wolf",
-    primary = Color(0xFFFF4D4F), primaryDeep = Color(0xFFC72026), secondary = Color(0xFFFF8A65),
+    bg = Color(0xFF0B0709), surface = Color(0xFF1B1015), surfaceHigh = Color(0xFF26171E),
+    text = Color(0xFFFAF2F4), textDim = Color(0xFFB09AA0),
+    // #FF4D4F was fine on navy and muddy on a warm ground. #FF5A5F is a touch
+    // lighter and warmer: 6.56:1 here, so the focus ring carries at distance.
+    primary = Color(0xFFFF5A5F), primaryDeep = Color(0xFFC42F35), secondary = Color(0xFFFF9E7A),
+    // The one place a red theme has to be careful. `live` paints LIVE badges
+    // and error banners, and on a red accent the obvious choices are all wrong:
+    // red collides with focus outright, and amber — the first thing tried here
+    // — sits 35° away in hue, which is close enough that red-green colour
+    // blindness collapses the two. Cyan is 170° away and survives every common
+    // form of it, which is why Cinematic uses it for exactly this job.
+    live = Color(0xFF22D3EE), ok = Color(0xFF3DD68C), border = Color(0xFF4A2F3B),
+    focusRingWidth = 4.dp, focusGlowRadius = 18.dp, focusGlowAlpha = 0.45f, focusScale = 1.06f,
+    textFaint = Color(0xFF7C6A70),
 )
-private val PaletteEmerald = PaletteEnktelBlue.copy(
+
+private val PaletteEmerald = EnktelPalette(
     id = "emerald", label = "Emerald",
-    primary = Color(0xFF10B981), primaryDeep = Color(0xFF047857), secondary = Color(0xFF34D399),
+    bg = Color(0xFF050B09), surface = Color(0xFF0B1512), surfaceHigh = Color(0xFF121E1A),
+    text = Color(0xFFF0FAF5), textDim = Color(0xFF93B0A5),
+    // #10B981 is a mid-tone that reads as a "success" chip rather than as an
+    // interface accent. #2DD4A0 is brighter and slightly cooler — 10.43:1, and
+    // distinguishable from [ok] below, which matters because a green theme
+    // otherwise renders "focused" and "fine" identically.
+    primary = Color(0xFF2DD4A0), primaryDeep = Color(0xFF0E8F68), secondary = Color(0xFF6EE7C4),
+    live = Color(0xFFFF5470), ok = Color(0xFF8CD98C), border = Color(0xFF2A423B),
+    // The brightest accent of the three, so the glow is pulled in: at the
+    // shared 18 dp it haloes rather than reads as a ring.
+    focusRingWidth = 4.dp, focusGlowRadius = 14.dp, focusGlowAlpha = 0.38f, focusScale = 1.06f,
+    textFaint = Color(0xFF64837A),
 )
-private val PaletteAmber = PaletteEnktelBlue.copy(
+
+private val PaletteAmber = EnktelPalette(
     id = "amber", label = "Amber",
-    primary = Color(0xFFF59E0B), primaryDeep = Color(0xFFB45309), secondary = Color(0xFFFCD34D),
+    bg = Color(0xFF0C0906), surface = Color(0xFF171106), surfaceHigh = Color(0xFF221A0C),
+    text = Color(0xFFFCF6EC), textDim = Color(0xFFB6A588),
+    primary = Color(0xFFFFB020), primaryDeep = Color(0xFFB9760A), secondary = Color(0xFFFFD974),
+    // Rose rather than red. Red is only 39° from this accent — near enough
+    // that a LIVE badge reads as a darker amber rather than as an alert, and
+    // near enough to merge entirely under red-green colour blindness. Rose
+    // clears it by 60°.
+    live = Color(0xFFFF4D8D), ok = Color(0xFF4ADE80), border = Color(0xFF4C3A1C),
+    // The most luminous accent in the app. Least glow of any palette — more
+    // and the focused card looks lit rather than selected.
+    focusRingWidth = 4.dp, focusGlowRadius = 12.dp, focusGlowAlpha = 0.32f, focusScale = 1.06f,
+    textFaint = Color(0xFF7E7059),
 )
 private val PaletteMonochrome = PaletteEnktelBlue.copy(
     id = "monochrome", label = "Monochrome",
     bg = Color(0xFF000000), surface = Color(0xFF111111), surfaceHigh = Color(0xFF1F1F1F),
+    text = Color(0xFFF2F2F2), textDim = Color(0xFFA8A8A8),
     primary = Color(0xFFEAEAEA), primaryDeep = Color(0xFFBDBDBD), secondary = Color(0xFF858585),
-    border = Color(0xFF2E2E2E),
+    // A greyscale theme has no accent hue to signal with, so `live` stays the
+    // one coloured thing in it. That is the point rather than an inconsistency:
+    // the only red on screen is unmissable.
+    border = Color(0xFF3A3A3A),
+    // No glow. A white accent glowing on grey is a smudge, not a highlight —
+    // the ring alone does the work here, so it is a step wider.
+    focusRingWidth = 5.dp, focusGlowRadius = 0.dp, focusGlowAlpha = 0f, focusScale = 1.07f,
+    textFaint = Color(0xFF6E6E6E),
 )
 private val PaletteMidnight = PaletteEnktelBlue.copy(
     id = "midnight", label = "Midnight Purple",
     bg = Color(0xFF14082A), surface = Color(0xFF1F0F3D), surfaceHigh = Color(0xFF2A164F),
-    primary = Color(0xFFA78BFA), primaryDeep = Color(0xFF7C3AED), secondary = Color(0xFFEC4899),
-    border = Color(0xFF382060),
+    text = Color(0xFFF6EFFF), textDim = Color(0xFFB4A0D4),
+    primary = Color(0xFFC4A9FF), primaryDeep = Color(0xFF7C3AED), secondary = Color(0xFFF472B6),
+    live = Color(0xFFFF6B81), ok = Color(0xFF4ADE80), border = Color(0xFF4A2E78),
+    focusRingWidth = 4.dp, focusGlowRadius = 18.dp, focusGlowAlpha = 0.45f, focusScale = 1.06f,
+    textFaint = Color(0xFF7E6B9E),
 )
 private val PaletteHighContrast = PaletteEnktelBlue.copy(
     id = "high_contrast", label = "High Contrast",
     bg = Color(0xFF000000), surface = Color(0xFF000000), surfaceHigh = Color(0xFF181818),
     text = Color(0xFFFFFFFF), textDim = Color(0xFFDDDDDD),
     primary = Color(0xFFFFEB3B), primaryDeep = Color(0xFFFBC02D), secondary = Color(0xFF00E5FF),
-    live = Color(0xFFFF1744), ok = Color(0xFF00E676), border = Color(0xFF666666),
+    live = Color(0xFFFF1744), ok = Color(0xFF00E676), border = Color(0xFF8A8A8A),
+    // This palette exists for people who cannot pick the focused card out of a
+    // subtle one, so it gets the widest ring in the app and no glow at all —
+    // a soft halo is exactly the cue that fails for low vision, and a hard
+    // edge is exactly the one that does not.
+    focusRingWidth = 6.dp, focusGlowRadius = 0.dp, focusGlowAlpha = 0f, focusScale = 1.10f,
+    textFaint = Color(0xFFBBBBBB),
 )
 
 val ALL_PALETTES = listOf(

@@ -109,6 +109,8 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableIntStateOf(0) }
+    /** True while ↻ is pulling the guide, so it can't be pressed twice. */
+    var refreshing by remember { mutableStateOf(false) }
     var teamFilterOn by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
@@ -229,7 +231,26 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         )
                         Spacer(Modifier.width(6.dp))
                     }
-                    FocusButton("↻", onClick = { refreshTick++ })
+                    // Refresh the sources, not just the query.
+                    //
+                    // This used to only bump refreshTick, which re-ran a scan
+                    // over the local EPG — data that had not changed, so the
+                    // fixtures list came back identical and the button read as
+                    // dead. The guide is the thing that goes stale, so pull it
+                    // first and then rescan; the score and schedule feeds are
+                    // already live calls and re-run off the same tick.
+                    FocusButton(
+                        if (refreshing) "…" else "↻",
+                        onClick = {
+                            if (refreshing) return@FocusButton
+                            scope.launch {
+                                refreshing = true
+                                try { graph.epg.refresh(p) } catch (_: Throwable) { /* rescan anyway */ }
+                                refreshing = false
+                                refreshTick++
+                            }
+                        },
+                    )
                 }
             }
         }

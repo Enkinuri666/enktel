@@ -21,8 +21,24 @@ class EpgRepository(
     private val db: AppDatabase,
     private val xtream: XtreamClient,
     private val http: OkHttpClient,
+    /**
+     * Settings, for the viewer's EPG timezone correction.
+     *
+     * Nullable so the repository can still be built without one — the
+     * correction then reads as zero, which is what it was before it existed.
+     */
+    private val settings: tv.enktel.app.data.prefs.SettingsStore? = null,
 ) {
     private val epg get() = db.epgDao()
+
+    /**
+     * The viewer's guide correction, in minutes.
+     *
+     * Read per call rather than cached, so changing the chip in Settings moves
+     * the guide on the next redraw. It is one DataStore read against an
+     * in-memory cache, against a query that is about to touch hundreds of rows.
+     */
+    private suspend fun offsetMin(): Int = settings?.epgOffsetMinNow() ?: 0
 
     suspend fun refresh(p: Profile): Int = withContext(Dispatchers.IO) {
         val url = when {
@@ -60,10 +76,16 @@ class EpgRepository(
         return if (isGz || url.endsWith(".gz") && isGz) GZIPInputStream(buffered) else buffered
     }
 
+    // Every read below applies the viewer's timezone correction: the bounds go
+    // into the database's frame, the results come back into the viewer's. See
+    // EpgShift for why it is done here and not at import, and for why doing
+    // only half of it silently drops an hour of guide at the edges.
+
     suspend fun nowNext(profileId: Long, epgId: String): NowNext {
         if (epgId.isBlank()) return NowNext(null, null)
+        val off = offsetMin()
         val now = System.currentTimeMillis()
-        val list = epg.nowNext(profileId, epgId, now, 2)
+        val list = EpgShift.shift(epg.nowNext(profileId, epgId, EpgShift.toStored(now, off), 2), off)
         val current = list.firstOrNull { it.startMs <= now && it.endMs > now }
         val next = list.firstOrNull { it.startMs > now }
         return NowNext(current, next)
@@ -71,19 +93,27 @@ class EpgRepository(
 
     suspend fun upcoming(profileId: Long, epgId: String, n: Int = 8): List<EpgProgram> {
         if (epgId.isBlank()) return emptyList()
-        return epg.nowNext(profileId, epgId, System.currentTimeMillis(), n)
+        val off = offsetMin()
+        val now = EpgShift.toStored(System.currentTimeMillis(), off)
+        return EpgShift.shift(epg.nowNext(profileId, epgId, now, n), off)
     }
 
     suspend fun window(profileId: Long, epgIds: List<String>, from: Long, to: Long): Map<String, List<EpgProgram>> {
         if (epgIds.isEmpty()) return emptyMap()
-        return epgIds.chunked(400).flatMap { chunk -> epg.windowMany(profileId, chunk, from, to) }
+        val off = offsetMin()
+        val f = EpgShift.toStored(from, off)
+        val t = EpgShift.toStored(to, off)
+        return epgIds.chunked(400).flatMap { chunk -> epg.windowMany(profileId, chunk, f, t) }
+            .let { EpgShift.shift(it, off) }
             .groupBy { it.epgId }
     }
 
     suspend fun archive(profileId: Long, epgId: String, daysBack: Int): List<EpgProgram> {
         if (epgId.isBlank()) return emptyList()
-        val now = System.currentTimeMillis()
-        return epg.archive(profileId, epgId, now - TimeUnit.DAYS.toMillis(daysBack.toLong().coerceAtLeast(1)), now)
+        val off = offsetMin()
+        val now = EpgShift.toStored(System.currentTimeMillis(), off)
+        val from = now - TimeUnit.DAYS.toMillis(daysBack.toLong().coerceAtLeast(1))
+        return EpgShift.shift(epg.archive(profileId, epgId, from, now), off)
     }
 
     suspend fun hasData(profileId: Long) = epg.count(profileId) > 0
