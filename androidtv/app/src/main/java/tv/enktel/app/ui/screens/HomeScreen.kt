@@ -241,7 +241,20 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         subtitle = "Resume",
                         wide = true,
                         progress = frac,
-                        onClick = { nav.navigate(vodPlayerRoute(cw.url, cw.name, cw.key, poster = cw.poster)) },
+                        // The series identity travels with the row, so resuming
+                        // an episode here rolls into the next one the same way
+                        // starting it from the series screen does. Films carry
+                        // 0 and are unaffected.
+                        onClick = {
+                            nav.navigate(
+                                vodPlayerRoute(
+                                    cw.url, cw.name, cw.key, poster = cw.poster,
+                                    seriesId = cw.seriesId,
+                                    episodeId = if (cw.seriesId != 0L) cw.refId else 0L,
+                                    seriesName = cw.seriesName,
+                                ),
+                            )
+                        },
                     )
                 }
             }

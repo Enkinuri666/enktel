@@ -233,6 +233,19 @@ data class WatchProgress(
     val positionMs: Long = 0,
     val durationMs: Long = 0,
     val updatedAt: Long = System.currentTimeMillis(),
+    /**
+     * The series an episode belongs to, or 0 for a film.
+     *
+     * [refId] is the episode's own id, and nothing joins that back to a
+     * series — which is why resuming from Continue Watching used to start an
+     * episode the player could not find a successor for, so autoplay did
+     * nothing from that entry point however well it worked elsewhere. The
+     * player has the series in hand while it plays; storing it here is what
+     * makes it still known an hour later.
+     */
+    val seriesId: Long = 0,
+    /** The series' own name, for titling the episodes resumed play resolves. */
+    val seriesName: String = "",
 )
 
 @Entity(tableName = "recordings")
