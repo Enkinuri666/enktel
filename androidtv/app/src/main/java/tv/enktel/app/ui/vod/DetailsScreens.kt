@@ -533,28 +533,30 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 val playEpisode = {
                     val url = XtreamClient.episodeUrl(p, ep.id, ep.ext)
                     val pk = "${p.id}:episode:${ep.id}"
-                    // Work out what follows while we still have the season map.
-                    // Rolls into the next season when this one runs out, which
-                    // is where a naive "next in this list" stops and strands
-                    // the viewer at a finale that has a following season.
-                    val inSeason = seasons[season].orEmpty()
-                    val idx = inSeason.indexOfFirst { it.id == ep.id }
-                    val next = inSeason.getOrNull(idx + 1)
-                        ?: seasons.keys.sorted().firstOrNull { it > season }
-                            ?.let { seasons[it].orEmpty().firstOrNull() }
+                    // Seed the first roll-over while we still have the season
+                    // map, so it needs no network. Every hop after that the
+                    // player resolves for itself from the series id below —
+                    // a route cannot usefully nest another route twice.
+                    val next = tv.enktel.app.data.repo.NextEpisode.after(seasons, ep.id)
                     val nextRoute = next?.let {
                         vodPlayerRoute(
                             XtreamClient.episodeUrl(p, it.id, it.ext),
-                            "${s.name} S${it.season}E${it.episode} · ${it.title}",
+                            tv.enktel.app.data.repo.NextEpisode.title(s.name, it),
                             "${p.id}:episode:${it.id}",
                             poster = s.poster,
+                            seriesId = s.seriesId,
+                            episodeId = it.id,
+                            seriesName = s.name,
                         )
                     }.orEmpty()
-                    val nextLabel = next?.let { "S${it.season} E${it.episode} · ${it.title}" }.orEmpty()
+                    val nextLabel = next?.let {
+                        tv.enktel.app.data.repo.NextEpisode.label(it)
+                    }.orEmpty()
                     nav.navigate(
                         vodPlayerRoute(
-                            url, "${s.name} S${ep.season}E${ep.episode} · ${ep.title}", pk,
+                            url, tv.enktel.app.data.repo.NextEpisode.title(s.name, ep), pk,
                             nextRoute = nextRoute, nextLabel = nextLabel, poster = s.poster,
+                            seriesId = s.seriesId, episodeId = ep.id, seriesName = s.name,
                         ),
                     )
                 }

@@ -1046,7 +1046,10 @@ private fun MainNav(
         composable("seriesDetails/{key}") { back ->
             SeriesDetailsScreen(graph, nav, key = back.arguments?.getString("key").orEmpty())
         }
-        composable("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") { back ->
+        composable(
+            "vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}" +
+                "&sid={sid}&eid={eid}&sn={sn}",
+        ) { back ->
             val a = back.arguments
             VodPlayerScreen(
                 graph,
@@ -1058,6 +1061,9 @@ private fun MainNav(
                 nextRoute = decode(a?.getString("nr").orEmpty()),
                 nextLabel = decode(a?.getString("nl").orEmpty()),
                 posterUrl = decode(a?.getString("ps").orEmpty()),
+                seriesId = a?.getString("sid")?.toLongOrNull() ?: 0L,
+                episodeId = a?.getString("eid")?.toLongOrNull() ?: 0L,
+                seriesName = decode(a?.getString("sn").orEmpty()),
             )
         }
         composable("search") { SearchScreen(graph, nav, voiceBus = voiceBus) }
@@ -1294,11 +1300,12 @@ fun vodPlayerRoute(
     /**
      * The episode to roll into when this one ends, as a route of its own.
      *
-     * Computed by the caller rather than the player, because the caller — the
-     * series screen — already holds the season map. Making the player work out
-     * what comes next would mean giving it a reverse lookup from a stream URL
-     * back to a series, which nothing else needs and which does not exist.
-     * Empty for films and for the last episode of a season.
+     * Seeded by the caller when it already holds the season map, so the first
+     * roll-over needs no network. It cannot carry the hop after that: the route
+     * is a query string, and a route nested inside a route inside a route grows
+     * unusable within three episodes. That is why [seriesId] exists — the
+     * player resolves every later hop for itself. Empty for films, for the last
+     * episode of a series, and for every hop the player resolved.
      */
     nextRoute: String = "",
     /** "S2 E4 · The Bells" — what the countdown card announces. */
@@ -1316,9 +1323,23 @@ fun vodPlayerRoute(
      * artwork in hand; passing it is the only route that covers both.
      */
     poster: String = "",
+    /**
+     * The series this episode belongs to, or 0 for a film.
+     *
+     * Carried so the player can work out what follows the episode after next.
+     * [nextRoute] only ever reaches one hop, so before this a binge stopped
+     * dead after a single automatic roll-over — which from the sofa is
+     * indistinguishable from autoplay not working.
+     */
+    seriesId: Long = 0,
+    /** Which episode of [seriesId] is playing, so the successor can be found. */
+    episodeId: Long = 0,
+    /** The series' own name, to title the episodes the player resolves. */
+    seriesName: String = "",
 ): String =
     "vodPlayer?url=${encode(url)}&title=${encode(title)}&pk=$progressKey&live=${if (live) 1 else 0}" +
-        "&nr=${encode(nextRoute)}&nl=${encode(nextLabel)}&ps=${encode(poster)}"
+        "&nr=${encode(nextRoute)}&nl=${encode(nextLabel)}&ps=${encode(poster)}" +
+        "&sid=$seriesId&eid=$episodeId&sn=${encode(seriesName)}"
 
 private data class Quadruple<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
