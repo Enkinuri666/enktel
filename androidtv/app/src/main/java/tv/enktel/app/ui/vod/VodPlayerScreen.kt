@@ -99,6 +99,12 @@ fun VodPlayerScreen(
     nextLabel: String = "",
     /** Artwork for this title, stored with the resume point. See vodPlayerRoute. */
     posterUrl: String = "",
+    /** Series this episode belongs to, or 0 for a film. See vodPlayerRoute. */
+    seriesId: Long = 0,
+    /** Which episode of [seriesId] is playing. */
+    episodeId: Long = 0,
+    /** The series' own name, used to title episodes resolved here. */
+    seriesName: String = "",
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val bufferProfileRaw by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
@@ -152,8 +158,44 @@ fun VodPlayerScreen(
     var positionMs by remember { mutableLongStateOf(0L) }
     /** Seconds left on the countdown card, or null when it is not showing. */
     var nextUpSecs by remember { mutableStateOf<Int?>(null) }
+    /** Set by the player's own listener when the media reports it finished. */
+    var playbackEnded by remember(url) { mutableStateOf(false) }
+    /** Raised by the ticker when it is time to roll into the next episode. */
+    var wantsNext by remember(url) { mutableStateOf(false) }
     /** Set when the viewer dismisses the card, so it stays dismissed. */
     var nextUpCancelled by remember { mutableStateOf(false) }
+
+    // What follows this episode, when the caller could not say.
+    //
+    // The series screen seeds the first hop because it already holds the season
+    // map, but a route cannot carry a route that carries a route — so from the
+    // second episode on it arrives blank, and a binge used to stop dead after
+    // one automatic roll-over. Resolved here instead, once, on entry rather
+    // than when the card is due: the answer is wanted minutes later, so a slow
+    // panel costs nothing, and a failed lookup simply leaves the card off.
+    var resolvedRoute by remember(url) { mutableStateOf("") }
+    var resolvedLabel by remember(url) { mutableStateOf("") }
+    LaunchedEffect(url, seriesId, episodeId) {
+        if (nextRoute.isNotBlank() || seriesId == 0L || episodeId == 0L) return@LaunchedEffect
+        val p = graph.playlists.activeProfile() ?: return@LaunchedEffect
+        val details = runCatching { graph.content.seriesDetails(p, seriesId) }.getOrNull()
+            ?: return@LaunchedEffect
+        val next = tv.enktel.app.data.repo.NextEpisode.after(details.seasons, episodeId)
+            ?: return@LaunchedEffect
+        resolvedRoute = tv.enktel.app.vodPlayerRoute(
+            tv.enktel.app.data.xtream.XtreamClient.episodeUrl(p, next.id, next.ext),
+            tv.enktel.app.data.repo.NextEpisode.title(seriesName, next),
+            "${p.id}:episode:${next.id}",
+            poster = posterUrl,
+            seriesId = seriesId,
+            episodeId = next.id,
+            seriesName = seriesName,
+        )
+        resolvedLabel = tv.enktel.app.data.repo.NextEpisode.label(next)
+    }
+    /** The seeded hop if there is one, otherwise the one resolved above. */
+    val upNextRoute = nextRoute.ifBlank { resolvedRoute }
+    val upNextLabel = nextLabel.ifBlank { resolvedLabel }
     var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
 
@@ -285,9 +327,22 @@ fun VodPlayerScreen(
     // instead of moving.
     LaunchedEffect(Unit) {
         var lastSave = 0L
+        // How long the position has stood still while playback was wanted.
+        // Only counted when the player is not paused: a viewer who stops
+        // twenty seconds from the end has not finished the episode, and
+        // rolling them into the next one would be the worst kind of help.
+        var lastPos = -1L
+        var stalledMs = 0L
         while (true) {
+            val tickMs = if (playing) 250L else 1_000L
             positionMs = engine.player.currentPosition.coerceAtLeast(0)
             durationMs = engine.player.duration.coerceAtLeast(0)
+            stalledMs = if (engine.player.playWhenReady && positionMs == lastPos) {
+                stalledMs + tickMs
+            } else {
+                0L
+            }
+            lastPos = positionMs
             // Binge countdown.
             //
             // Driven off position rather than STATE_ENDED: closing credits are
@@ -298,12 +353,25 @@ fun VodPlayerScreen(
             // Not shown when the user has scrubbed backwards into the last
             // thirty seconds on purpose — they are looking at something, and a
             // countdown over it is an interruption rather than a convenience.
-            if (nextRoute.isNotBlank() && !isLive) {
+            if (upNextRoute.isNotBlank() && !isLive) {
                 val secs = NextUp.secondsLeft(durationMs, positionMs)
                 nextUpSecs = secs
                 // Scrubbing back out of the window dismisses it, and a later
                 // approach shows it again.
-                if (secs == null) nextUpCancelled = false
+                if (secs == null) {
+                    nextUpCancelled = false
+                    playbackEnded = false
+                }
+                // The single place the roll-over is decided. It used to be
+                // decided in two — a countdown that had to hit exactly zero,
+                // and an end-of-stream callback — and a file whose declared
+                // runtime is a second longer than its content satisfies
+                // neither. See NextUp.shouldAdvance.
+                if (autoplayNextEp && !nextUpCancelled &&
+                    NextUp.shouldAdvance(durationMs, positionMs, playbackEnded, stalledMs)
+                ) {
+                    wantsNext = true
+                }
             }
             playing = engine.player.isPlaying
             val now = System.currentTimeMillis()
@@ -315,7 +383,7 @@ fun VodPlayerScreen(
             // docked to the mini player with the scrubber off-screen) the same
             // rate is four wake-ups a second that write back identical values,
             // which a Fire TV Stick can ill afford.
-            delay(if (playing) 250 else 1_000)
+            delay(tickMs)
         }
     }
 
@@ -392,13 +460,16 @@ fun VodPlayerScreen(
      * and fire on a countdown that could not reach zero.
      */
     fun playNext() {
-        if (nextRoute.isBlank()) return
+        if (upNextRoute.isBlank()) return
         nextUpCancelled = true
         // popUpTo the current entry so a binged season does not build a back
         // stack twenty episodes deep — Back should return to the series, not
         // walk backwards through everything just watched.
-        nav.navigate(nextRoute) {
-            popUpTo("vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}") {
+        nav.navigate(upNextRoute) {
+            popUpTo(
+                "vodPlayer?url={url}&title={title}&pk={pk}&live={live}&nr={nr}&nl={nl}&ps={ps}" +
+                    "&sid={sid}&eid={eid}&sn={sn}",
+            ) {
                 inclusive = true
             }
             launchSingleTop = true
@@ -416,14 +487,16 @@ fun VodPlayerScreen(
     DisposableEffect(engine) {
         val listener = object : androidx.media3.common.Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == androidx.media3.common.Player.STATE_ENDED &&
-                    autoplayNextEp && !nextUpCancelled
-                ) playNext()
+                if (state == androidx.media3.common.Player.STATE_ENDED) playbackEnded = true
             }
         }
         engine.player.addListener(listener)
         onDispose { engine.player.removeListener(listener) }
     }
+
+    // Navigation happens here rather than on the ticker, so it runs once per
+    // decision on the composition's own scope instead of inside a loop.
+    LaunchedEffect(wantsNext) { if (wantsNext) playNext() }
 
     val seekSupport by engine.seekSupport.collectAsStateWithLifecycle()
     val canSeek = seekSupport != tv.enktel.app.player.PlayerEngine.SeekSupport.CONTAINER &&
@@ -650,9 +723,6 @@ fun VodPlayerScreen(
             // read by this screen and never consulted — the card rolled over
             // regardless, or rather it would have, had the countdown been able
             // to reach zero at all.
-            androidx.compose.runtime.LaunchedEffect(secs, nextUpCancelled) {
-                if (secs <= 0 && autoplayNextEp && !nextUpCancelled) playNext()
-            }
             Column(
                 Modifier
                     .align(Alignment.BottomEnd)
@@ -670,7 +740,7 @@ fun VodPlayerScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    nextLabel.ifBlank { "Next episode" }, color = Color.White,
+                    upNextLabel.ifBlank { "Next episode" }, color = Color.White,
                     fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
