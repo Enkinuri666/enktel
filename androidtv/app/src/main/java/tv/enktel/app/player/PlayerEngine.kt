@@ -466,7 +466,18 @@ class PlayerEngine(
                 androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
                     androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
             )
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors)
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors).apply {
+            // Absorb a dropped segment inside the media source instead of
+            // letting it become a player error.
+            //
+            // The default schedule — three attempts backing off to five
+            // seconds — was written for VOD, where waiting costs nothing but
+            // time. On live it costs the entire cushion behind the edge, so
+            // the retry lands after the player has already fallen out of the
+            // window and the recovery becomes a visible reconnect. See
+            // LiveRecovery for the whole chain.
+            if (live) setLoadErrorHandlingPolicy(LiveRecovery.LiveLoadErrorPolicy())
+        }
 
         player = ExoPlayer.Builder(context, renderers)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -549,17 +560,24 @@ class PlayerEngine(
 
         player.addListener(object : Player.Listener {
             override fun onPlayerError(err: PlaybackException) {
-                // A container/manifest error is a statement about the bytes, not
-                // about the network: the same URL will produce the same
-                // unparseable response every time. Retrying it twice before
-                // moving on just makes the user wait ~6 s per candidate — and
-                // with six candidates that is most of a minute staring at a
-                // black screen before anything useful is tried.
-                val deterministic = err.errorCode in DETERMINISTIC_SOURCE_ERRORS
+                // What an error means depends on whether this is a file or a
+                // channel. A 404 on a film says the film is not there; a 404 on
+                // a live segment says it rolled off the sliding window while we
+                // were asking for it, and the cure is to re-join at the edge.
+                // Classifying the second as the first is what made live spend
+                // its evening rewriting URLs instead of playing. See
+                // LiveRecovery.
                 val hlsRetry = if (err.errorCode in CONTAINER_ERRORS) {
                     currentCandidate?.let { asHlsRetry(it) }
                 } else null
-                if (hlsRetry != null) {
+                val action = LiveRecovery.action(
+                    code = err.errorCode,
+                    live = isLiveStream,
+                    retries = retries,
+                    hasHlsRetry = hlsRetry != null,
+                    hasCandidates = candidateQueue.isNotEmpty(),
+                )
+                if (action == LiveRecovery.Action.HLS_RETRY && hlsRetry != null) {
                     // Same URL, read as HLS this time. Reactive rather than
                     // queued up front: reinterpreting a URL that 404'd is
                     // pointless, and doubling the candidate list would double
@@ -567,14 +585,17 @@ class PlayerEngine(
                     triedFallback.value = true
                     retries = 0
                     playInternal(hlsRetry, candidateLive, candidateStartMs, candidateSubUrl)
-                } else if (!deterministic && retries < 2 && lastUrl != null) {
-                    // Short in-place retry first — covers transient network
-                    // blips without wasting time walking the fallback chain.
-                    retries++
+                } else if (action == LiveRecovery.Action.RETRY_IN_PLACE && lastUrl != null) {
+                    // Re-join at the live edge. On live this is the correct
+                    // recovery rather than a hopeful one, so falling behind the
+                    // window is not charged to the budget — otherwise a channel
+                    // that drops one segment an hour eventually runs out of
+                    // attempts and is declared dead mid-programme.
+                    if (!LiveRecovery.isFree(isLiveStream, err.errorCode)) retries++
                     player.seekToDefaultPosition()
                     player.prepare()
                     player.play()
-                } else if (candidateQueue.isNotEmpty()) {
+                } else if (action == LiveRecovery.Action.NEXT_CANDIDATE) {
                     // In-place retries exhausted and we still have alternate
                     // URL shapes to try (see StreamUrlResolver) — this is
                     // what actually recovers from a panel that 404s on
@@ -1181,11 +1202,6 @@ class PlayerEngine(
         /** Play cleanly for this long and the reconnect budget is restored. */
         const val GOOD_RUN_MS = 120_000L
 
-        /**
-         * Errors that describe the *content*, not the connection. Retrying the
-         * identical URL cannot change the answer, so the fallback chain should
-         * move on immediately rather than burning two attempts first.
-         */
         /** Container/manifest failures specifically — the ones where the same
          *  URL may still be playable if interpreted as HLS instead. */
         val CONTAINER_ERRORS = setOf(
@@ -1193,14 +1209,10 @@ class PlayerEngine(
             PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         )
 
-        val DETERMINISTIC_SOURCE_ERRORS = setOf(
-            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
-            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
-            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
-            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
-            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
-            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
-        )
+        // The old DETERMINISTIC_SOURCE_ERRORS set lived here. It is now
+        // LiveRecovery.DETERMINISTIC, minus the two IO codes it used to carry:
+        // a 404 or a bad status is deterministic for a file and routine for a
+        // live segment, and one set could not say both. See LiveRecovery.
     }
 
     /**
