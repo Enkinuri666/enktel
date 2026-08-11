@@ -34,4 +34,62 @@ object NextUp {
         if (left > windowMs) return null
         return (left.coerceAtLeast(0L) / 1000L).toInt()
     }
+
+    /**
+     * Close enough to the declared end to call it finished.
+     *
+     * Panels routinely declare a runtime that does not match the file they
+     * serve — off by a second or two either way is normal, and a title that
+     * stops 1.5 s short of its own duration is not a title that was
+     * interrupted. Waiting for the position to reach the number exactly is
+     * waiting for something that frequently never happens.
+     */
+    const val END_SLACK_MS = 1_500L
+
+    /**
+     * How long the position may stand still, inside the closing window and
+     * with the player *not* paused, before the programme is treated as over.
+     *
+     * The last resort. Some panels serve a file that simply stops several
+     * seconds short and report no end-of-stream at all: the picture holds, the
+     * position stops moving, and nothing ever tells the app the episode
+     * finished. Four seconds is long enough that ordinary rebuffering does not
+     * trip it and short enough that nobody sits looking at a frozen frame
+     * wondering whether the app has crashed.
+     */
+    const val STALL_MS = 4_000L
+
+    /**
+     * Whether the next episode should start now.
+     *
+     * One decision with three ways in, because relying on any single one of
+     * them is how this feature kept not working:
+     *
+     *  - **[playbackEnded]** — the player says the media finished. The clean
+     *    case, and the only one that is certain.
+     *  - **The position reached the end**, within [END_SLACK_MS]. Needed
+     *    because a countdown that only fires on an exact zero never fires on a
+     *    file whose declared runtime is a second longer than its content.
+     *  - **The position stopped moving** inside the closing window while the
+     *    player was still meant to be playing, for [STALL_MS]. Needed because
+     *    some panels end a file without ending the stream, so nothing is ever
+     *    reported at all.
+     *
+     * [stalledMs] must be measured only while playback is *wanted* — a viewer
+     * who pauses twenty seconds from the end has not finished the episode, and
+     * jumping them to the next one would be the worst kind of helpfulness.
+     */
+    fun shouldAdvance(
+        durationMs: Long,
+        positionMs: Long,
+        playbackEnded: Boolean,
+        stalledMs: Long,
+        windowMs: Long = WINDOW_MS,
+    ): Boolean {
+        if (playbackEnded) return true
+        if (durationMs <= windowMs) return false
+        val left = durationMs - positionMs
+        if (left <= END_SLACK_MS) return true
+        return left <= windowMs && stalledMs >= STALL_MS
+    }
 }
