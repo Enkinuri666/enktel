@@ -211,3 +211,28 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+// Room's KSP tasks must not run at the same time as each other.
+//
+// The schemaLocation set above is one directory shared by every variant, and
+// each product flavour has its own KSP task. Build tv and mobile in a single
+// Gradle invocation — which both the lint step and the APK step do — and the
+// two tasks read and write the same `<version>.json` concurrently. The failure
+// surfaces as a corrupt schema rather than as anything resembling a race:
+//
+//   e: [ksp] JsonDecodingException: Unexpected JSON token at offset 14197:
+//   Expected colon ':', but had 'EOF' instead at path: $.database.entities[4]
+//
+// which is one task parsing a file the other is half way through writing. It
+// is intermittent by nature, so it passes far more often than it fails, which
+// is exactly what makes it worth pinning down rather than re-running.
+//
+// mustRunAfter only orders tasks that are already scheduled — it never causes
+// one to run — so this costs nothing when a build touches a single variant.
+afterEvaluate {
+    tasks.names
+        .filter { it.startsWith("ksp") && it.endsWith("Kotlin") }
+        .sorted()
+        .map { tasks.named(it) }
+        .zipWithNext { earlier, later -> later.configure { mustRunAfter(earlier) } }
+}
