@@ -499,6 +499,23 @@ class PlayerEngine(
             if (live) setLoadErrorHandlingPolicy(LiveRecovery.LiveLoadErrorPolicy())
         }
 
+        // "Change the frame rate even if the switch is not seamless."
+        //
+        // Media3's own C class names only OFF and ONLY_IF_SEAMLESS; there is no
+        // C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ALWAYS. The setter takes any of the
+        // platform's Surface.CHANGE_FRAME_RATE_* values, and "always" is one of
+        // those rather than one of Media3's.
+        //
+        // Guarded rather than referenced bare because the constant arrived in
+        // API 30 with Surface.setFrameRate itself. Below that the mechanism does
+        // not exist at all and the value is moot, so the seamless default stands
+        // and RefreshRateMatcher's preferredDisplayModeId path does the work.
+        val frameRateStrategy = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.view.Surface.CHANGE_FRAME_RATE_ALWAYS
+        } else {
+            C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
+        }
+
         player = ExoPlayer.Builder(context, renderers)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
@@ -523,8 +540,8 @@ class PlayerEngine(
             // correct cadence throughout, which is the right way round for a
             // film. It is also the modern half of what RefreshRateMatcher does
             // by hand through preferredDisplayModeId; that path still covers
-            // devices below API 30.
-            .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ALWAYS)
+            // devices below API 30. See frameRateStrategy above.
+            .setVideoChangeFrameRateStrategy(frameRateStrategy)
             // Hold a partial wake lock + Wi-Fi lock while playing.
             //
             // The WAKE_LOCK permission was already declared and never used, so
