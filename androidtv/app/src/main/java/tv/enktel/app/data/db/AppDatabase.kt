@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 13, // v13 stores the TMDB plot, hero art and runtime the worker already fetched
+    version = 14, // v14 remembers which series a resumed episode belongs to
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -249,12 +249,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Resuming an episode from Continue Watching started it with no
+                // idea which series it belonged to: the row's refId is the
+                // episode's own id and nothing joins that back to a series. So
+                // the player could not work out what followed, and next-episode
+                // autoplay did nothing from that entry point however well it
+                // worked when the same episode was started from the series
+                // screen. The player knows the series while it is playing;
+                // these columns are what make it still known afterwards.
+                //
+                // Existing rows keep 0 and "", which reads as "not known" — the
+                // same as a film — so a resume from a row written before this
+                // behaves exactly as it did, and the next episode played from a
+                // series screen writes the identity in.
+                db.execSQL("ALTER TABLE progress ADD COLUMN seriesId INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE progress ADD COLUMN seriesName TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

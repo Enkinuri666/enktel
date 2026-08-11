@@ -316,6 +316,10 @@ fun VodPlayerScreen(
                 refId = progressKey.substringAfterLast(':').toLongOrNull() ?: 0,
                 name = title, url = url, poster = posterUrl,
                 positionMs = atMs, durationMs = totalMs,
+                // Stored so resuming from Continue Watching an hour later can
+                // still work out what follows. Nothing else joins an episode
+                // id back to its series.
+                seriesId = seriesId, seriesName = seriesName,
             )
         )
     }
