@@ -391,6 +391,26 @@ class PlayerEngine(
             // Route higher-tier audio (AC-3 / E-AC-3 / TrueHD / DTS) untouched to the receiver
             // where supported, so home-theatre pass-through works instead of software decode.
             .setEnableAudioFloatOutput(true)
+            // Let the platform's AudioTrack apply playback-speed changes.
+            //
+            // This matters here specifically because live playback runs a speed
+            // control loop: the live MediaItem below is configured to drift
+            // between 0.97× and 1.03× to hold its target offset behind the
+            // edge. ExoPlayer normally implements that with Sonic, which works
+            // on PCM and cannot touch a bitstream being passed through
+            // untouched to a receiver — so on a DTS or DTS-HD track the video
+            // takes the speed adjustment and the audio does not, and the two
+            // walk apart a little further with every correction. That is the
+            // progressive desync people report on a Fire TV Cube with DTS,
+            // and it is worse on long live sessions precisely because the
+            // corrections accumulate.
+            //
+            // With this set, the speed change is handed to AudioTrack, which
+            // applies it to the stream the receiver is decoding, so the two
+            // stay locked. Media3 falls back to Sonic wherever the platform
+            // cannot oblige, so nothing is lost on devices that do not support
+            // it.
+            .setEnableAudioTrackPlaybackParams(true)
 
         // Tunneled HW decoding on Android TV — feeds compressed samples straight to the SoC's
         // hardware decoder for lower latency + fewer dropped frames on 4K panels.
@@ -487,6 +507,24 @@ class PlayerEngine(
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(30_000)
             .setUsePlatformDiagnostics(false) // trims one Google Play Services dep on Fire TV
+            // Ask the display to match the source frame rate even when the
+            // switch is not seamless.
+            //
+            // Media3 already calls Surface.setFrameRate() on API 30+ — this is
+            // not a missing feature — but its default,
+            // VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS, declines the
+            // switch whenever the panel would blank to make it. Television
+            // hardware almost always blanks, so on the devices where matching
+            // matters most the default quietly never fires, and 24 fps film
+            // keeps being pulled onto a 60 Hz panel with the 3:2 cadence that
+            // makes pans judder.
+            //
+            // ALWAYS trades a brief black frame at the start of playback for a
+            // correct cadence throughout, which is the right way round for a
+            // film. It is also the modern half of what RefreshRateMatcher does
+            // by hand through preferredDisplayModeId; that path still covers
+            // devices below API 30.
+            .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ALWAYS)
             // Hold a partial wake lock + Wi-Fi lock while playing.
             //
             // The WAKE_LOCK permission was already declared and never used, so
