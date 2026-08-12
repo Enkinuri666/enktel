@@ -18,8 +18,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 143
-        versionName = "1.60.23"
+        versionCode = 144
+        versionName = "1.60.24"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -167,6 +167,10 @@ dependencies {
     implementation(libs.media3.exoplayer.smoothstreaming)
     implementation(libs.media3.exoplayer.rtsp)
     implementation(libs.media3.ui)
+    // System media integration: transport controls on the Fire TV overlay and
+    // the lock screen, "what's playing" for Alexa and Assistant, and hardware
+    // media keys. The app published none of this — see PlaybackSession.
+    implementation(libs.media3.session)
     implementation(libs.media3.ui.compose)
     implementation(libs.media3.datasource.okhttp)
     // No media3-datasource-rtmp, deliberately.

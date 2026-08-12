@@ -241,6 +241,10 @@ fun VodPlayerScreen(
             startPositionMs = if (!isLive) start else 0,
             externalSubUrl = extSubUrl,
             forceMimeType = forceMime,
+            // What the system's transport controls announce. `title` is already
+            // the fully-formed "Series S1E2 · Name" the player shows.
+            title = title,
+            artworkUrl = posterUrl,
         )
         engine.setLoudnessOn(loudnessOn)
     }

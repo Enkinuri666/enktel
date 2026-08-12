@@ -249,7 +249,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // UA when it is created. Blank resets to the app default so one
         // channel's override never leaks onto the next.
         engine.setStreamUserAgent(ch.userAgent)
-        engine.playCandidates(candidates, live = true)
+        engine.playCandidates(
+            candidates, live = true,
+            // Published to the system's transport controls and to whatever asks
+            // what is playing. The channel is the stable half; the programme
+            // comes from the guide and may not be known yet.
+            title = ch.name,
+            subtitle = nowNext.now?.title.orEmpty(),
+            artworkUrl = ch.logo,
+        )
         scope.launch {
             graph.settings.setLastChannel(ch.key)
             graph.settings.pushRecentChannel(ch.key)

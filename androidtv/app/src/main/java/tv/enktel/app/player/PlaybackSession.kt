@@ -244,6 +244,7 @@ class PlaybackSession(
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)
         engineRef = created
+        attachMediaSession(created)
         return created
     }
 
@@ -328,10 +329,47 @@ class PlaybackSession(
     }
 
     private fun releaseEngine() {
+        // Session first: it holds a reference to the player, and releasing the
+        // player out from under a live session is how you get a controller
+        // talking to a dead object.
+        runCatching { sessionRef?.release() }
+        sessionRef = null
         engineRef?.let {
             tv.enktel.app.voice.ActivePlayerRef.unregister(it.player)
             it.release()
         }
         engineRef = null
+    }
+
+    /**
+     * The session that publishes playback to the rest of the system.
+     *
+     * The app owned a player and told nothing outside itself about it. That is
+     * why the Fire TV transport overlay had nothing to control, why a paired
+     * remote's play/pause key did nothing while the app was in the background,
+     * and why asking Alexa what was playing got silence — all of those read a
+     * MediaSession, and there was not one.
+     *
+     * A bare MediaSession rather than a MediaSessionService: the service form
+     * exists to keep playback alive with a notification after the app is gone,
+     * which is a different feature with a foreground-service obligation
+     * attached. This publishes state and accepts transport commands for as long
+     * as the app is running, which is the whole of what was missing.
+     *
+     * Guarded, and deliberately so. A session that cannot be built — a
+     * duplicate id after a fast rebuild, a manufacturer's media stack in an odd
+     * state — must never be the reason a stream does not play. Nothing here is
+     * on the path to a picture.
+     */
+    private var sessionRef: androidx.media3.session.MediaSession? = null
+
+    private fun attachMediaSession(engine: PlayerEngine) {
+        runCatching {
+            sessionRef = androidx.media3.session.MediaSession.Builder(app, engine.player)
+                // Distinct per engine: PlaybackSession rebuilds the engine when
+                // the stream kind changes, and two sessions sharing an id throw.
+                .setId("enktel-" + System.nanoTime())
+                .build()
+        }
     }
 }
