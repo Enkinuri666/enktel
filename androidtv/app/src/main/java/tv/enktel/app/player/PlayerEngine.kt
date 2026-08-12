@@ -1302,6 +1302,46 @@ class PlayerEngine(
         player.trackSelectionParameters = params.build()
     }
 
+    /**
+     * Let go of the current stream, socket and all, before another is opened.
+     *
+     * ### Why a capped line needs this and an uncapped one does not
+     *
+     * On an Xtream panel an open stream is a session, and a line is sold with a
+     * cap on them. A channel change momentarily wants two: the one being left
+     * and the one being joined. On a cap of one there is no momentarily about
+     * it — the panel sees a second request against a limit of one and answers
+     * by refusing the new stream or by killing the old one, which is why a
+     * single-connection line can fail to tune, or tune and then die, on a
+     * channel change that would be unremarkable anywhere else.
+     *
+     * `setMediaItem` followed by `prepare` does eventually release the previous
+     * source, but nothing says it does so before the next request goes out, and
+     * the panel's own bookkeeping lags the socket regardless. This makes the
+     * release explicit and ordered.
+     *
+     * ### The eviction is the part that is easy to miss
+     *
+     * Closing a response is not closing a socket. OkHttp keeps the connection
+     * in its pool for reuse — which is normally the entire point, and is what
+     * makes zapping fast — but a socket still open to a `/live` URL is how a
+     * panel decides the session is still in use. So on a capped line the pool
+     * has to be told to actually hang up. That costs the next request a fresh
+     * handshake, which is exactly the trade worth making when the alternative
+     * is not getting a picture at all.
+     *
+     * Deliberately not called on lines with room: throwing away warm
+     * connections there would slow every zap to fix a problem those lines do
+     * not have.
+     */
+    fun releaseStreamAndConnections() {
+        runCatching {
+            player.stop()
+            player.clearMediaItems()
+        }
+        runCatching { http.connectionPool.evictAll() }
+    }
+
     fun release() {
         playerHandler.removeCallbacksAndMessages(null)
         loudness?.release(); loudness = null

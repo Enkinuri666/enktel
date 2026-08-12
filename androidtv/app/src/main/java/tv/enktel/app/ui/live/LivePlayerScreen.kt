@@ -251,15 +251,32 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // UA when it is created. Blank resets to the app default so one
         // channel's override never leaks onto the next.
         engine.setStreamUserAgent(ch.userAgent)
-        engine.playCandidates(
-            candidates, live = true,
-            // Published to the system's transport controls and to whatever asks
-            // what is playing. The channel is the stable half; the programme
-            // comes from the guide and may not be known yet.
-            title = ch.name,
-            subtitle = nowNext.now?.title.orEmpty(),
-            artworkUrl = ch.logo,
-        )
+        val startStream = {
+            engine.playCandidates(
+                candidates, live = true,
+                // Published to the system's transport controls and to whatever
+                // asks what is playing. The channel is the stable half; the
+                // programme comes from the guide and may not be known yet.
+                title = ch.name,
+                subtitle = nowNext.now?.title.orEmpty(),
+                artworkUrl = ch.logo,
+            )
+        }
+        if (tv.enktel.app.player.ZapPlan.needsReleaseBeforeAcquire(p.maxConnections)) {
+            // On a line that permits one or two sessions there is no room for a
+            // channel change's momentary overlap, and the panel resolves the
+            // shortfall by refusing the new stream or killing the old one. On a
+            // cap of one that is every zap. So let go first, socket included,
+            // and give the panel a moment to notice before asking again. See
+            // PlayerEngine.releaseStreamAndConnections.
+            engine.releaseStreamAndConnections()
+            scope.launch {
+                kotlinx.coroutines.delay(tv.enktel.app.player.ZapPlan.RELEASE_GRACE_MS)
+                startStream()
+            }
+        } else {
+            startStream()
+        }
         scope.launch {
             graph.settings.setLastChannel(ch.key)
             graph.settings.pushRecentChannel(ch.key)
