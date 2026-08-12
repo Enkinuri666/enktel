@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 14, // v14 remembers which series a resumed episode belongs to
+    version = 15, // v15 gives each provider its own User-Agent
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -269,12 +269,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // A panel that answers 403 to valid credentials is filtering on
+                // User-Agent. There was one global override for that, reachable
+                // only if the Panel Doctor happened to suggest it — the wrong
+                // shape for anyone with more than one line, because it applies
+                // one provider's workaround to every other provider too.
+                //
+                // Blank means "no opinion", which is what every existing row
+                // gets, so nothing changes for anyone until they choose.
+                db.execSQL("ALTER TABLE profiles ADD COLUMN userAgent TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
+                    MIGRATION_14_15,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

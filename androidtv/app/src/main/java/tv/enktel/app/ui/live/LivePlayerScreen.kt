@@ -149,6 +149,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // docked mode so the mini window gets out of the way.
     LaunchedEffect(Unit) { session.expand() }
     val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
+    /** Which way the last zap went: +1 up, -1 down, 0 before any zap. */
+    var lastZapDirection by remember(p.id) { mutableIntStateOf(0) }
     DisposableEffect(zapPreloader) { onDispose { zapPreloader.cancel() } }
     val ctxForRefresh = androidx.compose.ui.platform.LocalContext.current
     androidx.compose.runtime.LaunchedEffect(engine) {
@@ -249,7 +251,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // UA when it is created. Blank resets to the app default so one
         // channel's override never leaks onto the next.
         engine.setStreamUserAgent(ch.userAgent)
-        engine.playCandidates(candidates, live = true)
+        engine.playCandidates(
+            candidates, live = true,
+            // Published to the system's transport controls and to whatever asks
+            // what is playing. The channel is the stable half; the programme
+            // comes from the guide and may not be known yet.
+            title = ch.name,
+            subtitle = nowNext.now?.title.orEmpty(),
+            artworkUrl = ch.logo,
+        )
         scope.launch {
             graph.settings.setLastChannel(ch.key)
             graph.settings.pushRecentChannel(ch.key)
@@ -284,6 +294,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     fun zap(delta: Int) {
         val list = channels
         if (list.isEmpty()) return
+        // Which way the viewer is travelling. Somebody who has just pressed
+        // channel-up is far likelier to press it again than to reverse, so the
+        // next warm-up follows them instead of warming both directions at
+        // twice the session cost.
+        lastZapDirection = delta
+        // Whatever is being warmed is now the wrong guess, or is about to
+        // compete with the stream being opened. Either way, stop it.
+        zapPreloader.cancel()
         val idx = list.indexOfFirst { it.key == current?.key }
         val next = list[((idx + delta) % list.size + list.size) % list.size]
         tune(next)
@@ -304,36 +322,34 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
-    // Rapid-zapping latency hider: warm connections to the channel directly
-    // above and below the current one so the socket/TLS handshake is
-    // already done by the time the user actually flips.  See ZapPreloader.
-    LaunchedEffect(current?.key, channels) {
-        // Not on a single-connection line.
+    // Rapid-zapping latency hider: open a second connection to the channel the
+    // viewer is most likely to select next, so the handshake is already paid
+    // for when they press the button. See ZapPreloader and ZapPlan.
+    LaunchedEffect(current?.key, channels, lastZapDirection) {
+        // Only where the line has room to hold it.
         //
-        // Warming the next channel means issuing a request to a *second*
-        // stream URL while the first is still playing. On a line that permits
-        // one connection that is not an optimisation, it is a second session
-        // against a cap of one — panels answer that either by refusing the
-        // warm-up (pointless) or by dropping the session already in progress
-        // (actively harmful, and it presents as the stream cutting out for no
-        // visible reason while the user is sitting still).
+        // A request to a stream URL is a session on an Xtream panel, and a zap
+        // already overlaps two of them — the outgoing stream has not always let
+        // go by the time the incoming one opens. So warming needs a cap of
+        // three, not two. The previous rule excluded only single-connection
+        // lines, which left a two-connection line warming *two* neighbours:
+        // three sessions against a cap of two before the viewer touched
+        // anything. Panels answer that by dropping the session in progress,
+        // and that presents as the stream cutting out while they sit still.
         //
-        // maxConnections comes from the panel's own user_info. 0 means it did
-        // not say, so the benefit of the doubt goes to warming — the previous
-        // behaviour — rather than disabling zap latency hiding for every M3U
-        // profile.
-        if (p.maxConnections == 1) return@LaunchedEffect
+        // 0 means the panel did not say — every M3U line and plenty of Xtream
+        // panels report nothing — so the benefit of the doubt goes to warming.
+        if (!tv.enktel.app.player.ZapPlan.shouldWarm(p.maxConnections)) return@LaunchedEffect
         val list = channels
         val cur = current
         if (list.isEmpty() || cur == null) return@LaunchedEffect
         val idx = list.indexOfFirst { it.key == cur.key }
-        if (idx < 0) return@LaunchedEffect
-        val up = list[(idx + 1) % list.size]
-        val down = list[((idx - 1) % list.size + list.size) % list.size]
-        val urls = listOf(up, down).map {
-            tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(p, it, preferHls = streamFormat != "ts").first()
-        }
-        zapPreloader.warm(this, urls)
+        val target = tv.enktel.app.player.ZapPlan.target(list.size, idx, lastZapDirection)
+            ?: return@LaunchedEffect
+        val url = tv.enktel.app.data.xtream.StreamUrlResolver
+            .forChannel(p, list[target], preferHls = streamFormat != "ts")
+            .firstOrNull() ?: return@LaunchedEffect
+        zapPreloader.warm(this, listOf(url))
     }
 
     // Initial tune

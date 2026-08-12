@@ -45,6 +45,14 @@ class AppGraph(app: Application) {
     // Read on every request by UserAgentInterceptor, so changing it in
     // Settings (or via the Panel Doctor's auto-tune) takes effect immediately
     // rather than needing the OkHttp client rebuilt.
+    /**
+     * The active provider's User-Agent, or blank.
+     *
+     * Held beside the global one rather than folded into it, so the two stay
+     * separable: Settings shows which of them is actually in force, and
+     * switching provider must not leave the previous provider's agent behind.
+     */
+    @Volatile private var profileUserAgent: String = ""
     @Volatile private var userAgentOverride: String = ""
     val http: OkHttpClient = OkHttpClient.Builder()
         // Wider timeouts so slower IPTV proxy layers (Cloudflare, IPTV-Editor,
@@ -84,7 +92,12 @@ class AppGraph(app: Application) {
         // (which surfaces here as an unauthenticated 407). VLC's UA is the
         // industry-standard "just let it through" string for IPTV endpoints.
         .addInterceptor(
-            tv.enktel.app.data.net.UserAgentInterceptor(DEFAULT_UA) { userAgentOverride },
+            tv.enktel.app.data.net.UserAgentInterceptor(DEFAULT_UA) {
+                // Provider first, then the device-wide override. See UserAgents.
+                tv.enktel.app.data.net.UserAgents.effective(
+                    profile = profileUserAgent, global = userAgentOverride, default = "",
+                )
+            },
         )
         .addInterceptor(
             tv.enktel.app.data.net.StreamHealthInterceptor(
@@ -168,6 +181,14 @@ class AppGraph(app: Application) {
         }
         bgScope.launch {
             settings.customUserAgent.collect { userAgentOverride = it }
+        }
+        // Follow the active provider's agent, so switching line switches it.
+        bgScope.launch {
+            settings.activeProfileId.collect { id ->
+                profileUserAgent = runCatching {
+                    db.profileDao().byId(id)?.userAgent.orEmpty()
+                }.getOrDefault("")
+            }
         }
         bgScope.launch {
             settings.sportsDbKey.collect {

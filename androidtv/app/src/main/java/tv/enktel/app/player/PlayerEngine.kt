@@ -857,12 +857,59 @@ class PlayerEngine(
      *  [forceMimeType] pins the container so ExoPlayer skips its own
      *  auto-detection (e.g. `MimeTypes.VIDEO_MP4` to strictly parse as MP4
      *  when the "Force MP4 fallback (VOD)" setting is on). */
-    fun play(url: String, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "", forceMimeType: String = "") {
+    fun play(
+        url: String,
+        live: Boolean,
+        startPositionMs: Long = 0,
+        externalSubUrl: String = "",
+        forceMimeType: String = "",
+        /**
+         * What to call this, for anything outside the app that asks.
+         *
+         * The MediaItem carried a URI and nothing else, so `player.mediaMetadata`
+         * was empty and every system surface that reads it — the Fire TV
+         * transport overlay, the lock screen, Alexa's "what's playing" — had a
+         * stream to control and no idea what it was. Optional so the callers
+         * that genuinely have no title (diagnostics probes) need not invent one.
+         */
+        title: String = "",
+        subtitle: String = "",
+        artworkUrl: String = "",
+    ) {
         candidateQueue = mutableListOf()
         triedFallback.value = false
         forcedMimeType = forceMimeType
         liveReconnects = 0
+        pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
         playInternal(Candidate(url, forceMimeType), live, startPositionMs, externalSubUrl)
+    }
+
+    /**
+     * Metadata for the item currently being prepared.
+     *
+     * Held on the engine rather than threaded through playInternal because the
+     * fallback chain re-enters playInternal for each candidate, and the title
+     * does not change just because the fourth URL shape is being tried.
+     */
+    private var pendingMetadata: androidx.media3.common.MediaMetadata? = null
+
+    /** Null when the caller supplied nothing worth publishing. */
+    private fun buildMetadata(
+        title: String,
+        subtitle: String,
+        artworkUrl: String,
+    ): androidx.media3.common.MediaMetadata? {
+        if (title.isBlank() && subtitle.isBlank() && artworkUrl.isBlank()) return null
+        return androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(title.ifBlank { null })
+            // Station reads better than artist on a live channel, and the
+            // controllers that only know about artist still get something.
+            .setStation(subtitle.ifBlank { null })
+            .setArtist(subtitle.ifBlank { null })
+            .setArtworkUri(artworkUrl.ifBlank { null }?.toUri())
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .build()
     }
 
     /** A URL plus how to interpret it. See [expand] for why one URL can
@@ -903,8 +950,18 @@ class PlayerEngine(
      * 404s or resets the connection on the others — see
      * [tv.enktel.app.data.xtream.StreamUrlResolver].
      */
-    fun playCandidates(urls: List<String>, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
+    fun playCandidates(
+        urls: List<String>,
+        live: Boolean,
+        startPositionMs: Long = 0,
+        externalSubUrl: String = "",
+        /** See the same parameters on [play]. */
+        title: String = "",
+        subtitle: String = "",
+        artworkUrl: String = "",
+    ) {
         if (urls.isEmpty()) return
+        pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
         val expanded = urls.distinct().map { initialCandidate(it) }
         candidateQueue = expanded.drop(1).toMutableList()
         candidateLive = live
@@ -943,6 +1000,10 @@ class PlayerEngine(
             // auto-detection (Force MP4 fallback etc). Media3 uses this
             // hint to select the extractor directly rather than sniffing.
             if (forcedMimeType.isNotBlank()) setMimeType(forcedMimeType)
+            // What this is, for anything outside the app that asks. Carried on
+            // every candidate so walking the fallback chain does not blank the
+            // title on the system's transport controls. See PlaybackSession.
+            pendingMetadata?.let { setMediaMetadata(it) }
             if (live) setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder()
                     // Sit a fixed distance behind the live edge rather than
