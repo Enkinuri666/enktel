@@ -90,6 +90,59 @@ class ZapPlanTest {
     }
 
     @Test
+    fun `a capped line lets go before it takes hold`() {
+        // One connection means every single zap is over the limit, because a
+        // channel change momentarily wants two. Two is the same story with one
+        // fewer failure mode.
+        assertTrue(ZapPlan.needsReleaseBeforeAcquire(1))
+        assertTrue(ZapPlan.needsReleaseBeforeAcquire(2))
+    }
+
+    @Test
+    fun `a line with room keeps its warm connections`() {
+        // Forcing a teardown here would slow every zap to fix a problem these
+        // lines do not have.
+        assertFalse(ZapPlan.needsReleaseBeforeAcquire(3))
+        assertFalse(ZapPlan.needsReleaseBeforeAcquire(10))
+    }
+
+    @Test
+    fun `an unreported cap is not treated as capped`() {
+        // Same reasoning as shouldWarm: silence is the common case, and
+        // penalising it would slow zapping for most profiles.
+        assertFalse(ZapPlan.needsReleaseBeforeAcquire(0))
+        assertFalse(ZapPlan.needsReleaseBeforeAcquire(-1))
+    }
+
+    @Test
+    fun `warming and releasing are opposites for every cap a panel can report`() {
+        // A line either has room to hold a spare connection open, or it needs
+        // the old one gone first. If a cap fell in both, a line would warm a
+        // connection it was about to be told to drop.
+        listOf(0, 1, 2, 3, 4, 10, 100).forEach { cap ->
+            assertTrue(
+                "cap $cap is in both or neither",
+                ZapPlan.shouldWarm(cap) != ZapPlan.needsReleaseBeforeAcquire(cap),
+            )
+        }
+    }
+
+    @Test
+    fun `a negative cap is the one case that is neither`() {
+        // No well-behaved panel reports one. Garbage is not evidence that a
+        // line is capped, and not evidence that it has room either, so both
+        // answers are no — which is deliberate and the single exception to the
+        // rule above.
+        assertFalse(ZapPlan.shouldWarm(-1))
+        assertFalse(ZapPlan.needsReleaseBeforeAcquire(-1))
+    }
+
+    @Test
+    fun `the release grace is short enough not to feel like a stall`() {
+        assertTrue(ZapPlan.RELEASE_GRACE_MS in 100..800)
+    }
+
+    @Test
     fun `playlists are told apart from raw transport streams`() {
         // The two need different handling: a playlist ends, a .ts response is
         // the broadcast and does not.

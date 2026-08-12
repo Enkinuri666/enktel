@@ -71,6 +71,40 @@ object ZapPlan {
     }
 
     /**
+     * Whether a channel change has to let go of the old stream before opening
+     * the new one.
+     *
+     * A zap wants two sessions at its peak. A line that permits fewer than
+     * three has no room for that overlap, and the panel resolves the shortfall
+     * by refusing the new stream or dropping the old one — on a cap of one,
+     * every single channel change. Those lines trade a fraction of a second of
+     * zap latency for a picture that actually arrives.
+     *
+     * Lines with room are left alone: forcing a full teardown there would slow
+     * every zap to fix a problem they do not have.
+     *
+     * Complementary to [shouldWarm] across every cap a panel can actually
+     * report — a line either has room to hold a spare connection open, or it
+     * needs the old one gone first. The one exception is a negative figure,
+     * which no well-behaved panel produces: there both answers are no, because
+     * garbage is not evidence that a line is capped and not evidence that it
+     * has room either.
+     */
+    fun needsReleaseBeforeAcquire(maxConnections: Int): Boolean =
+        maxConnections in 1..SESSIONS_DURING_ZAP
+
+    /**
+     * How long to let the socket close and the panel notice, before asking it
+     * for the next stream.
+     *
+     * A guess, and flagged as one. Panels free a session somewhere between
+     * immediately on socket close and several seconds later, and there is no
+     * way to ask which. Long enough to cover the close propagating, short
+     * enough that a viewer holding channel-up does not feel it as a stall.
+     */
+    const val RELEASE_GRACE_MS = 300L
+
+    /**
      * True when the URL is worth a full warm-up request.
      *
      * An HLS playlist is a few hundred bytes of text and every panel serves it.
