@@ -224,19 +224,25 @@ dependencies {
 // two tasks read and write the same `<version>.json` concurrently. The failure
 // surfaces as a corrupt schema rather than as anything resembling a race:
 //
-//   e: [ksp] JsonDecodingException: Unexpected JSON token at offset 14197:
-//   Expected colon ':', but had 'EOF' instead at path: $.database.entities[4]
+//   e: [ksp] JsonDecodingException: Unexpected JSON token at offset 41586:
+//   Expected colon ':', but had 'EOF' instead at path: $.database.entities[16]
 //
-// which is one task parsing a file the other is half way through writing. It
-// is intermittent by nature, so it passes far more often than it fails, which
-// is exactly what makes it worth pinning down rather than re-running.
+// which is one task parsing a file the other is half way through writing.
+//
+// `all` rather than a snapshot of `tasks.names` inside `afterEvaluate`. The
+// first attempt at this did the latter and silently did nothing: KSP registers
+// its tasks from AGP's variant callbacks, which run after `afterEvaluate`, so
+// the filter matched an empty set and no ordering was applied. The build that
+// followed went green anyway — the race is intermittent, and one green build
+// is not evidence. `all` fires for tasks registered later too, which is the
+// property this needs.
 //
 // mustRunAfter only orders tasks that are already scheduled — it never causes
 // one to run — so this costs nothing when a build touches a single variant.
-afterEvaluate {
-    tasks.names
-        .filter { it.startsWith("ksp") && it.endsWith("Kotlin") }
-        .sorted()
-        .map { tasks.named(it) }
-        .zipWithNext { earlier, later -> later.configure { mustRunAfter(earlier) } }
+run {
+    val ordered = mutableListOf<Task>()
+    tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.all {
+        ordered.forEach { earlier -> this.mustRunAfter(earlier) }
+        ordered += this
+    }
 }
