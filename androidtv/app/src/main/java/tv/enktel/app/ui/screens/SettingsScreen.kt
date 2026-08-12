@@ -205,6 +205,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
             }
+            ProviderUserAgent(graph, p, scope)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
@@ -1355,3 +1356,88 @@ internal val SETTINGS_CATEGORIES = listOf(
 
 internal val CATEGORIES = SETTINGS_CATEGORIES.map { it.name }
 
+
+/**
+ * The User-Agent a single provider is served with.
+ *
+ * A panel that answers 403 to a request carrying valid credentials is
+ * filtering on agent rather than rejecting the login, and changing it is the
+ * highest-yield fix there is. Until now the only way to reach that was for the
+ * Panel Doctor to happen to suggest it, and the value it set was global — so a
+ * viewer with two lines had one provider's workaround applied to both.
+ *
+ * Presented as suggestions rather than a text field on purpose. These strings
+ * are long and unforgiving: a User-Agent with one character wrong does not
+ * fail loudly, it just carries on getting 403 while looking correct on screen.
+ * Picking from a list of known-good values is most of what makes this usable
+ * from a sofa with a remote.
+ */
+@Composable
+private fun ProviderUserAgent(
+    graph: AppGraph,
+    profile: tv.enktel.app.data.db.Profile,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    var open by remember(profile.id) { mutableStateOf(false) }
+    val current = profile.userAgent
+    val chosen = tv.enktel.app.data.net.UserAgents.suggestionFor(current)
+    val summary = when {
+        current.isBlank() -> "App default"
+        chosen != null -> chosen.label
+        else -> "Custom"
+    }
+
+    FocusButton(
+        "🕶  User-Agent: $summary",
+        accent = current.isNotBlank(),
+        onClick = { open = !open },
+    )
+    if (!open) {
+        // Say which way round it is even when collapsed. "Set to Smart TV" and
+        // "set to Smart TV by the global override rather than by this
+        // provider" are different facts, and only the second explains why
+        // changing this row can appear to do nothing.
+        if (current.isBlank()) {
+            Text(
+                "Sent as the app default unless a global override is set. Open to change it for this provider only.",
+                color = EnktelTextFaint, fontSize = 10.sp,
+            )
+        }
+        return
+    }
+
+    Text(
+        "Sent with every request to this provider. Change it when a line answers 403 " +
+            "with credentials that are otherwise fine — that is agent filtering, not a bad password.",
+        color = EnktelTextDim, fontSize = 11.sp,
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        tv.enktel.app.data.net.UserAgents.SUGGESTIONS.forEach { s ->
+            val selected = current == s.value
+            FocusButton(
+                (if (selected) "✓ " else "") + s.label,
+                accent = selected,
+                onClick = { scope.launch { graph.playlists.setUserAgent(profile, s.value) } },
+            )
+            Text(s.hint, color = EnktelTextFaint, fontSize = 10.sp)
+        }
+        FocusButton(
+            (if (current.isBlank()) "✓ " else "") + "App default",
+            accent = current.isBlank(),
+            onClick = { scope.launch { graph.playlists.setUserAgent(profile, "") } },
+        )
+        Text(
+            "Clears the provider's own agent. The global override, if any, applies instead.",
+            color = EnktelTextFaint, fontSize = 10.sp,
+        )
+    }
+    if (current.isNotBlank() && chosen == null) {
+        Text("Currently: $current", color = EnktelTextDim, fontSize = 10.sp)
+    }
+    Text(
+        "Changing this takes effect on the next request — no re-sync needed. " +
+            "If it makes no difference, run Diagnostics: the Panel Doctor reports what the panel " +
+            "actually answered for each agent it tried.",
+        color = EnktelTextFaint, fontSize = 10.sp,
+    )
+}

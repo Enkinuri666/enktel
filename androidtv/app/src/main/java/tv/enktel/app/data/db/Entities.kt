@@ -20,6 +20,16 @@ data class Profile(
     val lastSync: Long = 0,
     val expiresAt: Long = 0,
     val maxConnections: Int = 0,
+    /**
+     * The User-Agent this provider is served with, or blank for the default.
+     *
+     * A panel that filters on agent is a fact about that panel, so the
+     * workaround belongs to the profile rather than to the device — forcing
+     * one provider's required agent globally applies it to every other line
+     * the viewer has, including the ones that were working. See
+     * [tv.enktel.app.data.net.UserAgents].
+     */
+    val userAgent: String = "",
 )
 
 @Entity(tableName = "channels", indices = [Index("profileId"), Index("profileId", "categoryId")])

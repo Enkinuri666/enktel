@@ -103,6 +103,16 @@ class PlaylistRepository(
     suspend fun markSynced(p: Profile) = dao.update(p.copy(lastSync = System.currentTimeMillis()))
 
     /**
+     * Set the User-Agent this provider is served with. Blank clears it.
+     *
+     * Per provider rather than per device: the agent a strict panel demands is
+     * a fact about that panel, and applying it globally would impose one
+     * line's workaround on every other line the viewer has. See
+     * [tv.enktel.app.data.net.UserAgents].
+     */
+    suspend fun setUserAgent(p: Profile, ua: String) = dao.update(p.copy(userAgent = ua.trim()))
+
+    /**
      * Returns whichever of https:// / http:// the panel actually answers on,
      * preferring the one already in [normalized]. Falls back to [normalized]
      * unchanged when neither answers, so the caller still gets the real error.
