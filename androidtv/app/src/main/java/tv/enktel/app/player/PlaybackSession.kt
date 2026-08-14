@@ -99,6 +99,7 @@ class PlaybackSession(
         val vodBuffer: BufferConfig? = null,
         val liveBuffer: BufferConfig? = null,
         val allocatorSizeBytes: Int = 0,
+        val tunneling: Boolean = true,
     )
 
     @Volatile
@@ -170,11 +171,14 @@ class PlaybackSession(
             ) { profile, min, max, play, rebuf ->
                 if (profile == "custom") BufferConfig(min, max, play, rebuf) else null
             }
-            combine(baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb) { base, vod, live, allocKb ->
+            combine(
+                baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb, settings.tunneling,
+            ) { base, vod, live, allocKb, tunnel ->
                 base.copy(
                     vodBuffer = vod,
                     liveBuffer = live,
                     allocatorSizeBytes = allocKb * 1024,
+                    tunneling = tunnel,
                 )
             }.collect { next ->
                 val prev = config
@@ -240,6 +244,7 @@ class PlaybackSession(
             vodBuffer = c.vodBuffer,
             liveBuffer = c.liveBuffer,
             allocatorSizeBytes = c.allocatorSizeBytes,
+            tunneling = c.tunneling,
         )
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)

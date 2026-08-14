@@ -44,6 +44,7 @@ class SettingsStore(private val context: Context) {
     private val SUB_BG_ALPHA = intPreferencesKey("sub_bg_alpha")
     private val EXT_SUB_URL = stringPreferencesKey("ext_sub_url")
     private val AUTOPLAY_NEXT_EP = booleanPreferencesKey("autoplay_next_ep")
+    private val TUNNELING = booleanPreferencesKey("tunneled_playback")
     private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
     private val AUTO_PIP_ON_BACK = booleanPreferencesKey("auto_pip_on_back")
@@ -244,6 +245,17 @@ class SettingsStore(private val context: Context) {
     val subBgAlpha: Flow<Int> = context.dataStore.data.map { it[SUB_BG_ALPHA] ?: 0 }
     val extSubUrl: Flow<String> = context.dataStore.data.map { it[EXT_SUB_URL] ?: "" }
     val autoplayNextEp: Flow<Boolean> = context.dataStore.data.map { it[AUTOPLAY_NEXT_EP] ?: true }
+
+    /**
+     * Tunneled hardware playback, on the television build only.
+     *
+     * Defaults on, which is what it has always been. Exposed because tunneling
+     * is one of exactly two things that differ between the TV and mobile
+     * builds, and a title that plays cleanly on a phone and stutters on a Fire
+     * TV is most likely tripping over one of them — but which one is a property
+     * of the device's media stack, not something the app can ask.
+     */
+    val tunneling: Flow<Boolean> = context.dataStore.data.map { it[TUNNELING] ?: true }
     val skipIntroSec: Flow<Int> = context.dataStore.data.map { it[SKIP_INTRO_SEC] ?: 0 }
     val pipEnabled: Flow<Boolean> = context.dataStore.data.map { it[PIP_ENABLED] ?: true }
     val autoPipOnBack: Flow<Boolean> = context.dataStore.data.map { it[AUTO_PIP_ON_BACK] ?: true }
@@ -472,6 +484,7 @@ class SettingsStore(private val context: Context) {
     suspend fun setSubBgAlpha(v: Int) = context.dataStore.edit { it[SUB_BG_ALPHA] = v }
     suspend fun setExtSubUrl(v: String) = context.dataStore.edit { it[EXT_SUB_URL] = v }
     suspend fun setAutoplayNextEp(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_NEXT_EP] = v }
+    suspend fun setTunneling(v: Boolean) = context.dataStore.edit { it[TUNNELING] = v }
     suspend fun setSkipIntroSec(v: Int) = context.dataStore.edit { it[SKIP_INTRO_SEC] = v }
     suspend fun setPipEnabled(v: Boolean) = context.dataStore.edit { it[PIP_ENABLED] = v }
     suspend fun setAutoPipOnBack(v: Boolean) = context.dataStore.edit { it[AUTO_PIP_ON_BACK] = v }
