@@ -804,6 +804,25 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
 
         }
+        if (category == "Playback" && BuildConfig.FLAVOR == "tv") {
+            Spacer(Modifier.height(10.dp))
+            Text("HARDWARE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            val tunneling by graph.settings.tunneling.collectAsStateWithLifecycle(initialValue = true)
+            FocusButton(
+                "Tunneled playback: ${if (tunneling) "ON" else "off"}",
+                accent = tunneling,
+                onClick = { scope.launch { graph.settings.setTunneling(!tunneling) } },
+            )
+            Text(
+                "Feeds video straight to the television's decoder, bypassing part of Android's " +
+                    "graphics path. Usually smoother on 4K. Turn it off if a title plays cleanly " +
+                    "on the phone app but stutters here — tunnelling is one of only two things " +
+                    "that differ between the two builds, and whether a given box handles it well " +
+                    "for a given codec is not something the app can detect. Takes effect on the " +
+                    "next thing you play.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)

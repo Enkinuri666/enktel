@@ -30,8 +30,31 @@ import kotlin.math.abs
  */
 object RefreshRateMatcher {
 
-    /** Called by player screens when the video track's frame rate is known. */
+    /**
+     * Called by player screens when the video track's frame rate is known.
+     *
+     * ### Why this stands down on API 30 and up
+     *
+     * Since v1.60.22 the player asks Media3 to match the source frame rate
+     * itself, through `setVideoChangeFrameRateStrategy` and the platform's
+     * `Surface.setFrameRate` — the modern API, and the one the system is
+     * designed around. This object predates that and does the same job the old
+     * way, by naming a display mode outright.
+     *
+     * Running both is worse than running either. They are two independent
+     * requests to re-time the panel, arriving from different threads at
+     * different moments in preparation, and a television answers each by
+     * resyncing — which is a blank and a hitch. The report that led here was a
+     * VOD title that played cleanly on the phone and stuttered on the Fire TV,
+     * and the frame-rate machinery is one of only two things that differ
+     * between those two builds.
+     *
+     * So: above API 30, Media3 owns it and this does nothing. Below, where
+     * `Surface.setFrameRate` does not exist, this is the only mechanism there
+     * is and it keeps working exactly as before.
+     */
     fun match(activity: Activity, sourceFps: Float) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return
         if (sourceFps < 20f || sourceFps > 121f) return
         try {
             val window = activity.window ?: return

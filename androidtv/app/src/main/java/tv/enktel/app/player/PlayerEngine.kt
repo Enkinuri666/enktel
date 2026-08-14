@@ -94,6 +94,15 @@ class PlayerEngine(
     /** Memory pool chunk size in bytes. 0 = default (16 KB). Larger values
      *  (e.g. 2 MB) reduce allocator overhead for 4K and large MKV streams. */
     allocatorSizeBytes: Int = 0,
+    /**
+     * Tunneled hardware playback, where the device supports it.
+     *
+     * Only ever applies on the television build. Configurable because tunneling
+     * is one of two things that differ between the TV and mobile builds, and
+     * whether a given SoC handles it cleanly for a given codec is not something
+     * the app can determine — only try.
+     */
+    tunneling: Boolean = true,
 ) {
     private var streamHttpFactory: OkHttpDataSource.Factory? = null
 
@@ -415,7 +424,7 @@ class PlayerEngine(
         // Tunneled HW decoding on Android TV — feeds compressed samples straight to the SoC's
         // hardware decoder for lower latency + fewer dropped frames on 4K panels.
         trackSelector.parameters = trackSelector.buildUponParameters()
-            .setTunnelingEnabled(isTv)
+            .setTunnelingEnabled(isTv && tunneling)
             .setPreferredAudioMimeTypes(
                 androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC,
                 androidx.media3.common.MimeTypes.AUDIO_E_AC3,
