@@ -482,9 +482,32 @@ class PlayerEngine(
             // Cleared, the extractor seeks to read the Cues element and emits a
             // real seek map, which is what turns a scrub into an HTTP range
             // request for the right byte offset.
+            // Non-IDR keyframes: right for live, wrong for a film.
+            //
+            // The flag tells the MPEG-TS extractor to treat a non-IDR frame as a
+            // point it may start decoding from. On live that is what you want —
+            // a stream joined mid-GOP has no IDR to wait for, and waiting for
+            // one is a second or two of black on every channel change.
+            //
+            // On VOD it is the wrong trade and it is visible. Starting mid-GOP
+            // means decoding P-frames whose reference frames were never read, so
+            // the picture opens as macroblocked mush and stays that way until
+            // the next real keyframe arrives — which is exactly the "starts
+            // playing and the video is choppy" report. A film has an IDR at the
+            // start and nothing to gain from skipping it; the file is not going
+            // anywhere while the extractor finds it.
+            //
+            // FLAG_DETECT_ACCESS_UNITS stays on both: it makes the extractor
+            // find real frame boundaries rather than guess them, which is the
+            // thing that stops audio and video drifting apart on a TS with no
+            // reliable PTS.
             .setTsExtractorFlags(
-                androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
+                if (live) {
+                    androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
+                        androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                } else {
                     androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                }
             )
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors).apply {
             // Absorb a dropped segment inside the media source instead of
@@ -622,8 +645,12 @@ class PlayerEngine(
                 // Classifying the second as the first is what made live spend
                 // its evening rewriting URLs instead of playing. See
                 // LiveRecovery.
+                // A container failure is worth one reinterpretation before the
+                // chain is walked: drop a wrong extension-derived pin so the
+                // bytes get sniffed, or read an extensionless URL as HLS. See
+                // Routing.reinterpret.
                 val hlsRetry = if (err.errorCode in CONTAINER_ERRORS) {
-                    currentCandidate?.let { asHlsRetry(it) }
+                    currentCandidate?.let { Routing.reinterpret(it) }
                 } else null
                 val action = LiveRecovery.action(
                     code = err.errorCode,
@@ -1376,6 +1403,53 @@ class PlayerEngine(
      * by StreamRoutingTest rather than only through a running player.
      */
     internal object Routing {
+        /**
+         * The same URL again, with the container pin removed so ExoPlayer sniffs.
+         *
+         * ### The bug this exists to fix
+         *
+         * [initialCandidate] pins the MIME type when a URL's extension names its
+         * container, which skips the sniff chain and saves two wasted passes on
+         * every Matroska open. That is a real saving and it rests on the
+         * extension telling the truth.
+         *
+         * Xtream panels routinely serve `/movie/user/pass/1234.mp4` that is
+         * Matroska on the wire, or the reverse. Pinned, the MP4 extractor is
+         * handed MKV bytes and reports the container malformed — and because
+         * [asHlsRetry] declines any URL whose extension names a container, there
+         * was no second attempt. The fallback chain then walked to the next
+         * candidate, which carried the same extension, got the same pin, and
+         * failed identically. Every shape exhausted, "PARSING CONTAINER
+         * MALFORMED" on screen, for a file that plays perfectly well the moment
+         * anything looks at its actual bytes.
+         *
+         * Unpinning restores the sniff chain, which is what every player that
+         * does not optimise this gets for free.
+         *
+         * Null when there is no pin to remove, which also makes the retry
+         * terminate: an unpinned candidate cannot produce another one.
+         */
+        internal fun asSniffRetry(current: Candidate): Candidate? {
+            if (current.mimeType.isBlank()) return null
+            // An HLS pin comes from the playlist extension, not from a guess at a
+            // container, and dropping it would route a playlist to the
+            // progressive source.
+            if (current.mimeType == androidx.media3.common.MimeTypes.APPLICATION_M3U8) return null
+            return current.copy(mimeType = "")
+        }
+
+        /**
+         * How to reinterpret a URL that failed to parse: drop a wrong container
+         * pin first, and only then consider reading it as HLS.
+         *
+         * Order matters. A `.mkv` that is really MP4 needs the pin gone; an
+         * extensionless URL that is really a playlist needs the HLS reading. The
+         * two never apply to the same candidate, so this is a preference rather
+         * than a race, but stating it keeps the caller from having to know that.
+         */
+        internal fun reinterpret(current: Candidate): Candidate? =
+            asSniffRetry(current) ?: asHlsRetry(current)
+
         internal fun asHlsRetry(current: Candidate): Candidate? {
             if (current.mimeType == androidx.media3.common.MimeTypes.APPLICATION_M3U8) return null
             val path = current.url.substringBefore('?').substringBefore('#')
