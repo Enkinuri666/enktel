@@ -80,4 +80,52 @@ class StreamRoutingTest {
         val hls = e.initialCandidate("http://x-api.cc/live/u/p/99.m3u8")
         assertNull(e.asHlsRetry(hls))
     }
+
+    // ---- reinterpretation after a container failure ------------------------
+
+    @Test fun `a lying extension is recoverable by unpinning it`() {
+        // The bug this covers: Xtream panels routinely serve
+        // /movie/user/pass/1234.mp4 that is Matroska on the wire. Pinned to MP4
+        // by its extension, the MP4 extractor is handed MKV bytes and reports
+        // the container malformed — and asHlsRetry declines any URL whose
+        // extension names a container, so there was no second attempt at all.
+        // The chain then walked to the next candidate, which carried the same
+        // extension, took the same pin and failed identically.
+        val mp4 = e.initialCandidate("http://x-api.cc/movie/u/p/1234.mp4")
+        assertEquals(MimeTypes.VIDEO_MP4, mp4.mimeType)
+        val retry = e.reinterpret(mp4)
+        assertEquals("the pin must come off so the bytes get sniffed", "", retry?.mimeType)
+        assertEquals(mp4.url, retry?.url)
+    }
+
+    @Test fun `mkv and webm unpin the same way`() {
+        listOf("1.mkv", "1.webm", "1.m4v").forEach { name ->
+            val c = e.initialCandidate("http://x-api.cc/movie/u/p/$name")
+            assertEquals("$name should start pinned", true, c.mimeType.isNotBlank())
+            assertEquals("$name should unpin", "", e.reinterpret(c)?.mimeType)
+        }
+    }
+
+    @Test fun `an extensionless URL is still read as HLS`() {
+        // Unchanged behaviour: nothing to unpin, so the HLS reading applies.
+        val bare = e.initialCandidate("http://x-api.cc/live/u/p/99")
+        assertEquals(MimeTypes.APPLICATION_M3U8, e.reinterpret(bare)?.mimeType)
+    }
+
+    @Test fun `reinterpretation terminates`() {
+        // An unpinned progressive candidate must not produce another one, or a
+        // malformed file would loop between readings instead of failing.
+        val mp4 = e.initialCandidate("http://x-api.cc/movie/u/p/1234.mp4")
+        val once = e.reinterpret(mp4)
+        assertNull("a second reinterpretation would be a loop", once?.let { e.reinterpret(it) })
+    }
+
+    @Test fun `a playlist pin is never dropped`() {
+        // Unpinning an .m3u8 would route a playlist to the progressive source,
+        // which is a guaranteed failure rather than a recovery.
+        val m3u8 = e.initialCandidate("http://x-api.cc/live/u/p/99.m3u8")
+        assertEquals(MimeTypes.APPLICATION_M3U8, m3u8.mimeType)
+        assertNull(e.asSniffRetry(m3u8))
+        assertNull(e.reinterpret(m3u8))
+    }
 }
