@@ -18,8 +18,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 150
-        versionName = "1.60.30"
+        versionCode = 151
+        versionName = "1.60.31"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
