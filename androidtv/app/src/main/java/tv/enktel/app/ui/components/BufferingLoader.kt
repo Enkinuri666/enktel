@@ -67,8 +67,7 @@ fun BufferingLoader(
 
     Column(
         modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.Black.copy(alpha = 0.55f))
+            .glassSurface(shape = RoundedCornerShape(24.dp), alpha = 0.62f)
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

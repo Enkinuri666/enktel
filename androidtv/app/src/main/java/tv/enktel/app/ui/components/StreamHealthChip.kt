@@ -88,8 +88,7 @@ fun StreamHealthChip(modifier: Modifier = Modifier) {
     ) {
         Row(
             Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.Black.copy(alpha = 0.6f))
+                .glassChip(alpha = 0.68f)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),

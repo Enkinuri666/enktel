@@ -26,30 +26,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * "Ambilight" style ambient glow that bleeds the dominant colour of an
- * asset's poster / logo behind whatever UI sits on top of it — the same
- * living-room effect as a Philips Ambilight TV, translated to the app.
+ * The dominant colour of an image, animated, for tinting UI around it.
  *
- * The dominant colour is extracted from the currently-focused asset's
- * artwork using AndroidX Palette on a background thread.  It then
- * animates via [animateColorAsState] so switching between rails or
- * highlighting a new hero produces a smooth cinematic wash rather than
- * a hard cut.  Renders as a large radial gradient at the top of the
- * screen with a soft falloff into the app's dark background.
+ * Pulled out of [AmbilightGlow] because the glow is no longer the only thing
+ * that wants it: the VOD player's glass panels take an accent wash from the
+ * film's poster, which is the closest thing to vibrancy available when the
+ * backdrop is a video surface that cannot be sampled (see `Glass.kt`).
  *
- * Behaviour:
- *  - null / blank [imageUrl] falls back to the app's brand-blue accent.
- *  - Palette extraction failures fall back to the current colour, so an
- *    unreachable poster URL never leaves the glow at plain black.
- *  - The composable itself is a positioned Box you can overlay on top
- *    of the actual UI (place it below the content in Z order).
+ * Costs no extra fetch — it reads the poster out of the shared Coil cache,
+ * where whichever rail or details screen sent the viewer here has already put
+ * it — and decodes at 120 px, which is far more palette signal than needed.
+ *
+ * Returns [fallback] for a blank URL, and holds the last good colour if
+ * extraction fails, so a dead poster URL never snaps the UI to black.
  */
 @Composable
-fun AmbilightGlow(
+fun rememberDominantColor(
     imageUrl: String?,
-    modifier: Modifier = Modifier,
     fallback: Color = EnktelBlue,
-) {
+    animationMs: Int = 700,
+): Color {
     val ctx = LocalContext.current
     var target by remember { mutableStateOf(fallback) }
     LaunchedEffect(imageUrl) {
@@ -85,7 +81,40 @@ fun AmbilightGlow(
         }
         if (extracted != null) target = extracted
     }
-    val animated by animateColorAsState(target, animationSpec = tween(700), label = "ambilight")
+    val animated by animateColorAsState(
+        target,
+        animationSpec = tween(animationMs),
+        label = "dominantColor",
+    )
+    return animated
+}
+
+/**
+ * "Ambilight" style ambient glow that bleeds the dominant colour of an
+ * asset's poster / logo behind whatever UI sits on top of it — the same
+ * living-room effect as a Philips Ambilight TV, translated to the app.
+ *
+ * The dominant colour is extracted from the currently-focused asset's
+ * artwork using AndroidX Palette on a background thread.  It then
+ * animates via [animateColorAsState] so switching between rails or
+ * highlighting a new hero produces a smooth cinematic wash rather than
+ * a hard cut.  Renders as a large radial gradient at the top of the
+ * screen with a soft falloff into the app's dark background.
+ *
+ * Behaviour:
+ *  - null / blank [imageUrl] falls back to the app's brand-blue accent.
+ *  - Palette extraction failures fall back to the current colour, so an
+ *    unreachable poster URL never leaves the glow at plain black.
+ *  - The composable itself is a positioned Box you can overlay on top
+ *    of the actual UI (place it below the content in Z order).
+ */
+@Composable
+fun AmbilightGlow(
+    imageUrl: String?,
+    modifier: Modifier = Modifier,
+    fallback: Color = EnktelBlue,
+) {
+    val animated = rememberDominantColor(imageUrl, fallback)
     Box(
         modifier
             .fillMaxSize()

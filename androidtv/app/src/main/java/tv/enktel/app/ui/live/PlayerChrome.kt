@@ -48,13 +48,13 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.repo.NowNext
 import tv.enktel.app.player.StreamStats
+import tv.enktel.app.ui.components.cinematicScrim
+import tv.enktel.app.ui.components.glassSurface
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
-import tv.enktel.app.ui.theme.EnktelBorder
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
-import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.ui.theme.EnktelTextFaint
 import tv.enktel.app.ui.theme.EnktelTextOnArt
@@ -113,9 +113,7 @@ fun LiveInfoOverlay(
             Modifier
                 .align(Alignment.TopEnd)
                 .padding(28.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(EnktelSurface.copy(alpha = 0.75f))
-                .border(1.dp, EnktelBorder, RoundedCornerShape(12.dp))
+                .glassSurface(shape = RoundedCornerShape(12.dp), alpha = 0.75f)
                 .padding(horizontal = 16.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -134,11 +132,7 @@ fun LiveInfoOverlay(
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color(0xB3000000), Color(0xF0000000)),
-                    ),
-                )
+                .cinematicScrim(maxAlpha = 0.94f)
                 .padding(start = 44.dp, end = 44.dp, top = 60.dp, bottom = 22.dp),
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -146,9 +140,7 @@ fun LiveInfoOverlay(
                 Box(
                     Modifier
                         .size(84.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(EnktelSurface)
-                        .border(1.dp, EnktelBorder, RoundedCornerShape(12.dp)),
+                        .glassSurface(shape = RoundedCornerShape(12.dp), alpha = 0.95f),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (channel.logo.isNotBlank()) {
@@ -442,9 +434,7 @@ fun QuickMenuBar(actions: List<QuickAction>, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(listOf(Color.Transparent, Color(0xF2000000))),
-            )
+            .cinematicScrim(maxAlpha = 0.95f)
             .padding(top = 30.dp, bottom = 18.dp),
     ) {
         Text(

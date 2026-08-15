@@ -70,6 +70,7 @@ import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.NowNext
 import tv.enktel.app.data.xtream.XtreamClient
+import tv.enktel.app.ui.components.glassSurface
 import tv.enktel.app.util.Pin
 import tv.enktel.app.util.UnlockSession
 import tv.enktel.app.dvr.RecordScheduler
@@ -1039,9 +1040,7 @@ private fun InfoBar(
         modifier
             .fillMaxWidth()
             .padding(horizontal = hPad, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(EnktelSurface.copy(alpha = 0.70f), RoundedCornerShape(16.dp))
-            .border(1.dp, EnktelBorder, RoundedCornerShape(16.dp))
+            .glassSurface(alpha = 0.70f)
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

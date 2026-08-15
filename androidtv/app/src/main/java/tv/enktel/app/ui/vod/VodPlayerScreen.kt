@@ -64,6 +64,10 @@ import tv.enktel.app.data.db.WatchProgress
 import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
+import tv.enktel.app.ui.components.cinematicScrim
+import tv.enktel.app.ui.components.glassChip
+import tv.enktel.app.ui.components.glassSurface
+import tv.enktel.app.ui.components.rememberDominantColor
 import tv.enktel.app.ui.live.TrackPicker
 import tv.enktel.app.ui.player.AspectMode
 import tv.enktel.app.ui.player.SubtitleOverlay
@@ -603,6 +607,11 @@ fun VodPlayerScreen(
     var dragStartBrightness by remember { mutableFloatStateOf(0.5f) }
     var accumulatedFraction by remember { mutableFloatStateOf(0f) }
 
+    // Vibrancy for the glass panels below. A video surface cannot be sampled,
+    // so the poster stands in for the backdrop — it is the same picture, one
+    // frame of it, and it is already decoded in the image cache.
+    val accent = rememberDominantColor(posterUrl.ifBlank { null })
+
     Box(
         Modifier
             .fillMaxSize()
@@ -738,8 +747,10 @@ fun VodPlayerScreen(
                     // this Box and so were painted over the card.
                     .zIndex(2f)
                     .padding(32.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.88f))
+                    // Denser than the other panels: this one carries a
+                    // countdown the viewer is deciding against, so it has to
+                    // hold its own over whatever the closing scene is doing.
+                    .glassSurface(alpha = 0.88f, accent = accent)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
                 Text(
@@ -782,7 +793,9 @@ fun VodPlayerScreen(
             Text(
                 "Playback error: $playError",
                 color = EnktelLive,
-                modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(0.7f)).padding(16.dp),
+                modifier = Modifier.align(Alignment.Center)
+                    .glassSurface(alpha = 0.80f)
+                    .padding(16.dp),
             )
         }
 
@@ -790,8 +803,7 @@ fun VodPlayerScreen(
             Column(
                 Modifier
                     .align(Alignment.Center)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.72f))
+                    .glassSurface(accent = accent)
                     .padding(horizontal = 22.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -838,8 +850,7 @@ fun VodPlayerScreen(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 32.dp, top = 32.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.Black.copy(alpha = 0.78f))
+                    .glassChip(accent = accent)
                     .padding(horizontal = 18.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -885,8 +896,7 @@ fun VodPlayerScreen(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 32.dp, bottom = if (showControls) 140.dp else 40.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
+                    .glassChip(accent = accent)
                     .pointerInput(Unit) {
                         detectTapGestures {
                             seekTo(90_000L)
@@ -917,7 +927,7 @@ fun VodPlayerScreen(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.95f))))
+                    .cinematicScrim(maxAlpha = 0.95f)
                     .padding(horizontal = hPad, vertical = vPad),
             ) {
                 Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
