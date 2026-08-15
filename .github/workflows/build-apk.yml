@@ -82,6 +82,32 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testTvDebugUnitTest :app:testMobileDebugUnitTest --no-daemon
 
+      # Room writes app/schemas/<db>/<version>.json during KSP, and those files
+      # are committed so an entity change without a matching Migration shows up
+      # as a reviewable diff instead of tripping fallbackToDestructiveMigration
+      # on someone's device. Nothing was checking that they actually got
+      # committed, and they hadn't been: the database reached version 15 while
+      # the repo still only carried exports up to 13. Room's migration tests
+      # read these files, so the two newest schemas had nothing to test against.
+      #
+      # --no-build-cache is the whole trick. The schema is written as a side
+      # effect to a directory outside build/, so a cache hit on kspTvDebugKotlin
+      # restores the task's declared outputs, never writes the schema, and
+      # leaves the tree clean — the check would pass without having looked at
+      # anything. Forcing real execution makes both failure modes visible in one
+      # `git status`: a version bump with no committed export appears as an
+      # untracked file, and an entity change under an unchanged version appears
+      # as a modified one.
+      - name: Check the exported Room schemas are committed
+        run: |
+          ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache
+          DIRTY="$(git status --porcelain app/schemas)"
+          if [ -n "$DIRTY" ]; then
+            echo "::error::app/schemas does not match what the build produced. Run ./gradlew :app:kspTvDebugKotlin --no-build-cache and commit the result." >&2
+            echo "$DIRTY" >&2
+            exit 1
+          fi
+
       - name: Build debug APKs (tv + mobile)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
         run: ./gradlew :app:assembleTvDebug :app:assembleMobileDebug --no-daemon
