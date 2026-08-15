@@ -100,6 +100,7 @@ class PlaybackSession(
         val liveBuffer: BufferConfig? = null,
         val allocatorSizeBytes: Int = 0,
         val tunneling: Boolean = true,
+        val captionMode: String = ClosedCaptions.OFF,
     )
 
     @Volatile
@@ -171,14 +172,18 @@ class PlaybackSession(
             ) { profile, min, max, play, rebuf ->
                 if (profile == "custom") BufferConfig(min, max, play, rebuf) else null
             }
+            // Paired because combine tops out at five typed flows and this is
+            // the sixth setting to reach the engine.
+            val playbackFlow = combine(settings.tunneling, settings.captionMode) { t, c -> t to c }
             combine(
-                baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb, settings.tunneling,
-            ) { base, vod, live, allocKb, tunnel ->
+                baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb, playbackFlow,
+            ) { base, vod, live, allocKb, playback ->
                 base.copy(
                     vodBuffer = vod,
                     liveBuffer = live,
                     allocatorSizeBytes = allocKb * 1024,
-                    tunneling = tunnel,
+                    tunneling = playback.first,
+                    captionMode = playback.second,
                 )
             }.collect { next ->
                 val prev = config
@@ -245,6 +250,7 @@ class PlaybackSession(
             liveBuffer = c.liveBuffer,
             allocatorSizeBytes = c.allocatorSizeBytes,
             tunneling = c.tunneling,
+            captionMode = c.captionMode,
         )
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)

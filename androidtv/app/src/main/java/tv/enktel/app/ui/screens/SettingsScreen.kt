@@ -826,6 +826,38 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+
+        // ---- Live TV closed captions ----------------------------------------
+        val captionMode by graph.settings.captionMode
+            .collectAsStateWithLifecycle(initialValue = tv.enktel.app.player.ClosedCaptions.OFF)
+        Text(
+            "Live TV closed captions",
+            color = EnktelText, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            tv.enktel.app.player.ClosedCaptions.MODES.forEach { m ->
+                FocusButton(
+                    tv.enktel.app.player.ClosedCaptions.label(m),
+                    accent = captionMode == m,
+                    onClick = { scope.launch { graph.settings.setCaptionMode(m) } },
+                )
+            }
+        }
+        Text(
+            "Live channels usually do carry captions — inside the video as CEA-608/708, or as " +
+                "DVB subtitles — but they are not subtitle tracks. When a provider's remux drops " +
+                "the descriptor that names them, the player extracts none of them at all, which " +
+                "is what makes a fully captioned channel look like it has no subtitles. This " +
+                "reads them anyway, and lets an untagged caption track be selected " +
+                "automatically. Croatian is matched on hr, hrv and the withdrawn scr code that " +
+                "ex-Yugoslav muxes still emit.\n\n" +
+                "It cannot create captions. A channel that transmits none will still show none — " +
+                "that would need speech recognition, which is a different feature. Takes effect " +
+                "on the next channel you open.",
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+
         val subColor by graph.settings.subColor.collectAsStateWithLifecycle(initialValue = "white")
         val subEdge by graph.settings.subEdge.collectAsStateWithLifecycle(initialValue = "outline")
         val subBg by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)

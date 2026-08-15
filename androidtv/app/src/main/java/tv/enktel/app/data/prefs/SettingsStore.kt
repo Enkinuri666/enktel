@@ -45,6 +45,7 @@ class SettingsStore(private val context: Context) {
     private val EXT_SUB_URL = stringPreferencesKey("ext_sub_url")
     private val AUTOPLAY_NEXT_EP = booleanPreferencesKey("autoplay_next_ep")
     private val TUNNELING = booleanPreferencesKey("tunneled_playback")
+    private val CAPTION_MODE = stringPreferencesKey("caption_mode") // off | auto | en | hr
     private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
     private val AUTO_PIP_ON_BACK = booleanPreferencesKey("auto_pip_on_back")
@@ -256,6 +257,23 @@ class SettingsStore(private val context: Context) {
      * of the device's media stack, not something the app can ask.
      */
     val tunneling: Flow<Boolean> = context.dataStore.data.map { it[TUNNELING] ?: true }
+
+    /**
+     * Closed captions on live TV — off, automatic, English or Croatian.
+     *
+     * Defaults off, because turning it on changes what the MPEG-TS extractor
+     * exposes: on a stream whose PMT does not describe its captions it declares
+     * CEA-608 and CEA-708 anyway, rather than extracting nothing. On a channel
+     * that genuinely carries neither, that is two empty entries in the track
+     * picker. Worth it when asked for, not worth it by default.
+     */
+    val captionMode: Flow<String> = context.dataStore.data.map {
+        it[CAPTION_MODE] ?: tv.enktel.app.player.ClosedCaptions.OFF
+    }
+
+    suspend fun setCaptionMode(mode: String) {
+        context.dataStore.edit { it[CAPTION_MODE] = mode }
+    }
     val skipIntroSec: Flow<Int> = context.dataStore.data.map { it[SKIP_INTRO_SEC] ?: 0 }
     val pipEnabled: Flow<Boolean> = context.dataStore.data.map { it[PIP_ENABLED] ?: true }
     val autoPipOnBack: Flow<Boolean> = context.dataStore.data.map { it[AUTO_PIP_ON_BACK] ?: true }

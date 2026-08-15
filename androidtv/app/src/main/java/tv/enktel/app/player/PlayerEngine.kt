@@ -103,6 +103,15 @@ class PlayerEngine(
      * the app can determine — only try.
      */
     tunneling: Boolean = true,
+    /**
+     * Closed-caption mode — one of [ClosedCaptions.MODES].
+     *
+     * Off leaves subtitle handling exactly as it was, so VOD subtitle tracks and
+     * external subtitle files are untouched. On, it changes two things: which
+     * caption formats the MPEG-TS extractor is willing to expose, and whether an
+     * untagged text track may be auto-selected.
+     */
+    captionMode: String = ClosedCaptions.OFF,
 ) {
     private var streamHttpFactory: OkHttpDataSource.Factory? = null
 
@@ -445,6 +454,30 @@ class PlayerEngine(
                 androidx.media3.common.MimeTypes.VIDEO_VP9,
                 androidx.media3.common.MimeTypes.VIDEO_H264,
             )
+            // Closed captions.
+            //
+            // Two settings, and the second one is the whole feature. The
+            // language list is the obvious half. `selectUndeterminedTextLanguage`
+            // is the half that was missing: captions carried inside the video as
+            // CEA-608 have nowhere to record a language, so every one of them
+            // arrives untagged, and a selector asked to prefer "en" rejects all
+            // of them. The track was being found and then declined.
+            //
+            // Deliberately not touched when captions are off. This engine plays
+            // VOD too, and VOD has real subtitle tracks, external subtitle files
+            // and a picker of its own — none of which should change because a
+            // live-TV setting exists.
+            .apply {
+                if (ClosedCaptions.enabled(captionMode)) {
+                    val langs = ClosedCaptions.preferredLanguages(
+                        captionMode,
+                        java.util.Locale.getDefault().language,
+                    )
+                    setPreferredTextLanguages(*langs.toTypedArray())
+                    setSelectUndeterminedTextLanguage(ClosedCaptions.allowUndetermined(captionMode))
+                    setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                }
+            }
             .build()
 
         // Extractor factory. DefaultExtractorsFactory's sniff order is
@@ -511,13 +544,55 @@ class PlayerEngine(
             // thing that stops audio and video drifting apart on a TS with no
             // reliable PTS.
             .setTsExtractorFlags(
-                if (live) {
-                    androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
-                        androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
-                } else {
-                    androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                run {
+                    var f = androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                    if (live) {
+                        f = f or androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
+                            .FLAG_ALLOW_NON_IDR_KEYFRAMES
+                    }
+                    // Note there is deliberately no FLAG_OVERRIDE_CAPTION_DESCRIPTORS
+                    // here — see the caption formats below for why.
+                    f
                 }
             )
+            // Caption formats to fall back on when the PMT does not describe any.
+            //
+            // Media3 works out which caption tracks to expose by parsing the
+            // caption service descriptor (ATSC A/65, tag 0x86) out of the PMT.
+            // When that descriptor is present it is the better source — it names
+            // one format per service *and carries a three-letter language code
+            // for each*, which is how a Croatian caption track arrives correctly
+            // tagged `hrv` rather than untagged.
+            //
+            // When it is absent, `DefaultTsPayloadReaderFactory` returns whatever
+            // list it was constructed with, and that list is empty unless someone
+            // supplies one. Not "one default CEA-608 track" — none at all. An
+            // IPTV panel rebuilds the PMT with only what it needs to play, so the
+            // descriptor is routinely gone, and a channel captioned end to end in
+            // the video's SEI data therefore presents as having no subtitles
+            // whatsoever. That is the actual bug behind "live channels don't
+            // support subtitles".
+            //
+            // So: supply both standards as the fallback, and deliberately do NOT
+            // set FLAG_OVERRIDE_CAPTION_DESCRIPTORS. The flag would ignore the
+            // descriptor even when it is there, throwing away the per-service
+            // language tags for no gain. This way a described stream keeps its
+            // languages and an undescribed one still gets its captions read.
+            //
+            // Live only: a VOD container's descriptors are usually intact, and
+            // adding fallback formats there would put empty caption entries in a
+            // subtitle picker that already has real tracks in it.
+            .apply {
+                if (live && ClosedCaptions.enabled(captionMode)) {
+                    setTsSubtitleFormats(
+                        ClosedCaptions.TS_CAPTION_MIME_TYPES.map { mime ->
+                            androidx.media3.common.Format.Builder()
+                                .setSampleMimeType(mime)
+                                .build()
+                        },
+                    )
+                }
+            }
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors).apply {
             // Absorb a dropped segment inside the media source instead of
             // letting it become a player error.
