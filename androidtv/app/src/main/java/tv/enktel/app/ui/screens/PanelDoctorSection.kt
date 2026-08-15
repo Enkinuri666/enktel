@@ -559,9 +559,9 @@ private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnS
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(EnktelSurfaceHigh.copy(alpha = 0.5f))
-            .border(1.dp, EnktelBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+            .border(1.dp, EnktelBlue.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
         content = content,

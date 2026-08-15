@@ -154,7 +154,7 @@ fun GlassChip(
     Surface(
         onClick = onClick,
         modifier = modifier.tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) accent.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f),
             focusedContainerColor = accent,
@@ -167,11 +167,11 @@ fun GlassChip(
                     1.dp,
                     if (selected) accent.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f),
                 ),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
             ),
             focusedBorder = androidx.tv.material3.Border(
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
             ),
         ),
     ) {
@@ -367,7 +367,7 @@ fun PosterCard(
             if (!wasFocused && it.isFocused) NavSounds.click()
             focusedPoster?.report(it.isFocused, imageUrl, tmdbId, isSeries, title)
         },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
@@ -381,7 +381,7 @@ fun PosterCard(
         border = ClickableSurfaceDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
                 border = androidx.compose.foundation.BorderStroke(EnktelFocusRingWidth, EnktelBlue),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             ),
         ),
     ) {
@@ -397,12 +397,12 @@ fun PosterCard(
                 // between them — one of which was drawing at the wrong size.
                 .shadow(
                     elevation = if (focused) EnktelFocusGlowRadius else elevation,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     clip = false,
                     ambientColor = Color.Black,
                     spotColor = if (focused) EnktelFocusGlow else Color.Black,
                 )
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(EnktelSurfaceHigh),
         ) {
             if (imageUrl.isNotBlank()) {
@@ -581,7 +581,7 @@ fun ConfirmDialog(
         Surface(
             onClick = {},
             modifier = Modifier.padding(horizontal = 24.dp).widthIn(max = 420.dp).fillMaxWidth(),
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
             colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh, contentColor = Color.White),
         ) {
             Column(Modifier.padding(24.dp)) {
@@ -655,7 +655,7 @@ fun <T> ContentRailIndexed(
                 Modifier
                     .height(20.dp)
                     .width(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.55f)))),
             )
             Spacer(Modifier.width(10.dp))
@@ -709,7 +709,7 @@ fun ProgressBarThin(fraction: Float, modifier: Modifier = Modifier) {
     Box(
         modifier
             .height(4.dp)
-            .clip(RoundedCornerShape(2.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(Color.White.copy(alpha = 0.2f)),
     ) {
         Box(

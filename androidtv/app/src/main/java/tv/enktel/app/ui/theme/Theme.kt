@@ -52,6 +52,21 @@ data class EnktelPalette(
     val focusScale: Float = 1.08f,
     /** Tertiary text — dimmer than [textDim], for de-emphasised metadata. */
     val textFaint: Color = Color(0xFF64748B),
+    /**
+     * Caution: degraded but working. Between [ok] and [live].
+     *
+     * The palette had success and alert and nothing in between, so every place
+     * that needed "this is poor, not broken" — a slow-line chip, a nearly-full
+     * disk, a trial about to lapse — reached for the same hardcoded amber. Nine
+     * call sites, none of which re-coloured with the theme.
+     *
+     * Unlike [live], this one is deliberately *not* held apart from [primary]
+     * by hue. That rule exists because [primary] draws the focus ring and
+     * [live] paints a dead stream, and confusing those two is uniquely bad. A
+     * caution chip that happens to sit near the accent on the amber theme is
+     * merely redundant, and forcing it elsewhere would cost more than it buys.
+     */
+    val warn: Color = Color(0xFFFBBF24),
 )
 
 /**
@@ -352,6 +367,9 @@ val EnktelBorder: Color @Composable get() = LocalPalette.current.border
 
 /** Tertiary text: de-emphasised metadata, below [EnktelTextDim]. */
 val EnktelTextFaint: Color @Composable get() = LocalPalette.current.textFaint
+
+/** Caution — degraded but working. See [EnktelPalette.warn]. */
+val EnktelWarn: Color @Composable get() = LocalPalette.current.warn
 
 /** Thickness of the D-pad focus outline. */
 val EnktelFocusRingWidth: Dp @Composable get() = LocalPalette.current.focusRingWidth

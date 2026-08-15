@@ -84,9 +84,9 @@ fun UpgradeScreen(nav: NavHostController) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(EnktelBlue.copy(alpha = 0.10f))
-                    .border(1.dp, EnktelBlue.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    .border(1.dp, EnktelBlue.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
                 Text(
@@ -136,7 +136,7 @@ fun UpgradeScreen(nav: NavHostController) {
                             .widthIn(max = 240.dp)
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(Color.White)
                             .padding(8.dp)
                             .align(Alignment.CenterHorizontally),
@@ -157,9 +157,9 @@ fun UpgradeScreen(nav: NavHostController) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(EnktelSurface.copy(alpha = 0.7f))
-                    .border(1.dp, EnktelBlue.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                    .border(1.dp, EnktelBlue.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
                 Text(
@@ -236,9 +236,9 @@ fun UpgradeScreen(nav: NavHostController) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(EnktelOk.copy(alpha = 0.10f))
-                    .border(1.dp, EnktelOk.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                    .border(1.dp, EnktelOk.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
                 Text(

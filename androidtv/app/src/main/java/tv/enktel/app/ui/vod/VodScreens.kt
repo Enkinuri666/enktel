@@ -174,7 +174,7 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue.copy(0.18f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,
@@ -188,7 +188,7 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
                 Modifier
                     .width(3.dp)
                     .height(20.dp)
-                    .background(if (selected) EnktelBlue else Color.Transparent, RoundedCornerShape(2.dp)),
+                    .background(if (selected) EnktelBlue else Color.Transparent, RoundedCornerShape(4.dp)),
             )
             Spacer(Modifier.width(10.dp))
             Text(
@@ -692,7 +692,7 @@ private fun CategoryHero(
         Modifier
             .fillMaxWidth()
             .height(200.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurfaceHigh)
             .tapClick(onOpen),
     ) {

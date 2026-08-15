@@ -50,6 +50,7 @@ import tv.enktel.app.data.repo.NowNext
 import tv.enktel.app.player.StreamStats
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBorder
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
@@ -112,9 +113,9 @@ fun LiveInfoOverlay(
             Modifier
                 .align(Alignment.TopEnd)
                 .padding(28.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xC012141D))
-                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(EnktelSurface.copy(alpha = 0.75f))
+                .border(1.dp, EnktelBorder, RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -147,7 +148,7 @@ fun LiveInfoOverlay(
                         .size(84.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(EnktelSurface)
-                        .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(12.dp)),
+                        .border(1.dp, EnktelBorder, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (channel.logo.isNotBlank()) {
@@ -362,14 +363,14 @@ private fun ProgressTrack(frac: Float) {
         Modifier
             .fillMaxWidth()
             .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(Color.White.copy(0.14f)),
     ) {
         Box(
             Modifier
                 .fillMaxWidth(frac)
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(4.dp))
                 .background(Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple))),
         )
         // The playhead. A bare filled bar reads as a loading indicator; a head
@@ -384,7 +385,7 @@ private fun ProgressTrack(frac: Float) {
             Box(
                 Modifier
                     .size(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(Color.White),
             )
         }
@@ -412,9 +413,9 @@ private fun InfoChip(text: String) {
         color = Color.White.copy(0.92f), fontSize = 11.sp, fontWeight = FontWeight.Bold,
         maxLines = 1, overflow = TextOverflow.Ellipsis,
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(Color.White.copy(0.10f))
-            .border(1.dp, Color.White.copy(0.16f), RoundedCornerShape(6.dp))
+            .border(1.dp, Color.White.copy(0.16f), RoundedCornerShape(8.dp))
             .padding(horizontal = 9.dp, vertical = 4.dp),
     )
 }

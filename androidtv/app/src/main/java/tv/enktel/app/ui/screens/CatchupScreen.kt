@@ -227,7 +227,7 @@ private fun CatchupExplainer(days: Int, supported: Boolean) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(EnktelSurface)
             .padding(14.dp),
     ) {

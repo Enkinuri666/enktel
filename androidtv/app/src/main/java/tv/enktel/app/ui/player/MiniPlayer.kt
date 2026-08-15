@@ -230,7 +230,7 @@ fun BoxScope.MiniPlayer(
                     Modifier
                         .align(Alignment.TopStart)
                         .padding(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(EnktelLive)
                         .padding(horizontal = 5.dp, vertical = 1.dp),
                 ) {
@@ -325,7 +325,7 @@ private fun MiniIconButton(glyph: String, modifier: Modifier, onClick: () -> Uni
     Box(
         modifier
             .size(30.dp)
-            .clip(RoundedCornerShape(15.dp))
+            .clip(RoundedCornerShape(percent = 50))
             .background(Color.Black.copy(0.55f))
             .pointerInput(glyph) { detectTapGestures { onClick() } },
         contentAlignment = Alignment.Center,

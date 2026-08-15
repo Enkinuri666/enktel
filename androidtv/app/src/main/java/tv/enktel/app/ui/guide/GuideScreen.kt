@@ -63,6 +63,7 @@ import tv.enktel.app.ui.components.LocalToaster
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelGenre
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
@@ -96,21 +97,7 @@ private val DP_PER_HOUR = 220.dp
  *
  * Anything unrecognised gets no tint at all, rather than a wrong one.
  */
-internal fun genreTint(category: String): Color? {
-    val c = category.lowercase()
-    return when {
-        c.isBlank() -> null
-        "sport" in c || "football" in c || "soccer" in c -> Color(0xFF00E5A0)
-        "news" in c || "weather" in c || "current affairs" in c -> Color(0xFF29B6FF)
-        "movie" in c || "film" in c || "cinema" in c -> Color(0xFFB14DFF)
-        "kid" in c || "child" in c || "cartoon" in c || "animation" in c -> Color(0xFFFFC44D)
-        "music" in c || "concert" in c -> Color(0xFFFF6FD8)
-        "document" in c || "nature" in c || "science" in c || "history" in c -> Color(0xFF7FD1AE)
-        "comedy" in c || "sitcom" in c -> Color(0xFFFFA24D)
-        "drama" in c || "series" in c || "soap" in c -> Color(0xFF6E8BFF)
-        else -> null
-    }
-}
+internal fun genreTint(category: String): Color? = EnktelGenre.genreTintFor(category)
 
 @Composable
 fun GuideScreen(graph: AppGraph, nav: NavHostController) {
@@ -272,7 +259,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                             Modifier
                                 .width(3.dp)
                                 .height(20.dp)
-                                .background(EnktelLive, RoundedCornerShape(2.dp)),
+                                .background(EnktelLive, RoundedCornerShape(4.dp)),
                         )
                     }
                 }
@@ -297,7 +284,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 }
                             }
                             .tapClick { nav.navigate("live?ch=${ch.key}") },
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = EnktelSurface,
                             focusedContainerColor = EnktelBlue,
@@ -307,7 +294,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                     ) {
                         Row(Modifier.padding(horizontal = 10.dp).fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                Modifier.size(34.dp).clip(RoundedCornerShape(6.dp))
+                                Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))
                                     .background(EnktelSurfaceHigh),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -347,7 +334,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                             Box(
                                 Modifier.width(DP_PER_HOUR * 24).fillMaxSize()
                                     .padding(end = 2.dp)
-                                    .background(EnktelSurface.copy(0.4f), RoundedCornerShape(6.dp)),
+                                    .background(EnktelSurface.copy(0.4f), RoundedCornerShape(8.dp)),
                                 contentAlignment = Alignment.CenterStart,
                             ) {
                                 Text("  No guide data", color = EnktelTextDim.copy(0.6f), fontSize = 11.sp)
@@ -377,7 +364,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                     modifier = Modifier.width(w - 3.dp).fillMaxSize().padding(end = 3.dp)
                                         .onFocusChanged { if (it.isFocused) highlighted = ch to prog }
                                         .tapClick { selected = ch to prog },
-                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(7.dp)),
+                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                                     colors = ClickableSurfaceDefaults.colors(
                                         containerColor = when {
                                             isNow -> EnktelBlue.copy(0.30f)
@@ -589,7 +576,7 @@ private fun GuideDock(
             Modifier
                 .width(previewWidth)
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(Color.Black),
             contentAlignment = Alignment.Center,
         ) {
@@ -681,12 +668,12 @@ private fun GuideDock(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.width(260.dp).height(5.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(Color.White.copy(0.18f)),
                     ) {
                         Box(
                             Modifier.fillMaxWidth(frac).height(5.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(EnktelBlue),
                         )
                     }
@@ -700,7 +687,7 @@ private fun GuideDock(
             }
             if (prog.desc.isNotBlank()) {
                 Text(
-                    prog.desc, color = Color.White.copy(0.78f), fontSize = 12.5.sp,
+                    prog.desc, color = Color.White.copy(0.78f), fontSize = 12.sp,
                     maxLines = 4, overflow = TextOverflow.Ellipsis,
                 )
             }

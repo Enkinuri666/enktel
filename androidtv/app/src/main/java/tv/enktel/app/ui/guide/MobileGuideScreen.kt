@@ -306,7 +306,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(if (isNow) EnktelSurfaceHigh else EnktelSurface)
                             .pointerInput(prog.id) {
                                 detectTapGestures {
@@ -334,7 +334,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                                 if (isNow) {
                                     Box(
                                         Modifier
-                                            .clip(RoundedCornerShape(6.dp))
+                                            .clip(RoundedCornerShape(8.dp))
                                             .background(EnktelLive)
                                             .padding(horizontal = 6.dp, vertical = 2.dp),
                                     ) {
@@ -386,7 +386,7 @@ private fun ChannelChip(
     Row(
         Modifier
             .height(56.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(if (selected) EnktelBlue else EnktelSurface)
             .pointerInput(channel.key) {
                 detectTapGestures(onTap = { onClick() }, onLongPress = { onLongClick() })

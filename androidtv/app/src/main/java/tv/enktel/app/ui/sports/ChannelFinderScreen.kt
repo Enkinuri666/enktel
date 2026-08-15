@@ -236,9 +236,9 @@ private fun FinderCard(pad: androidx.compose.ui.unit.Dp, content: @Composable ()
         Modifier
             .fillMaxWidth()
             .padding(horizontal = pad)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurface.copy(alpha = 0.6f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp)),
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp)),
     ) { content() }
 }
 
@@ -253,7 +253,7 @@ private fun FinderRow(
     Surface(
         onClick = onTune,
         modifier = Modifier.fillMaxWidth().padding(horizontal = pad).tapClick(onTune),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (row.followed) EnktelOk.copy(0.16f) else EnktelSurfaceHigh.copy(0.45f),
             focusedContainerColor = EnktelLive.copy(0.4f),

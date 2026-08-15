@@ -632,7 +632,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         if (playError != null) {
             Box(Modifier.align(Alignment.Center)) {
                 Column(
-                    Modifier.background(EnktelSurface.copy(0.9f), RoundedCornerShape(10.dp)).padding(24.dp),
+                    Modifier.background(EnktelSurface.copy(0.9f), RoundedCornerShape(12.dp)).padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text("Playback error: $playError", color = EnktelLive, fontSize = 14.sp)
@@ -683,7 +683,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             Column(
                 Modifier
                     .align(Alignment.Center)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color.Black.copy(alpha = 0.72f))
                     .padding(horizontal = 22.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -694,7 +694,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     Modifier
                         .height(90.dp)
                         .width(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(Color.White.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
@@ -702,7 +702,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         Modifier
                             .fillMaxWidth()
                             .height((90f * frac.coerceIn(0f, 1f)).dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(if (isBright) EnktelOk else EnktelBlue),
                     )
                 }
@@ -1039,14 +1039,14 @@ private fun InfoBar(
         modifier
             .fillMaxWidth()
             .padding(horizontal = hPad, vertical = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xB012141D), RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(EnktelSurface.copy(alpha = 0.70f), RoundedCornerShape(16.dp))
+            .border(1.dp, EnktelBorder, RoundedCornerShape(16.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)).background(EnktelSurface),
+                Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 if (channel.logo.isNotBlank()) {
@@ -1124,7 +1124,7 @@ private fun InfoBar(
 private fun StatsOverlay(s: StreamStats, format: String, modifier: Modifier) {
     Column(
         modifier
-            .background(Color.Black.copy(0.75f), RoundedCornerShape(10.dp))
+            .background(Color.Black.copy(0.75f), RoundedCornerShape(12.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -1266,7 +1266,7 @@ private fun ChannelEpgPane(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(7.dp)).background(EnktelSurface),
+                Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 if (channel.logo.isNotBlank()) {
@@ -1309,7 +1309,7 @@ private fun ChannelEpgPane(
             if (current.desc.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    current.desc, color = Color.White.copy(0.72f), fontSize = 11.5.sp,
+                    current.desc, color = Color.White.copy(0.72f), fontSize = 12.sp,
                     maxLines = 6, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
@@ -1418,7 +1418,7 @@ private fun ChannelRow(
                 modifier = Modifier.width(38.dp),
             )
             Box(
-                Modifier.size(30.dp).clip(RoundedCornerShape(6.dp)).background(EnktelSurface),
+                Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 if (ch.logo.isNotBlank()) {
@@ -1607,8 +1607,8 @@ fun TrackPicker(
                 .padding(horizontal = 24.dp, vertical = 32.dp)
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .background(EnktelSurface, RoundedCornerShape(14.dp))
-                .border(1.dp, EnktelBorder, RoundedCornerShape(14.dp))
+                .background(EnktelSurface, RoundedCornerShape(16.dp))
+                .border(1.dp, EnktelBorder, RoundedCornerShape(16.dp))
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

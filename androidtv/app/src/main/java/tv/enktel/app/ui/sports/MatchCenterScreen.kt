@@ -446,7 +446,7 @@ private fun StatRow(stat: MatchStat) {
         // Split bar: home share from the left, away share from the right, so
         // the eye reads dominance without parsing the numbers. Weights are
         // floored above zero because Row rejects a zero weight.
-        Row(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))) {
+        Row(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(4.dp))) {
             Box(
                 Modifier
                     .weight((home / total).coerceAtLeast(0.001f))
@@ -500,9 +500,9 @@ private fun iconFor(type: String): String = when {
 private fun BroadcasterChip(b: Broadcast) {
     Row(
         Modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(percent = 50))
             .background(EnktelSurfaceHigh.copy(0.7f))
-            .border(1.dp, EnktelBlue.copy(0.4f), RoundedCornerShape(18.dp))
+            .border(1.dp, EnktelBlue.copy(0.4f), RoundedCornerShape(percent = 50))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -524,9 +524,9 @@ private fun MatchCard(pad: androidx.compose.ui.unit.Dp, content: @Composable () 
         Modifier
             .fillMaxWidth()
             .padding(horizontal = pad)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurface.copy(0.55f))
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(14.dp)),
+            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp)),
     ) { content() }
 }
 

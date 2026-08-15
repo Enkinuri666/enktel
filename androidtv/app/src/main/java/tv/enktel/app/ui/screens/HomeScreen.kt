@@ -693,7 +693,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 )
                 if (index < 3) {
                     Box(
-                        Modifier.background(tv.enktel.app.ui.theme.EnktelLive, RoundedCornerShape(3.dp))
+                        Modifier.background(tv.enktel.app.ui.theme.EnktelLive, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 1.dp),
                     ) {
                         Text("#${index + 1} TOP 10", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
@@ -711,7 +711,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (current.rating > 0) {
                         Box(
-                            Modifier.background(tv.enktel.app.ui.theme.EnktelOk.copy(0.85f), RoundedCornerShape(3.dp))
+                            Modifier.background(tv.enktel.app.ui.theme.EnktelOk.copy(0.85f), RoundedCornerShape(4.dp))
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                         ) {
                             Text("★ ${"%.1f".format(current.rating)}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -727,7 +727,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 // Big Netflix-style Play button
                 androidx.tv.material3.Surface(
                     onClick = { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = Color.White,
                         focusedContainerColor = Color.White.copy(0.85f),
@@ -747,7 +747,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 val scope = androidx.compose.runtime.rememberCoroutineScope()
                 androidx.tv.material3.Surface(
                     onClick = { scope.launch { graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster) } },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = Color.White.copy(alpha = 0.18f),
                         focusedContainerColor = Color.White.copy(alpha = 0.32f),
@@ -764,7 +764,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 }
                 androidx.tv.material3.Surface(
                     onClick = { nav.navigate("movie/${current.key}") },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = Color.White.copy(alpha = 0.18f),
                         focusedContainerColor = Color.White.copy(alpha = 0.32f),
@@ -788,7 +788,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                             Modifier
                                 .height(3.dp)
                                 .width(if (i == index) 28.dp else 14.dp)
-                                .clip(RoundedCornerShape(2.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)),
                         )
                     }
@@ -815,7 +815,7 @@ private fun HubTile(glyph: String, label: String, onClick: () -> Unit, accent: B
     androidx.tv.material3.Surface(
         onClick = onClick,
         modifier = Modifier.tapClick(onClick),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = container,
@@ -829,11 +829,11 @@ private fun HubTile(glyph: String, label: String, onClick: () -> Unit, accent: B
                     1.dp,
                     if (accent) brand.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.14f),
                 ),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             ),
             focusedBorder = androidx.tv.material3.Border(
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             ),
         ),
     ) {

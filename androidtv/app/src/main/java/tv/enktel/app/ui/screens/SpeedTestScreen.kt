@@ -60,6 +60,7 @@ import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelWarn
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -187,7 +188,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(EnktelSurface)
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -322,7 +323,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                                 },
                                 color = when {
                                     d == null -> EnktelTextDim
-                                    !d.hardware -> Color(0xFFFBBF24)
+                                    !d.hardware -> EnktelWarn
                                     else -> EnktelOk
                                 },
                             )
@@ -345,20 +346,20 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                                 "${c.epgProgrammes} programmes · ${c.epgChannels} channels (${c.epgCoveragePct}%)",
                             color = when {
                                 c.epgProgrammes == 0 -> EnktelLive
-                                c.epgCoveragePct < 50 -> Color(0xFFFBBF24)
+                                c.epgCoveragePct < 50 -> EnktelWarn
                                 else -> EnktelOk
                             },
                         )
                         MetricRow(
                             "Guide depth",
                             if (c.epgDaysAhead <= 0) "does not reach past today" else "${c.epgDaysAhead} days ahead",
-                            color = if (c.epgDaysAhead <= 0) Color(0xFFFBBF24) else Color.White,
+                            color = if (c.epgDaysAhead <= 0) EnktelWarn else Color.White,
                         )
                         MetricRow(
                             "Catch-Up channels",
                             if (c.catchupChannels == 0) "none on this line" else
                                 "${c.catchupChannels}" + if (c.catchupDays > 0) " · up to ${c.catchupDays} days back" else "",
-                            color = if (c.catchupChannels == 0) Color(0xFFFBBF24) else EnktelOk,
+                            color = if (c.catchupChannels == 0) EnktelWarn else EnktelOk,
                         )
                     }
                 }
@@ -368,7 +369,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(EnktelSurface)
                             .padding(14.dp),
                     ) {
@@ -421,7 +422,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                                     " · " + tv.enktel.app.data.net.expiryLabel(r.server.expiresAt),
                                 color = when {
                                     daysLeft < 0 -> EnktelLive
-                                    daysLeft <= 3 -> Color(0xFFFBBF24)
+                                    daysLeft <= 3 -> EnktelWarn
                                     else -> EnktelOk
                                 },
                             )
@@ -488,7 +489,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     val statusColor = when {
                         s.ok -> EnktelOk
                         s.code == 0 -> EnktelLive
-                        s.code in 400..499 -> Color(0xFFFBBF24)
+                        s.code in 400..499 -> EnktelWarn
                         else -> EnktelLive
                     }
                     Row(
@@ -526,7 +527,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                             "${cap.succeeded} / ${cap.attempted} succeeded" + if (cap.rejectedAt > 0) " · panel rejected at slot ${cap.rejectedAt}" else "",
                             color = when {
                                 cap.succeeded == cap.attempted -> EnktelOk
-                                cap.succeeded >= 4 -> Color(0xFFFBBF24)
+                                cap.succeeded >= 4 -> EnktelWarn
                                 else -> EnktelLive
                             },
                         )
@@ -538,7 +539,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(EnktelSurfaceHigh)
                         .padding(16.dp),
                 ) {
@@ -574,7 +575,7 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 Column(
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(EnktelSurface)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -649,7 +650,7 @@ private enum class Grade(val label: String) {
 @Composable
 private fun gradeColor(g: Grade): Color = when (g) {
     Grade.GOOD -> EnktelOk
-    Grade.FAIR -> Color(0xFFFBBF24)
+    Grade.FAIR -> EnktelWarn
     Grade.BAD -> EnktelLive
     Grade.NEUTRAL -> EnktelTextDim
 }
@@ -705,7 +706,7 @@ private fun VerdictBanner(r: SpeedTestEngine.Result) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
                     listOf(worstColor.copy(alpha = 0.22f), worstColor.copy(alpha = 0.05f)),
@@ -718,7 +719,7 @@ private fun VerdictBanner(r: SpeedTestEngine.Result) {
             Modifier
                 .width(4.dp)
                 .height(38.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(4.dp))
                 .background(worstColor),
         )
         Spacer(Modifier.width(14.dp))
@@ -794,7 +795,7 @@ private fun DiagCard(
                 Modifier
                     .width(3.dp)
                     .height(13.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(if (ok == false) EnktelLive else EnktelBlue),
             )
             Spacer(Modifier.width(8.dp))
@@ -911,14 +912,14 @@ private fun SpeedMeter(sample: SpeedTestEngine.SpeedSample?, history: List<Float
             Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(4.dp))
                 .background(Color.White.copy(0.10f)),
         ) {
             Box(
                 Modifier
                     .fillMaxWidth(animatedProgress)
                     .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(Brush.horizontalGradient(listOf(accent, EnktelOk))),
             )
         }

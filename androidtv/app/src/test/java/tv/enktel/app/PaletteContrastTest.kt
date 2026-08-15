@@ -117,6 +117,43 @@ class PaletteContrastTest {
         each {
             assertAtLeast(3.5, contrast(it.live, it.bg), "live on background", it)
             assertAtLeast(3.5, contrast(it.ok, it.bg), "ok on background", it)
+            assertAtLeast(3.5, contrast(it.warn, it.bg), "warn on background", it)
+        }
+    }
+
+    @Test
+    fun `the three status colours stay apart from each other`() {
+        // ok / warn / live are not three independent colours — they are one
+        // three-position scale, and they appear side by side in a single row on
+        // the System Monitor and the speed test. If any two merge, a row of
+        // numbers stops being readable as good, marginal and bad, which is the
+        // entire content of that row.
+        //
+        // Deliberately *not* asserted here: warn against primary. It collides in
+        // two palettes — Amber puts warn 5° from its accent, High Contrast 11° —
+        // and both are correct as they stand. The warm band is what those themes
+        // are, and the only hues far enough away are blue and violet, so
+        // enforcing separation would mean shipping a blue caution colour, which
+        // is a worse outcome than the collision.
+        //
+        // It is also a much weaker collision than primary-against-live. Focus is
+        // not identified by colour: every palette states a ring width, a scale
+        // above 1.0 and a glow, so a focused card lifts and outlines itself
+        // whatever colour it is. `live` and `warn` are flat tints with no
+        // geometry to fall back on, which is why they get the rule and primary
+        // does not.
+        each { p ->
+            listOf(
+                Triple(p.ok, p.warn, "ok and warn"),
+                Triple(p.warn, p.live, "warn and live"),
+                Triple(p.ok, p.live, "ok and live"),
+            ).forEach { (a, b, what) ->
+                val gap = hueGap(a, b)
+                assertTrue(
+                    "${p.id}: $what are only %.0f° apart — the status scale collapses".format(gap),
+                    gap >= 20.0,
+                )
+            }
         }
     }
 

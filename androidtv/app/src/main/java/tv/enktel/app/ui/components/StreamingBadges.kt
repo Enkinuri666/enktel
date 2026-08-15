@@ -94,11 +94,11 @@ object StreamingBadges {
 fun PlatformBadge(platform: StreamingPlatform, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .background(platform.bg, RoundedCornerShape(3.dp))
+            .background(platform.bg, RoundedCornerShape(4.dp))
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
         Text(
-            platform.label, color = platform.fg, fontSize = 8.5.sp,
+            platform.label, color = platform.fg, fontSize = 8.sp,
             fontWeight = FontWeight.Black, letterSpacing = 0.5.sp,
         )
     }

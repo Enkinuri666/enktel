@@ -43,6 +43,7 @@ import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 
@@ -87,7 +88,7 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassChip("Live TV", selected = kind == "live", onClick = { kind = "live" })
             GlassChip("Movies", selected = kind == "vod", accent = EnktelOk, onClick = { kind = "vod" })
-            GlassChip("Series", selected = kind == "series", accent = androidx.compose.ui.graphics.Color(0xFF8B5CF6), onClick = { kind = "series" })
+            GlassChip("Series", selected = kind == "series", accent = EnktelPurple, onClick = { kind = "series" })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FocusButton("Reset order", onClick = {
@@ -113,7 +114,7 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(EnktelSurfaceHigh)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,

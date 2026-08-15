@@ -39,6 +39,7 @@ import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelWarn
 
 /**
  * Account state for the active line, pinned to the top of Settings.
@@ -85,7 +86,7 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
     // than needing the text parsed.
     val accent = when {
         expired || reachable == false -> EnktelLive
-        daysLeft <= 7 -> Color(0xFFFFB020)
+        daysLeft <= 7 -> EnktelWarn
         else -> EnktelOk
     }
 

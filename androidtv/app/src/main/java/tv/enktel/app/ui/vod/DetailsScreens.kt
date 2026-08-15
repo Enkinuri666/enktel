@@ -419,7 +419,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     }
     Column(Modifier.fillMaxSize().padding(horizontal = hPad, vertical = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(10.dp)).background(EnktelSurfaceHigh)) {
+            Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
                 if (s.poster.isNotBlank()) {
                     AsyncImage(model = s.poster, contentDescription = s.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }

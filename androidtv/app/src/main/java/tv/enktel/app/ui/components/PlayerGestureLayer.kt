@@ -140,7 +140,7 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
     val pct = (fraction * 100).toInt().coerceIn(0, 100)
     Column(
         modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.Black.copy(alpha = 0.72f))
             .padding(horizontal = 22.dp, vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -153,7 +153,7 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
             Modifier
                 .height(90.dp)
                 .width(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(4.dp))
                 .background(Color.White.copy(alpha = 0.18f)),
             contentAlignment = Alignment.BottomCenter,
         ) {
@@ -161,7 +161,7 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
                 Modifier
                     .fillMaxWidth()
                     .height((90f * fraction.coerceIn(0f, 1f)).dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(accent),
             )
         }

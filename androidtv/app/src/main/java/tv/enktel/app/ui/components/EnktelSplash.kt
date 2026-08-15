@@ -145,7 +145,7 @@ private fun SplashCanvas() {
                 // Wordmark centered
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(EnktelLive),
+                        Modifier.size(12.dp).clip(RoundedCornerShape(8.dp)).background(EnktelLive),
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(

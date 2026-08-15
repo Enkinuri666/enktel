@@ -552,9 +552,9 @@ private fun GlassCard(padHoriz: androidx.compose.ui.unit.Dp, content: @Composabl
         Modifier
             .fillMaxWidth()
             .padding(horizontal = padHoriz)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurface.copy(alpha = 0.55f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp)),
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp)),
     ) { content() }
 }
 
@@ -564,7 +564,7 @@ private fun SectionHeader(text: String, color: Color, padHoriz: androidx.compose
         Modifier.fillMaxWidth().padding(horizontal = padHoriz, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(4.dp, 20.dp).background(color, RoundedCornerShape(2.dp)))
+        Box(Modifier.size(4.dp, 20.dp).background(color, RoundedCornerShape(4.dp)))
         Spacer(Modifier.width(10.dp))
         Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Black)
     }
@@ -603,7 +603,7 @@ private fun Modifier.sportsCardFocus(
         .offset { IntOffset(0, lift.roundToPx()) }
         .shadow(
             elevation = elevation,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             clip = false,
             spotColor = if (focused) accent else Color.Black,
         )
@@ -643,7 +643,7 @@ private fun LiveEventCard(
             .sportsCardFocus(cardFocused, EnktelLive)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onTap),
         scale = noGrowScale(),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         // Was EnktelLive.copy(0.14f) — a 14 % red wash over the near-black
         // background, which rendered as muddy maroon on a phone and made a row
         // of live fixtures look like a row of error states. Live-ness is now
@@ -664,7 +664,7 @@ private fun LiveEventCard(
                 Box(
                     Modifier
                         .size(width = 3.dp, height = 44.dp)
-                        .background(EnktelLive, RoundedCornerShape(2.dp)),
+                        .background(EnktelLive, RoundedCornerShape(4.dp)),
                 )
                 Spacer(Modifier.width(10.dp))
                 ChannelLogo(ev.channel.logo, ev.channel.name)
@@ -723,7 +723,7 @@ private fun UpcomingEventCard(
             .sportsCardFocus(cardFocused, EnktelBlue)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onOpen),
         scale = noGrowScale(),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurfaceHigh.copy(0.5f),
             focusedContainerColor = EnktelBlue.copy(0.4f),
@@ -765,7 +765,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
             .sportsCardFocus(cardFocused, EnktelOk)
             .onFocusChanged { cardFocused = it.isFocused }.tapClick(onReplay),
         scale = noGrowScale(),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurface.copy(0.5f),
             focusedContainerColor = EnktelOk.copy(0.4f),
@@ -856,9 +856,9 @@ private fun LiveScoreChip(
 
     Row(
         Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(EnktelSurface.copy(0.7f))
-            .border(1.dp, accent.copy(0.5f), RoundedCornerShape(20.dp))
+            .border(1.dp, accent.copy(0.5f), RoundedCornerShape(24.dp))
             .tapClick(onTap)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
