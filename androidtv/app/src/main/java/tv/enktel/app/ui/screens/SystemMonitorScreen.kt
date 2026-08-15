@@ -53,6 +53,7 @@ import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelWarn
 
 /**
  * Live system + connection monitor.
@@ -312,11 +313,18 @@ private fun buildAdvice(s: SystemMonitor.Sample): String = when {
         "Collecting samples. Numbers fill in over the first few seconds."
 }
 
-/** Null keeps the default white; a colour means "this number is the story". */
+/**
+ * Null keeps the default white; a colour means "this number is the story".
+ *
+ * Composable because the two alarm colours belong to the theme. They were frozen
+ * hex, which meant this readout kept showing the stock red and amber even in the
+ * palettes that deliberately moved those hues elsewhere.
+ */
+@Composable
 private fun latencyTint(ms: Int): Color? = when {
     ms <= 0 -> null
-    ms > 2000 -> Color(0xFFFF5470)
-    ms > 900 -> Color(0xFFFFC107)
+    ms > 2000 -> EnktelLive
+    ms > 900 -> EnktelWarn
     else -> null
 }
 
@@ -331,9 +339,9 @@ private fun MonitorCard(content: @Composable () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurface.copy(0.6f))
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(14.dp)),
+            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp)),
     ) { content() }
 }
 
@@ -346,7 +354,7 @@ private fun CardHeader(text: String) {
 private fun Stat(label: String, value: String, modifier: Modifier = Modifier, tint: Color? = null) {
     Column(
         modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(EnktelSurfaceHigh.copy(0.5f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {

@@ -203,7 +203,7 @@ private fun UpcomingCard(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = pad)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(EnktelSurface.copy(0.6f))
             .padding(12.dp),
     ) {
@@ -211,7 +211,7 @@ private fun UpcomingCard(
             Modifier
                 .width(if (isMobile) 84.dp else 110.dp)
                 .height(if (isMobile) 124.dp else 162.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(EnktelSurfaceHigh),
         ) {
             if (item.poster.isNotBlank()) {

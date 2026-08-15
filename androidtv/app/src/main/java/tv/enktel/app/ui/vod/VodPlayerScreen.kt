@@ -738,7 +738,7 @@ fun VodPlayerScreen(
                     // this Box and so were painted over the card.
                     .zIndex(2f)
                     .padding(32.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color.Black.copy(alpha = 0.88f))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
@@ -790,7 +790,7 @@ fun VodPlayerScreen(
             Column(
                 Modifier
                     .align(Alignment.Center)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color.Black.copy(alpha = 0.72f))
                     .padding(horizontal = 22.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -799,14 +799,14 @@ fun VodPlayerScreen(
                 Spacer(Modifier.height(10.dp))
                 Box(
                     Modifier.height(90.dp).width(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(Color.White.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
                         Modifier.fillMaxWidth()
                             .height((90f * frac.coerceIn(0f, 1f)).dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(if (isBright) tv.enktel.app.ui.theme.EnktelOk else tv.enktel.app.ui.theme.EnktelBlue),
                     )
                 }
@@ -850,7 +850,7 @@ fun VodPlayerScreen(
                 )
                 Box(
                     Modifier
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(tv.enktel.app.ui.theme.EnktelBlue)
                         .pointerInput(Unit) {
                             detectTapGestures {
@@ -885,7 +885,7 @@ fun VodPlayerScreen(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 32.dp, bottom = if (showControls) 140.dp else 40.dp)
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(Color.Black.copy(alpha = 0.75f))
                     .pointerInput(Unit) {
                         detectTapGestures {

@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelLive
+import tv.enktel.app.ui.theme.EnktelWarn
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,15 +65,15 @@ fun StreamHealthChip(modifier: Modifier = Modifier) {
     when {
         snap.activeGateway != null -> {
             label = "BACKUP · ${snap.activeGateway}"
-            color = Color(0xFF3B9DFF)
+            color = EnktelBlue
         }
         snap.quality == StreamHealth.Quality.BLOCKED -> {
             label = "BLOCKED · ${snap.blocked403} × 403"
-            color = Color(0xFFEF4444)
+            color = EnktelLive
         }
         snap.quality == StreamHealth.Quality.POOR -> {
             label = "POOR · ${snap.meanLatencyMs} ms"
-            color = Color(0xFFFBBF24)
+            color = EnktelWarn
         }
         else -> {
             label = ""
@@ -85,7 +88,7 @@ fun StreamHealthChip(modifier: Modifier = Modifier) {
     ) {
         Row(
             Modifier
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(24.dp))
                 .background(Color.Black.copy(alpha = 0.6f))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

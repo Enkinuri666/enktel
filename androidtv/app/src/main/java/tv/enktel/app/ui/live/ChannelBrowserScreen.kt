@@ -473,7 +473,7 @@ private fun OverflowAction(label: String, modifier: Modifier = Modifier, onClick
     Surface(
         onClick = onClick,
         modifier = modifier.height(28.dp).tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.08f),
             focusedContainerColor = EnktelBlue,

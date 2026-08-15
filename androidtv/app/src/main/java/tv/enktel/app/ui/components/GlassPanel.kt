@@ -9,12 +9,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import tv.enktel.app.ui.theme.EnktelBorder
+import tv.enktel.app.ui.theme.EnktelSurface
 
 /**
  * TV Cinematic glass card — the app's only "frosted panel" surface.
  *
- * Design-brief tokens: 14 dp corners, `#B012141D` tint, 1 dp `#1AFFFFFF`
- * stroke. Deliberately no blur.
+ * Sixteen dp corners, the theme's surface at 70 %, and the theme's hairline
+ * border. Deliberately no blur.
+ *
+ * Those three values used to be frozen hex — `#B012141D` over `#1AFFFFFF` —
+ * which meant the one surface in the app that sits on top of moving video was
+ * also the one surface that ignored which theme the viewer had chosen.
  *
  * ### Don't add a blur here
  *
@@ -38,12 +44,12 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier
             .clip(shape)
-            .background(Color(0xB012141D), shape)
-            .border(1.dp, Color(0x1AFFFFFF), shape),
+            .background(EnktelSurface.copy(alpha = 0.70f), shape)
+            .border(1.dp, EnktelBorder, shape),
     ) {
         content()
     }

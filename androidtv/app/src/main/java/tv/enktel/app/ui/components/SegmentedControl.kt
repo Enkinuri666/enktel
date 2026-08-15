@@ -56,7 +56,7 @@ fun SegmentedControl(
     Row(
         modifier
             .height(38.dp)
-            .clip(RoundedCornerShape(19.dp))
+            .clip(RoundedCornerShape(percent = 50))
             .background(Color.White.copy(alpha = 0.05f))
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -74,7 +74,7 @@ fun SegmentedControl(
             Surface(
                 onClick = { onSelect(seg.id) },
                 modifier = Modifier.height(32.dp).tapClick { onSelect(seg.id) },
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(percent = 50)),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = accent.copy(alpha = 0.9f * alpha),
                     focusedContainerColor = accent,

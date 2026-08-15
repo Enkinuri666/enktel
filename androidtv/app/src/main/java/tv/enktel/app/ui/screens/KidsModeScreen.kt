@@ -127,7 +127,7 @@ fun KidsModeScreen(graph: AppGraph, nav: NavHostController) {
                 .align(Alignment.TopEnd)
                 .padding(24.dp)
                 .size(64.dp)
-                .clip(RoundedCornerShape(32.dp))
+                .clip(RoundedCornerShape(percent = 50))
                 .background(Color.Black.copy(alpha = 0.55f))
                 .pointerInput(pinHash) {
                     detectTapGestures {

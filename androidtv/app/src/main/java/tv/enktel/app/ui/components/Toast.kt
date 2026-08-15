@@ -73,7 +73,7 @@ fun ToastHost(content: @Composable () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.background(dot, RoundedCornerShape(50)).padding(6.dp))
+                        Box(Modifier.background(dot, RoundedCornerShape(percent = 50)).padding(6.dp))
                         Text(msg.first, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }

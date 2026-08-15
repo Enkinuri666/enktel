@@ -68,6 +68,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -275,9 +276,9 @@ fun TvNavShell(
                 // whatever is behind it.
                 .background(
                     Brush.horizontalGradient(
-                        0f to Color(0xF2090A0E),
-                        0.70f to Color(0xE60B0C10),
-                        1f to Color(0x000B0C10),
+                        0f to EnktelBg.copy(alpha = 0.95f),
+                        0.70f to EnktelBg.copy(alpha = 0.90f),
+                        1f to EnktelBg.copy(alpha = 0f),
                     ),
                 )
                 // `hasFocus` on the outer Column covers any descendant, so the
@@ -409,7 +410,7 @@ private fun NavRailItem(
 
     Surface(
         onClick = { NavSounds.click(); onClick() },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         // Both containers transparent: the fill is a gradient drawn on the Row
         // below, which a flat container colour cannot express.
         colors = ClickableSurfaceDefaults.colors(
@@ -479,7 +480,7 @@ private fun NavRailItem(
                 Modifier
                     .width(3.dp)
                     .height(stripeHeight)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(
                         if (selected) {
                             Brush.verticalGradient(listOf(EnktelBlue, EnktelPurple))

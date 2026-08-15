@@ -22,6 +22,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import tv.enktel.app.ui.theme.EnktelSurface
+import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 
 /**
  * A drop-in shimmer modifier that overlays an animated diagonal light
@@ -35,8 +37,8 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun Modifier.shimmer(
-    baseColor: Color = Color(0xFF1F2937),
-    highlightColor: Color = Color(0xFF374151),
+    baseColor: Color = EnktelSurface,
+    highlightColor: Color = EnktelSurfaceHigh,
     durationMs: Int = 1400,
 ): Modifier = composed {
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -80,7 +82,7 @@ fun PosterSkeleton(wide: Boolean = false) {
     Box(
         Modifier
             .size(width = w, height = h)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .shimmer(),
     )
 }
@@ -92,7 +94,7 @@ fun EpgRowSkeleton() {
         Modifier
             .height(56.dp)
             .width(600.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .shimmer(),
     )
 }

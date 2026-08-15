@@ -245,7 +245,7 @@ private fun ItemTile(item: UserListItem, onOpen: () -> Unit, onRemove: () -> Uni
             .fillMaxWidth()
             .pointerInputTap(onTap = { if (confirming) confirming = false else onOpen() },
                 onLongPress = { confirming = !confirming }),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurface,
             focusedContainerColor = EnktelSurfaceHigh,
@@ -261,7 +261,7 @@ private fun ItemTile(item: UserListItem, onOpen: () -> Unit, onRemove: () -> Uni
                     // for both would letterbox half the grid, so the tile takes
                     // its aspect from the kind it holds.
                     .aspectRatio(if (item.kind == "live") 16f / 9f else 2f / 3f)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {

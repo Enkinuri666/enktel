@@ -163,7 +163,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.recordingSection(
                 Modifier
                     .height(18.dp)
                     .width(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(accent),
             )
             Spacer(Modifier.width(10.dp))
@@ -184,7 +184,7 @@ private fun StorageSummary(usedBytes: Long, freeBytes: Long) {
     Surface(
         onClick = {},
         modifier = Modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh.copy(0.5f), contentColor = Color.White),
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -212,7 +212,7 @@ private fun RecordingRow(
     Surface(
         onClick = primaryAction,
         modifier = Modifier.fillMaxWidth().tapClick(primaryAction),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = EnktelSurfaceHigh.copy(0.5f),
             focusedContainerColor = EnktelBlue.copy(0.35f),

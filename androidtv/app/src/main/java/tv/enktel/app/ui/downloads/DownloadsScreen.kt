@@ -205,7 +205,7 @@ private fun DownloadRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(width = 68.dp, height = 92.dp).clip(RoundedCornerShape(6.dp)).background(EnktelSurfaceHigh),
+            Modifier.size(width = 68.dp, height = 92.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurfaceHigh),
             contentAlignment = Alignment.Center,
         ) {
             if (entry.poster.isNotBlank()) {

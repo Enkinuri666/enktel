@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import tv.enktel.app.ui.theme.EnktelBlue
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import coil3.SingletonImageLoader
@@ -47,7 +48,7 @@ import kotlinx.coroutines.withContext
 fun AmbilightGlow(
     imageUrl: String?,
     modifier: Modifier = Modifier,
-    fallback: Color = Color(0xFF3B9DFF),
+    fallback: Color = EnktelBlue,
 ) {
     val ctx = LocalContext.current
     var target by remember { mutableStateOf(fallback) }

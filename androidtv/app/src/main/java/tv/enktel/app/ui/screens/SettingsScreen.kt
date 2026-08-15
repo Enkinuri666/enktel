@@ -1303,7 +1303,7 @@ private fun SettingsNavItem(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().tapClick(onClick),
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
-            RoundedCornerShape(10.dp),
+            RoundedCornerShape(12.dp),
         ),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelSurfaceHigh else Color.Transparent,
@@ -1323,7 +1323,7 @@ private fun SettingsNavItem(
                     .height(28.dp)
                     .background(
                         if (selected) EnktelBlue else Color.Transparent,
-                        RoundedCornerShape(2.dp),
+                        RoundedCornerShape(4.dp),
                     ),
             )
             Text(category.glyph, fontSize = 15.sp)

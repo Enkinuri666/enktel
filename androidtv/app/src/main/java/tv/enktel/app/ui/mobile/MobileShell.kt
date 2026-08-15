@@ -251,8 +251,8 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
                     Box(
                         Modifier
                             .size(44.dp)
-                            .shadow(8.dp, RoundedCornerShape(15.dp), spotColor = EnktelBlue, clip = false)
-                            .clip(RoundedCornerShape(15.dp))
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = EnktelBlue, clip = false)
+                            .clip(RoundedCornerShape(16.dp))
                             .background(Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -263,7 +263,7 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
                         Modifier
                             .height(30.dp)
                             .width(if (selected) 48.dp else 30.dp)
-                            .clip(RoundedCornerShape(15.dp))
+                            .clip(RoundedCornerShape(percent = 50))
                             .background(if (selected) EnktelBlue.copy(alpha = 0.18f) else Color.Transparent),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -410,7 +410,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                             Modifier
                                 .height(30.dp)
                                 .width(if (selected) 52.dp else 30.dp)
-                                .clip(RoundedCornerShape(15.dp))
+                                .clip(RoundedCornerShape(percent = 50))
                                 .background(
                                     if (selected) EnktelBlue.copy(alpha = 0.18f) else Color.Transparent,
                                 ),
@@ -465,7 +465,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                     .align(Alignment.CenterHorizontally)
                     .padding(bottom = 10.dp)
                     .height(4.dp)
-                    .background(EnktelTextDim, RoundedCornerShape(2.dp))
+                    .background(EnktelTextDim, RoundedCornerShape(4.dp))
                     .padding(horizontal = 20.dp),
             )
             Text(

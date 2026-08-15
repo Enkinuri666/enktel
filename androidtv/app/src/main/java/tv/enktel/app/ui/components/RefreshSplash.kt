@@ -68,7 +68,7 @@ fun RefreshSplash(
                     .padding(horizontal = 24.dp)
                     .widthIn(max = 400.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(EnktelSurfaceHigh)
                     .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -94,14 +94,14 @@ fun RefreshSplash(
                         Modifier
                             .fillMaxWidth()
                             .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(RoundedCornerShape(4.dp))
                             .background(Color.White.copy(alpha = 0.12f)),
                     ) {
                         Box(
                             Modifier
                                 .fillMaxWidth(progress)
                                 .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(
                                     Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple)),
                                 ),
