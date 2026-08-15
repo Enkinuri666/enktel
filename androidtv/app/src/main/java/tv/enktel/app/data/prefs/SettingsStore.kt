@@ -113,16 +113,23 @@ class SettingsStore(private val context: Context) {
     private val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
 
     // v1.21.0 power-user playback controls.
-    // Decoding mode: "hwplus" (software extensions preferred, HW fallback —
-    // default; equivalent to Media3's EXTENSION_RENDERER_MODE_PREFER),
-    // "hw" (hardware-only, no extensions — sharper on Nvidia Shield /
-    // Fire Cube), "off" (extensions off, standard HW path).
+    // Decoding mode: "hwplus" (default — the SoC's decoders answer first and
+    // the bundled FFmpeg extension sits behind them as a fallback, Media3's
+    // EXTENSION_RENDERER_MODE_ON), "hw" (extensions off entirely), "sw"
+    // (FFmpeg ahead of the platform, EXTENSION_RENDERER_MODE_PREFER).
     //
     // Live again as of v1.53.0: app/libs carries a prebuilt FFmpeg audio
-    // decoder, so "hwplus" now genuinely prefers it and is what makes AC-3,
-    // E-AC-3, DTS and TrueHD decode on hardware that cannot. It was inert
-    // between v1.51.0 and v1.52.0, when no extension renderer was on the
-    // classpath at all.
+    // decoder, and it is what makes AC-3, E-AC-3, DTS and TrueHD decode on
+    // hardware that cannot. It was inert between v1.51.0 and v1.52.0, when no
+    // extension renderer was on the classpath at all.
+    //
+    // "hwplus" mapped to PREFER until it was found to be handing FFmpeg every
+    // codec it claims — Opus and AAC among them — which is what stuttered an
+    // HEVC + Opus title on a Fire TV Stick. See player/AudioDecoding.
+    //
+    // Stored values from older builds still read correctly: "hwplus" and the
+    // legacy "on" both resolve to the new default, "hw" is unchanged, and
+    // nothing ever wrote "sw".
     private val DECODER_MODE = stringPreferencesKey("decoder_mode")
     // Manual override for the ExoPlayer LoadControl minimum buffer, in ms.
     // 0 = keep the profile default (Low / Balanced / Large / Auto). Any
