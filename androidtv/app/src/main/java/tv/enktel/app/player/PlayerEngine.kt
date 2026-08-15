@@ -450,46 +450,20 @@ class PlayerEngine(
                 androidx.media3.common.MimeTypes.AUDIO_OPUS,
                 androidx.media3.common.MimeTypes.AUDIO_AAC,
             )
-            // Prefer modern codecs when the source publishes multiple variants —
-            // AV1 → HEVC → H.264 on the video side. When only one is offered this
-            // is a no-op.
+            // Prefer modern codecs when the source publishes several for the
+            // same content — but only the ones this box decodes in hardware.
+            // VideoCodecPreference owns the reasoning and the table; the short
+            // version is that this preference outranks `usesHardwareAcceleration`
+            // in DefaultTrackSelector's chain, so listing a codec the device can
+            // only decode in software is an instruction to prefer the software
+            // path over an available hardware one.
             //
-            // It does *not* pick "the smallest bitrate for the quality tier", as
-            // this comment used to claim. It is a MIME-type preference and
-            // nothing else; bitrate is chosen separately by the adaptive track
-            // selection. Worth being exact about, because the preference sits at
-            // a specific rung of DefaultTrackSelector's comparison chain and the
-            // rungs either side of it are what matter:
-            //
-            //   isWithinRendererCapabilities   ← above it
-            //   …constraints…
-            //   preferredMimeTypeMatchIndex    ← this setting
-            //   usesHardwareAcceleration       ← below it
-            //
-            // Above it is the reassuring half: a device that cannot decode HEVC
-            // at all is never steered onto it, whatever this list says.
-            //
-            // Below it is the half worth knowing. Among renditions the device
-            // *can* decode, this preference outranks whether the decoder is a
-            // hardware one — and "can decode" includes decoding in software. So
-            // on a box with software-only HEVC and hardware H.264, a source
-            // offering both is resolved in favour of the software HEVC, which is
-            // the judder DeviceProbe's own header describes for a Fire TV Stick
-            // Lite. Remove the preference and `usesHardwareAcceleration` becomes
-            // the deciding rung instead.
-            //
-            // Left as-is deliberately rather than fixed in passing: it only
-            // bites when one source publishes several codecs for the same
-            // content, which IPTV rarely does, and the trade runs the other way
-            // on a Shield or a Cube that decodes all of them in hardware.
-            // Choosing per-device is possible — DeviceProbe already reports
-            // `Decoder.hardware` for exactly this question — but that is a
-            // change to video selection and wants a device to test on.
+            // Not a bitrate control, despite what the comment here used to say:
+            // bitrate stays with the adaptive track selection.
             .setPreferredVideoMimeTypes(
-                androidx.media3.common.MimeTypes.VIDEO_AV1,
-                androidx.media3.common.MimeTypes.VIDEO_H265,
-                androidx.media3.common.MimeTypes.VIDEO_VP9,
-                androidx.media3.common.MimeTypes.VIDEO_H264,
+                *VideoCodecPreference
+                    .order(tv.enktel.app.data.net.DeviceProbe.hardwareVideoMimes())
+                    .toTypedArray()
             )
             // Closed captions.
             //
