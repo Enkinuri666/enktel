@@ -32,6 +32,14 @@ jobs:
     env:
       # The switch that puts :baselineprofile into the build at all.
       ENKTEL_BASELINE_PROFILE: 'true'
+      # The generate task is named …ReleaseBaselineProfile, and app/build.gradle.kts
+      # refuses any task with "Release" in its name unless it can sign the output.
+      # That guard is right — it is what stops an unsigned release escaping — so
+      # this satisfies it rather than weakening it.
+      ENKTEL_KEYSTORE: ${{ github.workspace }}/enktel-release.jks
+      ENKTEL_KEYSTORE_PASS: ${{ secrets.ENKTEL_KEYSTORE_PASS }}
+      ENKTEL_KEY_PASS: ${{ secrets.ENKTEL_KEY_PASS }}
+      ENKTEL_KEY_ALIAS: ${{ secrets.ENKTEL_KEY_ALIAS }}
 
     steps:
       - name: Checkout
@@ -45,6 +53,15 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
+
+      - name: Decode release keystore
+        run: |
+          if [ -z "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::ENKTEL_KEYSTORE_BASE64 secret is not set." >&2
+            exit 1
+          fi
+          echo "${{ secrets.ENKTEL_KEYSTORE_BASE64 }}" | base64 -d > "$ENKTEL_KEYSTORE"
+          test -s "$ENKTEL_KEYSTORE"
 
       # KVM has to be reachable or the emulator falls back to software
       # rendering, which is slow enough that the run times out rather than
@@ -70,6 +87,10 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           working-directory: androidtv
           script: ./gradlew :app:generateTvReleaseBaselineProfile --no-daemon --stacktrace
+
+      - name: Clean up keystore file
+        if: always()
+        run: rm -f "$ENKTEL_KEYSTORE"
 
       - name: Show what was produced
         if: always()
