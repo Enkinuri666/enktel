@@ -438,9 +438,11 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { scope.launch { graph.settings.setDecoderMode("hwplus") } })
             tv.enktel.app.ui.components.GlassChip("HW only", selected = decMode == "hw",
                 onClick = { scope.launch { graph.settings.setDecoderMode("hw") } })
+            tv.enktel.app.ui.components.GlassChip("Software audio", selected = decMode == "sw",
+                onClick = { scope.launch { graph.settings.setDecoderMode("sw") } })
         }
         Text(
-            "HW+ prefers the bundled FFmpeg audio decoder over the SoC's own, which is what makes AC-3, E-AC-3, DTS and TrueHD play on hardware that decodes none of them — the usual cause of a channel with picture but no sound. HW-only skips it and uses the SoC alone: slightly lighter, and worth trying on a strong box like an Nvidia Shield or Fire Cube. Video decoding is unaffected either way.",
+            "HW+ uses the SoC's own audio decoders and keeps the bundled FFmpeg decoder behind them, so it only steps in for what the box genuinely cannot decode — AC-3, E-AC-3, DTS and TrueHD on hardware that ships without them, the usual cause of a channel with picture but no sound. HW-only drops FFmpeg entirely. Software audio puts FFmpeg first: try it only if a track plays silent on HW+, which means the box advertises a decoder it does not really have. Video decoding is unaffected by all three.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
