@@ -194,7 +194,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 
     var current by remember { mutableStateOf<Channel?>(null) }
     var nowNext by remember { mutableStateOf(NowNext(null, null)) }
-    val stats by engine.stats.collectAsStateWithLifecycle()
+    // Deliberately not collected here.
+    //
+    // push() rewrites StreamStats once a second — bandwidth and buffer depth
+    // change every time — so collecting it in this scope recomposed the entire
+    // live screen every second for the whole of playback. Every consumer of it
+    // is behind `showStats` or `showInfo`, so the flow is handed down and
+    // collected inside them: with no overlay up, nothing collects and nothing
+    // recomposes.
     val playError by engine.error.collectAsStateWithLifecycle()
 
     // Overlay state
@@ -676,7 +683,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
 
         if (showStats) {
-            StatsOverlay(stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
+            StatsOverlay(engine.stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
         }
 
         // Volume / brightness on-screen indicator (auto-hides after 900ms).
@@ -734,7 +741,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             LiveInfoOverlay(
                 channel = current!!,
                 nowNext = nowNext,
-                stats = stats,
+                statsFlow = engine.stats,
                 playlistName = p.name,
                 recording = recordingId != 0L,
                 shiftedFrom = shiftedFrom,
@@ -747,7 +754,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 InfoBar(
                     channel = current!!,
                     nowNext = nowNext,
-                    stats = stats,
+                    statsFlow = engine.stats,
                     recording = recordingId != 0L,
                     shiftedFrom = shiftedFrom,
                     sleepUntil = sleepUntil,
@@ -1009,12 +1016,16 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
 private fun InfoBar(
     channel: Channel,
     nowNext: NowNext,
-    stats: StreamStats,
+    statsFlow: kotlinx.coroutines.flow.StateFlow<StreamStats>,
     recording: Boolean,
     shiftedFrom: Long = 0,
     sleepUntil: Long = 0,
     modifier: Modifier,
 ) {
+    // Collected here rather than by the caller: this composable only exists
+    // while the info bar is on screen, so a per-second stats emission cannot
+    // reach the whole player.
+    val stats by statsFlow.collectAsStateWithLifecycle()
     val now = nowNext.now
     val next = nowNext.next
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
@@ -1120,7 +1131,12 @@ private fun InfoBar(
 }
 
 @Composable
-private fun StatsOverlay(s: StreamStats, format: String, modifier: Modifier) {
+private fun StatsOverlay(
+    statsFlow: kotlinx.coroutines.flow.StateFlow<StreamStats>,
+    format: String,
+    modifier: Modifier,
+) {
+    val s by statsFlow.collectAsStateWithLifecycle()
     Column(
         modifier
             .background(Color.Black.copy(0.75f), RoundedCornerShape(12.dp))

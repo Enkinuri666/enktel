@@ -346,7 +346,20 @@ fun VodPlayerScreen(
         var lastPos = -1L
         var stalledMs = 0L
         while (true) {
-            val tickMs = if (playing) 250L else 1_000L
+            // 250 ms only while the scrubber is on screen.
+            //
+            // positionMs is declared in this composable's own scope and read
+            // inside Box content lambdas — and Box is inline, so those lambdas
+            // do not get a recomposition scope of their own. Writing it
+            // recomposes the whole player body, which at four times a second
+            // was happening throughout normal viewing to move a scrubber that
+            // was not being drawn.
+            //
+            // Nothing else here needs sub-second resolution: the skip-intro
+            // pill lives between 5 s and 90 s, the resume chip has a 20 s
+            // window, the binge countdown is displayed in whole seconds and
+            // progress is persisted on its own 4 s loop.
+            val tickMs = if (playing && showControls) 250L else 1_000L
             positionMs = engine.player.currentPosition.coerceAtLeast(0)
             durationMs = engine.player.duration.coerceAtLeast(0)
             stalledMs = if (engine.player.playWhenReady && positionMs == lastPos) {
