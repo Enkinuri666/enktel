@@ -68,7 +68,7 @@ fun ToastHost(content: @Composable () -> Unit) {
                     }
                     Row(
                         Modifier
-                            .background(Color.Black.copy(0.85f), RoundedCornerShape(24.dp))
+                            .glassSurface(shape = RoundedCornerShape(24.dp), alpha = 0.85f)
                             .padding(PaddingValues(horizontal = 22.dp, vertical = 12.dp)),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,

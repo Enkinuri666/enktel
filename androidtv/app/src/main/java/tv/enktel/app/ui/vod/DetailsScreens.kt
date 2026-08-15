@@ -56,6 +56,7 @@ import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.KeyValue
 import tv.enktel.app.ui.components.PosterCard
+import tv.enktel.app.ui.components.cinematicScrim
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
@@ -98,7 +99,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 modifier = Modifier.fillMaxSize(),
                 alpha = 0.25f,
             )
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, EnktelBg))))
+            Box(Modifier.fillMaxSize().cinematicScrim(maxAlpha = 1f, base = EnktelBg))
         }
         // v1.28.1 — phone portrait was hard-wired to Row(220 dp poster +
         // 32 dp gap + 48 dp side padding), leaving ~62 dp for the metadata
@@ -415,7 +416,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             modifier = Modifier.fillMaxSize(),
             alpha = 0.25f,
         )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, EnktelBg))))
+        Box(Modifier.fillMaxSize().cinematicScrim(maxAlpha = 1f, base = EnktelBg))
     }
     Column(Modifier.fillMaxSize().padding(horizontal = hPad, vertical = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
