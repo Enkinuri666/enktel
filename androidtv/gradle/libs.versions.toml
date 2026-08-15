@@ -16,6 +16,12 @@ serializationJson = "1.11.0"
 coil = "3.5.0"
 work = "2.11.2"
 coroutines = "1.11.0"
+# Baseline-profile generation only. Nothing in the app depends on these — the
+# module that uses them is excluded from the build unless ENKTEL_BASELINE_PROFILE
+# is set, so a version that turns out to be wrong cannot break the app build.
+benchmark = "1.4.1"
+uiautomator = "2.3.0"
+testExtJunit = "1.2.1"
 
 junit = "4.13.2"
 
@@ -55,9 +61,14 @@ palette-ktx = { group = "androidx.palette", name = "palette-ktx", version = "1.0
 documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
+benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "testExtJunit" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
