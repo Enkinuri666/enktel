@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -96,13 +97,17 @@ internal fun resolutionLabel(w: Int, h: Int): String {
 fun LiveInfoOverlay(
     channel: Channel,
     nowNext: NowNext,
-    stats: StreamStats,
+    statsFlow: kotlinx.coroutines.flow.StateFlow<StreamStats>,
     playlistName: String,
     recording: Boolean,
     shiftedFrom: Long,
     sleepUntil: Long,
     modifier: Modifier = Modifier,
 ) {
+    // Collected here, not by the live player. See the note where the flow is
+    // passed in: this overlay only exists while the OSD is up, so binding the
+    // per-second stats emission to it keeps the rest of playback still.
+    val stats by statsFlow.collectAsStateWithLifecycle()
     val now = nowNext.now
     val next = nowNext.next
     Box(modifier.fillMaxSize()) {

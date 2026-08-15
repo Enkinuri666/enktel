@@ -3,6 +3,14 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    // On the classpath, but not applied unless the generation workflow asks.
+    //
+    // `apply false` still resolves the artifact, so an ordinary build proves
+    // the version is real without the plugin ever running. That matters
+    // because applying it adds build types and expects a producer module, and
+    // none of that should exist while simply building an APK. It is applied,
+    // and its producer wired up, in the block at the bottom of this file.
+    alias(libs.plugins.baselineprofile) apply false
 }
 
 android {
@@ -18,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 151
-        versionName = "1.60.31"
+        versionCode = 152
+        versionName = "1.60.32"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -245,4 +253,18 @@ run {
         ordered.forEach { earlier -> this.mustRunAfter(earlier) }
         ordered += this
     }
+}
+
+// Baseline profile generation, off unless explicitly requested.
+//
+// Everything here is inert in a normal build: the plugin is on the classpath
+// but unapplied, :baselineprofile is not in settings.gradle.kts, and this block
+// does not run. It is switched on only by .github/workflows/baseline-profile.yml.
+//
+// `add("baselineProfile", …)` rather than the generated `baselineProfile(…)`
+// accessor: that accessor only exists when the plugin is applied in the plugins
+// block, and applying it there is exactly what this avoids.
+if (System.getenv("ENKTEL_BASELINE_PROFILE") == "true") {
+    apply(plugin = "androidx.baselineprofile")
+    dependencies { add("baselineProfile", project(":baselineprofile")) }
 }
