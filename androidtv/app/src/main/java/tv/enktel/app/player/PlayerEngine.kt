@@ -61,16 +61,14 @@ class PlayerEngine(
     context: Context,
     private val http: OkHttpClient,
     bufferProfile: String,
-    /** "hwplus" (default, EXTENSION_RENDERER_MODE_PREFER) | "hw"
-     *  (EXTENSION_RENDERER_MODE_OFF, hardware-only) | any other value
-     *  falls back to hwplus. Kept as a plain string so the setting flow
-     *  can drive it without introducing a shared enum.
+    /** "hwplus" (default) | "hw" | "sw" — see [AudioDecoding], which owns the
+     *  mapping onto Media3's extension renderer modes and the reasoning behind
+     *  it. Kept as a plain string so the setting flow can drive it without
+     *  introducing a shared enum.
      *
-     *  No extension renderer is bundled, so the two modes currently select
-     *  the same decoders — Google ships the FFmpeg/AV1 extensions as source
-     *  rather than as Maven artifacts. The value is still honoured here so
-     *  that adding one later needs no change at this layer. */
-    decoderMode: String = "hwplus",
+     *  A prebuilt FFmpeg audio decoder *is* bundled (app/libs, since v1.53.0),
+     *  so these modes select genuinely different decoders. */
+    decoderMode: String = AudioDecoding.HW_PLUS,
     /** Override the profile's minimum buffer (ms). 0 = don't override. */
     minBufferOverrideMs: Int = 0,
     /**
@@ -392,23 +390,27 @@ class PlayerEngine(
         streamHttpFactory = httpFactory
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
 
-        val extMode = when (decoderMode) {
-            "hw" -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
-            "hwplus", "on" -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-            else -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-        }
+        val extMode = AudioDecoding.extensionRendererMode(decoderMode)
         val renderers = DefaultRenderersFactory(context)
-            // "hwplus" (default): favours software extension decoders
-            // (AV1/VP9/Opus/FFmpeg) then falls back to SoC hardware —
-            // maximum codec breadth without giving up HW acceleration.
-            // "hw": extensions OFF, hardware-only — sharper on devices with
-            // strong SoC decoders (Nvidia Shield, Fire Cube gen 3) that
-            // don't need the software safety net.
+            // "hwplus" (default): the SoC's own decoders answer first and the
+            // bundled FFmpeg extension sits behind them, so it only picks up
+            // what the device genuinely cannot decode (AC-3 / E-AC-3 / DTS /
+            // TrueHD on the boxes that ship without them).
+            // "hw": extensions OFF, platform only.
+            // "sw": FFmpeg ahead of the platform, for a box that advertises a
+            // decoder and returns silence from it.
+            //
+            // The default used to be PREFER, which put FFmpeg ahead of the
+            // platform for *every* codec it claims — Opus and AAC included —
+            // and that is what made an HEVC + Opus title stutter on a Fire TV
+            // Stick. AudioDecoding has the full account.
             .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(true)
-            // Route higher-tier audio (AC-3 / E-AC-3 / TrueHD / DTS) untouched to the receiver
-            // where supported, so home-theatre pass-through works instead of software decode.
-            .setEnableAudioFloatOutput(true)
+            // Float PCM output stays off — see AudioDecoding.floatOutput for
+            // why it was on, why that reason was not real, and what it cost.
+            // Pass-through to a receiver is unaffected either way: it is
+            // decided by AudioCapabilities, not by this.
+            .setEnableAudioFloatOutput(AudioDecoding.floatOutput())
             // Let the platform's AudioTrack apply playback-speed changes.
             //
             // This matters here specifically because live playback runs a speed
