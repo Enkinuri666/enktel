@@ -430,7 +430,11 @@ class PlayerEngine(
             // stay locked. Media3 falls back to Sonic wherever the platform
             // cannot oblige, so nothing is lost on devices that do not support
             // it.
-            .setEnableAudioTrackPlaybackParams(true)
+            //
+            // Renamed in media3: setEnableAudioTrackPlaybackParams is now a
+            // deprecated one-line delegate to this. Same flag, same field, no
+            // behaviour change — only the build warning goes away.
+            .setEnableAudioOutputPlaybackParameters(true)
 
         // Tunneled HW decoding on Android TV — feeds compressed samples straight to the SoC's
         // hardware decoder for lower latency + fewer dropped frames on 4K panels.
@@ -489,19 +493,35 @@ class PlayerEngine(
         // type for known container extensions so that sniffing is skipped
         // entirely for .mkv/.webm.
         val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
-            // Best-effort seeking inside constant-bitrate MPEG-TS streams —
-            // the alternative is "seek always jumps to nearest keyframe
-            // 30 s away" on live catch-up TS archives.
-            .setConstantBitrateSeekingEnabled(true)
-            // …and take it even when the container claims it can't seek.
+            // Approximate seeking in audio-only streams, and *only* those.
             //
-            // Xtream VOD is routinely a raw .ts or an MP4 whose index the panel
-            // never serves, so the extractor reports "not seekable" and Media3
-            // answers every seek by restarting from position zero. Estimating
-            // the position from the bitrate is approximate — a seek can land a
-            // second or two off on variable-bitrate content — but approximate
-            // seeking is the entire feature, and being thrown back to the start
-            // of a two-hour film is not a rounding error.
+            // These two used to be documented here as what made seeking work in
+            // Xtream's raw .ts and index-less MP4 VOD. They do nothing of the
+            // kind. `DefaultExtractorsFactory` passes the constant-bitrate flags
+            // to exactly three extractors — ADTS, AMR and MP3 — and to no
+            // others. Not MPEG-TS, not MP4, and (as the Matroska note below
+            // already worked out for its own case) not Matroska either. The
+            // claim was checkable against the factory the whole time.
+            //
+            // They are kept because they are right for the one thing they
+            // actually reach: the radio directory serves MP3 and AAC over
+            // Icecast/Shoutcast, those responses routinely arrive with no length
+            // and no index, and estimating a position from the bitrate is the
+            // only way to scrub them at all. "Always" is what extends that to
+            // the ones whose container says it cannot seek, which is most of
+            // them.
+            //
+            // What this leaves genuinely unsolved, stated plainly so nobody
+            // reads the setting as cover for it: seeking in a raw .ts is
+            // TsExtractor's own business, and it is not bitrate estimation. It
+            // reads PCR timestamps from both ends of the stream and binary
+            // searches — accurate, and better than anything a CBR estimate would
+            // give — but only when `input.getLength()` is known, i.e. when the
+            // panel answers with a Content-Length and honours range requests.
+            // Without that it emits SeekMap.Unseekable and every seek does
+            // restart the film from zero, exactly as the old comment described.
+            // Nothing here rescues that; the fix lives at the HTTP layer.
+            .setConstantBitrateSeekingEnabled(true)
             .setConstantBitrateSeekingAlwaysEnabled(true)
             // Matroska deliberately runs with *no* extra flags.
             //
