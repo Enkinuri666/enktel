@@ -58,6 +58,11 @@ import tv.enktel.app.ui.theme.EnktelWarn
  * cached on the profile when the panel can't be reached.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+// PlaybackSession is @UnstableApi, because everything that touches media3 is,
+// and "free this device's connection" has to reach it. Same opt-in MainActivity
+// already carries for the same reason — this is the annotation for media3's
+// marker, which is androidx.annotation.OptIn rather than Kotlin's.
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modifier) {
     val p = profile ?: return
