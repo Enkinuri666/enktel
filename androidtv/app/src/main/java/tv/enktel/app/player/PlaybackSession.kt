@@ -339,6 +339,26 @@ class PlaybackSession(
         tv.enktel.app.data.net.PresenceTracker.clear()
     }
 
+    /**
+     * Hand the panel's session back without necessarily ending playback.
+     *
+     * Exposed so the Account screen can offer it directly. When something is
+     * playing this stops it — a session cannot be handed back and kept — and
+     * when nothing is, it still evicts the pool, because the socket outlives
+     * the player and is the thing the panel is counting.
+     *
+     * Returns whether this device was holding a stream at the time, which is
+     * the difference between "freed it" and "we were not the one holding it"
+     * and is the only honest thing to tell the viewer. See
+     * [ConnectionSlot.canFreeFromHere].
+     */
+    fun releaseConnectionSlot(): Boolean {
+        val wasPlaying = engineRef != null
+        engineRef?.releaseStreamAndConnections()
+        stop()
+        return wasPlaying
+    }
+
     private fun releaseEngine() {
         // Session first: it holds a reference to the player, and releasing the
         // player out from under a live session is how you get a controller
@@ -347,6 +367,22 @@ class PlaybackSession(
         sessionRef = null
         engineRef?.let {
             tv.enktel.app.voice.ActivePlayerRef.unregister(it.player)
+            // Socket included, not just the player.
+            //
+            // PlayerEngine.release() ends the player and leaves the connection
+            // in OkHttp's pool, which is normally right — the pool is shared
+            // with the catalogue and the EPG and throwing it away costs them a
+            // fresh handshake. It is wrong here. A pooled socket still open to
+            // a /live URL is how an Xtream panel decides the session is in use,
+            // so stopping playback while leaving it pooled means the line stays
+            // occupied by a device nobody is watching, and the next device is
+            // refused until the panel's own timeout notices.
+            //
+            // That is the whole "it won't play on my phone" complaint, and it
+            // is why this is on the shared teardown path rather than on the one
+            // caller who happened to need it first: every route out of playback
+            // has to give the session back, not just a channel change.
+            it.releaseStreamAndConnections()
             it.release()
         }
         engineRef = null

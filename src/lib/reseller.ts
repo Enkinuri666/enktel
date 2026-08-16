@@ -262,3 +262,87 @@ export async function provisionSubscription(
     },
   };
 }
+
+/**
+ * `action=user&type=info` — everything the reseller panel will say about one
+ * line.
+ *
+ * ### Why this returns the payload rather than a typed shape
+ *
+ * The Eagle developer API documents this endpoint's *parameters* and not its
+ * response, and the fields differ between panel builds. Guessing at a schema
+ * here would mean either dropping fields the panel does send or inventing ones
+ * it does not, and the caller's whole reason for asking is to find out which
+ * fields exist. So the payload is passed through as received and the shape is
+ * discovered rather than assumed.
+ *
+ * ### What it deliberately cannot do
+ *
+ * This is the only line-scoped action in that API that is not a mutation. The
+ * documented surface is create, extend, list and info — there is no action for
+ * ending an active session and none for clearing an ISP lock, so neither can
+ * be offered however much the app would like to. Being able to *report* that a
+ * line is at its limit is the most the panel permits, and that is what this is
+ * for.
+ *
+ * Callers must establish that the requester owns the line before calling this:
+ * the reseller key is trusted by the panel for every line on the account, so
+ * the only thing standing between a stranger and someone else's account
+ * details is that check. See the route.
+ */
+export interface LineInfoResult {
+  username: string;
+  /** The panel's payload, verbatim minus the echoed credentials. */
+  panel: Record<string, unknown>;
+}
+
+export async function fetchLineInfo(
+  username: string,
+  password: string
+): Promise<{ ok: true; info: LineInfoResult } | { ok: false; error: string }> {
+  if (!API_KEY) return { ok: false, error: "Reseller API key is not configured." };
+
+  const params = new URLSearchParams({
+    action: "user",
+    type: "info",
+    username,
+    password,
+    api_key: API_KEY,
+  });
+
+  try {
+    const res = await fetch(`${API_BASE}?${params.toString()}`, {
+      method: "GET",
+      headers: { "User-Agent": "EnktelIPTV/1.0" },
+      signal: AbortSignal.timeout(12000),
+    });
+
+    const text = await res.text();
+    if (!text || text.trim() === "") {
+      return { ok: false, error: `Panel HTTP ${res.status} (empty body)` };
+    }
+
+    let json: PanelResponse;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // Deliberately not logged in full: this response is about one customer's
+      // line, unlike the package-creation path above where the body is ours.
+      return { ok: false, error: `Panel HTTP ${res.status} (non-JSON)` };
+    }
+
+    if (json.status === false) {
+      return { ok: false, error: json.message || "Panel rejected the request." };
+    }
+
+    // The credentials are echoed back by some builds. The caller already knows
+    // them and they have no business travelling any further than they must.
+    const panel: Record<string, unknown> = { ...json };
+    delete panel.password;
+    delete panel.api_key;
+
+    return { ok: true, info: { username, panel } };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error" };
+  }
+}

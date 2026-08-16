@@ -1190,6 +1190,44 @@ private fun MainNav(
         }
     }
 
+    // Give the panel's session back when the viewer leaves, so the next device
+    // can start.
+    //
+    // Every plan this app ships against is sold with one simultaneous session,
+    // so a television that has been walked away from is a phone that cannot
+    // play. Nothing used to release on leaving the app: playback carried on
+    // holding the line, and even a full stop left the socket in OkHttp's pool,
+    // which is what the panel actually counts. The result is a line occupied by
+    // a device nobody is watching until the panel's own timeout notices.
+    //
+    // ON_STOP rather than ON_PAUSE: pause fires for a transient dialog or the
+    // recents overlay, and tearing the stream down for those would make coming
+    // straight back re-tune for nothing. Stop means gone.
+    //
+    // The three ways playback legitimately continues off-screen are all the
+    // viewer's explicit choice, and ConnectionSlot.shouldReleaseOnBackground
+    // owns that rule. PiP is read from the activity rather than from our own
+    // flag because the system can put us there without asking.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, backgroundAudio, docked) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event != androidx.lifecycle.Lifecycle.Event.ON_STOP) return@LifecycleEventObserver
+            val activity = ctx as? android.app.Activity
+            val inPip = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N &&
+                activity?.isInPictureInPictureMode == true
+            if (tv.enktel.app.player.ConnectionSlot.shouldReleaseOnBackground(
+                    backgroundAudio = backgroundAudio,
+                    pictureInPicture = inPip,
+                    docked = docked,
+                )
+            ) {
+                graph.playback.releaseConnectionSlot()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val expandDock = {
         nowPlaying?.let { np ->
             graph.playback.expand()

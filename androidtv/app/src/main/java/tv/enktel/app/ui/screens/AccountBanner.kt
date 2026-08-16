@@ -17,7 +17,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +67,7 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
     var expiresAt by remember(p.id) { mutableLongStateOf(p.expiresAt) }
     var trial by remember(p.id) { mutableStateOf(false) }
     var reachable by remember(p.id) { mutableStateOf<Boolean?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(p.id) {
         if (p.kind != "xtream") { reachable = null; return@LaunchedEffect }
@@ -176,6 +179,57 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
                 note = if (p.lastSync <= 0) "run a sync below" else "",
                 accent = if (p.lastSync <= 0) accent else Color.White,
             )
+        }
+
+        // Free the session this device is holding.
+        //
+        // Offered whenever the line is capped, not only when it is currently at
+        // the limit, because the moment it is useful is *before* picking up the
+        // other device — you free the television, then walk away with the
+        // phone. Waiting for "at the limit" would mean the button only appears
+        // once you are already stuck on the device you are trying to leave.
+        //
+        // What it honestly does is hang up this device's stream and its socket.
+        // It cannot end a session on another device: no customer-facing panel
+        // call does that, and pretending otherwise would be the one thing worse
+        // than not having the button. So the wording promises this device only,
+        // and the result afterwards says which case actually applied.
+        if (maxConns in 1..2) {
+            var freeing by remember(p.id) { mutableStateOf(false) }
+            var freedNote by remember(p.id) { mutableStateOf("") }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                tv.enktel.app.ui.components.FocusButton(
+                    if (freeing) "Freeing…" else "Free this device's connection",
+                    onClick = {
+                        freeing = true
+                        scope.launch {
+                            val wasPlaying = graph.playback.releaseConnectionSlot()
+                            // Re-read rather than assume. The panel's own
+                            // bookkeeping lags the socket by a moment, so the
+                            // grace wait is the difference between showing the
+                            // viewer the new figure and showing them the old
+                            // one and looking like it did nothing.
+                            kotlinx.coroutines.delay(tv.enktel.app.player.ZapPlan.RELEASE_GRACE_MS * 4)
+                            val after = runCatching {
+                                graph.xtream.login(p).get("user_info").int("active_cons") ?: -1
+                            }.getOrDefault(-1)
+                            if (after >= 0) activeConns = after
+                            freedNote = when {
+                                wasPlaying -> "Released. Start the other device now."
+                                after > 0 -> "Nothing was playing here — the line is in use on another device."
+                                else -> "Nothing was playing here."
+                            }
+                            freeing = false
+                        }
+                    },
+                )
+                if (freedNote.isNotBlank()) {
+                    Text(freedNote, color = EnktelTextDim, fontSize = 11.sp)
+                }
+            }
         }
 
         if (reachable == false) {
