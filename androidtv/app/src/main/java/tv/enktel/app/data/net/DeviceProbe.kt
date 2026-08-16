@@ -99,6 +99,37 @@ object DeviceProbe {
         "video/mp4v-es" to "MPEG-4",
     )
 
+    /**
+     * Lower-case MIME types this device decodes in *hardware*, or null when the
+     * codec list could not be read at all.
+     *
+     * Null and empty mean different things and callers must keep them apart:
+     * empty is "asked, and this box has no hardware video decoder we care
+     * about", null is "could not ask". `VideoCodecPreference.order` answers the
+     * second with the legacy codec order rather than demoting the device.
+     *
+     * Cached because MediaCodecList cannot change while the process lives, and
+     * the caller is on the player build path — which ZapPreloader runs on every
+     * channel change, on the hardware least able to spare a codec enumeration.
+     * Only successful reads are cached, so a transient failure is retried
+     * rather than frozen in.
+     */
+    @Volatile private var hardwareVideoMimesCache: Set<String>? = null
+
+    fun hardwareVideoMimes(): Set<String>? {
+        hardwareVideoMimesCache?.let { return it }
+        val all = decoders()
+        // decoders() answers an empty list both when the platform reports no
+        // codecs and when the enumeration threw, and the two are
+        // indistinguishable from here. Nothing ships with zero video decoders,
+        // so treat empty as "could not ask".
+        if (all.isEmpty()) return null
+        return all.filter { it.hardware }
+            .map { it.mime.lowercase() }
+            .toSet()
+            .also { hardwareVideoMimesCache = it }
+    }
+
     fun snapshot(ctx: Context): Info {
         val mode = displayMode(ctx)
         val (freeMb, totalMb) = storage(ctx)

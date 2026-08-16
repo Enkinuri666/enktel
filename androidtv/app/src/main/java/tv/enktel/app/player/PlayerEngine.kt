@@ -450,15 +450,20 @@ class PlayerEngine(
                 androidx.media3.common.MimeTypes.AUDIO_OPUS,
                 androidx.media3.common.MimeTypes.AUDIO_AAC,
             )
-            // Prefer modern codecs when the source publishes multiple variants —
-            // AV1 → HEVC → H.264 on the video side. When only one is offered this
-            // is a no-op; when several exist the player picks the smallest bitrate
-            // for the quality tier, which is the point of adaptive streaming.
+            // Prefer modern codecs when the source publishes several for the
+            // same content — but only the ones this box decodes in hardware.
+            // VideoCodecPreference owns the reasoning and the table; the short
+            // version is that this preference outranks `usesHardwareAcceleration`
+            // in DefaultTrackSelector's chain, so listing a codec the device can
+            // only decode in software is an instruction to prefer the software
+            // path over an available hardware one.
+            //
+            // Not a bitrate control, despite what the comment here used to say:
+            // bitrate stays with the adaptive track selection.
             .setPreferredVideoMimeTypes(
-                androidx.media3.common.MimeTypes.VIDEO_AV1,
-                androidx.media3.common.MimeTypes.VIDEO_H265,
-                androidx.media3.common.MimeTypes.VIDEO_VP9,
-                androidx.media3.common.MimeTypes.VIDEO_H264,
+                *VideoCodecPreference
+                    .order(tv.enktel.app.data.net.DeviceProbe.hardwareVideoMimes())
+                    .toTypedArray()
             )
             // Closed captions.
             //
