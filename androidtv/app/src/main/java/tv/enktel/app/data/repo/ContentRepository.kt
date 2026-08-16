@@ -207,7 +207,7 @@ class ContentRepository(
                 // screen. FtsQuery.toMatch is what stops that, and this catch
                 // is the second line in case a token still upsets SQLite.
                 val hit = runCatching {
-                    dao.searchMoviesFts(profileId, match!!) to dao.searchSeriesFts(profileId, match)
+                    dao.searchMoviesFts(profileId, match) to dao.searchSeriesFts(profileId, match)
                 }.getOrNull()
                 if (hit != null) return@withContext hit
             }

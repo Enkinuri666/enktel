@@ -10,9 +10,17 @@
     <!-- Needed so BootReceiver can trigger auto-launch after the TV finishes booting. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+        No tools:replace on android:banner.
+
+        It was there to win a merge conflict that does not exist: src/main
+        declares no banner, and neither does any library manifest, so the
+        merger had nothing to replace and said so on every build. The banner
+        itself is unaffected — a flavour manifest contributing an attribute
+        nobody else sets is an ordinary merge, not an override.
+    -->
     <application
-        android:banner="@drawable/tv_banner"
-        tools:replace="android:banner">
+        android:banner="@drawable/tv_banner">
 
         <!--
             tools:ignore rationale:
