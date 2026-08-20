@@ -31,6 +31,22 @@ data class TrialCredentials(
 )
 
 /**
+ * The server refused because this device has had its trial already.
+ *
+ * A distinct type rather than a status code the UI has to re-derive, or a
+ * string it has to match on: the difference between "already used" and any
+ * other failure is the difference between showing the upgrade offer and
+ * showing a retryable error, and a caller that gets it wrong either nags a
+ * customer who cannot buy or hides the offer from one who can.
+ *
+ * This matters most on a reinstall. The app's own `trialUsed` flag lives in
+ * DataStore and is wiped with the app, so a fresh install always believes it is
+ * entitled to a trial — the server is the only thing that knows better, and
+ * this is how it says so.
+ */
+class TrialAlreadyUsedException(message: String) : IOException(message)
+
+/**
  * Talks to the Eagle 4K trial signup endpoint (BuildConfig.EAGLE_TRIAL_URL).
  *
  * Wire shape (POST, application/json):
@@ -58,7 +74,9 @@ class EagleTrialClient(private val http: OkHttpClient) {
             http.newCall(req).execute().use { resp ->
                 val text = resp.body.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    throw IOException(errorMessage(resp.code, text))
+                    val message = errorMessage(resp.code, text)
+                    if (isAlreadyUsed(resp.code)) throw TrialAlreadyUsedException(message)
+                    throw IOException(message)
                 }
                 parseTrialResponse(text)
             }
@@ -91,7 +109,22 @@ class EagleTrialClient(private val http: OkHttpClient) {
         return TrialCredentials(serverUrl.trim(), username.trim(), password.trim(), expiresAt)
     }
 
-    private fun errorMessage(code: Int, body: String): String {
+    /**
+     * Statuses that mean "this device has had its trial", as opposed to
+     * anything a retry might fix.
+     *
+     * 409 is what the server's trial gate returns. 403 is the browser cookie
+     * path, which an app should never reach — it sends no cookies — but which
+     * means the same thing if it ever does, and treating it as a generic
+     * failure would show a retry prompt for something that will never succeed.
+     *
+     * 429 is deliberately *not* here. "Too many requests from your network" is
+     * about the address, not the device, and a second person in the same house
+     * is still entitled to a trial once the window passes.
+     */
+    internal fun isAlreadyUsed(code: Int): Boolean = code == 409 || code == 403
+
+    internal fun errorMessage(code: Int, body: String): String {
         val friendly = when (code) {
             404 -> "Trial signup is not available right now"
             409 -> "This device already used its free trial"

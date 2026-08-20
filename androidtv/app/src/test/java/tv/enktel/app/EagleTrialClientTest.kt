@@ -103,3 +103,49 @@ class EagleTrialClientTest {
         client.parseTrialResponse("")
     }
 }
+
+/**
+ * Which refusals are permanent.
+ *
+ * The app has to tell "you have had your trial" apart from "try again", because
+ * one should show the upgrade offer and the other a retry. Getting it wrong
+ * either nags a customer who cannot buy, or hides the offer from one who can.
+ */
+class TrialRefusalTest {
+
+    private val client = EagleTrialClient(OkHttpClient())
+
+    @Test
+    fun `409 and 403 mean the trial is already used`() {
+        // 409 is the server's trial gate. 403 is the browser cookie path — an
+        // app sends no cookies so it should never see it, but it means the same
+        // thing, and treating it as generic would offer a retry that can never
+        // succeed.
+        assertTrue(client.isAlreadyUsed(409))
+        assertTrue(client.isAlreadyUsed(403))
+    }
+
+    @Test
+    fun `a network rate limit is not the same as a used trial`() {
+        // "Too many requests from your network" is about the address, not the
+        // device. A second person in the same house is still entitled to a
+        // trial once the window passes, so this must stay retryable.
+        assertTrue(!client.isAlreadyUsed(429))
+    }
+
+    @Test
+    fun `transient failures stay retryable`() {
+        for (code in listOf(500, 502, 503, 504, 408, 400)) {
+            assertTrue("HTTP $code should not be permanent", !client.isAlreadyUsed(code))
+        }
+    }
+
+    @Test
+    fun `the already-used message carries the upgrade offer`() {
+        // This string is what the user reads when they are blocked, and a bare
+        // "trial signup failed" would leave them with nothing to do next.
+        val msg = client.errorMessage(409, """{"error":"Get 12 months for $99 USD"}""")
+        assertTrue(msg, msg.contains("already used"))
+        assertTrue(msg, msg.contains("12 months"))
+    }
+}

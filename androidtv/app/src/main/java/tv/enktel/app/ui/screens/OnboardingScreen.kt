@@ -126,7 +126,18 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                             onFailure = {
                                 trialBusy = false
                                 trialMessage = ""
-                                error = it.message ?: "Trial signup failed"
+                                if (it is tv.enktel.app.data.net.TrialAlreadyUsedException) {
+                                    // The server knows this device has had its
+                                    // trial even though a reinstall wiped the
+                                    // local flag. Show the offer rather than an
+                                    // error the user can only stare at, and
+                                    // write the flag back so the next tap does
+                                    // not need a round trip to find out.
+                                    scope.launch { graph.settings.setTrialUsed(true) }
+                                    showTrialExpired = true
+                                } else {
+                                    error = it.message ?: "Trial signup failed"
+                                }
                             },
                         )
                     }

@@ -1,36 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { provisionSubscription } from "@/lib/reseller";
 import { sendWelcomeEmail } from "@/lib/email";
+import { checkTrialAllowed, commitTrial, gateResponse, trialGateEnabled } from "@/lib/trialGate";
 
 const TRIAL_COOKIE = "enktel_trial";
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
-const EMAIL_COOLDOWN_MS = 10 * 60 * 1000;
-const IP_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_TRIALS_PER_IP = 3;
-const FP_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_TRIALS_PER_FP = 3;
-
-const recentEmails = new Map<string, number>();
-const ipTrials = new Map<string, number[]>();
-const fpTrials = new Map<string, number[]>();
-
-function cleanup() {
-  const now = Date.now();
-  recentEmails.forEach((ts, k) => {
-    if (now - ts > EMAIL_COOLDOWN_MS) recentEmails.delete(k);
-  });
-  ipTrials.forEach((timestamps, k) => {
-    const valid = timestamps.filter((t) => now - t < IP_WINDOW_MS);
-    if (valid.length === 0) ipTrials.delete(k);
-    else ipTrials.set(k, valid);
-  });
-  fpTrials.forEach((timestamps, k) => {
-    const valid = timestamps.filter((t) => now - t < FP_WINDOW_MS);
-    if (valid.length === 0) fpTrials.delete(k);
-    else fpTrials.set(k, valid);
-  });
-}
+// The per-email, per-IP and per-device limits used to live in module-level
+// Maps right here. On Vercel that is not a rate limiter: every invocation may
+// land on a different serverless instance, instances are recycled constantly,
+// and a cold start begins with the maps empty — so the "one free trial per
+// device" rule did not actually hold, and every trial is a real line on the
+// reseller panel. They now live in Redis; see src/lib/trialGate.ts.
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -80,40 +61,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please provide a valid name and email." }, { status: 400 });
   }
 
-  cleanup();
-
-  const lastEmail = recentEmails.get(email);
-  if (lastEmail && Date.now() - lastEmail < EMAIL_COOLDOWN_MS) {
-    return NextResponse.json(
-      { error: "A trial was already requested for this email. Check your inbox for your login details, or contact us on WhatsApp if you need help." },
-      { status: 429 }
-    );
-  }
-
   const ip = getClientIp(req);
-  if (ip !== "unknown") {
-    const ipHits = ipTrials.get(ip) || [];
-    if (ipHits.length >= MAX_TRIALS_PER_IP) {
-      console.warn(`[trial] IP rate limit hit: ${ip} (${ipHits.length} trials in 24h)`);
-      return NextResponse.json(
-        { error: "Too many trial requests from your network. Please try again later or contact us on WhatsApp." },
-        { status: 429 }
-      );
+
+  // One gate for all three limits, backed by a store that survives a cold
+  // start. An app has no email to key on, so its stable install id plays the
+  // part the browser fingerprint plays for the web form.
+  const verdict = await checkTrialAllowed({
+    deviceId: fingerprint,
+    ip,
+    email: email || undefined,
+  });
+  if (!verdict.allowed) {
+    if (verdict.reason === "device_used") {
+      console.warn(`[trial] repeat device blocked: ${fingerprint}`);
     }
+    const { status, error } = gateResponse(verdict);
+    return NextResponse.json({ error }, { status });
   }
 
-  if (fingerprint) {
-    const fpHits = fpTrials.get(fingerprint) || [];
-    if (fpHits.length >= MAX_TRIALS_PER_FP) {
-      console.warn(`[trial] Fingerprint rate limit hit: ${fingerprint}`);
-      return NextResponse.json(
-        { error: "You've already used your free trial. Log in to your dashboard or contact us on WhatsApp to upgrade." },
-        { status: 429 }
-      );
-    }
+  if (!trialGateEnabled) {
+    // Loud, because a production deploy without the Redis integration attached
+    // is silently handing out unlimited trials.
+    console.warn("[trial] no KV/Redis configured — the one-trial-per-device limit is NOT enforced");
   }
-
-  recentEmails.set(email, Date.now());
 
   const result = await provisionSubscription("trial", email);
   if (!result.ok) {
@@ -124,16 +94,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (ip !== "unknown") {
-    const ipHits = ipTrials.get(ip) || [];
-    ipHits.push(Date.now());
-    ipTrials.set(ip, ipHits);
-  }
-  if (fingerprint) {
-    const fpHits = fpTrials.get(fingerprint) || [];
-    fpHits.push(Date.now());
-    fpTrials.set(fingerprint, fpHits);
-  }
+  // Recorded only now, after the panel has confirmed a line exists. Writing it
+  // before provisioning would mean a panel timeout — not the caller's fault,
+  // and something they will retry — permanently consuming the one trial they
+  // were entitled to.
+  await commitTrial({
+    deviceId: fingerprint,
+    ip,
+    email: email || undefined,
+    expiresAt: new Date(result.subscription.endDate).getTime(),
+  });
 
   const subscription = { ...result.subscription, device };
   // No email to send to when the caller is an app — the credentials are
