@@ -26,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 156
-        versionName = "1.60.36"
+        versionCode = 157
+        versionName = "1.60.37"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -52,9 +52,16 @@ android {
         // them in with -PenkDefaultUser / -PenkDefaultPass (or
         // ENK_DEFAULT_USER / ENK_DEFAULT_PASS); neither touches a committed
         // file.
+        // This has to be the host the reseller actually issues lines on —
+        // `STREAM_SERVER_URL` in src/lib/reseller.ts, which is also what
+        // /api/trial hands back as `server_url` and what verifyStreamCredentials
+        // authenticates against. It was line.enktel.online, which is a
+        // different machine: a subscriber typing correct credentials into the
+        // prefilled form was pointing them at a host that does not hold their
+        // line, and got the origin's HTTP 512 rather than a login failure.
         val defaultServer = (project.findProperty("enkDefaultServer") as? String)
             ?: System.getenv("ENK_DEFAULT_SERVER")
-            ?: "http://line.enktel.online"
+            ?: "http://api.elg-26.com"
         val defaultUser = (project.findProperty("enkDefaultUser") as? String)
             ?: System.getenv("ENK_DEFAULT_USER")
             ?: ""
