@@ -16,6 +16,10 @@ node_modules/
 # MCP config (contains API keys)
 .mcp.json
 
+# Exported panel catalogs — every Xtream stream URL embeds the line's username
+# and password, so these files are credentials. Never commit them.
+data/catalog/
+
 # Misc
 .DS_Store
 *.pem

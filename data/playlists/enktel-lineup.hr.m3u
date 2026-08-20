@@ -1,0 +1,28 @@
+#EXTM3U x-tvg-url="https://worker-9dd4.onrender.com/guide.xml.gz"
+#EXTINF:-1 tvg-id="SBTV.hr@SD" tvg-logo="https://i.imgur.com/MIampxZ.png" tvg-country="HR" group-title="HR - 24/7 Series",SBTV (1080p) [Not 24/7]
+https://live.leveex.hr/hls/live.m3u8
+#EXTINF:-1 tvg-id="HRT3.hr@SD" tvg-logo="https://i.imgur.com/4OrOJRx.png" tvg-country="HR" group-title="HR - Documentary",HRT 3 (720p)
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36
+https://webtvstream.bhtelecom.ba/hrt3.m3u8
+#EXTINF:-1 tvg-id="NationalGeographic.hr@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Natgeologo.svg/960px-Natgeologo.svg.png" tvg-country="HR" group-title="HR - Documentary",National Geographic (1080p)
+http://176.61.157.250/NationalGeographic/index.m3u8
+#EXTINF:-1 tvg-id="BravoKidsTV.hr@SD" tvg-logo="https://i.imgur.com/JcJ6fQ9.png" tvg-country="HR" group-title="HR - Reality",Bravo! Kids TV
+https://streaming.radiohub.hr/RadioHub_WEB_streaming/BHWUC27pGZ/3.m3u8
+#EXTINF:-1 tvg-id="Nickelodeon.hr@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Nickelodeon_2009_logo.svg/960px-Nickelodeon_2009_logo.svg.png" tvg-country="HR" group-title="HR - Kids",Nickelodeon (1080p)
+http://176.61.157.250/Nickelodeon/index.m3u8
+#EXTINF:-1 tvg-id="ExtraTV.hr@SD" tvg-logo="https://i.imgur.com/5edYPBO.png" tvg-country="HR" group-title="HR - Music",Extra TV (1080p)
+https://streaming.social3.hr/ExtraTVudzdhr5/uUankWqpXD/1.m3u8
+#EXTINF:-1 tvg-id="HRT1.hr@SD" tvg-logo="https://i.imgur.com/lDSctzX.png" tvg-country="HR" group-title="HR - Entertainment",HRT 1 (720p)
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36
+https://webtvstream.bhtelecom.ba/hrt1.m3u8
+#EXTINF:-1 tvg-id="HRT2.hr@SD" tvg-logo="https://i.imgur.com/yyePcl1.png" tvg-country="HR" group-title="HR - Entertainment",HRT 2 (720p)
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36
+https://webtvstream.bhtelecom.ba/hrt2.m3u8
+#EXTINF:-1 tvg-id="KanalRi.hr" tvg-name="Kanal Ri" tvg-logo="https://kanal-ri.hr/wp-content/uploads/2022/09/kanalRi_logo_v1.png" tvg-country="HR" group-title="HR - Entertainment",Kanal Ri
+https://live.kanal-ri.click/LiveApp/streams/B6HK3voDwNsRQoLm1124882102135504.m3u8
+#EXTINF:-1 tvg-id="LibertasTV.hr@SD" tvg-logo="https://i.imgur.com/4R4fhbd.png" tvg-country="HR" group-title="HR - Entertainment",Libertas TV (1080p)
+https://stream.luci.xyz/hls/LTV.m3u8
+#EXTINF:-1 tvg-id="NovaTV.hr@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Nova_TV_Croatia_logo.png/960px-Nova_TV_Croatia_logo.png" tvg-country="HR" group-title="HR - Entertainment",Nova TV (1080p)
+http://176.61.157.250/NovaTV/index.m3u8
+#EXTINF:-1 tvg-id="ShiftTV.hr@SD" tvg-logo="https://i.imgur.com/mudXVT8.png" tvg-country="HR" group-title="HR - Entertainment",Shift TV (1080p)
+https://hls.shift.tv/live/shifttv/playlist.m3u8
