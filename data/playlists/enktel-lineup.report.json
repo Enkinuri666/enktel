@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-08-20T17:23:38.682Z",
+  "playlist": "data/playlists/enktel-core.m3u",
+  "countries": [
+    "AU",
+    "US",
+    "GB",
+    "HR"
+  ],
+  "genres": [
+    "PPV / Main Events",
+    "Sports",
+    "24/7 Series",
+    "News",
+    "Documentary",
+    "Reality",
+    "Kids",
+    "Movies",
+    "Music",
+    "Entertainment"
+  ],
+  "guideChannels": 40800,
+  "guideSources": [
+    {
+      "id": "iptv-org-catalog",
+      "count": 39752,
+      "ok": true
+    },
+    {
+      "id": "https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz",
+      "count": 213,
+      "ok": true
+    },
+    {
+      "id": "https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz",
+      "count": 481,
+      "ok": true
+    },
+    {
+      "id": "https://epgshare01.online/epgshare01/epg_ripper_AU1.xml.gz",
+      "count": 354,
+      "ok": true
+    }
+  ],
+  "epgUrl": "https://worker-9dd4.onrender.com/guide.xml.gz",
+  "totals": {
+    "input": 2923,
+    "lineup": 2923,
+    "idAlready": 2884,
+    "idMatched": 1,
+    "idMissing": 38,
+    "logoAlready": 2849,
+    "logoFilled": 1,
+    "logoMissing": 73,
+    "unclassified": 786,
+    "defaulted": 786,
+    "droppedCountry": 0,
+    "droppedGenre": 0,
+    "epgCoverage": "98.7%",
+    "logoCoverage": "97.5%"
+  },
+  "byCountry": {
+    "AU": 158,
+    "US": 2446,
+    "GB": 307,
+    "HR": 12
+  },
+  "byGroup": {
+    "AU - Sports": 6,
+    "AU - 24/7 Series": 5,
+    "AU - News": 14,
+    "AU - Reality": 2,
+    "AU - Kids": 2,
+    "AU - Movies": 1,
+    "AU - Music": 3,
+    "AU - Entertainment": 125,
+    "US - PPV / Main Events": 2,
+    "US - Sports": 150,
+    "US - 24/7 Series": 74,
+    "US - News": 226,
+    "US - Documentary": 112,
+    "US - Reality": 22,
+    "US - Kids": 123,
+    "US - Movies": 157,
+    "US - Music": 92,
+    "US - Entertainment": 1488,
+    "GB - Sports": 40,
+    "GB - 24/7 Series": 5,
+    "GB - News": 35,
+    "GB - Documentary": 21,
+    "GB - Reality": 3,
+    "GB - Kids": 20,
+    "GB - Movies": 14,
+    "GB - Music": 41,
+    "GB - Entertainment": 128,
+    "HR - 24/7 Series": 1,
+    "HR - Documentary": 2,
+    "HR - Reality": 1,
+    "HR - Kids": 1,
+    "HR - Music": 1,
+    "HR - Entertainment": 6
+  }
+}

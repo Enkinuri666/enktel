@@ -1,0 +1,434 @@
+#EXTM3U x-tvg-url="https://worker-9dd4.onrender.com/guide.xml.gz"
+#EXTINF:-1 tvg-id="mjh-cricketgold-fast" tvg-logo="https://i.mjh.nz/.images/auto-cricketgold-fast-906f03.png" tvg-country="AU" group-title="AU - Sports",Cricket Gold
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cricketgold-fast.m3u8
+#EXTINF:-1 tvg-id="CricketGold.au" tvg-name="Cricket Gold" tvg-logo="https://resources.cricket-australia.pulselive.com/cricket-australia/photo/2025/07/25/836eddae-4329-4542-ad17-dcd37e9d951a/Cricket-Gold-1920x1080_noBG.png" tvg-country="AU" group-title="AU - Sports",Cricket Gold
+https://streams2.sofast.tv/scheduler/scheduleMaster/418.m3u8
+#EXTINF:-1 tvg-id="CricketGold.au" tvg-name="Cricket Gold" tvg-logo="https://resources.cricket-australia.pulselive.com/cricket-australia/photo/2025/07/25/836eddae-4329-4542-ad17-dcd37e9d951a/Cricket-Gold-1920x1080_noBG.png" tvg-country="AU" group-title="AU - Sports",Cricket Gold
+https://d382r3rgbxdixq.cloudfront.net/scheduler/scheduleMaster/418.m3u8
+#EXTINF:-1 tvg-id="CricketGold.au@SD" tvg-logo="https://resources.cricket-australia.pulselive.com/cricket-australia/photo/2025/07/25/836eddae-4329-4542-ad17-dcd37e9d951a/Cricket-Gold-1920x1080_noBG.png" tvg-country="AU" group-title="AU - Sports",Cricket Gold (1080p)
+https://streams2.sofast.tv/ptnr-yupptv/title-cricketgold/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/b2048bb8-1686-4432-aa50-647245383e0c/manifest.m3u8
+#EXTINF:-1 tvg-id="SkyRacing1.au@SD" tvg-logo="https://i.imgur.com/Hf0EiaW.png" tvg-country="AU" group-title="AU - Sports",Sky Racing 1 (720p)
+https://636ffd31f0e12.streamlock.net/RacingStream1/RacingStream1/playlist.m3u8
+#EXTINF:-1 tvg-id="SkyRacing2.au@SD" tvg-logo="https://i.imgur.com/TxQvFnQ.png" tvg-country="AU" group-title="AU - Sports",Sky Racing 2 (720p)
+https://636ffd31f0e12.streamlock.net/RacingStream2/RacingStream2/playlist.m3u8
+#EXTINF:-1 tvg-id="AusbizTV.au@SD" tvg-logo="https://i.imgur.com/8vGGdB0.png" tvg-country="AU" group-title="AU - 24/7 Series",ausbiz TV (720p) [Not 24/7]
+https://d9quh89lh7dtw.cloudfront.net/public-output/index.m3u8
+#EXTINF:-1 tvg-id="mjh-dance-moms-247-fast" tvg-logo="https://imageresizer.static9.net.au/OKBRw5HKp9hAAVX3XM-A1HrVRug=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F04%2F585178%2Fsquircle_dancemoms.png" tvg-country="AU" group-title="AU - 24/7 Series",Dance Moms 24/7
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/dance-moms-247-fast.m3u8
+#EXTINF:-1 tvg-id="SkyNewsExtra2.au@SD" tvg-logo="https://i.imgur.com/ZsPb8nL.png" tvg-country="AU" group-title="AU - 24/7 Series",Sky News Extra 2 (540p) [Not 24/7]
+https://skynewsau-live.akamaized.net/hls/live/2002690/skynewsau-extra2/master.m3u8
+#EXTINF:-1 tvg-id="mjh-taronga-247-fast" tvg-logo="https://imageresizer.static9.net.au/HvEyaXfq57tpzSGiLjqejGDiyA8=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2026%2F06%2F779914%2Ftaronga_squircle.png" tvg-country="AU" group-title="AU - 24/7 Series",Taronga 24/7
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/taronga-247-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-the-block-247-fast" tvg-logo="https://imageresizer.static9.net.au/Mj-NaVq7oZgtzt2bf55lkLIfyuQ=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F08%2F623508%2Ftheblock_squircle.png" tvg-country="AU" group-title="AU - 24/7 Series",The Block 24/7
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/the-block-247-fast.m3u8
+#EXTINF:-1 tvg-id="2GB.au@SD" tvg-logo="https://i.ibb.co/jwM8DFG/2GB-1.png" tvg-country="AU" group-title="AU - News",2GB Sydney (1080p)
+https://2gblive.akamaized.net/hls/live/2033805/2GB/index.m3u8
+#EXTINF:-1 tvg-id="3AW.au@SD" tvg-logo="https://i.imgur.com/Z4MdB0S.png" tvg-country="AU" group-title="AU - News",3AW Melbourne (1080p)
+https://3awlive.akamaized.net/hls/live/2032295/3AW/index.m3u8
+#EXTINF:-1 tvg-id="6PR.au@SD" tvg-logo="https://i.imgur.com/Q9iCxg1.png" tvg-country="AU" group-title="AU - News",6PR Perth (1080p)
+https://6prlive.akamaized.net/hls/live/2033806/6PR/index.m3u8
+#EXTINF:-1 tvg-id="ABCNews.au" tvg-name="ABC News" tvg-logo="https://i.imgur.com/BrW7gk8.png" tvg-country="AU" group-title="AU - News",ABC News
+https://c.mjh.nz/abc-news.m3u8
+#EXTINF:-1 tvg-id="ABCNews.au@Sydney" tvg-logo="https://i.imgur.com/BrW7gk8.png" tvg-country="AU" group-title="AU - News",ABC News (720p)
+https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8
+#EXTINF:-1 tvg-id="mjh-al-jazeera" tvg-logo="https://i.mjh.nz/.images/al-jazeera.png" tvg-country="AU" group-title="AU - News",Al Jazeera
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/al-jazeera.m3u8
+#EXTINF:-1 tvg-id="mjh-bloomberg-tv" tvg-logo="https://i.mjh.nz/.images/bloomberg-tv.png" tvg-country="AU" group-title="AU - News",Bloomberg TV
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/bloomberg-tv.m3u8
+#EXTINF:-1 tvg-id="mjh-channel-news-asia" tvg-logo="https://i.mjh.nz/.images/channel-news-asia.png" tvg-country="AU" group-title="AU - News",Channel News Asia (CNA)
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/channel-news-asia.m3u8
+#EXTINF:-1 tvg-id="mjh-dw-news" tvg-logo="https://www.dw.com/images/icons/favicon-540x540.png" tvg-country="AU" group-title="AU - News",DW English
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/dw-news.m3u8
+#EXTINF:-1 tvg-id="News24.au@SD" tvg-logo="https://cf-images.ap-southeast-2.prod.boltdns.net/v1/static/5647924203001/8e3eba6d-3ed7-4687-8793-ce06bebb0f37/4f567b79-c56c-426c-91c3-0b277e41879e/1920x1080/match/image.jpg" tvg-country="AU" group-title="AU - News",News24 (1080p)
+https://skynewsau-live-premium.akamaized.net/hls/live/2105299/skynews/live.m3u8
+#EXTINF:-1 tvg-id="SkyNewsExtra1.au@SD" tvg-logo="https://i.imgur.com/ZsPb8nL.png" tvg-country="AU" group-title="AU - News",Sky News Extra 1 (540p)
+https://skynewsau-live.akamaized.net/hls/live/2002689/skynewsau-extra1/master.m3u8
+#EXTINF:-1 tvg-id="SkyNewsExtra3.au@SD" tvg-logo="https://i.imgur.com/ZsPb8nL.png" tvg-country="AU" group-title="AU - News",Sky News Extra 3 (1080p)
+https://skynewsau-live.akamaized.net/hls/live/2002691/skynewsau-extra3/master.m3u8
+#EXTINF:-1 tvg-id="mjh-sky-news-now" tvg-logo="https://i.mjh.nz/.images/sky-news-now.png" tvg-country="AU" group-title="AU - News",Sky News Now
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/sky-news-now.m3u8
+#EXTINF:-1 tvg-id="WeatherSpy.au@SD" tvg-logo="https://i.imgur.com/GTxN2nH.png" tvg-country="AU" group-title="AU - News",WeatherSpy (720p)
+https://jukin-weatherspy-2-au.samsung.wurl.tv/playlist.m3u8
+#EXTINF:-1 tvg-id="mjh-married-at-first-sight-fast" tvg-logo="https://imageresizer.static9.net.au/OCF69HZLp4AWm0cGB8bvgx4U8mQ=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F04%2F585176%2Fsquircle_mafs.png" tvg-country="AU" group-title="AU - Reality",Married At First Sight
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/married-at-first-sight-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-therealhousewivesvault-fast" tvg-logo="https://i.mjh.nz/.images/auto-therealhousewivesvault-fast-dd8ea5.png" tvg-country="AU" group-title="AU - Reality",The Real Housewives VAULT
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/therealhousewivesvault-fast.m3u8
+#EXTINF:-1 tvg-id="ABCEntertains.au@Sydney" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/3/35/ABC_Entertains_logo.svg/960px-ABC_Entertains_logo.svg.png" tvg-country="AU" group-title="AU - Kids",ABC Entertains (720p)
+https://c.mjh.nz/abc-me.m3u8
+#EXTINF:-1 tvg-id="ABCKids.au@Sydney" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/2/29/ABC_Kids_%282020%29.svg/revision/latest/scale-to-width-down/512" tvg-country="AU" group-title="AU - Kids",ABC Kids
+https://c.mjh.nz/abc-kids.m3u8
+#EXTINF:-1 tvg-id="mjh-all-starcinema-fast" tvg-logo="https://i.mjh.nz/.images/auto-all-starcinema-fast-9f2397.png" tvg-country="AU" group-title="AU - Movies",All-Star Cinema
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/all-starcinema-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6333" tvg-logo="https://i.iheart.com/v3/re/new_assets/5e1be9430d9b69e12e6931a4" tvg-country="AU" group-title="AU - Music",92.7 Mix FM
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6333.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-9042" tvg-logo="https://i.iheart.com/v3/re/new_assets/60fd422611a963a6033d5584" tvg-country="AU" group-title="AU - Music",99.7 Bridge FM
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-9042.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-10742" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6a697fa58c64e578d302edd4" tvg-country="AU" group-title="AU - Music",SBS Radio 4
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-10742.m3u8
+#EXTINF:-1 tvg-id="mjh-10-qld" tvg-logo="https://10play.com.au/ip/s3/2025/06/25/b18ae76555d114f7bfaf1c3bfa43dd3f-1384577.png" tvg-country="AU" group-title="AU - Entertainment",10
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10-qld.m3u8
+#EXTINF:-1 tvg-id="10Bold.au@Sydney" tvg-logo="https://i.imgur.com/2xglh33.png" tvg-country="AU" group-title="AU - Entertainment",10 Bold Adelaide (1080p)
+https://dce3793146fef017.mediapackage.us-west-2.amazonaws.com/out/v1/55cdf73af7894775ba6de8f57482b66a/CMAF_HLS/index.m3u8
+#EXTINF:-1 tvg-id="mjh-10peach-qld" tvg-logo="https://10play.com.au/ip/s3/2025/06/25/443fa2a5bca1191f12efa002a2a8ef85-1384586.png" tvg-country="AU" group-title="AU - Entertainment",10 Comedy
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10peach-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-10bold-qld" tvg-logo="https://10play.com.au/ip/s3/2025/06/25/66c9f2639a7bca4a6691764a0db801d7-1384581.png" tvg-country="AU" group-title="AU - Entertainment",10 Drama
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10bold-qld.m3u8
+#EXTINF:-1 tvg-id="10Sydney.au" tvg-name="10 HD" tvg-logo="https://i.imgur.com/ZjKvXPn.png" tvg-country="AU" group-title="AU - Entertainment",10 HD
+https://i.mjh.nz/.r/10-nsw.m3u8
+#EXTINF:-1 tvg-id="10Peach.au" tvg-name="10 Peach" tvg-logo="https://i.imgur.com/NlZLut8.png" tvg-country="AU" group-title="AU - Entertainment",10 Peach
+https://i.mjh.nz/.r/10peach-nsw.m3u8
+#EXTINF:-1 tvg-id="mjh-cas39-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas39-fast-aa22c1.png" tvg-country="AU" group-title="AU - Entertainment",24 Hours in A&E
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas39-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-10143" tvg-logo="https://i.iheart.com/v3/re/assets.streams/65c44b3d3fef48f1bff243c6" tvg-country="AU" group-title="AU - Entertainment",2ME
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-10143.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-10144" tvg-logo="https://i.iheart.com/v3/re/assets.streams/65c4505a3fef48f1bff243c9" tvg-country="AU" group-title="AU - Entertainment",2ME Gold
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-10144.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6308" tvg-logo="https://i.iheart.com/v3/re/assets.streams/69923c072a4e58c58615a064" tvg-country="AU" group-title="AU - Entertainment",4EB
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6308.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-11442" tvg-logo="https://i.iheart.com/v3/re/assets.streams/69923acc2a4e58c58615a061" tvg-country="AU" group-title="AU - Entertainment",4EB Global Digital
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-11442.m3u8
+#EXTINF:-1 tvg-id="mjh-60-minutes-australia-fast" tvg-logo="https://imageresizer.static9.net.au/kufGcZyXI7lNm32WrMV86xPNAnk=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F04%2F585173%2Fsquircle_60mins.png" tvg-country="AU" group-title="AU - Entertainment",60 Minutes Australia
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/60-minutes-australia-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-7afl-fast" tvg-logo="https://i.mjh.nz/.images/auto-7afl-fast-e8fdb6.png" tvg-country="AU" group-title="AU - Entertainment",7AFL
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7afl-fast.m3u8
+#EXTINF:-1 tvg-id="7flix.au" tvg-name="7flix" tvg-logo="https://i.imgur.com/6iIYCyC.png" tvg-country="AU" group-title="AU - Entertainment",7flix
+https://i.mjh.nz/.r/7flix-syd.m3u8
+#EXTINF:-1 tvg-id="mjh-7flix-bri" tvg-logo="https://i.mjh.nz/.images/auto-7flix-bri-c6badc.png" tvg-country="AU" group-title="AU - Entertainment",7flix
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7flix-bri.m3u8
+#EXTINF:-1 tvg-id="mjh-7flix-regional" tvg-logo="https://i.mjh.nz/.images/auto-7flix-regional-c6badc.png" tvg-country="AU" group-title="AU - Entertainment",7flix Regional
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7flix-regional.m3u8
+#EXTINF:-1 tvg-id="7mate.au" tvg-name="7mate" tvg-logo="https://i.imgur.com/zpr12HP.png" tvg-country="AU" group-title="AU - Entertainment",7mate
+https://i.mjh.nz/.r/7mate-syd.m3u8
+#EXTINF:-1 tvg-id="mjh-7mate-bri" tvg-logo="https://i.mjh.nz/.images/auto-7mate-bri-360d60.png" tvg-country="AU" group-title="AU - Entertainment",7mate
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7mate-bri.m3u8
+#EXTINF:-1 tvg-id="mjh-7mate-regional" tvg-logo="https://i.mjh.nz/.images/auto-7mate-regional-360d60.png" tvg-country="AU" group-title="AU - Entertainment",7mate Regional
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7mate-regional.m3u8
+#EXTINF:-1 tvg-id="mjh-cas32-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas32-fast-2bc14f.png" tvg-country="AU" group-title="AU - Entertainment",7NEWS Spotlight
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas32-fast.m3u8
+#EXTINF:-1 tvg-id="7two.au" tvg-name="7two" tvg-logo="https://i.imgur.com/6pyIg02.png" tvg-country="AU" group-title="AU - Entertainment",7two
+https://i.mjh.nz/.r/7two-syd.m3u8
+#EXTINF:-1 tvg-id="mjh-7two-bri" tvg-logo="https://i.mjh.nz/.images/auto-7two-bri-701123.png" tvg-country="AU" group-title="AU - Entertainment",7two
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7two-bri.m3u8
+#EXTINF:-1 tvg-id="mjh-7two-regional" tvg-logo="https://i.mjh.nz/.images/auto-7two-regional-701123.png" tvg-country="AU" group-title="AU - Entertainment",7two Regional
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/7two-regional.m3u8
+#EXTINF:-1 tvg-id="mjh-9crime-fast" tvg-logo="https://imageresizer.static9.net.au/OwBWBtMcLMF5vBP09k6w4LneJQM=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F04%2F585343%2Fgroup-61566.png" tvg-country="AU" group-title="AU - Entertainment",9Crime
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/9crime-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-gem-qld" tvg-logo="https://imageresizer.static9.net.au/d00389KKc5T4o5isRaDE9Pl9DWk=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F08%2F620929%2F9gem-1.png" tvg-country="AU" group-title="AU - Entertainment",9Gem
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/gem-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-go-qld" tvg-logo="https://imageresizer.static9.net.au/fcTwzkAJT4q81emfp2kYkgoxlDA=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F03%2F574470%2F9go.png" tvg-country="AU" group-title="AU - Entertainment",9Go!
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/go-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-life-qld" tvg-logo="https://imageresizer.static9.net.au/wMK3kBDybfEoN2iqyDDflC91D1U=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F03%2F574472%2F9life.png" tvg-country="AU" group-title="AU - Entertainment",9Life
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/life-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-9mysteryparanormal-fast" tvg-logo="https://imageresizer.static9.net.au/1l9r5t0Fkyry61l_5eKpIxtv0SE=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2025%2F04%2F685323%2Fmp_squircle.png" tvg-country="AU" group-title="AU - Entertainment",9Mystery&Paranormal
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/9mysteryparanormal-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-rush-qld" tvg-logo="https://imageresizer.static9.net.au/5B2ZDlD8Ji6dCecGQEfwy2U2m4Y=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F03%2F574473%2F9rush.png" tvg-country="AU" group-title="AU - Entertainment",9Rush
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/rush-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-acountrypractice-fast" tvg-logo="https://i.mjh.nz/.images/auto-acountrypractice-fast-3f02ad.png" tvg-country="AU" group-title="AU - Entertainment",A Country Practice
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/acountrypractice-fast.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@ACT" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV ACT (720p)
+https://c.mjh.nz/abc-act.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@NSW" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV NSW (720p)
+https://c.mjh.nz/abc-nsw.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@NT" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV NT (720p)
+https://c.mjh.nz/abc-nt.m3u8
+#EXTINF:-1 tvg-id="ABCTVPlus.au@Sydney" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/0/0f/ABC_TV_Plus_logo_2021.svg/500px-ABC_TV_Plus_logo_2021.svg.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV Plus (720p)
+https://c.mjh.nz/abc-tv-plus.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@QLD" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV QLD (720p)
+https://c.mjh.nz/abc-qld.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@SA" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV SA (720p)
+https://c.mjh.nz/abc-sa.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@TAS" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV TAS (720p)
+https://c.mjh.nz/abc-tas.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@VIC" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV VIC (720p)
+https://c.mjh.nz/abc-vic.m3u8
+#EXTINF:-1 tvg-id="ABCTV.au@WA" tvg-logo="https://i.imgur.com/DPVQSjM.png" tvg-country="AU" group-title="AU - Entertainment",ABC TV WA (720p)
+https://c.mjh.nz/abc-wa.m3u8
+#EXTINF:-1 tvg-id="mjh-10-adultanimation" tvg-logo="https://10.com.au/ip/s3/2024/03/21/fb3a87d8a0126b81727106f43c2a2aef-1304705.png?image-profile=logo" tvg-country="AU" group-title="AU - Entertainment",Adult Animation
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10-adultanimation.m3u8
+#EXTINF:-1 tvg-id="mjh-aircrashinvestigations-fast" tvg-logo="https://i.mjh.nz/.images/auto-aircrashinvestigations-fast-7ff35e.png" tvg-country="AU" group-title="AU - Entertainment",Air Crash Investigations
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/aircrashinvestigations-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-allsaints-fast" tvg-logo="https://i.mjh.nz/.images/auto-allsaints-fast-ebad23.png" tvg-country="AU" group-title="AU - Entertainment",All Saints
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/allsaints-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-anglersparadise-fast" tvg-logo="https://i.mjh.nz/.images/auto-anglersparadise-fast-970ebb.png" tvg-country="AU" group-title="AU - Entertainment",Anglers Paradise
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/anglersparadise-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-art-fast" tvg-logo="https://i.mjh.nz/.images/auto-art-fast-99c60f.png" tvg-country="AU" group-title="AU - Entertainment",Antiques Road Trip
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/art-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-athleticsreplays-fast" tvg-logo="https://i.mjh.nz/.images/auto-athleticsreplays-fast-f68a21.png" tvg-country="AU" group-title="AU - Entertainment",Athletics Replays
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/athleticsreplays-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-ausbiz-fast" tvg-logo="https://i.mjh.nz/.images/auto-ausbiz-fast-b12203.png" tvg-country="AU" group-title="AU - Entertainment",ausbiz
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/ausbiz-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-belowdeckvault-fast" tvg-logo="https://i.mjh.nz/.images/auto-belowdeckvault-fast-587793.png" tvg-country="AU" group-title="AU - Entertainment",Below Deck Vault
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/belowdeckvault-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-betterhomesandgardens-fast" tvg-logo="https://i.mjh.nz/.images/auto-betterhomesandgardens-fast-8d1753.png" tvg-country="AU" group-title="AU - Entertainment",Better Homes And Gardens
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/betterhomesandgardens-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-blueheelers-fast" tvg-logo="https://i.mjh.nz/.images/auto-blueheelers-fast-8cc89d.png" tvg-country="AU" group-title="AU - Entertainment",Blue Heelers
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/blueheelers-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-bluelight-fast" tvg-logo="https://i.mjh.nz/.images/auto-bluelight-fast-dc5718.png" tvg-country="AU" group-title="AU - Entertainment",Blue Light
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/bluelight-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-cas41-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas41-fast-a6b151.png" tvg-country="AU" group-title="AU - Entertainment",Bondi Rescue
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas41-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-cas24-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas24-fast-b9e819.png" tvg-country="AU" group-title="AU - Entertainment",Bondi Vet
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas24-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-bordersecurityaustralia-fast" tvg-logo="https://i.mjh.nz/.images/auto-bordersecurityaustralia-fast-30b210.png" tvg-country="AU" group-title="AU - Entertainment",Border Security Australia
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/bordersecurityaustralia-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-botchedvault-fast" tvg-logo="https://i.mjh.nz/.images/auto-botchedvault-fast-4c6012.png" tvg-country="AU" group-title="AU - Entertainment",Botched VAULT
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/botchedvault-fast.m3u8
+#EXTINF:-1 tvg-id="C31Melbourne.au@SD" tvg-logo="https://i.imgur.com/Ge1EutY.png" tvg-country="AU" group-title="AU - Entertainment",C31 Melbourne (240p)
+https://d1k6kax80wecy5.cloudfront.net/RLnAKY/index.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6179" tvg-logo="https://i.iheart.com/v3/re/new_assets/623faa90fb788a23d0b662b2" tvg-country="AU" group-title="AU - Entertainment",CADA
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6179.m3u8
+#EXTINF:-1 tvg-id="Channel44.au@SD" tvg-logo="https://i.imgur.com/P2wUGh9.png" tvg-country="AU" group-title="AU - Entertainment",Channel 44 (480p)
+https://d1k6kax80wecy5.cloudfront.net/WFqZJc/index.m3u8
+#EXTINF:-1 tvg-id="mjh-channel-9-qld" tvg-logo="https://imageresizer.static9.net.au/lx1XIWcrYZRtnfJOqvxNn9CshDI=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F09%2F630608%2F9nine-1.png" tvg-country="AU" group-title="AU - Entertainment",Channel 9
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/channel-9-qld.m3u8
+#EXTINF:-1 tvg-id="mjh-channel-9-gold-coast" tvg-logo="https://imageresizer.static9.net.au/lx1XIWcrYZRtnfJOqvxNn9CshDI=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F09%2F630608%2F9nine-1.png" tvg-country="AU" group-title="AU - Entertainment",Channel 9 (Gold Coast)
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/channel-9-gold-coast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6178" tvg-logo="https://i.iheart.com/v3/re/new_assets/5b862f497f66f2e1e526ba23" tvg-country="AU" group-title="AU - Entertainment",Chemist Warehouse Remix
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6178.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-9661" tvg-logo="https://i.iheart.com/v3/re/assets.streams/682a7854ea4a1d401404cf2d" tvg-country="AU" group-title="AU - Entertainment",Club Lime Test
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-9661.m3u8
+#EXTINF:-1 tvg-id="mjh-csicrimesceneinvestigation-fast" tvg-logo="https://i.mjh.nz/.images/auto-csicrimesceneinvestigation-fast-87549e.png" tvg-country="AU" group-title="AU - Entertainment",CSI Crime Scene Investigation
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/csicrimesceneinvestigation-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-drive-fast" tvg-logo="https://imageresizer.static9.net.au/FbD6lTD6rHmNM35zPbmc572qOB8=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2025%2F07%2F702351%2Fdrive_squircle.png" tvg-country="AU" group-title="AU - Entertainment",Drive
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/drive-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-etc-fast" tvg-logo="https://i.mjh.nz/.images/auto-etc-fast-6d4429.png" tvg-country="AU" group-title="AU - Entertainment",Escape to the Country
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/etc-fast.m3u8
+#EXTINF:-1 tvg-id="ExpoChannel.au@SD" tvg-logo="https://i.imgur.com/2KzCShW.png" tvg-country="AU" group-title="AU - Entertainment",Expo Channel (360p)
+https://tvsnhlslivetest.akamaized.net/hls/live/2034711/EXPO-MSL4/master.m3u8
+#EXTINF:-1 tvg-id="mjh-cas21-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas21-fast-f940a9.png" tvg-country="AU" group-title="AU - Entertainment",Ghost Hunters
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas21-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-glasgowglory-fast" tvg-logo="https://i.mjh.nz/.images/auto-glasgowglory-fast-687d7c.png" tvg-country="AU" group-title="AU - Entertainment",Glasgow Glory
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/glasgowglory-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6794" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6969b9c2a61485623b252437" tvg-country="AU" group-title="AU - Entertainment",GOLD 80s
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6794.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-11388" tvg-logo="https://i.iheart.com/v3/re/assets.streams/698c22ef02ad72086dd5f5bd" tvg-country="AU" group-title="AU - Entertainment",GOLD Brisbane
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-11388.m3u8
+#EXTINF:-1 tvg-id="mjh-h2-fast" tvg-logo="https://imageresizer.static9.net.au/OxADVUkSO8Xp2ATCSJmMsa0gcDE=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2025%2F04%2F684622%2Fh2_squircle.png" tvg-country="AU" group-title="AU - Entertainment",H2
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/h2-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-hardcorepawn-fast" tvg-logo="https://i.mjh.nz/.images/auto-hardcorepawn-fast-87f8ee.png" tvg-country="AU" group-title="AU - Entertainment",Hardcore Pawn
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/hardcorepawn-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-heki-fast" tvg-logo="https://i.mjh.nz/.images/auto-heki-fast-6f7c4d.png" tvg-country="AU" group-title="AU - Entertainment",Hells Kitchen
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/heki-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-cas26-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas26-fast-ea7944.png" tvg-country="AU" group-title="AU - Entertainment",Home and Away Classics
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas26-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-7222" tvg-logo="https://i.iheart.com/v3/re/assets.streams/67fc9ae51f12bcd3b5c1eb26" tvg-country="AU" group-title="AU - Entertainment",iHeartCountry Australia
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-7222.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6902" tvg-logo="https://i.iheart.com/v3/re/new_assets/5b9058d0fe2ad7e64989533a" tvg-country="AU" group-title="AU - Entertainment",iHeartRadio Countdown AUS
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6902.m3u8
+#EXTINF:-1 tvg-id="JonmoBhumiTV.au@SD" tvg-logo="https://i.imgur.com/2snahLk.png" tvg-country="AU" group-title="AU - Entertainment",JonmoBhumi TV (720p)
+https://jtvs.ncare.live/Gznr84Woj7UEye3OPVeWq2ForboWAgdV/jonmobhumitv.stream/playlist.m3u8
+#EXTINF:-1 tvg-id="mjh-judgejudy-fast" tvg-logo="https://i.mjh.nz/.images/auto-judgejudy-fast-8781e8.png" tvg-country="AU" group-title="AU - Entertainment",Judge Judy
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/judgejudy-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-10-judge-judy" tvg-logo="https://10.com.au/ip/s3/2022/09/02/461008ac0d02137f713ec0e4883be6c4-1177265.png?image-profile=logo" tvg-country="AU" group-title="AU - Entertainment",Judge Judy
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10-judge-judy.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6793" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6a266db7025239cc2f8f6ca3" tvg-country="AU" group-title="AU - Entertainment",KIIS 90s
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6793.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6176" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6969baf0a61485623b25243f" tvg-country="AU" group-title="AU - Entertainment",KIIS 973
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6176.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-7050" tvg-logo="https://i.iheart.com/v3/re/assets.streams/689282efb2e2c1186373aa75" tvg-country="AU" group-title="AU - Entertainment",KIIS Australia
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-7050.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6941" tvg-logo="https://i.iheart.com/v3/re/assets.streams/683651f68f1109734b6a413a" tvg-country="AU" group-title="AU - Entertainment",KIIS Dance
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6941.m3u8
+#EXTINF:-1 tvg-id="mjh-kitchennightmares-fast" tvg-logo="https://i.mjh.nz/.images/auto-kitchennightmares-fast-ba1ad2.png" tvg-country="AU" group-title="AU - Entertainment",Kitchen Nightmares
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/kitchennightmares-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-livgolfreplays-fast" tvg-logo="https://i.mjh.nz/.images/auto-livgolfreplays-fast-471f30.png" tvg-country="AU" group-title="AU - Entertainment",LIV Golf Replays
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/livgolfreplays-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-lmn-fast" tvg-logo="https://imageresizer.static9.net.au/GfA3WNoMOfZbJOqJeq-UrX5nsdk=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F12%2F658518%2Fgroup-61484.png" tvg-country="AU" group-title="AU - Entertainment",LMN
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/lmn-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-medicalnrescue-fast" tvg-logo="https://i.mjh.nz/.images/auto-medicalnrescue-fast-bd9388.png" tvg-country="AU" group-title="AU - Entertainment",Medical And Rescue
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/medicalnrescue-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-mightymachines-fast" tvg-logo="https://i.mjh.nz/.images/auto-mightymachines-fast-0fa14e.png" tvg-country="AU" group-title="AU - Entertainment",Mighty Machines
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/mightymachines-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-cas40-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas40-fast-0b72b7.png" tvg-country="AU" group-title="AU - Entertainment",Million Dollar Listing VAULT
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas40-fast.m3u8
+#EXTINF:-1 tvg-id="MissionAsia.au@SD" tvg-logo="https://i.imgur.com/B5mKwF6.png" tvg-country="AU" group-title="AU - Entertainment",Mission Asia (1080p)
+https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
+#EXTINF:-1 tvg-id="mjh-10-moviesphere" tvg-logo="https://10.com.au/ip/s3/2022/12/05/6bb229de8fcf96e206e99ca455fc2267-1202912.png?image-profile=logo" tvg-country="AU" group-title="AU - Entertainment",Moviesphere
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10-moviesphere.m3u8
+#EXTINF:-1 tvg-id="mjh-mythbusters-fast" tvg-logo="https://i.mjh.nz/.images/auto-mythbusters-fast-3a72b1.png" tvg-country="AU" group-title="AU - Entertainment",Mythbusters
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/mythbusters-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-ncis-fast" tvg-logo="https://i.mjh.nz/.images/auto-ncis-fast-6f82bd.png" tvg-country="AU" group-title="AU - Entertainment",NCIS
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/ncis-fast.m3u8
+#EXTINF:-1 tvg-id="NineNetwork.au" tvg-name="Nine" tvg-logo="https://i.imgur.com/SMXwfr5.png" tvg-country="AU" group-title="AU - Entertainment",Nine
+https://i.mjh.nz/.r/channel-9-nsw.m3u8
+#EXTINF:-1 tvg-id="mjh-onthecase-fast" tvg-logo="https://i.mjh.nz/.images/auto-onthecase-fast-6ec172.png" tvg-country="AU" group-title="AU - Entertainment",On The Case
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/onthecase-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-outbacktruckers-fast" tvg-logo="https://i.mjh.nz/.images/auto-outbacktruckers-fast-332b21.png" tvg-country="AU" group-title="AU - Entertainment",Outback Truckers
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/outbacktruckers-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-10-projectrunway" tvg-logo="https://10.com.au/ip/s3/2025/03/18/9652b72f62d4dcb715e22ec6f972b1e7-1369332.png?image-profile=logo" tvg-country="AU" group-title="AU - Entertainment",Project Runway
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/10-projectrunway.m3u8
+#EXTINF:-1 tvg-id="mjh-qrl-hostplus-cup-2026-fast" tvg-logo="https://imageresizer.static9.net.au/LNpywqVf2w4867hx6GFb3LerFzs=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2026%2F02%2F756275%2Fsquircle_qrlhostplus.png" tvg-country="AU" group-title="AU - Entertainment",QRL Hostplus Cup 2026
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/qrl-hostplus-cup-2026-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-redbull-tv" tvg-logo="https://i.mjh.nz/.images/redbull-tv.png" tvg-country="AU" group-title="AU - Entertainment",Redbull TV
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/redbull-tv.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6309" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6972b54ab6107e6702e1f21d" tvg-country="AU" group-title="AU - Entertainment",rise 96.5
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6309.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-9287" tvg-logo="https://i.iheart.com/v3/re/new_assets/61ea555bdcdc455f530c0429" tvg-country="AU" group-title="AU - Entertainment",River 949
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-9287.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-7026" tvg-logo="https://i.iheart.com/v3/re/assets.streams/696888e0da59d7ddd8f3f766" tvg-country="AU" group-title="AU - Entertainment",SBS 3
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-7026.m3u8
+#EXTINF:-1 tvg-id="mjh-seinfeld-fast" tvg-logo="https://imageresizer.static9.net.au/yKlUxIHgYC5cpCmL1DYpRCQ6w4o=/768x0/https%3A%2F%2Fvms-tv-images-prod.s3-ap-southeast-2.amazonaws.com%2F2024%2F04%2F585342%2Fgroup-61657.png" tvg-country="AU" group-title="AU - Entertainment",Seinfeld
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seinfeld-fast.m3u8
+#EXTINF:-1 tvg-id="SevenNetwork.au" tvg-name="Seven" tvg-logo="https://i.imgur.com/6zwKJaa.png" tvg-country="AU" group-title="AU - Entertainment",Seven
+https://i.mjh.nz/.r/seven-syd.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-bri" tvg-logo="https://i.mjh.nz/.images/auto-seven-bri-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-bri.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-cns" tvg-logo="https://i.mjh.nz/.images/auto-seven-cns-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Cairns
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-cns.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-mky" tvg-logo="https://i.mjh.nz/.images/auto-seven-mky-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Mackay
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-mky.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-rky" tvg-logo="https://i.mjh.nz/.images/auto-seven-rky-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Rockhampton
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-rky.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-ssc" tvg-logo="https://i.mjh.nz/.images/auto-seven-ssc-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Sunshine Coast
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-ssc.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-twb" tvg-logo="https://i.mjh.nz/.images/auto-seven-twb-e627be.png" tvg-country="AU" group-title="AU - Entertainment",Seven Toowoomba
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-twb.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-tsv" tvg-logo="https://i.mjh.nz/.images/auto-seven-tsv-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Townsville
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-tsv.m3u8
+#EXTINF:-1 tvg-id="mjh-seven-wby" tvg-logo="https://i.mjh.nz/.images/auto-seven-wby-9608a4.png" tvg-country="AU" group-title="AU - Entertainment",Seven Wide Bay
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/seven-wby.m3u8
+#EXTINF:-1 tvg-id="mjh-surveillancecentral-fast" tvg-logo="https://i.mjh.nz/.images/auto-surveillancecentral-fast-4eeefa.png" tvg-country="AU" group-title="AU - Entertainment",Surveillance Central
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/surveillancecentral-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-swimmingreplays-fast" tvg-logo="https://i.mjh.nz/.images/auto-swimmingreplays-fast-930ec0.png" tvg-country="AU" group-title="AU - Entertainment",Swimming Replays
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/swimmingreplays-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-6327" tvg-logo="https://i.iheart.com/v3/re/assets.streams/65c8275d6812dae62ffafeac" tvg-country="AU" group-title="AU - Entertainment",The Bounce
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-6327.m3u8
+#EXTINF:-1 tvg-id="mjh-cas33-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas33-fast-7aec74.png" tvg-country="AU" group-title="AU - Entertainment",The Yorkshire Vet
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/cas33-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-8876" tvg-logo="https://i.iheart.com/v3/re/assets.streams/67fc545338899b35a0f861b4" tvg-country="AU" group-title="AU - Entertainment",TikTok Trending on iHeart
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-8876.m3u8
+#EXTINF:-1 tvg-id="mjh-travelaustralia-fast" tvg-logo="https://i.mjh.nz/.images/auto-travelaustralia-fast-cfd556.png" tvg-country="AU" group-title="AU - Entertainment",Travel Australia
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/travelaustralia-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-radio-ih-9041" tvg-logo="https://i.iheart.com/v3/re/new_assets/61ef95afbc72e9f273be9b7e" tvg-country="AU" group-title="AU - Entertainment",Triple A Murri Country
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/radio-ih-9041.m3u8
+#EXTINF:-1 tvg-id="mjh-truckinghell-fast" tvg-logo="https://i.mjh.nz/.images/auto-truckinghell-fast-6b08c1.png" tvg-country="AU" group-title="AU - Entertainment",Trucking Hell
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/truckinghell-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-truecrimefiles-fast" tvg-logo="https://i.mjh.nz/.images/auto-truecrimefiles-fast-26e3bf.png" tvg-country="AU" group-title="AU - Entertainment",True Crime Files
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/truecrimefiles-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-tvsn-fast" tvg-logo="https://i.mjh.nz/.images/auto-tvsn-fast-eda516.png" tvg-country="AU" group-title="AU - Entertainment",TVSN
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/tvsn-fast.m3u8
+#EXTINF:-1 tvg-id="TVSN.au@SD" tvg-logo="https://i.imgur.com/lmoAFm3.png" tvg-country="AU" group-title="AU - Entertainment",TVSN (1080p)
+https://tvsnhlslivetest.akamaized.net/hls/live/2034711/TVSN-MSL4/master.m3u8
+#EXTINF:-1 tvg-id="mjh-waterrats-fast" tvg-logo="https://i.mjh.nz/.images/auto-waterrats-fast-428228.png" tvg-country="AU" group-title="AU - Entertainment",Water Rats
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/waterrats-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-wtn-fast" tvg-logo="https://i.mjh.nz/.images/auto-wtn-fast-0a858d.png" tvg-country="AU" group-title="AU - Entertainment",Wicked Tuna
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/wtn-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-winnersnlosers-fast" tvg-logo="https://i.mjh.nz/.images/auto-winnersnlosers-fast-a59958.png" tvg-country="AU" group-title="AU - Entertainment",Winners & Losers
+#EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
+https://i.mjh.nz/.r/winnersnlosers-fast.m3u8
