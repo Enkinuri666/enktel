@@ -31,6 +31,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { once } from 'node:events';
 
+import { parseEnvFile, redact } from './lib/credentials.mjs';
 import {
   call,
   episodeUrls,
@@ -192,16 +193,11 @@ function parseArgs(argv) {
   return opts;
 }
 
-/** Minimal dotenv reader — only the three keys this tool needs. */
+/** Fill any credential the caller did not pass from a dotenv-style file. */
 async function loadEnvFile(file, opts) {
-  const text = await readFile(file, 'utf8');
-  for (const line of text.split(/\r?\n/)) {
-    const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (!m) continue;
-    const value = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-    if (m[1] === 'XTREAM_SERVER' && !opts.server) opts.server = value;
-    if (m[1] === 'XTREAM_USERNAME' && !opts.username) opts.username = value;
-    if (m[1] === 'XTREAM_PASSWORD' && !opts.password) opts.password = value;
+  const fromFile = parseEnvFile(await readFile(file, 'utf8'));
+  for (const field of ['server', 'username', 'password']) {
+    if (!opts[field] && fromFile[field]) opts[field] = fromFile[field];
   }
 }
 
@@ -212,20 +208,6 @@ async function loadEnvFile(file, opts) {
 const log = (opts, ...args) => {
   if (!opts.quiet) console.error(...args);
 };
-
-/**
- * Keep a password out of error output.
- *
- * Only used on free text (panel errors, stack traces), never on structured
- * output: a blind replace over JSON will happily eat a substring of a key —
- * a one-character password turns "expectations" into "ex••••ectations". Short
- * passwords are left alone for the same reason; the report and the catalog
- * files are kept credential-free by construction instead.
- */
-function redact(text, password) {
-  if (!password || password.length < 6) return text;
-  return String(text).split(password).join('••••');
-}
 
 async function pool(items, limit, worker) {
   const results = new Array(items.length);

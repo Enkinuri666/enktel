@@ -74,6 +74,19 @@ export const SOURCES = [
     country: 'AU',
     note: 'Brisbane free-to-air TV (184) and radio (61), with a matching EPG.',
   },
+  {
+    id: 'iptvcat-enktel',
+    name: 'iptvcat — saved list',
+    kind: 'm3u',
+    // A user-curated list on a public index: Australian FAST channels plus
+    // ex-Yugoslav and Kosovan ones. It carries country attributes and group
+    // titles but no tvg-id and almost no logo, which is what
+    // `build-roster.mjs` is for. A snapshot lives in
+    // `data/sources/iptvcat-my-list.m3u8` so the resolution is reproducible
+    // without reaching the host.
+    url: 'https://list.iptvcat.com/my_list/7e439be257ae98af4c7d29fb57b00d13.m3u8',
+    note: 'Saved iptvcat list — 200 streams across AU, XK, BA and HR.',
+  },
 ];
 
 /** Companion endpoints for the JSON source, joined in for channel metadata. */

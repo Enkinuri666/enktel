@@ -68,6 +68,8 @@ https://i.mjh.nz/.r/therealhousewivesvault-fast.m3u8
 https://c.mjh.nz/abc-me.m3u8
 #EXTINF:-1 tvg-id="ABCKids.au@Sydney" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/2/29/ABC_Kids_%282020%29.svg/revision/latest/scale-to-width-down/512" tvg-country="AU" group-title="AU - Kids",ABC Kids
 https://c.mjh.nz/abc-kids.m3u8
+#EXTINF:-1 tvg-id="MissionAsia.au@SD" tvg-logo="https://i.imgur.com/B5mKwF6.png" tvg-country="AU" group-title="AU - Religion",Mission Asia (1080p)
+https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 #EXTINF:-1 tvg-id="mjh-all-starcinema-fast" tvg-logo="https://i.mjh.nz/.images/auto-all-starcinema-fast-9f2397.png" tvg-country="AU" group-title="AU - Movies",All-Star Cinema
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/all-starcinema-fast.m3u8
@@ -325,8 +327,6 @@ https://i.mjh.nz/.r/mightymachines-fast.m3u8
 #EXTINF:-1 tvg-id="mjh-cas40-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas40-fast-0b72b7.png" tvg-country="AU" group-title="AU - Entertainment",Million Dollar Listing VAULT
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/cas40-fast.m3u8
-#EXTINF:-1 tvg-id="MissionAsia.au@SD" tvg-logo="https://i.imgur.com/B5mKwF6.png" tvg-country="AU" group-title="AU - Entertainment",Mission Asia (1080p)
-https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 #EXTINF:-1 tvg-id="mjh-10-moviesphere" tvg-logo="https://10.com.au/ip/s3/2022/12/05/6bb229de8fcf96e206e99ca455fc2267-1202912.png?image-profile=logo" tvg-country="AU" group-title="AU - Entertainment",Moviesphere
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/10-moviesphere.m3u8

@@ -26,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 155
-        versionName = "1.60.35"
+        versionCode = 156
+        versionName = "1.60.36"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -43,6 +43,27 @@ android {
             ?: "https://watch.enktel.tv/upgrade"
         buildConfigField("String", "EAGLE_TRIAL_URL", "\"$trialUrl\"")
         buildConfigField("String", "EAGLE_UPGRADE_URL", "\"$upgradeUrl\"")
+
+        // The line a fresh install starts on. See
+        // tv.enktel.app.data.repo.DefaultLine for why only the server has a
+        // default: an APK is a zip, so a credential compiled into a public
+        // build is a published credential, and an Xtream line capped at a few
+        // connections does not survive being shared. A private build can bake
+        // them in with -PenkDefaultUser / -PenkDefaultPass (or
+        // ENK_DEFAULT_USER / ENK_DEFAULT_PASS); neither touches a committed
+        // file.
+        val defaultServer = (project.findProperty("enkDefaultServer") as? String)
+            ?: System.getenv("ENK_DEFAULT_SERVER")
+            ?: "http://line.enktel.online"
+        val defaultUser = (project.findProperty("enkDefaultUser") as? String)
+            ?: System.getenv("ENK_DEFAULT_USER")
+            ?: ""
+        val defaultPass = (project.findProperty("enkDefaultPass") as? String)
+            ?: System.getenv("ENK_DEFAULT_PASS")
+            ?: ""
+        buildConfigField("String", "DEFAULT_SERVER", "\"$defaultServer\"")
+        buildConfigField("String", "DEFAULT_USERNAME", "\"$defaultUser\"")
+        buildConfigField("String", "DEFAULT_PASSWORD", "\"$defaultPass\"")
     }
 
     // Room writes the resolved schema for every version under
