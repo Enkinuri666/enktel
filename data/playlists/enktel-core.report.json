@@ -1,0 +1,213 @@
+{
+  "startedAt": "2026-08-20T17:13:05.190Z",
+  "sources": [
+    {
+      "id": "iptv-org",
+      "url": "https://iptv-org.github.io/iptv/index.m3u",
+      "ok": true,
+      "count": 12738,
+      "ms": 818
+    },
+    {
+      "id": "iptv-org-country",
+      "url": "https://iptv-org.github.io/iptv/index.country.m3u",
+      "ok": true,
+      "count": 14138,
+      "ms": 509
+    },
+    {
+      "id": "iptv-org-language",
+      "url": "https://iptv-org.github.io/iptv/index.language.m3u",
+      "ok": true,
+      "count": 14051,
+      "ms": 288
+    },
+    {
+      "id": "iptv-org-category",
+      "url": "https://iptv-org.github.io/iptv/index.category.m3u",
+      "ok": true,
+      "count": 13403,
+      "ms": 138
+    },
+    {
+      "id": "iptv-org-api",
+      "url": "https://iptv-org.github.io/api/streams.json",
+      "ok": true,
+      "count": 16543,
+      "ms": 539
+    },
+    {
+      "id": "free-tv",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
+      "ok": true,
+      "count": 2041,
+      "ms": 140
+    },
+    {
+      "id": "mjh-au-brisbane",
+      "url": "https://i.mjh.nz/au/Brisbane/raw.m3u8",
+      "ok": true,
+      "count": 245,
+      "ms": 1578
+    }
+  ],
+  "filters": {
+    "onlyHls": true,
+    "includeNsfw": false,
+    "includeDrm": false,
+    "includeRadio": true,
+    "country": [
+      "HR",
+      "GB",
+      "US",
+      "AU"
+    ],
+    "group": null,
+    "name": null,
+    "limit": null
+  },
+  "totals": {
+    "probed": 3602,
+    "alive": 2923,
+    "collected": 73159,
+    "unique": 17946,
+    "afterFilter": 3602,
+    "written": 2923,
+    "byGroup": {
+      "Series": 396,
+      "Entertainment": 239,
+      "General": 219,
+      "News": 217,
+      "Undefined": 204,
+      "Sports": 192,
+      "Movies": 145,
+      "Religious": 130,
+      "Kids": 120,
+      "Documentary": 98,
+      "Music": 98,
+      "Comedy": 89,
+      "Legislative": 74,
+      "Au": 68,
+      "Animation": 48,
+      "Brisbane": 45,
+      "Education": 42,
+      "Lifestyle": 41,
+      "Classic": 39,
+      "Business": 38,
+      "Shop": 30,
+      "Outdoor": 28,
+      "Cooking": 24,
+      "Family": 24,
+      "Quality 1080p": 22,
+      "Movies;Series": 21,
+      "Culture": 19,
+      "Animation;Comedy": 17,
+      "Quality 720p": 17,
+      "UK": 17,
+      "Weather": 14,
+      "Animation;Kids": 10,
+      "Relax": 10,
+      "Auto": 9,
+      "Travel": 8,
+      "USA": 8,
+      "Australia": 7,
+      "Education;Kids": 7,
+      "Science": 6,
+      "Comedy;Series": 4,
+      "World": 4,
+      "Business;Documentary": 3,
+      "Classic;Comedy": 3,
+      "Documentary;Series": 3,
+      "Entertainment;News": 3,
+      "General;News": 3,
+      "Classic;Movies": 2,
+      "Comedy;Kids": 2,
+      "Culture;Education": 2,
+      "Documentary;Entertainment": 2,
+      "Entertainment;Outdoor;Series": 2,
+      "General;Religious": 2,
+      "Kids;Movies": 2,
+      "Lifestyle;News": 2,
+      "Music;Religious": 2,
+      "News;Weather": 2,
+      "Relax;Travel": 2,
+      "Animation;Classic": 1,
+      "Animation;Kids;Music": 1,
+      "Animation;Kids;Religious": 1,
+      "Auto;Documentary": 1,
+      "Auto;Entertainment": 1,
+      "Auto;Outdoor;Series;Sports": 1,
+      "Auto;Series": 1,
+      "Auto;Travel": 1,
+      "Business;News": 1,
+      "Classic;Series": 1,
+      "Classic;Shop": 1,
+      "Comedy;Movies": 1,
+      "Cooking;Lifestyle": 1,
+      "Cooking;Shop": 1,
+      "Croatia": 1,
+      "Culture;Documentary": 1,
+      "Culture;Entertainment;Music": 1,
+      "Culture;General": 1,
+      "Culture;News": 1,
+      "Culture;Religious": 1,
+      "Documentary;News": 1,
+      "Documentary;Outdoor": 1,
+      "Documentary;Science": 1,
+      "Education;General": 1,
+      "Entertainment;Family": 1,
+      "Entertainment;General": 1,
+      "Entertainment;Lifestyle": 1,
+      "Entertainment;Series": 1,
+      "Entertainment;Sports": 1,
+      "General;Legislative": 1,
+      "Kids;Series": 1,
+      "Lifestyle;Relax": 1,
+      "Lifestyle;Shop": 1,
+      "Lifestyle;Travel": 1,
+      "Movies;Religious": 1,
+      "Movies;Shop": 1,
+      "Outdoor;Sports": 1,
+      "Quality 576p": 1
+    },
+    "byCountry": {
+      "US": 2446,
+      "GB": 307,
+      "AU": 158,
+      "HR": 12
+    }
+  },
+  "epgUrl": "https://worker-9dd4.onrender.com/guide.xml.gz",
+  "epgUrls": [
+    {
+      "sourceId": "iptv-org",
+      "url": "https://worker-9dd4.onrender.com/guide.xml.gz"
+    },
+    {
+      "sourceId": "iptv-org-country",
+      "url": "https://worker-9dd4.onrender.com/guide.xml.gz"
+    },
+    {
+      "sourceId": "iptv-org-language",
+      "url": "https://worker-9dd4.onrender.com/guide.xml.gz"
+    },
+    {
+      "sourceId": "iptv-org-category",
+      "url": "https://worker-9dd4.onrender.com/guide.xml.gz"
+    },
+    {
+      "sourceId": "free-tv",
+      "url": "https://epgshare01.online/epgshare01/epg_ripper_AL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ALJAZEERA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_AR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ASIANTELEVISION1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_AT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_AU1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_BA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_BE2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_BEIN1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_BG1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_BR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CH1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CO1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CY1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_CZ1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DELUXEMUSIC1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DIRECTVSPORTS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DISTROTV1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DK1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DO1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DRAFTKINGS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_DUMMY_CHANNELS.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_EC1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_EG1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ES1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_FANDUEL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_FI1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_GR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_HK1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_HU1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ID1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_IE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_IL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_IT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_JM1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_JP1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_JP2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_KE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_KR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_LT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_LV1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_MT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_MX1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_MY1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_NG1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_NL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_NO1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_NZ1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PAC-12.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PH1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PH2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PK1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PLEX1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_POWERNATION1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_PT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_DE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_EN1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_ES1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_FR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_IT1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_NL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RAKUTEN_PL1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RALLY_TV1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RO1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RO2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_RS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SA2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SE1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SG1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SK1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SPORTKLUB1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SSPORTPLUS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_SV1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_TBNPLUS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_THESPORTPLUS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_TR1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_TR3.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_US1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_US_LOCALS2.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_UY1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_VN1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_VOA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_ZA1.xml.gz, https://epgshare01.online/epgshare01/epg_ripper_viva-russia.ru.xml.gz, https://epgshare01.online/epgshare01/locomotiontv.xml.gz"
+    },
+    {
+      "sourceId": "mjh-au-brisbane",
+      "url": "https://i.mjh.nz/au/Brisbane/epg.xml.gz"
+    }
+  ],
+  "durationMs": 79680,
+  "files": [
+    "data/playlists/enktel-core.m3u",
+    "data/playlists/enktel-core.txt",
+    "data/playlists/enktel-core.urls.txt"
+  ]
+}

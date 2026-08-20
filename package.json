@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "scrape:m3u8": "node scripts/scrape-m3u8.mjs",
+    "scrape:core": "node scripts/scrape-m3u8.mjs --country HR,GB,US,AU --check --prefix enktel-core",
+    "export:catalog": "node scripts/export-xtream-catalog.mjs",
+    "test:scripts": "node --test scripts/lib/*.test.mjs",
+    "match:epg": "node scripts/match-epg.mjs",
+    "build:lineup": "node scripts/build-lineup.mjs"
   },
   "dependencies": {
     "@paypal/paypal-js": "^10.0.1",
