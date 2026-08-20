@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.core.net.toUri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -197,15 +198,44 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     }
 
     if (showTrialExpired) {
+        // This screen runs before a profile exists, so it is outside the main
+        // NavHost and cannot route to the Upgrade screen. The dialog carries
+        // the checkout itself instead of telling the user to go and find it —
+        // "go to Settings > Upgrade Account after logging in" was advice you
+        // could not follow, since the whole reason you are reading it is that
+        // you have nothing to log in with.
+        val checkoutUrl = tv.enktel.app.BuildConfig.EAGLE_UPGRADE_URL
+        val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
         tv.enktel.app.ui.components.ConfirmDialog(
-            title = "Free Trial Expired",
-            message = "Your 24-hour free trial has ended. To continue enjoying " +
-                "EnkTel 4K with full access to live TV, movies and series, " +
-                "upgrade to a 12-month subscription for just \$99 USD.\n\n" +
-                "Log in with your existing credentials below, or go to " +
-                "Settings > Upgrade Account after logging in.",
-            confirmLabel = "OK",
-            onConfirm = { showTrialExpired = false },
+            title = "Free Trial Ended",
+            message = buildString {
+                append("Your 24-hour free trial has finished, and a device only gets one.\n\n")
+                append("Keep everything you have been watching — live TV, movies and series ")
+                append("in 4K — with 12 months of full access for \$99 USD, paid once. ")
+                append("No subscription, nothing to cancel.\n\n")
+                append("Your account is created and activated automatically as soon as ")
+                append("PayPal confirms the payment, and your login details are emailed ")
+                append("to you.\n\n")
+                // A sideloaded Fire TV Stick frequently has no browser, so the
+                // button below may have nowhere to go. Printing the address
+                // means the sale is still reachable from a phone.
+                if (!isMobile) append("Open this on your phone:\n$checkoutUrl")
+                else append("Already subscribed? Log in with your credentials below.")
+            },
+            confirmLabel = if (isMobile) "Get 12 Months — \$99 USD" else "OK",
+            onConfirm = {
+                showTrialExpired = false
+                if (isMobile) {
+                    runCatching {
+                        ctx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                checkoutUrl.toUri(),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
+            },
             onDismiss = { showTrialExpired = false },
         )
     }
@@ -260,7 +290,7 @@ private fun TrialCard(busy: Boolean, message: String, expired: Boolean = false, 
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            if (expired) "Pay via PayPal Send to a Friend — activation usually within minutes."
+            if (expired) "Secure PayPal checkout — your account activates automatically."
             else "Trial ends automatically after 24 hours. You'll see an upgrade prompt in Settings.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
