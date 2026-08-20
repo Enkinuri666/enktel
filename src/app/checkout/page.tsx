@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Shield, Lock, Check, Trophy, MessageCircle, BadgeCheck, AlertTriangle } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
-import { PlanId, PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { PlanId, PLAN_PRICE, PLAN_REGULAR_PRICE, PLAN_DURATION_LABEL, PLAN_CURRENCY, formatPrice } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import { saveSubscription } from "@/lib/subscriptionStorage";
 
@@ -13,24 +13,24 @@ const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 const PLANS: Record<PlanId, { name: string; price: number; duration: string; isPromo: boolean; regularPrice: number | null }> = {
   monthly: {
     name: "Monthly",
-    price: PLAN_PRICE_EUR.monthly,
+    price: PLAN_PRICE.monthly,
     duration: PLAN_DURATION_LABEL.monthly,
     isPromo: false,
-    regularPrice: PLAN_REGULAR_PRICE_EUR.monthly ?? null,
+    regularPrice: PLAN_REGULAR_PRICE.monthly ?? null,
   },
   quarter: {
     name: "3 Months",
-    price: PLAN_PRICE_EUR.quarter,
+    price: PLAN_PRICE.quarter,
     duration: PLAN_DURATION_LABEL.quarter,
     isPromo: true,
-    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
+    regularPrice: PLAN_REGULAR_PRICE.quarter ?? null,
   },
   annual: {
     name: "12 Months",
-    price: PLAN_PRICE_EUR.annual,
+    price: PLAN_PRICE.annual,
     duration: PLAN_DURATION_LABEL.annual,
     isPromo: true,
-    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
+    regularPrice: PLAN_REGULAR_PRICE.annual ?? null,
   },
 };
 
@@ -67,7 +67,7 @@ function CheckoutContent() {
     }
 
     const script = document.createElement("script");
-    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=EUR&intent=capture`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=${PLAN_CURRENCY}&intent=capture`;
     script.async = true;
     script.onload = () => setPaypalReady(true);
     script.onerror = () => setError("Failed to load PayPal. Please refresh and try again.");
@@ -276,17 +276,17 @@ function CheckoutContent() {
                 {plan.regularPrice && (
                   <div className="flex justify-between">
                     <span>Regular price</span>
-                    <span className="line-through text-brand-muted/60">&euro;{plan.regularPrice}</span>
+                    <span className="line-through text-brand-muted/60">&#36;{plan.regularPrice}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span>Your price</span>
-                  <span className="text-white font-bold">&euro;{plan.price}</span>
+                  <span className="text-white font-bold">&#36;{plan.price}</span>
                 </div>
                 {plan.regularPrice && (
                   <div className="flex justify-between">
                     <span>You save</span>
-                    <span className="text-green-400 font-bold">&euro;{plan.regularPrice - plan.price}</span>
+                    <span className="text-green-400 font-bold">&#36;{plan.regularPrice - plan.price}</span>
                   </div>
                 )}
               </div>
@@ -294,7 +294,7 @@ function CheckoutContent() {
 
             <div className="flex items-center justify-between text-xl font-black border-t border-brand-border pt-4 mb-5">
               <span className="text-white">Total today</span>
-              <span className="text-brand-primary">&euro;{plan.price}</span>
+              <span className="text-brand-primary">&#36;{plan.price}</span>
             </div>
 
             <div className="space-y-2.5">

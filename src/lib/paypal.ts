@@ -1,3 +1,5 @@
+import { PLAN_CURRENCY } from "./plans";
+
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 const PAYPAL_SECRET = process.env.PAYPAL_SECRET || "";
 
@@ -29,7 +31,7 @@ export interface PayPalOrderResult {
 
 export async function createOrder(
   planName: string,
-  amountEur: number
+  amount: number
 ): Promise<PayPalOrderResult> {
   const token = await getAccessToken();
   const res = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
@@ -44,8 +46,11 @@ export async function createOrder(
         {
           description: `Enktel IPTV — ${planName}`,
           amount: {
-            currency_code: "EUR",
-            value: amountEur.toFixed(2),
+            // Must match the `currency` the PayPal JS SDK is loaded with on
+            // the checkout page. A mismatch does not error — PayPal simply
+            // refuses to render the buttons, and the page shows an empty box.
+            currency_code: PLAN_CURRENCY,
+            value: amount.toFixed(2),
           },
         },
       ],

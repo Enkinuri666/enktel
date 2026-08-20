@@ -1,4 +1,4 @@
-import { PLAN_PRICE_EUR } from "./plans";
+import { PLAN_PRICE } from "./plans";
 
 const API_BASE = "http://api.elg-26.com/api/dev_api.php";
 const API_KEY = process.env.RESELLER_API_KEY || "";
@@ -21,7 +21,7 @@ export const PLAN_DURATION_DAYS: Record<string, number> = {
   annual: 365,
 };
 
-export { PLAN_PRICE_EUR };
+export { PLAN_PRICE };
 
 export const PLAN_NAME: Record<string, string> = {
   monthly: "Monthly Plan",

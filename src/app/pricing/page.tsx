@@ -5,7 +5,7 @@ import { Check, ChevronDown, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
-import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { PLAN_PRICE, PLAN_REGULAR_PRICE, PLAN_DURATION_LABEL } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const trialPlan = {
@@ -34,8 +34,8 @@ const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: PLAN_PRICE_EUR.monthly,
-    totalPrice: PLAN_PRICE_EUR.monthly,
+    price: PLAN_PRICE.monthly,
+    totalPrice: PLAN_PRICE.monthly,
     duration: PLAN_DURATION_LABEL.monthly,
     promo: false,
     badge: null,
@@ -54,12 +54,12 @@ const plans = [
   {
     id: "quarter",
     name: "3 Months",
-    price: PLAN_PRICE_EUR.quarter,
-    totalPrice: PLAN_PRICE_EUR.quarter,
+    price: PLAN_PRICE.quarter,
+    totalPrice: PLAN_PRICE.quarter,
     duration: PLAN_DURATION_LABEL.quarter,
     promo: true,
     badge: "WORLD CUP 2026",
-    regularPrice: PLAN_REGULAR_PRICE_EUR.quarter ?? null,
+    regularPrice: PLAN_REGULAR_PRICE.quarter ?? null,
     saving: null,
     highlighted: false,
     description: "Stream every World Cup 2026 match live — start to finish.",
@@ -77,13 +77,13 @@ const plans = [
   {
     id: "annual",
     name: "12 Months",
-    price: PLAN_PRICE_EUR.annual,
-    totalPrice: PLAN_PRICE_EUR.annual,
+    price: PLAN_PRICE.annual,
+    totalPrice: PLAN_PRICE.annual,
     duration: PLAN_DURATION_LABEL.annual,
     promo: true,
     badge: "BEST VALUE",
-    regularPrice: PLAN_REGULAR_PRICE_EUR.annual ?? null,
-    saving: (PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual,
+    regularPrice: PLAN_REGULAR_PRICE.annual ?? null,
+    saving: (PLAN_REGULAR_PRICE.annual ?? PLAN_PRICE.annual) - PLAN_PRICE.annual,
     highlighted: true,
     description: "Full year access. Watch it all — World Cup and beyond.",
     features: [
@@ -159,7 +159,7 @@ export default function PricingPage() {
           </p>
           <div className="shrink-0">
             <span className="bg-brand-accent text-white text-xs font-black px-4 py-2 rounded-full uppercase tracking-wide whitespace-nowrap">
-              Save up to €90
+              Save up to $90
             </span>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function PricingPage() {
                     className="inline-flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-black text-white shadow-lg"
                     style={{ background: "linear-gradient(90deg, #FF4757, #3B82F6)" }}
                   >
-                    <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE €90
+                    <Star className="w-3.5 h-3.5 fill-current" /> BEST VALUE — SAVE $90
                   </span>
                 </div>
                 <div className="bg-brand-card rounded-[14px] p-7">
@@ -238,7 +238,7 @@ export default function PricingPage() {
         {plans.map((plan) => (
           <div key={plan.id} className="px-3 py-5 sm:px-6">
             <p className="text-brand-muted text-xs uppercase tracking-wide mb-1">{plan.name}</p>
-            <p className="text-white font-black text-lg sm:text-xl mb-1">€{plan.price}</p>
+            <p className="text-white font-black text-lg sm:text-xl mb-1">${plan.price}</p>
             <p className="text-brand-muted text-xs mb-2">{plan.duration}</p>
             {plan.id === "monthly" ? (
               <Badge variant="default" size="sm">No World Cup</Badge>
@@ -325,21 +325,21 @@ function PlanCard({ plan }: { plan: typeof plans[0] }) {
       <div className="mb-6">
         {plan.regularPrice && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-brand-muted line-through text-lg">€{plan.regularPrice}</span>
-            <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">SAVE €{plan.saving}</span>
+            <span className="text-brand-muted line-through text-lg">${plan.regularPrice}</span>
+            <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">SAVE ${plan.saving}</span>
           </div>
         )}
         <div className="flex items-end gap-1.5">
-          <span className="text-6xl font-black text-white leading-none">€{plan.price}</span>
+          <span className="text-6xl font-black text-white leading-none">${plan.price}</span>
         </div>
         <p className="text-brand-muted text-sm mt-1">
           {plan.id === "monthly" ? "per month" : `one-time · ${plan.duration}`}
         </p>
         {plan.id === "quarter" && (
-          <p className="text-green-400 text-xs mt-1">≈ €19.67/month</p>
+          <p className="text-green-400 text-xs mt-1">≈ $19.67/month</p>
         )}
         {plan.id === "annual" && (
-          <p className="text-green-400 text-xs mt-1">≈ €8.25/month</p>
+          <p className="text-green-400 text-xs mt-1">≈ $8.25/month</p>
         )}
       </div>
 
@@ -358,7 +358,7 @@ function PlanCard({ plan }: { plan: typeof plans[0] }) {
           size="lg"
           fullWidth
         >
-          {plan.id === "monthly" ? "Subscribe Monthly" : `Get ${plan.name} — €${plan.price}`}
+          {plan.id === "monthly" ? "Subscribe Monthly" : `Get ${plan.name} — $${plan.price}`}
         </Button>
       </Link>
     </>

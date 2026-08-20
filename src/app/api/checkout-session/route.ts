@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { paypalEnabled, createOrder, captureOrder } from "@/lib/paypal";
-import { PLAN_NAME, PLAN_PRICE_EUR, provisionSubscription } from "@/lib/reseller";
+import { PLAN_NAME, PLAN_PRICE, provisionSubscription } from "@/lib/reseller";
 import { sendWelcomeEmail } from "@/lib/email";
 
 const provisionedOrders = new Map<string, unknown>();
@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
       email?: string;
     };
 
-    if (action === "create" && plan && PLAN_PRICE_EUR[plan]) {
+    if (action === "create" && plan && PLAN_PRICE[plan]) {
       const order = await createOrder(
         PLAN_NAME[plan] || plan,
-        PLAN_PRICE_EUR[plan]
+        PLAN_PRICE[plan]
       );
       return NextResponse.json({ orderId: order.id });
     }
