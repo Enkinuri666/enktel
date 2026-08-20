@@ -354,6 +354,60 @@ An id nothing publishes a guide for looks like success in a playlist and like
 an empty grid on screen, so `guides.json` is checked separately and reported
 separately.
 
+## `import-panel-export.mjs` — a panel's own export, without the credentials
+
+A panel's "export playlist" button hands you everything the line can see —
+live, movies, and every episode of every series — with the metadata already
+attached: logos, EPG ids, group titles, channel numbers. That metadata is the
+valuable part, and it is safe to keep.
+
+**The URLs are not.** Every one embeds the line's username and password in its
+path, so an export is a credential in playlist form. Commit it, or bundle it
+into an APK anyone can unzip, and the account is public — and an Xtream line
+capped at a few simultaneous connections does not merely leak, it stops
+working for its owner.
+
+```bash
+npm run import:panel -- --input export.m3u
+npm run build:roster -- --roster-file data/rosters/enktel-line.live.roster.json \
+  --prefix enktel-line-live          # fill the ids and logos the panel left blank
+```
+
+`splitStreamUrl` matches the credential segments precisely so that it can drop
+them: they are never returned, never stored, and nothing downstream can reach
+them. Rendering a playable playlist is `build-roster.mjs`'s job, from
+credentials supplied at run time.
+
+### What it does with the pile
+
+| decision | why |
+| --- | --- |
+| series collapse to one row each | 232,209 episode rows is not a catalog anyone browses. Every episode shares its poster, group and stream prefix; the season count, episode count and id range are kept, so nothing is lost. |
+| adult categories are dropped | An adult category reaching a lineup by accident is a different class of mistake from a mis-filed sports channel. `--keep-adult` overrides. |
+| `dummy.epg` is not an id | It is what a panel writes when it has **no** guide for a channel. Carried forward it produces a channel that counts as covered in every report and shows an empty grid on screen. |
+
+### Results on the current line
+
+327,225 entries in, 28,213 adult dropped, and:
+
+| catalog | rows | artwork |
+| --- | --- | --- |
+| `enktel-line.live.csv` | 18,154 | 17,317 (95.4%) |
+| `enktel-line.movies.csv` | 48,649 | 46,262 (95.1%) |
+| `enktel-line.series.csv` | 7,977 series (232,209 episodes) | 7,977 (100%) |
+
+Of the 18,154 live channels the panel supplied a real EPG id for 4,198; the
+other 13,956 carried the placeholder. Running them through `build-roster.mjs`
+takes that to 26.7%.
+
+**Those two id namespaces are not interchangeable**, and the report says so:
+the panel's ids (`7flix.au`) belong to the panel's own `xmltv.php` guide, and
+iptv-org's (`SevenFlix.au`) belong to iptv-org's. Only 2.2% of the resolved set
+appears in iptv-org's guide index, which is not a matching failure — it is the
+wrong guide for this line. `id_via` distinguishes them per row: `given` is the
+panel's, `exact`/`fuzzy` is iptv-org's. Point `--guide` at the line's own
+`xmltv.php` to fill the rest properly.
+
 ## Tests
 
 ```bash

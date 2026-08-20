@@ -66,6 +66,8 @@ export const MENA_ROSTER = {
   template: '{server}/live/{username}/{password}/{id}.ts',
   /** Not HLS: this line publishes MPEG-TS, which most players handle anyway. */
   kind: 'mpegts',
+  /** Its countries are hand-checked, so one that disagrees is evidence. */
+  strictCountry: true,
   channels: [
   { id: "16", name: "beINSports-fr1", country: "QA", channel: "beINSportsFrench1.qa" },
   { id: "17", name: "beINSports-fr2", country: "QA", channel: "beINSportsFrench2.qa" },

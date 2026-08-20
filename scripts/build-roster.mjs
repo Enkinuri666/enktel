@@ -58,6 +58,7 @@ Usage: node scripts/build-roster.mjs [options]
 Input
   --roster <id>          built-in roster (default ${DEFAULTS.roster}); one of ${ROSTERS.map((r) => r.id).join(', ')}
   --playlist <file>      resolve a playlist file instead of a built-in roster
+  --roster-file <json>   resolve a roster written by import-panel-export.mjs
   --guide <url>          extra XMLTV guide for id matching (repeatable)
   --no-catalog           skip the iptv-org channel catalog
   --no-logos             skip logo resolution
@@ -91,6 +92,7 @@ function parseArgs(argv) {
   const opts = {
     roster: DEFAULTS.roster,
     playlist: '',
+    rosterFile: '',
     guides: [],
     catalog: true,
     logos: true,
@@ -127,6 +129,9 @@ function parseArgs(argv) {
         break;
       case '--playlist':
         opts.playlist = next();
+        break;
+      case '--roster-file':
+        opts.rosterFile = next();
         break;
       case '--guide':
         opts.guides.push(next());
@@ -272,7 +277,9 @@ async function loadInput(opts) {
     };
   }
 
-  const roster = selectRoster(opts.roster);
+  const roster = opts.rosterFile
+    ? JSON.parse(await readFile(path.resolve(process.cwd(), opts.rosterFile), 'utf8'))
+    : selectRoster(opts.roster);
   return { mode: 'roster', label: roster.name, epgUrl: '', roster, channels: roster.channels };
 }
 
@@ -357,9 +364,11 @@ async function main() {
     guideSites,
     threshold: opts.threshold,
     logoThreshold: opts.logoThreshold,
-    // A roster's countries are curated; a playlist's are whatever the index
-    // that published it decided they were.
-    strictCountry: input.mode === 'roster',
+    // A hand-written roster's countries are curated, and a disagreement with
+    // the catalog is evidence. An imported one's come from the panel's group
+    // titles, which is the same weak evidence a playlist's tvg-country is, so
+    // it opts out.
+    strictCountry: input.mode === 'roster' && (input.roster.strictCountry ?? true),
   });
 
   const records = input.channels.map((channel) => {

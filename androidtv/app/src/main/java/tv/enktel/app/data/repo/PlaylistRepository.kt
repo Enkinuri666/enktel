@@ -56,6 +56,25 @@ class PlaylistRepository(
         }
 
     /**
+     * Sign this build's default line in, if it has one and there is no profile
+     * yet.
+     *
+     * Returns null rather than a failed [Result] when there is nothing to do —
+     * a build with no baked-in credentials, or a device that already has a
+     * profile — because neither is an error and the caller should not report
+     * one. A login that is attempted and *fails* returns the failure, so a
+     * wrong or expired line still lands the viewer on the onboarding form
+     * instead of an empty home screen.
+     *
+     * Calling this more than once is safe: the profile check happens first.
+     */
+    suspend fun seedDefaultProfile(): Result<Profile>? {
+        if (!DefaultLine.canSeed) return null
+        if (dao.first() != null) return null
+        return addXtream(DefaultLine.NAME, DefaultLine.server, DefaultLine.username, DefaultLine.password)
+    }
+
+    /**
      * Turns a [TrialCredentials] payload into a validated Xtream profile.
      * Same login-then-persist pattern as [addXtream] so the panel gets a real
      * auth challenge before we save anything, but we tag the row with

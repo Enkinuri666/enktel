@@ -37,3 +37,31 @@ Leanback launcher + banner included; touchscreen not required (Fire TV compliant
 adb connect <firetv-ip>
 adb install app-debug.apk
 ```
+
+## The default line
+
+A fresh install opens on the onboarding form. `tv.enktel.app.data.repo.DefaultLine`
+prefills the panel address so that form is two fields rather than three, and a
+build given credentials signs in during startup and lands straight on the
+channel list.
+
+```
+./gradlew :app:assembleTvDebug -PenkDefaultUser=... -PenkDefaultPass=...
+./gradlew :app:assembleMobileDebug -PenkDefaultUser=... -PenkDefaultPass=...
+```
+
+`ENK_DEFAULT_USER` / `ENK_DEFAULT_PASS` in the environment work too, and
+`-PenkDefaultServer` points at a different panel.
+
+**Only the server has a default.** An APK is a zip file: anything compiled into
+it is readable by anyone who downloads it. A credential baked into a public
+build is a published credential, and an Xtream line capped at a few
+simultaneous connections does not merely leak — it stops working for its owner.
+Builds made with the properties above are for whoever owns the line, not for
+distribution.
+
+Seeding runs once, before the start destination is chosen, and re-reads the
+database rather than waiting on the profiles flow: the start destination is
+read once by the NavHost, so a profile that arrives a frame later would leave
+the viewer on the onboarding form with an account already configured. A login
+that fails falls through to onboarding rather than to an empty home screen.

@@ -217,8 +217,21 @@ private fun MainNav(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var tourVisible by remember { mutableStateOf(false) }
 
-    if (profiles == null || activeId < 0) return
-    val start = if (profiles!!.isEmpty()) "onboarding" else "home"
+    // Where to start is decided *after* the default line has had its one
+    // chance to sign in, and by re-asking the database rather than by reading
+    // the profiles flow. Both matter: `start` is a NavHost start destination,
+    // read once, so a profile that arrives a frame later leaves the viewer
+    // sitting on the onboarding form with an account already configured. The
+    // flow emits on its own schedule; a direct query does not.
+    var start by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (graph.playlists.activeProfile() == null) {
+            runCatching { graph.playlists.seedDefaultProfile() }
+        }
+        start = if (graph.playlists.activeProfile() == null) "onboarding" else "home"
+    }
+
+    if (profiles == null || activeId < 0 || start == null) return
 
     LaunchedEffect(firstRunDone, profiles) {
         if (!firstRunDone && profiles!!.isNotEmpty()) {
@@ -1011,7 +1024,7 @@ private fun MainNav(
     val navHost = @Composable { padding: androidx.compose.foundation.layout.PaddingValues ->
     NavHost(
         navController = nav,
-        startDestination = start,
+        startDestination = start!!,
         modifier = Modifier
             .fillMaxSize()
             .background(EnktelBg)
