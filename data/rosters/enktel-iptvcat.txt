@@ -1,0 +1,201 @@
+# stream_id	name	genre	country	tvg_id	logo
+129	Arena Sport 1	Sports	BA	ArenaSport1.ba	logo
+130	Arena Sport 3 BA (1080p)	Sports	BA	-	-
+44	beIN SPORTS XTRA	Sports	AU	beINSPORTSXTRA.us	logo
+83	Leaderboard Sports News (1080p)	Sports	AU	-	-
+31	3 Tamil TV	24/7 Series	AU	3TamilTV.au	logo
+16	Klasik	24/7 Series	HR	Klasik.hr	logo
+136	Malta (720p) [Not 24 7]	24/7 Series	BA	-	-
+18	OTV	24/7 Series	HR	OTV.hr	logo
+21	Radio Televizija Banovina	24/7 Series	HR	RadioTelevizijaBanovina.hr	logo
+148	RTRS plus	24/7 Series	BA	RTRSplus.ba	logo
+149	RTRS TV	24/7 Series	BA	RTRSTV.ba	logo
+22	SBTV	24/7 Series	HR	SBTV.hr	logo
+23	TV Jadran	24/7 Series	HR	TVJadran.hr	logo
+153	TV Slon Extra	24/7 Series	BA	TVSlonExtra.ba	logo
+25	TV Zapad	24/7 Series	HR	TVZapad.hr	logo
+26	TV Zapad	24/7 Series	HR	TVZapad.hr	logo
+127	Al Jazeera Balkans (1080p)	News	BA	-	-
+128	Al Jazeera Balkans (1080p)	News	BA	-	-
+41	BBC News Asia Pacific (720p)	News		-	logo
+42	BBC News Asia Pacific (720p)	News		-	logo
+46	Breaking News By Lead Story (1080p)	News	AU	-	-
+47	CTB Perth News (720p)	News	AU	-	-
+61	Euronews French	News	AU	EuronewsFrench.fr	logo
+68	GB News	News	AU	GBNews.uk	logo
+145	N1	News	BA	N1.ba	logo
+73	History And Warfare Now (1080p)	Documentary	AU	-	-
+97	PBS Antiques Road Trip (1080p)	Documentary	AU	-	-
+98	PBS History (1080p)	Documentary	AU	-	-
+99	PBS Science (1080p)	Documentary	AU	-	-
+1	Bravo! Kids TV	Reality	HR	BravoKidsTV.hr	logo
+2	Bravo! Kids TV	Reality	HR	BravoKidsTV.hr	logo
+3	Bravo! TV	Reality	HR	BravoTV.hr	logo
+152	TNT Kids TV	Kids	BA	TNTKidsTV.ba	logo
+111	Shalom World Australia (1080p)	Religion	AU	-	logo
+112	Shalom World Prayer	Religion	AU	ShalomWorldPrayer.us	logo
+116	TBN Inspire	Religion	AU	TBNInspire.us	logo
+39	Action Hollywood Movies (1080p)	Movies	AU	-	-
+49	CTB Perth Movies Channel	Movies	AU	CTBPerthMoviesChannel.au	logo
+89	My Time Movie Network (1080p)	Movies	AU	-	logo
+65	Folk Klub TV	Music	AU	FolkKlubTV.au	logo
+77	INTV Australia	Music	AU	INTVAustralia.au	logo
+192	TV Arberia Retro Hits	Music	XK	TVArberiaRetroHits.xk	logo
+27	10 Bold	Entertainment	AU	10Bold.au	logo
+28	10 Bold Adelaide (1080p)	Entertainment	AU	-	-
+29	10 Peach	Entertainment	AU	10Peach.au	logo
+156	21 Junior	Entertainment	XK	21Junior.xk	logo
+157	21 Mix	Entertainment	XK	21Mix.xk	logo
+158	21 Plus	Entertainment	XK	21Plus.xk	logo
+159	21 Popullore	Entertainment	XK	21Popullore.xk	logo
+30	3AW Melbourne (1080p)	Entertainment	AU	-	-
+32	8 Out Of 10 Cats	Entertainment	AU	8OutOf10Cats.uk	logo
+34	9Gem	Entertainment	AU	9Gem.au	logo
+33	9Go!	Entertainment	AU	9Go.au	logo
+35	9Life	Entertainment	AU	9Life.au	logo
+36	9Rush	Entertainment	AU	9Rush.au	logo
+37	ABC Australia	Entertainment	AU	ABCAustralia.au	logo
+38	ABC Australia Vietnam (1080p)	Entertainment	AU	-	-
+40	Anger Management Channel	Entertainment	AU	AngerManagementChannel.us	logo
+160	ATV	Entertainment	XK	ATV.xk	logo
+43	Baywatch	Entertainment	AU	Baywatch.us	logo
+131	BHT 1	Entertainment	BA	BHT1.ba	logo
+132	BN TV	Entertainment	BA	BNTV.ba	logo
+45	Bondi Vet (720p)	Entertainment	AU	-	-
+51	10	Entertainment	AU	10.au	logo
+50	Channel 7	Entertainment	AU	Channel7.au	logo
+52	Channel 9 Adelaide (720p) [Geo Blocked]	Entertainment	AU	-	-
+53	Channel 9 Brisbane (720p) [Geo Blocked]	Entertainment	AU	-	-
+54	Channel 9 Melbourne (720p) [Geo Blocked]	Entertainment	AU	-	-
+55	Channel 9 Melbourne (720p) [Geo Blocked]	Entertainment	AU	-	logo
+56	Channel 9 Perth (720p) [Geo Blocked]	Entertainment	AU	-	-
+57	Channel 9 Sydney (720p) [Geo Blocked]	Entertainment	AU	-	-
+58	Channel 9 Sydney (720p) [Geo Blocked]	Entertainment	AU	-	logo
+6	CMC TV	Entertainment	HR	CMCTV.hr	logo
+48	CTB Perth	Entertainment	AU	CTBPerth.au	logo
+59	Deal or No Deal	Entertainment	AU	DealorNoDeal.us	logo
+4	Diadora TV	Entertainment	HR	DiadoraTV.hr	logo
+60	Don't Tell The Bride	Entertainment	AU	DontTellTheBride.uk	logo
+62	Dry Bar Comedy (720p)	Entertainment	AU	-	-
+5	Extra TV	Entertainment	HR	ExtraTV.hr	logo
+7	Extra TV	Entertainment	HR	ExtraTV.hr	logo
+63	Failarmy International (720p)	Entertainment	AU	-	-
+64	Fear Factor	Entertainment	AU	FearFactor.us	logo
+66	Four In A Bed (720p)	Entertainment	AU	-	-
+67	FUEL TV	Entertainment	AU	FUELTV.pt	logo
+69	Ghost Hunters	Entertainment	AU	GhostHunters.us	logo
+70	HauntTV	Entertainment	AU	HauntTV.ca	logo
+71	Hell's Kitchen	Entertainment	AU	HellsKitchen.us	logo
+72	Highway Thru Hell (1080p)	Entertainment	AU	-	-
+74	Homeful	Entertainment	AU	Homeful.ca	logo
+75	Homes Under The Hammer (720p)	Entertainment	AU	-	-
+8	HRT 1	Entertainment	HR	HRT1.hr	logo
+9	HRT 1	Entertainment	HR	HRT1.hr	logo
+10	HRT 2	Entertainment	HR	HRT2.hr	logo
+11	HRT 2	Entertainment	HR	HRT2.hr	logo
+12	HRT 3	Entertainment	HR	HRT3.hr	logo
+13	HRT 3	Entertainment	HR	HRT3.hr	logo
+14	HRT 4	Entertainment	HR	HRT4.hr	logo
+80	Indo Oz TV	Entertainment	AU	IndoOzTV.au	logo
+76	INFAST	Entertainment	AU	INFAST.nl	logo
+81	Inside Outside (720p)	Entertainment	AU	-	-
+79	InWonder	Entertainment	AU	InWonder.nl	logo
+161	Istogu Channel	Entertainment	XK	IstoguChannel.xk	logo
+78	ITV Choice (1080p) [Geo Blocked]	Entertainment	AU	-	-
+133	JEKA	Entertainment	BA	JEKA.rs	logo
+162	Kanal 10	Entertainment	XK	Kanal10.xk	logo
+134	Kanal 6	Entertainment	BA	Kanal6.ba	logo
+82	Kartoon Channel!	Entertainment	AU	KartoonChannel.us	logo
+15	Klape i Tambure TV	Entertainment	HR	KlapeiTambureTV.hr	logo
+163	Kohavision	Entertainment	XK	Kohavision.xk	logo
+164	Kohavision	Entertainment	XK	Kohavision.xk	logo
+165	Kohavision	Entertainment	XK	Kohavision.xk	logo
+17	Libertas TV	Entertainment	HR	LibertasTV.hr	logo
+84	Life Downunder (720p)	Entertainment	AU	-	-
+86	MagellanTV Now	Entertainment	AU	MagellanTVNow.us	logo
+137	Maria+Vision Medjugorje	Entertainment	BA	MariaPlusVisionMedjugorje.ba	logo
+87	MovieSphere	Entertainment	AU	MovieSphere.us	logo
+88	Mr Bean Animated	Entertainment	AU	MrBeanAnimated.uk	logo
+85	MTRSPT1	Entertainment	AU	MTRSPT1.us	logo
+135	MUZZIK	Entertainment	BA	MUZZIK.rs	logo
+138	FLASHBACK	Entertainment	BA	FLASHBACK.rs	logo
+139	MOBA	Entertainment	BA	MOBA.rs	logo
+140	POP STAR	Entertainment	BA	POPSTAR.rs	logo
+141	Rock&Roll	Entertainment	BA	RockRoll.rs	logo
+142	SENSE	Entertainment	BA	SENSE.rs	logo
+143	TIKTAK	Entertainment	BA	TIKTAK.rs	logo
+144	Muzzik ZZ TV (720p)	Entertainment	BA	-	-
+90	Mythbusters	Entertainment	AU	Mythbusters.us	logo
+91	Nosey (1080p)	Entertainment	AU	-	logo
+92	Nosey (1080p)	Entertainment	AU	-	logo
+147	Nova TV	Entertainment	BA	NovaTV.ba	logo
+93	Now 70s	Entertainment	AU	Now70s.uk	logo
+94	Now 80s	Entertainment	AU	Now80s.uk	logo
+95	NOW Rock	Entertainment	AU	NOWRock.uk	logo
+146	NTV IC Kakanj	Entertainment	BA	NTVICKakanj.ba	logo
+96	Outdoor Channel	Entertainment	AU	OutdoorChannel.us	logo
+100	People Are Awesome	Entertainment	AU	PeopleAreAwesome.us	logo
+101	Pet Club TV	Entertainment	AU	PetClubTV.hk	logo
+102	Pointless (1080p) [Geo Blocked]	Entertainment	AU	-	-
+103	Pop (1080p) [Geo Blocked]	Entertainment	AU	-	logo
+104	PowerNation TV	Entertainment	AU	PowerNationTV.us	logo
+105	Pulse	Entertainment	AU	Pulse.za	logo
+106	Qwest TV Jazz & Beyond	Entertainment	AU	QwestTVJazzBeyond.fr	logo
+108	Racer Network	Entertainment	AU	RacerNetwork.us	logo
+107	RCM TV	Entertainment	AU	RCMTV.co	logo
+109	Real Crime (1080p)	Entertainment	AU	-	-
+110	Real Wild	Entertainment	AU	RealWild.uk	logo
+166	RTK 1	Entertainment	XK	RTK1.xk	logo
+167	RTK 1	Entertainment	XK	RTK1.xk	logo
+168	RTK 1	Entertainment	XK	RTK1.xk	logo
+169	RTK 1	Entertainment	XK	RTK1.xk	logo
+170	RTK 1	Entertainment	XK	RTK1.xk	logo
+171	RTK 2	Entertainment	XK	RTK2.xk	logo
+172	RTK 2	Entertainment	XK	RTK2.xk	logo
+173	RTK 2	Entertainment	XK	RTK2.xk	logo
+174	RTK 3	Entertainment	XK	RTK3.xk	logo
+175	RTK 3	Entertainment	XK	RTK3.xk	logo
+176	RTK 3	Entertainment	XK	RTK3.xk	logo
+177	RTK 4	Entertainment	XK	RTK4.xk	logo
+19	RTL	Entertainment	HR	RTL.hr	logo
+20	RTL 2	Entertainment	HR	RTL2.hr	logo
+178	RTV Besa	Entertainment	XK	RTVBesa.xk	logo
+179	RTV Dukagjini	Entertainment	XK	RTVDukagjini.xk	logo
+180	RTV Fontana	Entertainment	XK	RTVFontana.xk	logo
+150	RTV Zenica	Entertainment	BA	RTVZenica.ba	logo
+181	RTV21	Entertainment	XK	RTV21.xk	logo
+182	RTV21	Entertainment	XK	RTV21.xk	logo
+151	Sevdah TV	Entertainment	BA	SevdahTV.ba	logo
+113	Sky Racing 1	Entertainment	AU	SkyRacing1.au	logo
+114	Sky Racing 2	Entertainment	AU	SkyRacing2.au	logo
+115	Sky Thoroughbred Central	Entertainment	AU	SkyThoroughbredCentral.au	logo
+183	Syri Vision	Entertainment	XK	SyriVision.xk	logo
+184	T7	Entertainment	XK	T7.xk	logo
+185	T7	Entertainment	XK	T7.xk	logo
+154	Televizija M	Entertainment	BA	TelevizijaM.ba	logo
+117	The Design Network	Entertainment	AU	TheDesignNetwork.us	logo
+118	The Hotel Inspector (1080p)	Entertainment	AU	-	-
+119	The Pet Collective International (720p)	Entertainment	AU	-	logo
+120	The Wicked Tuna Channel (1080p)	Entertainment	AU	-	-
+121	Timeline	Entertainment	AU	Timeline.uk	logo
+122	Travelxp	Entertainment	AU	Travelxp.in	logo
+123	True Crime Now	Entertainment	AU	TrueCrimeNow.us	logo
+186	TV Arberia 1	Entertainment	XK	TVArberia1.xk	logo
+187	TV Arberia 2	Entertainment	XK	TVArberia2.xk	logo
+188	TV Arberia 3 Femije	Entertainment	XK	TVArberia3Femije.xk	logo
+189	TV Arberia 4 Muzike	Entertainment	XK	TVArberia4Muzike.xk	logo
+190	TV Arberia 5	Entertainment	XK	TVArberia5.xk	logo
+191	TV Arberia Arshi i Allahut	Entertainment	XK	TVArberiaArshiiAllahut.xk	logo
+193	TV Arberia Shpresa e Perendise	Entertainment	XK	TVArberiaShpresaePerendise.xk	logo
+194	TV Dielli	Entertainment	XK	TVDielli.xk	logo
+195	TV Llapi	Entertainment	XK	TVLlapi.xk	logo
+196	TV Mitrovica	Entertainment	XK	TVMitrovica.xk	logo
+24	Nova TV	Entertainment	HR	NovaTV.hr	logo
+197	TV Opoja	Entertainment	XK	TVOpoja.xk	logo
+198	TV Prizreni	Entertainment	XK	TVPrizreni.xk	logo
+199	TV Prizreni	Entertainment	XK	TVPrizreni.xk	logo
+200	TV Prizreni	Entertainment	XK	TVPrizreni.xk	logo
+124	Undercover Boss (720p)	Entertainment	AU	-	-
+125	Vevo 2K	Entertainment	AU	Vevo2K.us	logo
+126	Vevo '70s	Entertainment	AU	Vevo70s.us	logo
+155	WORLD WIDE MUZZIK	Entertainment	BA	WORLDWIDEMUZZIK.rs	logo

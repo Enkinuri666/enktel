@@ -117,3 +117,62 @@ test('GENRES lists every genre the rules can produce', () => {
   ];
   for (const genre of produced) assert.ok(GENRES.includes(genre), `${genre} missing from GENRES`);
 });
+
+test('MENA sports brands are recognised without the word "sport"', () => {
+  // Same reasoning as MUTV and DAZN: a generic /sport/ pattern never sees
+  // these.
+  assert.equal(classifyGenre({ name: 'Alkass One' }), 'Sports');
+  assert.equal(classifyGenre({ name: 'Alkas 1' }), 'Sports');
+  assert.equal(classifyGenre({ name: 'Dubai Racing 2' }), 'Sports');
+  assert.equal(classifyGenre({ name: 'MBC Pro Sports 1' }), 'Sports');
+  assert.equal(classifyGenre({ name: 'OSN Fight HD' }), 'Sports');
+});
+
+test('religious channels get their own bucket instead of Entertainment', () => {
+  assert.equal(classifyGenre({ name: 'Saudi Quran' }), 'Religion');
+  assert.equal(classifyGenre({ name: 'Iqraa TV' }), 'Religion');
+  assert.equal(classifyGenre({ name: 'Al Majd' }), 'Religion');
+  assert.equal(classifyGenre({ name: 'Zaytoona' }), 'Religion');
+  assert.equal(classifyGenre({ name: 'Makkah TV' }), 'Religion');
+  assert.equal(classifyGenre({ name: 'EWTN' }), 'Religion');
+});
+
+test('a religious children\'s channel is Kids, not Religion', () => {
+  // Kids is tested first on purpose: this is where a viewer looks for them.
+  assert.equal(classifyGenre({ name: 'Al-Majd Kids' }), 'Kids');
+  assert.equal(classifyGenre({ name: 'Toyor Al-Jannah' }), 'Kids');
+});
+
+test('Arabic kids brands carry no word the English rules would see', () => {
+  assert.equal(classifyGenre({ name: 'Spacetoon Arabic' }), 'Kids');
+  assert.equal(classifyGenre({ name: 'Baraem' }), 'Kids');
+  assert.equal(classifyGenre({ name: 'JeemTV' }), 'Kids');
+  assert.equal(classifyGenre({ name: 'Ajyal TV' }), 'Kids');
+});
+
+test('"aflam" and "cinema" are Movies whatever the transliteration', () => {
+  assert.equal(classifyGenre({ name: 'ART Aflam 1' }), 'Movies');
+  assert.equal(classifyGenre({ name: 'OSN Cinma 2' }), 'Movies');
+  assert.equal(classifyGenre({ name: 'beIN Box Office 1' }), 'Movies');
+});
+
+test('Arabic news brands are News', () => {
+  assert.equal(classifyGenre({ name: 'Alarabiya' }), 'News');
+  assert.equal(classifyGenre({ name: 'Al Hadath' }), 'News');
+  assert.equal(classifyGenre({ name: 'Alikhbaria Syria' }), 'News');
+  assert.equal(classifyGenre({ name: 'Al Jazeera Mubasher' }), 'News');
+});
+
+test('"wild" alone is not a documentary', () => {
+  // A bare /wild/ files "Wild 'N Out" and "The Wild Wild West" as factual.
+  assert.equal(classifyGenre({ name: 'Nat Geo Wild' }), 'Documentary');
+  assert.equal(classifyGenre({ name: 'OSN Natgeowild' }), 'Documentary');
+  assert.equal(classifyGenre({ name: 'WildEarth' }), 'Documentary');
+  assert.notEqual(classifyGenre({ name: "Wild 'N Out" }), 'Documentary');
+  assert.notEqual(classifyGenre({ name: 'The Wild Wild West' }), 'Documentary');
+});
+
+test('"Al Nassr" is a football club, not the religious channel "Al Nas"', () => {
+  assert.equal(classifyGenre({ name: 'Al Nas TV' }), 'Religion');
+  assert.notEqual(classifyGenre({ name: 'Al Nassr TV' }), 'Religion');
+});

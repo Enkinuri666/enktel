@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T17:23:38.682Z",
+  "generatedAt": "2026-08-20T18:42:46.467Z",
   "playlist": "data/playlists/enktel-core.m3u",
   "countries": [
     "AU",
@@ -15,30 +15,16 @@
     "Documentary",
     "Reality",
     "Kids",
+    "Religion",
     "Movies",
     "Music",
     "Entertainment"
   ],
-  "guideChannels": 40800,
+  "guideChannels": 39752,
   "guideSources": [
     {
       "id": "iptv-org-catalog",
       "count": 39752,
-      "ok": true
-    },
-    {
-      "id": "https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz",
-      "count": 213,
-      "ok": true
-    },
-    {
-      "id": "https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz",
-      "count": 481,
-      "ok": true
-    },
-    {
-      "id": "https://epgshare01.online/epgshare01/epg_ripper_AU1.xml.gz",
-      "count": 354,
       "ok": true
     }
   ],
@@ -52,8 +38,8 @@
     "logoAlready": 2849,
     "logoFilled": 1,
     "logoMissing": 73,
-    "unclassified": 786,
-    "defaulted": 786,
+    "unclassified": 671,
+    "defaulted": 671,
     "droppedCountry": 0,
     "droppedGenre": 0,
     "epgCoverage": "98.7%",
@@ -71,28 +57,31 @@
     "AU - News": 14,
     "AU - Reality": 2,
     "AU - Kids": 2,
+    "AU - Religion": 1,
     "AU - Movies": 1,
     "AU - Music": 3,
-    "AU - Entertainment": 125,
+    "AU - Entertainment": 124,
     "US - PPV / Main Events": 2,
     "US - Sports": 150,
     "US - 24/7 Series": 74,
     "US - News": 226,
-    "US - Documentary": 112,
+    "US - Documentary": 113,
     "US - Reality": 22,
     "US - Kids": 123,
+    "US - Religion": 99,
     "US - Movies": 157,
     "US - Music": 92,
-    "US - Entertainment": 1488,
+    "US - Entertainment": 1388,
     "GB - Sports": 40,
     "GB - 24/7 Series": 5,
     "GB - News": 35,
     "GB - Documentary": 21,
     "GB - Reality": 3,
     "GB - Kids": 20,
+    "GB - Religion": 15,
     "GB - Movies": 14,
     "GB - Music": 41,
-    "GB - Entertainment": 128,
+    "GB - Entertainment": 113,
     "HR - 24/7 Series": 1,
     "HR - Documentary": 2,
     "HR - Reality": 1,

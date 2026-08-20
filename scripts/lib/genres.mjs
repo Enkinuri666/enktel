@@ -20,6 +20,7 @@ export const GENRES = [
   'Documentary',
   'Reality',
   'Kids',
+  'Religion',
   'Movies',
   'Music',
   'Entertainment',
@@ -30,7 +31,7 @@ export const GENRES = [
  * /sport/ pattern would miss entirely — MUTV, DAZN, Willow, Optus.
  */
 const SPORTS_BRANDS =
-  /\b(bein|be in ?sports?|fox ?sports?|eurosport|sportklub|sport ?klub|sportska|sports? ?tv|espn|espnu|mutv|man ?utd ?tv|lfc ?tv|mufc|optus ?sports?|stan ?(sports?|events?)|paramount\+? ?sports?|sky ?sports?|tnt ?sports?|bt ?sports?|dazn|willow|supersport|arena ?sports?|viaplay ?sports?|premier ?sports?|laliga|serie ?a|bundesliga|nba|nfl|mlb|nhl|wnba|ufc|motogp|formula ?1|f1 ?tv|motorsport|racing ?tv|golf ?channel|tennis ?channel|sportsnet|tsn|nbcsn|cbs ?sports?|nbc ?sports?|abc ?sports?|kayo|fox ?footy|nrl|afl|super ?rugby|cricket|sport ?1|sport ?2|sport ?[0-9]|hrt ?sports?|max ?sports?|nova ?sports?|match ?tv)\b/i;
+  /\b(bein ?sports?|be in ?sports?|fox ?sports?|eurosport|sportklub|sport ?klub|sportska|sports? ?tv|espn|espnu|mutv|man ?utd ?tv|lfc ?tv|mufc|optus ?sports?|stan ?(sports?|events?)|paramount\+? ?sports?|sky ?sports?|tnt ?sports?|bt ?sports?|dazn|willow|supersport|arena ?sports?|viaplay ?sports?|premier ?sports?|laliga|serie ?a|bundesliga|nba|nfl|mlb|nhl|wnba|ufc|motogp|formula ?1|f1 ?tv|motorsport|racing ?tv|golf ?channel|tennis ?channel|sportsnet|tsn|nbcsn|cbs ?sports?|nbc ?sports?|abc ?sports?|kayo|fox ?footy|nrl|afl|super ?rugby|cricket|sport ?1|sport ?2|sport ?[0-9]|hrt ?sports?|max ?sports?|nova ?sports?|match ?tv|alkass?|al ?kass?|ad ?sports?|abu ?dhabi ?sports?|dubai ?sports?|dubai ?racing|sharjah ?sports?|jordan ?sports?|iraqia ?sports?|nile ?sports?|mbc ?pro|ssc ?sports?|oman ?sports?|\bfight\b)\b/i;
 
 /**
  * Unambiguous pay-per-view terms: nothing but a PPV channel is called this.
@@ -63,12 +64,12 @@ const RULES = [
   {
     genre: 'News',
     pattern:
-      /\b(news|cnn|msnbc|cnbc|bloomberg|euronews|al ?jazeera|sky ?news|bbc ?news|fox ?news|newsmax|gb ?news|abc ?news|nbc ?news|cbs ?news|france ?24|dw|rt|n1|hrt ?vijesti|vijesti|dnevnik|weather|meteo)\b/i,
+      /\b(news|cnn|msnbc|cnbc|bloomberg|euronews|al ?jazeera|sky ?news|bbc ?news|fox ?news|newsmax|gb ?news|abc ?news|nbc ?news|cbs ?news|france ?24|dw|rt|n1|hrt ?vijesti|vijesti|dnevnik|weather|meteo|al ?arabiya|alarabiya|al ?hadath|al ?mayadeen|ikhbaria|alikhbaria|akhbar|mubasher|russia ?today|russia ?al ?yaum)\b/i,
   },
   {
     genre: 'Documentary',
     pattern:
-      /\b(document(ary|aries)|discovery|nat ?geo|national ?geographic|history|animal ?planet|pbs|curiosity|smithsonian|viasat ?(explore|nature|history)|science|crime ?\+? ?investigation|真)\b/i,
+      /\b(document(ary|aries)|discovery|nat ?geo|national ?geographic|history|animal ?planet|pbs|curiosity|smithsonian|viasat ?(explore|nature|history)|science|crime ?\+? ?investigation|natgeo|nat ?geo ?wild|wild ?life|wildlife|wild ?earth|wathaeqia|真)\b/i,
   },
   {
     genre: 'Reality',
@@ -78,11 +79,19 @@ const RULES = [
   {
     genre: 'Kids',
     pattern:
-      /\b(kids?|cartoon|nick(elodeon| ?jr)?|disney( ?junior| ?jr| ?xd)?|boomerang|baby ?tv|pbs ?kids|cbeebies|cbbc|anime|toon)\b/i,
+      /\b(kids?|cartoon|nick(elodeon| ?jr)?|disney( ?junior| ?jr| ?xd)?|boomerang|baby ?tv|pbs ?kids|cbeebies|cbbc|anime|toon|spacetoon|baraem|jeem|toyor|ajyal|kidzone|majd ?kids|jeem ?tv|jeemtv)\b/i,
+  },
+  // After Kids on purpose: Al-Majd Kids and Toyor Al-Jannah are religious
+  // children's channels, and a viewer looks for them under Kids.
+  {
+    genre: 'Religion',
+    pattern:
+      /\b(quran|qur.?an|islam(ic)?|iqraa?|al ?majd|majd|zaytoona|zitouna|ezzitouna|makkah|mecca|madinah|sunnah|hadeeth|nabawy|risalah|tawheed|azhar|al ?nas+|elnas|christian|gospel|catholic|ewtn|religio(n|us))\b/i,
   },
   {
     genre: 'Movies',
-    pattern: /\b(movies?|cinema|film(s|ovi)?|hbo|starz|showtime|cinemax|paramount ?network|amc)\b/i,
+    pattern:
+      /\b(movies?|cinema|cinma|sinama|film(s|ovi)?|aflam|hbo|starz|showtime|cinemax|box ?office|paramount ?network|amc)\b/i,
   },
   {
     genre: 'Music',

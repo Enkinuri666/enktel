@@ -1,0 +1,401 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="ArenaSport1.ba" tvg-name="Arena Sport 1" tvg-logo="https://i.imgur.com/RJrJGbW.png" tvg-country="BA" group-title="BA - Sports",Arena Sport 1
+http://91.132.74.5:8000/play/a00k?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Arena Sport 3 BA (1080p)" tvg-country="BA" group-title="BA - Sports",Arena Sport 3 BA (1080p)
+http://94.250.2.6:7374/play/a02o/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="beINSPORTSXTRA.us" tvg-name="beIN SPORTS XTRA" tvg-logo="https://i.ibb.co/HT49GPmB/XTRA-2.png" tvg-country="AU" group-title="AU - Sports",beIN SPORTS XTRA
+https://amg01334-beinsportsllc-beinxtra-samsungau-eiyvc.amagi.tv/playlist/amg01334-beinsportsllc-beinxtra-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Leaderboard Sports News (1080p)" tvg-country="AU" group-title="AU - Sports",Leaderboard Sports News (1080p)
+https://amg02703-amg02703c20-samsung-au-9093.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="3TamilTV.au" tvg-name="3 Tamil TV" tvg-logo="https://yt3.googleusercontent.com/ytc/AIdro_nZG4BRWT5t0eCtM-SFVh0JMexLekw0evo-J4_S8Bw3YA=s512-c-k-c0x00ffffff-no-rj" tvg-country="AU" group-title="AU - 24/7 Series",3 Tamil TV
+https://6n3yogbnd9ok-hls-live.5centscdn.com/threetamil/d0dbe915091d400bd8ee7f27f0791303.sdp/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Klasik.hr" tvg-name="Klasik" tvg-logo="https://i.imgur.com/C90BYlb.png" tvg-country="HR" group-title="HR - 24/7 Series",Klasik
+https://178.253.194.105/klasiktv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Malta (720p) [Not 24 7]" tvg-country="BA" group-title="BA - 24/7 Series",Malta (720p) [Not 24 7]
+https://webtvstream.bhtelecom.ba/malta.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="OTV.hr" tvg-name="OTV" tvg-logo="https://i.imgur.com/67zVdu2.png" tvg-country="HR" group-title="HR - 24/7 Series",OTV
+https://stream.agatin.hr:3559/live/otvlive.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RadioTelevizijaBanovina.hr" tvg-name="Radio Televizija Banovina" tvg-logo="https://i.imgur.com/gCFgC5D.png" tvg-country="HR" group-title="HR - 24/7 Series",Radio Televizija Banovina
+https://pool.alter-media.hr:1936/live/myStream/playlist.m3u8?DVR=&checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTRSplus.ba" tvg-name="RTRS plus" tvg-logo="https://i.imgur.com/k06WvYl.png" tvg-country="BA" group-title="BA - 24/7 Series",RTRS plus
+https://pluslive.rtrs.tv/plus/plus/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTRSTV.ba" tvg-name="RTRS TV" tvg-logo="https://i.imgur.com/2Sgs5gM.png" tvg-country="BA" group-title="BA - 24/7 Series",RTRS TV
+https://uzivo.rtrs.tv/tv/live/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SBTV.hr" tvg-name="SBTV" tvg-logo="https://i.imgur.com/MIampxZ.png" tvg-country="HR" group-title="HR - 24/7 Series",SBTV
+https://live.leveex.hr/hls/live.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVJadran.hr" tvg-name="TV Jadran" tvg-logo="https://i.imgur.com/UWMHnOG.png" tvg-country="HR" group-title="HR - 24/7 Series",TV Jadran
+https://tvjadran.stream.agatin.hr:3412/live/tvjadranlive.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVSlonExtra.ba" tvg-name="TV Slon Extra" tvg-logo="https://i.imgur.com/AohYgH1.png" tvg-country="BA" group-title="BA - 24/7 Series",TV Slon Extra
+http://31.47.0.130:8082?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVZapad.hr" tvg-name="TV Zapad" tvg-logo="https://i.imgur.com/cgCeX12.png" tvg-country="HR" group-title="HR - 24/7 Series",TV Zapad
+http://webtv.zapad.tv:8080/memfs/1ad23803-84c3-41c7-aa91-fce4c7eac52e.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVZapad.hr" tvg-name="TV Zapad" tvg-logo="https://i.imgur.com/cgCeX12.png" tvg-country="HR" group-title="HR - 24/7 Series",TV Zapad
+http://85.94.67.158/TVZAPAD/index.fmp4.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Al Jazeera Balkans (1080p)" tvg-country="BA" group-title="BA - News",Al Jazeera Balkans (1080p)
+https://live-hls-web-ajb-fa.thehlive.com/AJB/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Al Jazeera Balkans (1080p)" tvg-country="BA" group-title="BA - News",Al Jazeera Balkans (1080p)
+https://live-hls-apps-ajb-v3-fa.getaj.net/AJB/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="BBC News Asia Pacific (720p)" tvg-logo="https://i.imgur.com/REuN9RR.png" group-title="News",BBC News Asia Pacific (720p)
+http://cdns.jp-primehome.com:8000/zhongying/live/playlist.m3u8?cid=cs15&checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="BBC News Asia Pacific (720p)" tvg-logo="https://i.imgur.com/REuN9RR.png" group-title="News",BBC News Asia Pacific (720p)
+https://cdn4.skygo.mn/live/disk1/BBC_News/HLSv3-FTA/BBC_News.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Breaking News By Lead Story (1080p)" tvg-country="AU" group-title="AU - News",Breaking News By Lead Story (1080p)
+https://amg02703-leadstory-leadstory-samsungau-rr75f.amagi.tv/playlist/amg02703-leadstory-leadstory-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="CTB Perth News (720p)" tvg-country="AU" group-title="AU - News",CTB Perth News (720p)
+https://news.ctbperth.net.au/hls/stream.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="EuronewsFrench.fr" tvg-name="Euronews French" tvg-logo="https://i.imgur.com/8t9mdg9.png" tvg-country="AU" group-title="AU - News",Euronews French
+https://viamotionhsi.netplus.ch/live/eds/euronews/browser-HLS8/euronews.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="GBNews.uk" tvg-name="GB News" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/3/35/GB_News_Logo.svg/960px-GB_News_Logo.svg.png" tvg-country="AU" group-title="AU - News",GB News
+https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="N1.ba" tvg-name="N1" tvg-logo="https://www.lyngsat.com/logo/tv/nn/n1_rs.png" tvg-country="BA" group-title="BA - News",N1
+https://best-str.umn.cdn.united.cloud/stream?channel=n1bos&p=n1Sh4redSecre7iNf0&sp=n1info&stream=sp1400&u=n1info&checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="History And Warfare Now (1080p)" tvg-country="AU" group-title="AU - Documentary",History And Warfare Now (1080p)
+https://d28gzbv9fhdm3h.cloudfront.net/playlist/amg00376-magellantv-historyandwarfarenowaunzin-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="PBS Antiques Road Trip (1080p)" tvg-country="AU" group-title="AU - Documentary",PBS Antiques Road Trip (1080p)
+https://amg02333-pbs-amg02333c1-samsung-au-1253.playouts.now.amagi.tv/PBSD-AntiquesRoadTripSF-samsung/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="PBS History (1080p)" tvg-country="AU" group-title="AU - Documentary",PBS History (1080p)
+https://amg02333-pbs-amg02333c1-samsung-au-1253.playouts.now.amagi.tv/playlist/amg02333-pbsdistributionfast-pbshistory-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="PBS Science (1080p)" tvg-country="AU" group-title="AU - Documentary",PBS Science (1080p)
+https://amg02333-pbs-amg02333c13-samsung-au-6858.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="BravoKidsTV.hr" tvg-name="Bravo! Kids TV" tvg-logo="https://i.imgur.com/JcJ6fQ9.png" tvg-country="HR" group-title="HR - Reality",Bravo! Kids TV
+https://streaming.social3.hr:443/play/r3CK_tdsFIFL3bN7w4NW1plrwsCToUBsRFjhxM68sZY/m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="BravoKidsTV.hr" tvg-name="Bravo! Kids TV" tvg-logo="https://i.imgur.com/JcJ6fQ9.png" tvg-country="HR" group-title="HR - Reality",Bravo! Kids TV
+https://streaming.social3.hr/play/r3CK_tdsFIFL3bN7w4NW1plrwsCToUBsRFjhxM68sZY/m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="BravoTV.hr" tvg-name="Bravo! TV" tvg-logo="https://i.imgur.com/FN2J9hv.png" tvg-country="HR" group-title="HR - Reality",Bravo! TV
+https://streaming.social3.hr/bravoTVkdjd7djd/XAbSERW5p3/2.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TNTKidsTV.ba" tvg-name="TNT Kids TV" tvg-logo="https://i.imgur.com/irTDbpn.png" tvg-country="BA" group-title="BA - Kids",TNT Kids TV
+https://restreamer1.tnt.ba/hls/tntkids.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Shalom World Australia (1080p)" tvg-logo="https://i.imgur.com/wnNd3b8.png" tvg-country="AU" group-title="AU - Religion",Shalom World Australia (1080p)
+https://broadcaster-1.cclouds.in/srt-3/channel3_abr/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="ShalomWorldPrayer.us" tvg-name="Shalom World Prayer" tvg-logo="https://i.imgur.com/uUrTto3.png" tvg-country="AU" group-title="AU - Religion",Shalom World Prayer
+https://broadcaster-1.cclouds.in/srt-4/channel4_abr/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TBNInspire.us" tvg-name="TBN Inspire" tvg-logo="https://i.imgur.com/GSM0Pkr.png" tvg-country="AU" group-title="AU - Religion",TBN Inspire
+https://live20.bozztv.com/dvrfl05/gin-tbninspire/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Action Hollywood Movies (1080p)" tvg-country="AU" group-title="AU - Movies",Action Hollywood Movies (1080p)
+https://amg01076-lightningintern-actionhollywood-samsungau-rs69y.amagi.tv/playlist/amg01076-lightningintern-actionhollywood-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="CTBPerthMoviesChannel.au" tvg-name="CTB Perth Movies Channel" tvg-logo="https://i.imgur.com/VB8gtCy.jpeg" tvg-country="AU" group-title="AU - Movies",CTB Perth Movies Channel
+https://movies.ctbperth.net.au/hls/stream.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="My Time Movie Network (1080p)" tvg-logo="https://i.imgur.com/aiGQtzI.png" tvg-country="AU" group-title="AU - Movies",My Time Movie Network (1080p)
+https://appletree-mytimeau-samsung.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="FolkKlubTV.au" tvg-name="Folk Klub TV" tvg-logo="https://i.imgur.com/Seq7Od7.png" tvg-country="AU" group-title="AU - Music",Folk Klub TV
+http://tv1.intv.mk:1935/live2/folkklub/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="INTVAustralia.au" tvg-name="INTV Australia" tvg-logo="https://i.imgur.com/1nJl0Pv.png" tvg-country="AU" group-title="AU - Music",INTV Australia
+http://tv1.intv.mk:1935/live/intv/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberiaRetroHits.xk" tvg-name="TV Arberia Retro Hits" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Music",TV Arberia Retro Hits
+https://ssh101.bozztv.com/ssh101/rtvarberiaretro/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="10Bold.au" tvg-name="10 Bold" tvg-logo="https://i.imgur.com/2xglh33.png" tvg-country="AU" group-title="AU - Entertainment",10 Bold
+https://i.mjh.nz/10bold-nsw.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="10 Bold Adelaide (1080p)" tvg-country="AU" group-title="AU - Entertainment",10 Bold Adelaide (1080p)
+https://dce3793146fef017.mediapackage.us-west-2.amazonaws.com/out/v1/55cdf73af7894775ba6de8f57482b66a/CMAF_HLS/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="10Peach.au" tvg-name="10 Peach" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/d/d8/10_Peach_logo_2018.svg/960px-10_Peach_logo_2018.svg.png" tvg-country="AU" group-title="AU - Entertainment",10 Peach
+https://i.mjh.nz/10peach-nsw.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="21Junior.xk" tvg-name="21 Junior" tvg-logo="https://i.imgur.com/70Czvgc.png" tvg-country="XK" group-title="XK - Entertainment",21 Junior
+http://77.83.120.135:8001/play/a112?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="21Mix.xk" tvg-name="21 Mix" tvg-logo="https://i.imgur.com/vvvmqYn.png" tvg-country="XK" group-title="XK - Entertainment",21 Mix
+http://77.83.120.135:8001/play/a0jq?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="21Plus.xk" tvg-name="21 Plus" tvg-logo="https://i.imgur.com/noOxd1n.png" tvg-country="XK" group-title="XK - Entertainment",21 Plus
+http://77.83.120.135:8001/play/a03j?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="21Popullore.xk" tvg-name="21 Popullore" tvg-logo="https://i.imgur.com/qjWaERN.png" tvg-country="XK" group-title="XK - Entertainment",21 Popullore
+http://77.83.120.135:8001/play/a0i9?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="3AW Melbourne (1080p)" tvg-country="AU" group-title="AU - Entertainment",3AW Melbourne (1080p)
+https://3awlive.akamaized.net/hls/live/2032295/3AW/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="8OutOf10Cats.uk" tvg-name="8 Out Of 10 Cats" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/6/66/8_out_of_10_acts.png/250px-8_out_of_10_acts.png" tvg-country="AU" group-title="AU - Entertainment",8 Out Of 10 Cats
+https://amg00627-amg00627c37-samsung-au-4294.playouts.now.amagi.tv/playlist/amg00627-banijayfast-8outof10cats-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="9Gem.au" tvg-name="9Gem" tvg-logo="https://i.imgur.com/cwLzqaw.png" tvg-country="AU" group-title="AU - Entertainment",9Gem
+https://9now-livestreams.akamaized.net/hls/live/2008311/gem-syd/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="9Go.au" tvg-name="9Go!" tvg-logo="https://i.imgur.com/RLijQI8.png" tvg-country="AU" group-title="AU - Entertainment",9Go!
+https://9now-livestreams.akamaized.net/hls/live/2008312/go-syd/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="9Life.au" tvg-name="9Life" tvg-logo="https://i.imgur.com/HlJOrGI.png" tvg-country="AU" group-title="AU - Entertainment",9Life
+https://9now-livestreams.akamaized.net/hls/live/2008313/life-syd/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="9Rush.au" tvg-name="9Rush" tvg-logo="https://upload.wikimedia.org/wikipedia/en/c/c2/Logo_of_9RUSH.png" tvg-country="AU" group-title="AU - Entertainment",9Rush
+https://9now-livestreams.akamaized.net/hls/live/2010626/rush-syd/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="ABCAustralia.au" tvg-name="ABC Australia" tvg-logo="https://i.imgur.com/qQ33TVM.png" tvg-country="AU" group-title="AU - Entertainment",ABC Australia
+https://live.dinesh29.com.np/stream/jiotvplus/abcaustralia/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="ABC Australia Vietnam (1080p)" tvg-country="AU" group-title="AU - Entertainment",ABC Australia Vietnam (1080p)
+https://hls.mskycdn.online/tv/abcaustralia/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="AngerManagementChannel.us" tvg-name="Anger Management Channel" tvg-logo="https://i.imgur.com/VXZgrNy.png" tvg-country="AU" group-title="AU - Entertainment",Anger Management Channel
+https://amg00353-lionsgatestudio-angermgmt-samsungau-o9jg9.amagi.tv/playlist/amg00353-lionsgatestudio-angermgmt-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="ATV.xk" tvg-name="ATV" tvg-logo="https://i.imgur.com/lX6sekx.png" tvg-country="XK" group-title="XK - Entertainment",ATV
+https://ub1doy938d.gjirafa.net/live/oEZi1otQqIHglY0tzZidyCPWhxrS5WgO/zyq001.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Baywatch.us" tvg-name="Baywatch" tvg-logo="https://i.imgur.com/c2esKHg.png" tvg-country="AU" group-title="AU - Entertainment",Baywatch
+https://amg00145-fremantlemedian-baywatch-samsungau-gtsd6.amagi.tv/playlist/amg00145-fremantlemedian-baywatch-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="BHT1.ba" tvg-name="BHT 1" tvg-logo="https://i.imgur.com/LEwlEEE.png" tvg-country="BA" group-title="BA - Entertainment",BHT 1
+https://webtvstream.bhtelecom.ba/hls13/bhrtportal_hd_1200.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="BNTV.ba" tvg-name="BN TV" tvg-logo="https://i.imgur.com/DUBvfWb.png" tvg-country="BA" group-title="BA - Entertainment",BN TV
+https://rtvbn.tv:8080/live/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Bondi Vet (720p)" tvg-country="AU" group-title="AU - Entertainment",Bondi Vet (720p)
+https://wtfn-bondivet-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="10.au" tvg-name="10" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/06/Network_10_2018.svg/revision/latest/scale-to-width-down/512" tvg-country="AU" group-title="AU - Entertainment",10
+https://i.mjh.nz/10-nsw.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Channel7.au" tvg-name="Channel 7" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Seven_Network_logo.svg/500px-Seven_Network_logo.svg.png" tvg-country="AU" group-title="AU - Entertainment",Channel 7
+https://npc.cdn.7livecloud.io/hls/live/SYD1/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Adelaide (720p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Adelaide (720p) [Geo Blocked]
+https://9now-livestreams-fhd-t.akamaized.net/u/prod/simulcast/adl/ch9/hls/r1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Brisbane (720p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Brisbane (720p) [Geo Blocked]
+https://9now-livestreams-fhd-t.akamaized.net/u/prod/simulcast/bne/ch9/hls/r1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Melbourne (720p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Melbourne (720p) [Geo Blocked]
+https://9now-livestreams.akamaized.net/hls/live/2008322/ch9-mel/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Melbourne (720p) [Geo Blocked]" tvg-logo="https://i.imgur.com/3TtrobL.png" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Melbourne (720p) [Geo Blocked]
+https://9now-livestreams-fhd-t.akamaized.net/u/prod/simulcast/mel/ch9/hls/r1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Perth (720p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Perth (720p) [Geo Blocked]
+https://9now-livestreams-fhd-t.akamaized.net/u/prod/simulcast/per/ch9/hls/r1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Sydney (720p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Sydney (720p) [Geo Blocked]
+https://9now-livestreams.akamaized.net/hls/live/2007330/ch9-syd/master.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Channel 9 Sydney (720p) [Geo Blocked]" tvg-logo="https://i.imgur.com/3TtrobL.png" tvg-country="AU" group-title="AU - Entertainment",Channel 9 Sydney (720p) [Geo Blocked]
+https://9now-livestreams-fhd-t.akamaized.net/u/prod/simulcast/syd/ch9/hls/r1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="CMCTV.hr" tvg-name="CMC TV" tvg-logo="https://i.imgur.com/FCb7Ag2.png" tvg-country="HR" group-title="HR - Entertainment",CMC TV
+https://stream.cmctv.hr:49998/cmc/live.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="CTBPerth.au" tvg-name="CTB Perth" tvg-logo="https://i.imgur.com/VB8gtCy.jpeg" tvg-country="AU" group-title="AU - Entertainment",CTB Perth
+https://live.ctbperth.net.au/hls/0/stream.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="DealorNoDeal.us" tvg-name="Deal or No Deal" tvg-logo="https://i.imgur.com/lZvNXA1.png" tvg-country="AU" group-title="AU - Entertainment",Deal or No Deal
+https://amg00627-banijaygroup-dealornodeal-samsungau-si7xg.amagi.tv/playlist/amg00627-banijaygroup-dealornodeal-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="DiadoraTV.hr" tvg-name="Diadora TV" tvg-logo="https://i.imgur.com/qZzsASl.png" tvg-country="HR" group-title="HR - Entertainment",Diadora TV
+https://diadoratv.stream/live/diadora/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="DontTellTheBride.uk" tvg-name="Don't Tell The Bride" tvg-logo="https://i.imgur.com/h0bc3Fa.png" tvg-country="AU" group-title="AU - Entertainment",Don't Tell The Bride
+https://amg00426-lds-amg00426c15-samsung-au-3684.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Dry Bar Comedy (720p)" tvg-country="AU" group-title="AU - Entertainment",Dry Bar Comedy (720p)
+https://drybar-drybarcomedy-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="ExtraTV.hr" tvg-name="Extra TV" tvg-logo="https://i.imgur.com/5edYPBO.png" tvg-country="HR" group-title="HR - Entertainment",Extra TV
+https://streaming.social3.hr:443/ExtraTVudzdhr5/uUankWqpXD/1.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="ExtraTV.hr" tvg-name="Extra TV" tvg-logo="https://i.imgur.com/5edYPBO.png" tvg-country="HR" group-title="HR - Entertainment",Extra TV
+https://streaming.social3.hr/ExtraTVudzdhr5/uUankWqpXD/1.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Failarmy International (720p)" tvg-country="AU" group-title="AU - Entertainment",Failarmy International (720p)
+https://failarmy-international-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="FearFactor.us" tvg-name="Fear Factor" tvg-logo="https://i.imgur.com/CIYnLWz.png" tvg-country="AU" group-title="AU - Entertainment",Fear Factor
+https://amg00627-banijaygroup-fearfactor-samsungau-9vdod.amagi.tv/playlist/amg00627-banijaygroup-fearfactor-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Four In A Bed (720p)" tvg-country="AU" group-title="AU - Entertainment",Four In A Bed (720p)
+https://all3media-four-in-a-bed-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="FUELTV.pt" tvg-name="FUEL TV" tvg-logo="https://i.imgur.com/I8mviBy.png" tvg-country="AU" group-title="AU - Entertainment",FUEL TV
+https://amg01074-fueltv-fueltvau-samsungau-g09kq.amagi.tv/playlist/amg01074-fueltv-fueltvau-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="GhostHunters.us" tvg-name="Ghost Hunters" tvg-logo="https://i.imgur.com/KdBr6rG.png" tvg-country="AU" group-title="AU - Entertainment",Ghost Hunters
+https://amg00353-amg00353c30-samsung-au-3440.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HauntTV.ca" tvg-name="HauntTV" tvg-logo="https://haunt-tv.com/wp-content/uploads/2022/09/haunt-tv-logo.png" tvg-country="AU" group-title="AU - Entertainment",HauntTV
+https://amg01446-blueantmediacan-haunttvaussam-samsungau-vcnai.amagi.tv/playlist/amg01446-blueantmediacan-haunttvaussam-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HellsKitchen.us" tvg-name="Hell's Kitchen" tvg-logo="https://i.imgur.com/P9eT0O9.png" tvg-country="AU" group-title="AU - Entertainment",Hell's Kitchen
+https://amg00654-itv-amg00654c1-samsung-au-1072.playouts.now.amagi.tv/itv-hellskitchen-samsung/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Highway Thru Hell (1080p)" tvg-country="AU" group-title="AU - Entertainment",Highway Thru Hell (1080p)
+https://amg00627-amg00627c15-samsung-au-2899.playouts.now.amagi.tv/playlist/amg00627-banijayfast-highwaythruhell-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Homeful.ca" tvg-name="Homeful" tvg-logo="https://www.homefultv.com/wp-content/uploads/2023/03/Homeful_Logo_MintWhite.png" tvg-country="AU" group-title="AU - Entertainment",Homeful
+https://amg00090-blueantcanada-amg00090c4-samsung-au-819.playouts.now.amagi.tv/playlist/amg00090-blueantfast-homefulworldwide-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Homes Under The Hammer (720p)" tvg-country="AU" group-title="AU - Entertainment",Homes Under The Hammer (720p)
+https://all3media-homes-under-the-hammer-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT1.hr" tvg-name="HRT 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/1/1f/HRT1-logo.png" tvg-country="HR" group-title="HR - Entertainment",HRT 1
+https://webtvstream.bhtelecom.ba/hrt1.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT1.hr" tvg-name="HRT 1" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/1/1f/HRT1-logo.png" tvg-country="HR" group-title="HR - Entertainment",HRT 1
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/HRT1/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT2.hr" tvg-name="HRT 2" tvg-logo="https://i.imgur.com/yyePcl1.png" tvg-country="HR" group-title="HR - Entertainment",HRT 2
+https://webtvstream.bhtelecom.ba/hrt2.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT2.hr" tvg-name="HRT 2" tvg-logo="https://i.imgur.com/yyePcl1.png" tvg-country="HR" group-title="HR - Entertainment",HRT 2
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/HRT2/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT3.hr" tvg-name="HRT 3" tvg-logo="https://i.imgur.com/4OrOJRx.png" tvg-country="HR" group-title="HR - Entertainment",HRT 3
+https://webtvstream.bhtelecom.ba/hrt3.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT3.hr" tvg-name="HRT 3" tvg-logo="https://i.imgur.com/4OrOJRx.png" tvg-country="HR" group-title="HR - Entertainment",HRT 3
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/HRT3/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="HRT4.hr" tvg-name="HRT 4" tvg-logo="https://i.imgur.com/VcNrY0m.png" tvg-country="HR" group-title="HR - Entertainment",HRT 4
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/HRT4/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="IndoOzTV.au" tvg-name="Indo Oz TV" tvg-logo="https://i.imgur.com/4LECwDh.png" tvg-country="AU" group-title="AU - Entertainment",Indo Oz TV
+https://stream.e2is.in/hls/indoztv.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="INFAST.nl" tvg-name="INFAST" tvg-logo="https://cdn.uc.assets.prezly.com/1b9c9500-cb43-449b-9eb6-9579640ec904/InFast_portrait-red.png" tvg-country="AU" group-title="AU - Entertainment",INFAST
+https://amg00861-terninternation-lifestyle-samsungau-kdlyy.amagi.tv/playlist/amg00861-terninternation-lifestyle-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Inside Outside (720p)" tvg-country="AU" group-title="AU - Entertainment",Inside Outside (720p)
+https://all3media-international-insideoutside-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="InWonder.nl" tvg-name="InWonder" tvg-logo="https://cdn.uc.assets.prezly.com/1e0b2617-b145-4489-9d63-ba8438489f26/InWonder_portrait-black.png" tvg-country="AU" group-title="AU - Entertainment",InWonder
+https://amg00861-terninternation-inwonder-samsungau-1k63k.amagi.tv/playlist/amg00861-terninternation-inwonder-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="IstoguChannel.xk" tvg-name="Istogu Channel" tvg-logo="https://i.imgur.com/3vUkFsT.jpg" tvg-country="XK" group-title="XK - Entertainment",Istogu Channel
+http://77.83.120.135:8001/play/a15z?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="ITV Choice (1080p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",ITV Choice (1080p) [Geo Blocked]
+https://amg00654-itvstudios-itvchoice-samsungau-2bacj.amagi.tv/playlist/amg00654-itvstudios-itvchoice-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="JEKA.rs" tvg-name="JEKA" tvg-logo="https://i.imgur.com/5Y5NAEF.png" tvg-country="BA" group-title="BA - Entertainment",JEKA
+https://muzzik-live.morescreens.com/mts-4/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Kanal10.xk" tvg-name="Kanal 10" tvg-logo="https://i.imgur.com/xBc6gou.png" tvg-country="XK" group-title="XK - Entertainment",Kanal 10
+http://77.83.120.135:8001/play/a165?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Kanal6.ba" tvg-name="Kanal 6" tvg-logo="https://i.imgur.com/GGhvR0l.png" tvg-country="BA" group-title="BA - Entertainment",Kanal 6
+https://restreamer1.tnt.ba/hls/kanal6.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="KartoonChannel.us" tvg-name="Kartoon Channel!" tvg-logo="https://i.imgur.com/1luzP3T.png" tvg-country="AU" group-title="AU - Entertainment",Kartoon Channel!
+https://lightning-fnf-samsungaus.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="KlapeiTambureTV.hr" tvg-name="Klape i Tambure TV" tvg-logo="https://i.imgur.com/sKj3dgc.png" tvg-country="HR" group-title="HR - Entertainment",Klape i Tambure TV
+https://stream.cmctv.hr:49998/kit/live.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Kohavision.xk" tvg-name="Kohavision" tvg-logo="https://i.imgur.com/LOi9yma.png" tvg-country="XK" group-title="XK - Entertainment",Kohavision
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/lj9-pxm-o53-rp0/tracks-v4a1/mono.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Kohavision.xk" tvg-name="Kohavision" tvg-logo="https://i.imgur.com/LOi9yma.png" tvg-country="XK" group-title="XK - Entertainment",Kohavision
+http://77.83.120.135:8001/play/a00a?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Kohavision.xk" tvg-name="Kohavision" tvg-logo="https://i.imgur.com/LOi9yma.png" tvg-country="XK" group-title="XK - Entertainment",Kohavision
+https://cdn.vpplayer.tech/agmipnzy/livestream/0E9A6FA7-4ED3-41B8-AAE2-46E7FFE72454/master_file.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="LibertasTV.hr" tvg-name="Libertas TV" tvg-logo="https://i.imgur.com/4R4fhbd.png" tvg-country="HR" group-title="HR - Entertainment",Libertas TV
+https://stream.luci.xyz/hls/LTV.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Life Downunder (720p)" tvg-country="AU" group-title="AU - Entertainment",Life Downunder (720p)
+https://wtfn-lifedownunder-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MagellanTVNow.us" tvg-name="MagellanTV Now" tvg-logo="https://i.imgur.com/gEraSp5.png" tvg-country="AU" group-title="AU - Entertainment",MagellanTV Now
+https://amg00376-magellan-amg00376c5-samsung-au-1708.playouts.now.amagi.tv/playlist/amg00376-magellantv-magellantvnowww-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MariaPlusVisionMedjugorje.ba" tvg-name="Maria+Vision Medjugorje" tvg-logo="https://i.imgur.com/xUOspBx.png" tvg-country="BA" group-title="BA - Entertainment",Maria+Vision Medjugorje
+https://1601580044.rsc.cdn77.org/live/_jcn_/amlst:Italiasette/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MovieSphere.us" tvg-name="MovieSphere" tvg-logo="https://i.imgur.com/0sfk3yp.png" tvg-country="AU" group-title="AU - Entertainment",MovieSphere
+https://amg00353-lionsgatefilmsi-moviesphereaus-samsungau-7qzhf.amagi.tv/playlist/amg00353-lionsgatefilmsi-moviesphereaus-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MrBeanAnimated.uk" tvg-name="Mr Bean Animated" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/2/25/Mr._Bean_Animated_Series_stacked_logo.png" tvg-country="AU" group-title="AU - Entertainment",Mr Bean Animated
+https://amg00627-amg00627c23-samsung-au-4110.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MTRSPT1.us" tvg-name="MTRSPT1" tvg-logo="https://i.imgur.com/Rb1H5cV.png" tvg-country="AU" group-title="AU - Entertainment",MTRSPT1
+https://amg02873-kravemedia-mtrspt1-samsungau-2anp4.amagi.tv/playlist/amg02873-kravemedia-mtrspt1-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MUZZIK.rs" tvg-name="MUZZIK" tvg-logo="https://i.imgur.com/9dz8MsD.png" tvg-country="BA" group-title="BA - Entertainment",MUZZIK
+https://muzzik-live.morescreens.com/mts-6/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="FLASHBACK.rs" tvg-name="FLASHBACK" tvg-logo="https://i.imgur.com/9dz8MsD.png" tvg-country="BA" group-title="BA - Entertainment",FLASHBACK
+https://muzzik-live.morescreens.com/mts-8/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="MOBA.rs" tvg-name="MOBA" tvg-logo="https://i.imgur.com/9dz8MsD.png" tvg-country="BA" group-title="BA - Entertainment",MOBA
+https://muzzik-live.morescreens.com/mts-2/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="POPSTAR.rs" tvg-name="POP STAR" tvg-logo="https://i.imgur.com/E9ha9Or.png" tvg-country="BA" group-title="BA - Entertainment",POP STAR
+https://muzzik-live.morescreens.com/mts-3/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RockRoll.rs" tvg-name="Rock&Roll" tvg-logo="https://i.imgur.com/sy1BDNK.png" tvg-country="BA" group-title="BA - Entertainment",Rock&Roll
+https://muzzik-live.morescreens.com/mts-1/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SENSE.rs" tvg-name="SENSE" tvg-logo="https://i.imgur.com/9dz8MsD.png" tvg-country="BA" group-title="BA - Entertainment",SENSE
+https://muzzik-live.morescreens.com/mts-7/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TIKTAK.rs" tvg-name="TIKTAK" tvg-logo="https://i.imgur.com/9dz8MsD.png" tvg-country="BA" group-title="BA - Entertainment",TIKTAK
+https://muzzik-live.morescreens.com/mts-a5/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Muzzik ZZ TV (720p)" tvg-country="BA" group-title="BA - Entertainment",Muzzik ZZ TV (720p)
+https://muzzik-live.morescreens.com/mts-a4/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Mythbusters.us" tvg-name="Mythbusters" tvg-logo="https://i.imgur.com/wzzjvcH.png" tvg-country="AU" group-title="AU - Entertainment",Mythbusters
+https://d2bog959vw5xq.cloudfront.net/playlist/amg00627-banijayfast-mythbusters-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Nosey (1080p)" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/8/8c/True_Crime_Network_logo.svg/960px-True_Crime_Network_logo.svg.png" tvg-country="AU" group-title="AU - Entertainment",Nosey (1080p)
+https://nosey-intl-1-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Nosey (1080p)" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/8/8c/True_Crime_Network_logo.svg/960px-True_Crime_Network_logo.svg.png" tvg-country="AU" group-title="AU - Entertainment",Nosey (1080p)
+https://samsungau-nosey-intl-1-samsungau-50d5x.amagi.tv/playlist/samsungau-nosey-intl-1-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="NovaTV.ba" tvg-name="Nova TV" tvg-logo="https://i.imgur.com/wTZxn8F.png" tvg-country="BA" group-title="BA - Entertainment",Nova TV
+http://91.132.74.5:8000/play/a005?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Now70s.uk" tvg-name="Now 70s" tvg-logo="https://i.imgur.com/qiCCX5X.png" tvg-country="AU" group-title="AU - Entertainment",Now 70s
+https://lightningnow70-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Now80s.uk" tvg-name="Now 80s" tvg-logo="https://i.imgur.com/YyPnMeB.png" tvg-country="AU" group-title="AU - Entertainment",Now 80s
+https://lightningnow80-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="NOWRock.uk" tvg-name="NOW Rock" tvg-logo="https://i.imgur.com/GuM4GnX.png" tvg-country="AU" group-title="AU - Entertainment",NOW Rock
+https://lightningnow90-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="NTVICKakanj.ba" tvg-name="NTV IC Kakanj" tvg-logo="https://i.imgur.com/EtaHm2P.png" tvg-country="BA" group-title="BA - Entertainment",NTV IC Kakanj
+https://lon.rtsp.me/dEqnY-myGj84bKrieCIPfA/1743271667/hls/3dH3YAD6.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="OutdoorChannel.us" tvg-name="Outdoor Channel" tvg-logo="https://i.imgur.com/Kh4MWaY.png" tvg-country="AU" group-title="AU - Entertainment",Outdoor Channel
+https://amg00718-outdoorchannela-outdoortv-samsungau-uc7mp.amagi.tv/playlist/amg00718-outdoorchannela-outdoortv-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="PeopleAreAwesome.us" tvg-name="People Are Awesome" tvg-logo="https://i.imgur.com/MsIx7Ax.png" tvg-country="AU" group-title="AU - Entertainment",People Are Awesome
+https://jukin-peopleareawesome-2-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="PetClubTV.hk" tvg-name="Pet Club TV" tvg-logo="https://i.imgur.com/ykPNNwQ.png" tvg-country="AU" group-title="AU - Entertainment",Pet Club TV
+https://petclub-samsungaus.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Pointless (1080p) [Geo Blocked]" tvg-country="AU" group-title="AU - Entertainment",Pointless (1080p) [Geo Blocked]
+https://amg00627-amg00627c34-samsung-au-8173.playouts.now.amagi.tv/playlist/amg00627-banijayfast-pointless-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Pop (1080p) [Geo Blocked]" tvg-logo="https://i.imgur.com/STbfHwE.png" tvg-country="AU" group-title="AU - Entertainment",Pop (1080p) [Geo Blocked]
+https://amg01753-amg01753c6-samsung-au-6678.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="PowerNationTV.us" tvg-name="PowerNation TV" tvg-logo="https://i.imgur.com/jguTO8E.png" tvg-country="AU" group-title="AU - Entertainment",PowerNation TV
+https://amg01258-raycomsports-powernationau-samsungau-18bwc.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Pulse.za" tvg-name="Pulse" tvg-logo="https://i.imgur.com/J9VRDDR.png" tvg-country="AU" group-title="AU - Entertainment",Pulse
+https://amg01076-lightningintern-pulse-samsungau-4a45e.amagi.tv/playlist/amg01076-lightningintern-pulse-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="QwestTVJazzBeyond.fr" tvg-name="Qwest TV Jazz & Beyond" tvg-logo="https://i.imgur.com/89yWH5L.png" tvg-country="AU" group-title="AU - Entertainment",Qwest TV Jazz & Beyond
+https://samsungau-qwestjazz-samsungtv-zw2jc.amagi.tv/playlist/samsungau-qwestjazz-samsungtv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RacerNetwork.us" tvg-name="Racer Network" tvg-logo="https://upload.wikimedia.org/wikipedia/en/7/74/Racer_Network.jpg" tvg-country="AU" group-title="AU - Entertainment",Racer Network
+https://amg00378-mavtv-amg00378c2-samsung-au-1790.playouts.now.amagi.tv/playlist/amg00378-mavtvfast-motorsportsnetwork-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RCMTV.co" tvg-name="RCM TV" tvg-logo="https://i.imgur.com/irOotYz.png" tvg-country="AU" group-title="AU - Entertainment",RCM TV
+https://samsungau-rialtosamsungaustralia-al2rg.amagi.tv/playlist/samsungau-rialtosamsungaustralia/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Real Crime (1080p)" tvg-country="AU" group-title="AU - Entertainment",Real Crime (1080p)
+https://lds-realcrime-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RealWild.uk" tvg-name="Real Wild" tvg-logo="https://i.imgur.com/T9HHmAO.png" tvg-country="AU" group-title="AU - Entertainment",Real Wild
+https://lds-realwild-samsungau.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK1.xk" tvg-name="RTK 1" tvg-logo="https://i.imgur.com/KTcWcO6.png" tvg-country="XK" group-title="XK - Entertainment",RTK 1
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/98r-d35-487-v6m/tracks-v4a1/mono.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK1.xk" tvg-name="RTK 1" tvg-logo="https://i.imgur.com/KTcWcO6.png" tvg-country="XK" group-title="XK - Entertainment",RTK 1
+https://viamotionhsi.netplus.ch/live/eds/rtk1/browser-dash/rtk1.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK1.xk" tvg-name="RTK 1" tvg-logo="https://i.imgur.com/KTcWcO6.png" tvg-country="XK" group-title="XK - Entertainment",RTK 1
+https://viamotionhsi.netplus.ch/live/eds/rtk1/browser-HLS8/rtk1.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK1.xk" tvg-name="RTK 1" tvg-logo="https://i.imgur.com/KTcWcO6.png" tvg-country="XK" group-title="XK - Entertainment",RTK 1
+http://77.83.120.135:8001/play/a0r5?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK1.xk" tvg-name="RTK 1" tvg-logo="https://i.imgur.com/KTcWcO6.png" tvg-country="XK" group-title="XK - Entertainment",RTK 1
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxzq.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK2.xk" tvg-name="RTK 2" tvg-logo="https://i.imgur.com/g6k6xyO.png" tvg-country="XK" group-title="XK - Entertainment",RTK 2
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk2/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK2.xk" tvg-name="RTK 2" tvg-logo="https://i.imgur.com/g6k6xyO.png" tvg-country="XK" group-title="XK - Entertainment",RTK 2
+http://77.83.120.135:8001/play/RTK2?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK2.xk" tvg-name="RTK 2" tvg-logo="https://i.imgur.com/g6k6xyO.png" tvg-country="XK" group-title="XK - Entertainment",RTK 2
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxz0.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK3.xk" tvg-name="RTK 3" tvg-logo="https://i.imgur.com/Ut9VcT3.png" tvg-country="XK" group-title="XK - Entertainment",RTK 3
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk3/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK3.xk" tvg-name="RTK 3" tvg-logo="https://i.imgur.com/Ut9VcT3.png" tvg-country="XK" group-title="XK - Entertainment",RTK 3
+http://77.83.120.135:8001/play/a0o6?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK3.xk" tvg-name="RTK 3" tvg-logo="https://i.imgur.com/Ut9VcT3.png" tvg-country="XK" group-title="XK - Entertainment",RTK 3
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxzk.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTK4.xk" tvg-name="RTK 4" tvg-logo="https://i.imgur.com/Urm4XDR.png" tvg-country="XK" group-title="XK - Entertainment",RTK 4
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxgt.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTL.hr" tvg-name="RTL" tvg-logo="https://i.imgur.com/akAa45j.png" tvg-country="HR" group-title="HR - Entertainment",RTL
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/RTL/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTL2.hr" tvg-name="RTL 2" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/RTL_2_Logo.svg/960px-RTL_2_Logo.svg.png" tvg-country="HR" group-title="HR - Entertainment",RTL 2
+https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/RTL2/default/index.mpd?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTVBesa.xk" tvg-name="RTV Besa" tvg-logo="https://i.imgur.com/Qi3mz4Q.png" tvg-country="XK" group-title="XK - Entertainment",RTV Besa
+https://ub1doy938d.gjirafa.net/live/oEZi1otQqIHglY0tzZidyCPWhxrS5WgO/zztyzt.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTVDukagjini.xk" tvg-name="RTV Dukagjini" tvg-logo="https://i.imgur.com/AIOLG8v.png" tvg-country="XK" group-title="XK - Entertainment",RTV Dukagjini
+http://77.83.120.135:8001/play/a032?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTVFontana.xk" tvg-name="RTV Fontana" tvg-logo="https://i.imgur.com/cRnz7sw.jpeg" tvg-country="XK" group-title="XK - Entertainment",RTV Fontana
+http://77.83.120.135:8001/play/a160?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTVZenica.ba" tvg-name="RTV Zenica" tvg-logo="https://i.imgur.com/TKUaflB.png" tvg-country="BA" group-title="BA - Entertainment",RTV Zenica
+https://stream.rtvze.ba/live/123/123.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTV21.xk" tvg-name="RTV21" tvg-logo="https://i.imgur.com/AqQltGh.png" tvg-country="XK" group-title="XK - Entertainment",RTV21
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/2cz-npl-jfn-9he/tracks-v2a1/mono.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="RTV21.xk" tvg-name="RTV21" tvg-logo="https://i.imgur.com/AqQltGh.png" tvg-country="XK" group-title="XK - Entertainment",RTV21
+https://ub1doy938d.gjirafa.net/live/mtAOO7iGIzVAs3PFPnAFubierryMwW3V/zy1zzz.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SevdahTV.ba" tvg-name="Sevdah TV" tvg-logo="https://sevdah.tv/wp-content/uploads/2020/08/cropped-sevdha-tv-profil.png" tvg-country="BA" group-title="BA - Entertainment",Sevdah TV
+https://restreamer2.tnt.ba/hls/stream.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SkyRacing1.au" tvg-name="Sky Racing 1" tvg-logo="https://i.imgur.com/Hf0EiaW.png" tvg-country="AU" group-title="AU - Entertainment",Sky Racing 1
+https://skylivetab-new.akamaized.net/hls/live/2038780/sky1/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SkyRacing2.au" tvg-name="Sky Racing 2" tvg-logo="https://i.imgur.com/TxQvFnQ.png" tvg-country="AU" group-title="AU - Entertainment",Sky Racing 2
+https://skylivetab-new.akamaized.net/hls/live/2038781/sky2/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SkyThoroughbredCentral.au" tvg-name="Sky Thoroughbred Central" tvg-logo="https://i.imgur.com/1SxIsnw.png" tvg-country="AU" group-title="AU - Entertainment",Sky Thoroughbred Central
+https://skylivetab-new.akamaized.net/hls/live/2038782/stcsd/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="SyriVision.xk" tvg-name="Syri Vision" tvg-logo="https://www.syri-vision.tv/wp-content/uploads/2021/01/TVSYRI_WEB_MAIN.png" tvg-country="XK" group-title="XK - Entertainment",Syri Vision
+https://ub1doy938d.gjirafa.net/live/DpTlD159VIIRWtzFOvUI70nftnyosgUE/y10z1k.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="T7.xk" tvg-name="T7" tvg-logo="https://i.imgur.com/b7FvSJj.png" tvg-country="XK" group-title="XK - Entertainment",T7
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream-specific/1z8-byc-4ee-lc9/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="T7.xk" tvg-name="T7" tvg-logo="https://i.imgur.com/b7FvSJj.png" tvg-country="XK" group-title="XK - Entertainment",T7
+https://ub1doy938d.gjirafa.net/live/mtAOO7iGIzVAs3PFPnAFubierryMwW3V/yzg0yt.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TelevizijaM.ba" tvg-name="Televizija M" tvg-logo="https://i.imgur.com/jT95ZEI.png" tvg-country="BA" group-title="BA - Entertainment",Televizija M
+https://live.tv-m.net/hls/stream.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TheDesignNetwork.us" tvg-name="The Design Network" tvg-logo="https://i.imgur.com/J5YJ3r3.png" tvg-country="AU" group-title="AU - Entertainment",The Design Network
+https://amg00441-amg00441c1-samsung-au-6606.playouts.now.amagi.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="The Hotel Inspector (1080p)" tvg-country="AU" group-title="AU - Entertainment",The Hotel Inspector (1080p)
+https://amg00654-itv-amg00654c4-samsung-au-998.playouts.now.amagi.tv/playlist/amg00654-itvstudiosfast-hotelinspector-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="The Pet Collective International (720p)" tvg-logo="https://i.imgur.com/yH7n2dF.png" tvg-country="AU" group-title="AU - Entertainment",The Pet Collective International (720p)
+https://the-pet-collective-international-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="The Wicked Tuna Channel (1080p)" tvg-country="AU" group-title="AU - Entertainment",The Wicked Tuna Channel (1080p)
+https://amg00353-lionsgatestudio-wickedtuna-samsungau-26lq4.amagi.tv/playlist/amg00353-lionsgatestudio-wickedtuna-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Timeline.uk" tvg-name="Timeline" tvg-logo="https://i.imgur.com/PZRQvFv.png" tvg-country="AU" group-title="AU - Entertainment",Timeline
+https://ldsaaaaaa-timeline-samsungau-awedz.amagi.tv/playlist/ldsAAAAAA-timeline-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Travelxp.in" tvg-name="Travelxp" tvg-logo="https://ltsk-cdn.s3.eu-west-1.amazonaws.com/jumpstart/Temp_Live/cdn/HLS/Channel/transparentImages/Travelxp%20HD.png" tvg-country="AU" group-title="AU - Entertainment",Travelxp
+https://travelxp-travelxp-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TrueCrimeNow.us" tvg-name="True Crime Now" tvg-logo="https://i.imgur.com/Y6Hix17.png" tvg-country="AU" group-title="AU - Entertainment",True Crime Now
+https://amg00376-magellan-amg00376c12-samsung-au-1725.playouts.now.amagi.tv/playlist/amg00376-magellantv-truecrimenowaunzin-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberia1.xk" tvg-name="TV Arberia 1" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia 1
+https://yayin30.haber100.com/live/rtvarberia/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberia2.xk" tvg-name="TV Arberia 2" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia 2
+https://ssh101.bozztv.com/ssh101/rtvarberia2/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberia3Femije.xk" tvg-name="TV Arberia 3 Femije" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia 3 Femije
+https://ssh101.bozztv.com/ssh101/rtvarberia3/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberia4Muzike.xk" tvg-name="TV Arberia 4 Muzike" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia 4 Muzike
+https://ssh101.bozztv.com/ssh101/rtvarberia4/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberia5.xk" tvg-name="TV Arberia 5" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia 5
+https://ssh101.bozztv.com/ssh101/rtvarberia5/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberiaArshiiAllahut.xk" tvg-name="TV Arberia Arshi i Allahut" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia Arshi i Allahut
+https://tgn.bozztv.com/ssh101/ssh101/rtvarberiaislam/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVArberiaShpresaePerendise.xk" tvg-name="TV Arberia Shpresa e Perendise" tvg-logo="https://i.imgur.com/zLRzyVS.png" tvg-country="XK" group-title="XK - Entertainment",TV Arberia Shpresa e Perendise
+https://tgn.bozztv.com/ssh101/ssh101/rtvarberiajesus/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVDielli.xk" tvg-name="TV Dielli" tvg-logo="https://i.imgur.com/kLl3ar5.png" tvg-country="XK" group-title="XK - Entertainment",TV Dielli
+http://77.83.120.135:8001/play/a05f?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVLlapi.xk" tvg-name="TV Llapi" tvg-logo="https://i.imgur.com/kbonOAv.jpeg" tvg-country="XK" group-title="XK - Entertainment",TV Llapi
+http://77.83.120.135:8001/play/a04z?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVMitrovica.xk" tvg-name="TV Mitrovica" tvg-logo="https://i.imgur.com/NQ2hB8b.png" tvg-country="XK" group-title="XK - Entertainment",TV Mitrovica
+http://77.83.120.135:8001/play/a0jx?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="NovaTV.hr" tvg-name="Nova TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Nova_TV_Croatia_logo.png/960px-Nova_TV_Croatia_logo.png" tvg-country="HR" group-title="HR - Entertainment",Nova TV
+https://stream.agatin.hr:3727/live/tvnovalive.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVOpoja.xk" tvg-name="TV Opoja" tvg-logo="https://i.imgur.com/hxi4Qiq.png" tvg-country="XK" group-title="XK - Entertainment",TV Opoja
+http://77.83.120.135:8001/play/a0hx?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVPrizreni.xk" tvg-name="TV Prizreni" tvg-logo="https://i.imgur.com/hvtJwOO.png" tvg-country="XK" group-title="XK - Entertainment",TV Prizreni
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/5m0-cok-g5z-1xi/index.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVPrizreni.xk" tvg-name="TV Prizreni" tvg-logo="https://i.imgur.com/hvtJwOO.png" tvg-country="XK" group-title="XK - Entertainment",TV Prizreni
+http://77.83.120.135:8001/play/a01p?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="TVPrizreni.xk" tvg-name="TV Prizreni" tvg-logo="https://i.imgur.com/hvtJwOO.png" tvg-country="XK" group-title="XK - Entertainment",TV Prizreni
+https://ub1doy938d.gjirafa.net/live/DpTlD159VIIRWtzFOvUI70nftnyosgUE/zy1ztx.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-name="Undercover Boss (720p)" tvg-country="AU" group-title="AU - Entertainment",Undercover Boss (720p)
+https://all3media-international-undercoverboss-1-au.samsung.wurl.tv/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Vevo2K.us" tvg-name="Vevo 2K" tvg-logo="https://images.pluto.tv/channels/5fd7bca3e0a4ee0007a38e8c/featuredImage.jpg" tvg-country="AU" group-title="AU - Entertainment",Vevo 2K
+https://d1s6jz7jeei17.cloudfront.net/playlist/amg00056-vevotv-vevo2kau-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="Vevo70s.us" tvg-name="Vevo '70s" tvg-logo="https://images.pluto.tv/channels/5f32f26bcd8aea00071240e5/featuredImage.jpg" tvg-country="AU" group-title="AU - Entertainment",Vevo '70s
+https://amg00056-vevotv-vevo70saunz-samsungau-xzszd.amagi.tv/playlist/amg00056-vevotv-vevo70saunz-samsungau/playlist.m3u8?checkedby:iptvcat.com
+#EXTINF:-1 tvg-id="WORLDWIDEMUZZIK.rs" tvg-name="WORLD WIDE MUZZIK" tvg-logo="https://i.imgur.com/tEzppGC.png" tvg-country="BA" group-title="BA - Entertainment",WORLD WIDE MUZZIK
+https://muzzik-live.morescreens.com/mts-5/playlist.m3u8?checkedby:iptvcat.com

@@ -1,0 +1,160 @@
+# stream_id	name	genre	country	tvg_id	logo
+89	Abu Dhabi Sports 1	Sports	AE	AbuDhabiSports1.ae	logo
+114	Abu Dhabi Sports 2	Sports	AE	AbuDhabiSports2.ae	logo
+90	Abu Dhabi Sports 3	Sports	AE	AbuDhabiSports3.ae	logo
+73	Alkass One	Sports	QA	AlkassOne.qa	logo
+405	Alkass Two	Sports	QA	AlkassTwo.qa	logo
+104	Alkass Three	Sports	QA	AlkassThree.qa	logo
+315	Alkass Four	Sports	QA	AlkassFour.qa	logo
+293	beIN Sports 1	Sports	QA	beINSports1.qa	logo
+302	Bein Sport Sd 10	Sports	QA	-	logo
+294	beIN Sports 2	Sports	QA	beINSports2.qa	logo
+295	beIN Sports 3	Sports	QA	beINSports3.qa	logo
+296	beIN Sports 4	Sports	QA	beINSports4.qa	logo
+297	beIN Sports 5	Sports	QA	beINSports5.qa	logo
+298	beIN Sports 6	Sports	QA	beINSports6.qa	logo
+299	beIN Sports 7	Sports	QA	beINSports7.qa	logo
+300	beIN Sports 8	Sports	QA	beINSports8.qa	logo
+301	Bein Sport Sd 9	Sports	QA	-	logo
+16	beIN Sports French 1	Sports	QA	beINSportsFrench1.qa	logo
+17	beIN Sports French 2	Sports	QA	beINSportsFrench2.qa	logo
+566	beIN Sports French 3	Sports	QA	beINSportsFrench3.qa	logo
+646	Dubai Sports 3	Sports	AE	DubaiSports3.ae	logo
+647	Dubai Sport 4	Sports	AE	-	-
+648	Dubai Sports 1	Sports	AE	DubaiSports1.ae	logo
+575	Bein Sport 11	Sports	QA	-	-
+577	Bein Sport 12	Sports	QA	-	-
+149	Eurosport 1	Sports		-	logo
+357	Eurosport Eng	Sports		-	-
+150	Eurosport 1	Sports	FR	Eurosport1.fr	logo
+632	Bein Sport 13	Sports	QA	-	-
+633	Bein Sport 14	Sports	QA	-	-
+634	Bein Sport 15	Sports	QA	-	-
+635	Bein Sport 16	Sports	QA	-	-
+148	Al Iraqia Sport	Sports	IQ	AlIraqiaSport.iq	logo
+346	Jordan Sport	Sports	JO	JordanSport.jo	logo
+40	MBC Pro Sports 1	Sports	SA	-	-
+39	MBC Pro Sports 2	Sports	SA	-	-
+625	OSN Fight HD	Sports	AE	-	-
+127	Sharjah Sports	Sports	AE	SharjahSports.ae	logo
+443	Sky Sport 1	Sports		-	logo
+72	Al Hadath	News	SA	AlHadath.sa	logo
+87	Al Jazeera	News	QA	AlJazeera.qa	logo
+71	Alarabiya	News	AE	Alarabiya.ae	logo
+88	Al Jazeera Mubasher	News	QA	AlJazeeraMubasher.qa	logo
+155	ANN News	News	SY	-	-
+450	RT Arabic	News	RU	RTArabic.ru	logo
+442	RT	News	RU	RT.ru	logo
+396	Al Sharqiya News	News	IQ	AlSharqiyaNews.iq	logo
+102	Alikhbaria Syria	News	SY	AlikhbariaSyria.sy	logo
+91	Animal Planet	Documentary		-	logo
+124	Discovery Ch	Documentary		-	-
+82	National Geographic Abu Dhabi	Documentary	AE	NationalGeographicAbuDhabi.ae	logo
+626	OSN Natgeowild	Documentary	AE	-	-
+146	Ajyal TV	Kids	PS	AjyalTV.ps	logo
+54	Baraem	Kids	QA	Baraem.qa	logo
+68	Cartoon Network Arabic	Kids	AE	CartoonNetworkArabic.ae	logo
+119	JeemTV	Kids	QA	JeemTV.qa	logo
+627	Kids Movie 1	Kids		-	-
+639	Kids Movie 2	Kids		-	-
+640	Kids Movie 3	Kids		-	-
+641	Kids Movie 4	Kids		-	-
+421	Al-Majd Kids	Kids	SA	AlMajdKids.sa	logo
+404	OSN Disney	Kids	AE	-	-
+624	OSN Movie Kids	Kids	AE	-	-
+80	Spacetoon Arabic	Kids	AE	SpacetoonArabic.ae	logo
+437	Toyor Al-Jannah	Kids	JO	ToyorAlJannah.jo	logo
+444	Al-Majd Public Channel	Religion	SA	AlMajdPublicChannel.sa	logo
+147	Elnas TV	Religion	EG	ElnasTV.eg	logo
+425	Al-Majd Holy Quran	Religion	SA	AlMajdHolyQuran.sa	logo
+115	Iqraa Arabic	Religion	SA	IqraaArabic.sa	logo
+107	Makkah TV	Religion	SA	MakkahTV.sa	logo
+629	Quran Alfateh	Religion		-	-
+628	Quran TV	Religion		-	logo
+446	Al Quran Al Kareem TV	Religion	SA	AlQuranAlKareemTV.sa	logo
+393	Zitouna TV	Religion	TN	ZitounaTV.tn	logo
+33	ART Aflam 1	Movies	SA	ARTAflam1.sa	logo
+32	ART Aflam 2	Movies	SA	ARTAflam2.sa	logo
+76	ART Cinema	Movies	SA	ARTCinema.sa	logo
+387	beIN Movies 1 Premiere	Movies	QA	beINMovies1Premiere.qa	logo
+343	beIN Movies 2 Action	Movies	QA	beINMovies2Action.qa	logo
+534	beIN Movies 3 Drama	Movies	QA	beINMovies3Drama.qa	logo
+440	LCD Aflam	Movies		-	-
+95	Nile Cinema	Movies	EG	NileCinema.eg	logo
+403	OSN Cinma 2	Movies	AE	-	-
+399	OSN Box Office	Movies	AE	-	-
+109	OSN Box Office 1	Movies	AE	-	-
+153	OSN Cinema 1	Movies	AE	-	-
+27	OSN Movie Festival	Movies	AE	-	-
+26	OSN Movies Action	Movies	AE	OSNMoviesAction.ae	logo
+18	OSN Movies Action +2	Movies	AE	-	logo
+292	OSN Movies Comedy	Movies	AE	-	-
+19	OSN Movies Drama	Movies	AE	-	-
+25	OSN Movies HD	Movies	AE	-	-
+323	OSN Movies Premiere	Movies	AE	OSNMoviesPremiere.ae	logo
+412	OSN Movies Premier 2	Movies	AE	-	-
+454	OSN Star Movie	Movies	AE	-	-
+57	Rotana Cinema	Movies	SA	-	-
+49	Zee Aflam	Movies	AE	ZeeAflam.ae	logo
+486	MTV	Music		-	logo
+117	MTV Lebanon	Music	LB	MTVLebanon.lb	logo
+592	-1	Entertainment		-	-
+424	-2	Entertainment		-	-
+423	-3	Entertainment		-	-
+608	-4	Entertainment		-	-
+609	-5	Entertainment		-	-
+610	-6	Entertainment		-	-
+611	-7	Entertainment		-	-
+145	Abu Dhabi TV	Entertainment	AE	AbuDhabiTV.ae	logo
+419	Abu Dhabi TV	Entertainment	AE	AbuDhabiTV.ae	logo
+74	Al-Manar	Entertainment	LB	AlManar.lb	logo
+612	Al Sharqiya	Entertainment	IQ	AlSharqiya.iq	logo
+35	ART Hekayat	Entertainment	SA	ARTHekayat.sa	logo
+34	ART Hekayat 2	Entertainment	SA	ARTHekayat2.sa	logo
+435	Baghdad	Entertainment	IQ	-	-
+100	BBC Arabic	Entertainment	GB	BBCArabic.uk	logo
+67	CBC Drama	Entertainment	EG	CBCDrama.eg	logo
+106	CBC	Entertainment	EG	CBC.eg	logo
+118	Cima	Entertainment	EG	Cima.eg	logo
+64	Dubai TV	Entertainment	AE	DubaiTV.ae	logo
+63	Dubai One	Entertainment	AE	DubaiOne.ae	logo
+483	Fatafeat	Entertainment	AE	Fatafeat.ae	logo
+120	Future	Entertainment	LB	-	-
+111	Al Iraqia	Entertainment	IQ	AlIraqia.iq	logo
+83	Jordan TV	Entertainment	JO	JordanTV.jo	logo
+422	Kanal 7	Entertainment	TR	Kanal7.tr	logo
+61	LBC International	Entertainment	LB	LBCInternational.lb	logo
+48	MBC 1	Entertainment	AE	MBC1.ae	logo
+47	MBC 2	Entertainment	AE	MBC2.ae	logo
+46	MBC 3	Entertainment	AE	MBC3.ae	logo
+45	MBC 4	Entertainment	AE	MBC4.ae	logo
+241	MBC Action	Entertainment	AE	MBCAction.ae	logo
+44	MBC Drama	Entertainment	AE	MBCDrama.ae	logo
+43	MBC Max	Entertainment	SA	MBCMax.sa	logo
+140	NBN	Entertainment	LB	NBN.lb	logo
+94	Nile Comedy	Entertainment	EG	NileComedy.eg	logo
+410	Nile Drama	Entertainment	EG	NileDrama.eg	logo
+488	Oman TV	Entertainment	OM	OmanTV.om	logo
+42	Ood	Entertainment		-	-
+151	OSN Starworld	Entertainment	AE	-	-
+384	OSN Al Youm	Entertainment	AE	-	-
+21	MBC Drama	Entertainment	AE	MBCDrama.ae	logo
+383	OSN Yahala	Entertainment	AE	OSNYahala.ae	logo
+24	OSN Yahala Shabab	Entertainment	AE	-	-
+92	OTV	Entertainment	LB	OTV.lb	logo
+141	Palestine TV	Entertainment	PS	PalestineTV.ps	logo
+459	Palestine Today	Entertainment	PS	PalestineToday.ps	logo
+439	Qatar Television	Entertainment	QA	QatarTelevision.qa	logo
+58	Rotana	Entertainment	SA	-	-
+56	Rotana Classic	Entertainment	SA	RotanaClassic.sa	logo
+81	Roya TV	Entertainment	JO	RoyaTV.jo	logo
+445	Sama Jordan	Entertainment	JO	-	-
+126	Sharjah TV	Entertainment	AE	SharjahTV.ae	logo
+441	Sky Atlantic	Entertainment	GB	SkyAtlantic.uk	logo
+99	Syria TV	Entertainment	SY	SyriaTV.sy	logo
+101	Syria Aloula	Entertainment	SY	-	-
+65	Syrian Educational TV	Entertainment	SY	SyrianEducationalTV.sy	logo
+51	Syria Drama	Entertainment	SY	SyriaDrama.sy	logo
+112	TNN Tunisia	Entertainment	TN	-	-
+390	TRT Arabi	Entertainment	TR	TRTArabi.tr	logo
+50	Zee Alwan	Entertainment	AE	ZeeAlwan.ae	logo

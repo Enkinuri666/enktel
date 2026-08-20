@@ -239,7 +239,7 @@ function symmetricDifference(left, right) {
  * breaks ties in both cases — three feeds carry a "Sport 1" and they are not
  * the same channel.
  *
- * @param {{name: string, tvgName?: string, tvgCountry?: string}} entry
+ * @param {{name: string, tvgName?: string, tvgCountry?: string, altNames?: string[]}} entry
  * @param {ReturnType<typeof buildIndex>} index
  * @param {{threshold?: number}} [opts]
  * @returns {{id: string, score: number, via: 'exact'|'fuzzy', country: string}|null}
@@ -250,7 +250,10 @@ export function matchChannel(entry, index, opts = {}) {
   // of an obviously empty guide.
   const { threshold = 0.9 } = opts;
   const country = (entry.tvgCountry || '').toUpperCase();
-  const candidateNames = [entry.name, entry.tvgName].filter(Boolean);
+  // `altNames` is how a caller offers the other spellings of a name — the
+  // un-glued, un-abbreviated forms a panel's own spelling never matches on.
+  // They are tried in order, so the least-transformed one wins a tie.
+  const candidateNames = [entry.name, entry.tvgName, ...(entry.altNames ?? [])].filter(Boolean);
 
   for (const name of candidateNames) {
     const bucket = index.byName.get(normalizeName(name));
