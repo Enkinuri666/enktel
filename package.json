@@ -14,6 +14,7 @@
     "match:epg": "node scripts/match-epg.mjs",
     "match:upstream": "node scripts/match-upstream.mjs",
     "build:lineup": "node scripts/build-lineup.mjs",
+    "sync:public": "cp data/playlists/enktel-lineup.m3u public/playlists/enktel-lineup.m3u",
     "build:roster": "node scripts/build-roster.mjs",
     "import:panel": "node scripts/import-panel-export.mjs"
   },
