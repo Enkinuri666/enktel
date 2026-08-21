@@ -26,10 +26,18 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 164
-        versionName = "1.60.44"
+        versionCode = 166
+        versionName = "1.60.46"
         vectorDrawables { useSupportLibrary = true }
 
+        // These must be the host *this* Next.js app deploys to, which is
+        // enktel.tv. watch.enktel.tv is a different property — the browser
+        // player — and this repo's own copy says as much ("apps at enktel.tv,
+        // or the new browser player at watch.enktel.tv"). Pointing the app
+        // there gave 404 HTML to an M3U parser and to an XMLTV parser, and is
+        // why the trial button could never have worked: /api/trial is in this
+        // repo, and this repo is not what answers on watch.enktel.tv.
+        //
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
         // is expected to accept a POST and return JSON with the shape
         //   { server_url, username, password, expires_at }
@@ -37,7 +45,7 @@ android {
         // deployer can point at a different panel without editing this file.
         val trialUrl = (project.findProperty("enkTrialUrl") as? String)
             ?: System.getenv("ENK_TRIAL_URL")
-            ?: "https://watch.enktel.tv/api/trial"
+            ?: "https://enktel.tv/api/trial"
         val upgradeUrl = (project.findProperty("enkUpgradeUrl") as? String)
             ?: System.getenv("ENK_UPGRADE_URL")
             ?: "https://watch.enktel.tv/upgrade"
@@ -92,7 +100,7 @@ android {
         // retrying in the app fixes it.
         val freePlaylist = (project.findProperty("enkFreePlaylistUrl") as? String)
             ?: System.getenv("ENK_FREE_PLAYLIST_URL")
-            ?: "https://watch.enktel.tv/playlists/enktel-lineup.m3u"
+            ?: "https://enktel.tv/playlists/enktel-lineup.m3u"
         // The playlist's own x-tvg-url was inherited from whichever source
         // header the scraper happened to read — a free-tier worker on
         // onrender.com that nobody here chose and that answers nothing. This
@@ -113,7 +121,7 @@ android {
         // self-hosting iptv-org/epg; it publishes no hosted guide of its own.
         val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
             ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
-            ?: "https://watch.enktel.tv/api/guide"
+            ?: "https://enktel.tv/api/guide"
         buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
         buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
     }

@@ -40,8 +40,10 @@ class MetadataEnrichmentWorker(
         val app = applicationContext.applicationContext as? EnktelApp
             ?: return Result.success()
         val graph = app.graph
+        // Blank is not "off" any more: TmdbClient falls back to our own keyed
+        // proxy, so enrichment runs on a fresh install with nothing configured.
+        // A viewer who sets their own key in Settings talks to TMDB directly.
         val apiKey = graph.settings.tmdbApiKey.first()
-        if (apiKey.isBlank()) return Result.success() // opt-in feature
 
         val profileId = inputData.getLong(KEY_PROFILE_ID, graph.settings.activeProfileIdNow())
         if (profileId <= 0) return Result.success()
