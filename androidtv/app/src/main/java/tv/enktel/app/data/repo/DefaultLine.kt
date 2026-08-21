@@ -53,4 +53,26 @@ object DefaultLine {
      */
     val canSeed: Boolean
         get() = server.isNotBlank() && username.isNotBlank() && password.isNotBlank()
+
+    /**
+     * The free-to-air playlist a build with no line falls back to.
+     *
+     * These are the public streams the scraper collects and liveness-checks —
+     * whole URLs that belong to their broadcasters and carry nothing private,
+     * so they play with no account at all. That is the difference between them
+     * and the panel catalogs: a panel's stream URL *contains* the line's
+     * username and password, so there is no version of it that plays without a
+     * login. Anything a viewer can watch before signing in comes from here.
+     */
+    val freePlaylistUrl: String get() = BuildConfig.FREE_PLAYLIST_URL
+
+    /** Optional guide for [freePlaylistUrl]; blank means use the playlist's own. */
+    val freePlaylistEpg: String get() = BuildConfig.FREE_PLAYLIST_EPG
+
+    /** Display name for the seeded free-to-air profile. */
+    const val FREE_NAME = "EnkTel Free-to-Air"
+
+    /** Is there a free playlist to fall back to when [canSeed] is false? */
+    val hasFreePlaylist: Boolean
+        get() = freePlaylistUrl.startsWith("http")
 }
