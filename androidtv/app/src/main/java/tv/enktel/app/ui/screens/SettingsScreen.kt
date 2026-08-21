@@ -56,6 +56,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
@@ -220,6 +221,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             tv.enktel.app.ui.components.GlassChip("MPEG-TS", selected = streamFormat == "ts", onClick = { scope.launch { graph.settings.setStreamFormat("ts") } })
         }
         Text("MPEG-TS starts faster on some panels; HLS adapts quality automatically.", color = EnktelTextDim, fontSize = 11.sp)
+
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Playback route")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Direct", selected = !relayPlayback, onClick = { scope.launch { graph.settings.setRelayPlayback(false) } })
+            tv.enktel.app.ui.components.GlassChip("Relay", selected = relayPlayback, onClick = { scope.launch { graph.settings.setRelayPlayback(true) } })
+        }
+        Text(
+            "Direct opens the stream host from this device — fewest hops, lowest latency, " +
+                "and right whenever it works. Relay fetches through enktel.tv instead, for when " +
+                "this network cannot reach the host. It does not grant access to anything your " +
+                "line is not already entitled to.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
 
         tv.enktel.app.ui.components.ChipRowLabel("Player buffer")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {

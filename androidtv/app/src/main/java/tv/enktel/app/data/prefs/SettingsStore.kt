@@ -45,6 +45,16 @@ class SettingsStore(private val context: Context) {
     private val EXT_SUB_URL = stringPreferencesKey("ext_sub_url")
     private val AUTOPLAY_NEXT_EP = booleanPreferencesKey("autoplay_next_ep")
     private val TUNNELING = booleanPreferencesKey("tunneled_playback")
+
+    /**
+     * Relay playback: fetch streams through our own origin instead of opening
+     * the stream host directly.
+     *
+     * Off by default — direct is fewer hops and lower latency, and is right
+     * whenever it works. Relay is the answer when the path between this device
+     * and the stream host is what is broken.
+     */
+    private val RELAY_PLAYBACK = booleanPreferencesKey("relay_playback")
     private val CAPTION_MODE = stringPreferencesKey("caption_mode") // off | auto | en | hr
     private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
@@ -264,6 +274,9 @@ class SettingsStore(private val context: Context) {
      * of the device's media stack, not something the app can ask.
      */
     val tunneling: Flow<Boolean> = context.dataStore.data.map { it[TUNNELING] ?: true }
+
+    /** See [RELAY_PLAYBACK]. Direct playback unless the viewer turns this on. */
+    val relayPlayback: Flow<Boolean> = context.dataStore.data.map { it[RELAY_PLAYBACK] ?: false }
 
     /**
      * Closed captions on live TV — off, automatic, English or Croatian.
@@ -510,6 +523,7 @@ class SettingsStore(private val context: Context) {
     suspend fun setExtSubUrl(v: String) = context.dataStore.edit { it[EXT_SUB_URL] = v }
     suspend fun setAutoplayNextEp(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_NEXT_EP] = v }
     suspend fun setTunneling(v: Boolean) = context.dataStore.edit { it[TUNNELING] = v }
+    suspend fun setRelayPlayback(v: Boolean) = context.dataStore.edit { it[RELAY_PLAYBACK] = v }
     suspend fun setSkipIntroSec(v: Int) = context.dataStore.edit { it[SKIP_INTRO_SEC] = v }
     suspend fun setPipEnabled(v: Boolean) = context.dataStore.edit { it[PIP_ENABLED] = v }
     suspend fun setAutoPipOnBack(v: Boolean) = context.dataStore.edit { it[AUTO_PIP_ON_BACK] = v }
