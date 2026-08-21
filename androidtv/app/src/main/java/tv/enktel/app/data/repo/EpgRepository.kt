@@ -5,14 +5,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import tv.enktel.app.data.net.gunzipIfNeeded
 import tv.enktel.app.data.db.AppDatabase
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.xtream.XtreamClient
 import java.io.IOException
-import java.io.InputStream
 import java.util.concurrent.TimeUnit
-import java.util.zip.GZIPInputStream
 import tv.enktel.app.data.epg.XmltvParser
 
 data class NowNext(val now: EpgProgram?, val next: EpgProgram?)
@@ -58,7 +57,7 @@ class EpgRepository(
         val total = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("EPG returned HTTP ${resp.code}")
             val raw = resp.body.byteStream()
-            val stream = maybeGunzip(raw, url, resp.header("Content-Type"), resp.header("Content-Encoding"))
+            val stream = gunzipIfNeeded(raw)
             epg.clear(p.id)
             XmltvParser.parse(stream, p.id, wanted, from, to) { batch -> epg.insertAll(batch) }
         }
@@ -66,15 +65,6 @@ class EpgRepository(
         total
     }
 
-    private fun maybeGunzip(input: InputStream, url: String, contentType: String?, encoding: String?): InputStream {
-        val buffered = input.buffered(64 * 1024)
-        if (encoding?.contains("gzip", true) == true) return buffered // OkHttp already decoded explicit gzip bodies
-        buffered.mark(2)
-        val b1 = buffered.read(); val b2 = buffered.read()
-        buffered.reset()
-        val isGz = b1 == 0x1f && b2 == 0x8b
-        return if (isGz || url.endsWith(".gz") && isGz) GZIPInputStream(buffered) else buffered
-    }
 
     // Every read below applies the viewer's timezone correction: the bounds go
     // into the database's frame, the results come back into the viewer's. See

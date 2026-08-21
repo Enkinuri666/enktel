@@ -121,9 +121,13 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         syncTriggered = true
         syncing = true
         syncStatus = "Downloading your playlist…"
+        // Whether the *catalogue* came down. The guide below is allowed to fail
+        // on its own without costing the channels their sync stamp.
+        var catalogueOk = false
         try {
             runCatching { graph.feed.invalidate() }
             val summary = graph.content.refreshAll(p)
+            catalogueOk = true
             syncStatus = "Downloading TV guide… ($summary)"
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (e: Exception) { syncStatus = "Sync failed: ${e.message ?: "unknown"}" }
@@ -132,7 +136,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             syncStatus = "Ready"
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (e: Exception) { syncStatus = "EPG failed: ${e.message ?: "unknown"}" }
-        runCatching { graph.playlists.markSynced(p) }
+        // Only a sync that actually landed gets the stamp. This block is gated
+        // on `p.lastSync != 0L`, so stamping a failure retired the profile from
+        // ever syncing again: one bad download and the app opened on an empty
+        // catalogue for good, with nothing on screen to say why or any way to
+        // retry short of re-adding the playlist.
+        if (catalogueOk) runCatching { graph.playlists.markSynced(p) }
         kotlinx.coroutines.delay(1600)
         syncing = false
         syncStatus = ""
