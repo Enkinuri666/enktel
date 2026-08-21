@@ -26,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 161
-        versionName = "1.60.41"
+        versionCode = 162
+        versionName = "1.60.42"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -86,9 +86,23 @@ android {
         val freePlaylist = (project.findProperty("enkFreePlaylistUrl") as? String)
             ?: System.getenv("ENK_FREE_PLAYLIST_URL")
             ?: "https://raw.githubusercontent.com/Enkinuri666/enktel/main/data/playlists/enktel-lineup.m3u"
+        // The playlist's own x-tvg-url was inherited from whichever source
+        // header the scraper happened to read — a free-tier worker on
+        // onrender.com that nobody here chose and that answers nothing. This
+        // is the guide the project already knows: scripts/lib/sources.mjs
+        // declares it for the Brisbane feed, and it is what a tv_grab points
+        // at in practice.
+        //
+        // It covers the AU channels and the mjh-* ids rather than the whole
+        // lineup, which is 84% American. That is the right trade only because
+        // the lineup is now sorted local-first — a guide for the channels the
+        // viewer actually lands on beats a guide for none of them. A lineup
+        // spanning four countries wants a guide built for it; that means
+        // self-hosting iptv-org/epg, which publishes no hosted guide of its
+        // own. Override with -PenkFreePlaylistEpg until then.
         val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
             ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
-            ?: ""
+            ?: "https://i.mjh.nz/au/Brisbane/epg.xml.gz"
         buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
         buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
     }
