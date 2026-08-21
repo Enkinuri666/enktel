@@ -33,9 +33,11 @@ const FORWARD = new Set(["language", "query", "include_adult", "append_to_respon
 /** Build the upstream URL, with our key and only the parameters we allow. */
 export function tmdbUpstream(path: string, params: URLSearchParams, apiKey: string): string {
   const out = new URLSearchParams();
-  for (const [k, v] of params) {
+  // forEach rather than for..of: this tsconfig targets below ES2015, where
+  // iterating a URLSearchParams needs downlevelIteration to compile.
+  params.forEach((v, k) => {
     if (FORWARD.has(k)) out.set(k, v);
-  }
+  });
   out.set("api_key", apiKey);
   return `${TMDB_BASE}/${path}?${out.toString()}`;
 }
