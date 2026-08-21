@@ -132,7 +132,15 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (e: Exception) { syncStatus = "Sync failed: ${e.message ?: "unknown"}" }
         try {
-            graph.epg.refresh(p)
+            // Re-read the row rather than reusing `p`. An M3U playlist declares
+            // its guide in the header, and refreshM3u writes that onto the
+            // profile as it parses — so on a first sync the `p` captured up
+            // there still has the blank epgUrl it was created with, and
+            // EpgRepository.refresh returns 0 without fetching anything. The
+            // guide then stayed empty for good, because this whole block only
+            // runs while lastSync is 0.
+            val synced = graph.playlists.byId(p.id) ?: p
+            graph.epg.refresh(synced)
             syncStatus = "Ready"
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (e: Exception) { syncStatus = "EPG failed: ${e.message ?: "unknown"}" }
