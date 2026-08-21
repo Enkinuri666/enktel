@@ -20,16 +20,34 @@ data class M3uEntry(
     /** `#EXTVLCOPT:http-user-agent=` for this entry only. */
     val userAgent: String = "",
 ) {
+    /**
+     * Is this a film to sit in the movies library, or a channel that is on air?
+     *
+     * The container answers it whenever there is one, in both directions. Only
+     * when the URL says nothing does the group title get a vote — plenty of
+     * panels file VOD under an extensionless path and the word is the only
+     * evidence there is.
+     *
+     * The order matters. Reading the group first treats "Movies" as proof of
+     * VOD, and a genre-bucketed lineup names groups after *content*: `US -
+     * Movies` is 157 film channels that are unambiguously live. They were
+     * being filed as VOD — vanishing from Live TV and filling the movies
+     * library with things that cannot be played as files.
+     */
     val isVod: Boolean
         get() {
             val lower = url.substringBefore('?').lowercase()
             if (VOD_EXT.any { lower.endsWith(it) }) return true
+            if (LIVE_EXT.any { lower.endsWith(it) }) return false
             val g = group.lowercase()
             return "vod" in g || "movie" in g || "film" in g
         }
 
     companion object {
         private val VOD_EXT = listOf(".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv", ".webm")
+
+        /** Streaming containers. Nothing served as one of these is a file. */
+        private val LIVE_EXT = listOf(".m3u8", ".ts", ".mpd")
     }
 }
 

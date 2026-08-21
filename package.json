@@ -12,6 +12,7 @@
     "export:catalog": "node scripts/export-xtream-catalog.mjs",
     "test:scripts": "node --test scripts/lib/*.test.mjs",
     "match:epg": "node scripts/match-epg.mjs",
+    "match:upstream": "node scripts/match-upstream.mjs",
     "build:lineup": "node scripts/build-lineup.mjs",
     "build:roster": "node scripts/build-roster.mjs",
     "import:panel": "node scripts/import-panel-export.mjs"
