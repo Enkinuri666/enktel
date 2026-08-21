@@ -22,6 +22,7 @@ import tv.enktel.app.data.double
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
+import tv.enktel.app.data.m3u.LocalFirst
 import tv.enktel.app.data.m3u.M3uParser
 import tv.enktel.app.data.net.gunzipIfNeeded
 import tv.enktel.app.data.str
@@ -429,9 +430,19 @@ class ContentRepository(
                 )
             }
         }
-        val categories = groups.entries.mapIndexed { i, (name, kind) ->
-            Category(key = "${p.id}:$kind:$name", profileId = p.id, kind = kind, categoryId = name, name = name, sortIdx = i)
-        }
+        // Local first. The free-to-air playlist is one list for every viewer and
+        // is overwhelmingly not theirs — a viewer outside the US meets 2,446
+        // American channels, most of which answer 403 on their licence border,
+        // before reaching the 158 that play where they are. Reordering cannot
+        // unblock a stream, but it decides which ones they land on.
+        val country = LocalFirst.deviceCountry()
+        val orderedChannels = LocalFirst.sort(channels, country) { it.categoryId }
+            .mapIndexed { i, c -> c.copy(sortIdx = i + 1) }
+
+        val categories = LocalFirst.sort(groups.entries.toList(), country) { it.key }
+            .mapIndexed { i, (name, kind) ->
+                Category(key = "${p.id}:$kind:$name", profileId = p.id, kind = kind, categoryId = name, name = name, sortIdx = i)
+            }
 
         // M3U row keys are positional, so one insertion at the top of a
         // playlist shifts every key below it. Identity has to come from the
@@ -443,14 +454,14 @@ class ContentRepository(
 
         content.clearCategories(p.id); content.clearChannels(p.id); content.clearMovies(p.id)
         content.upsertCategories(categories)
-        channels.chunked(500).forEach { content.upsertChannels(it) }
+        orderedChannels.chunked(500).forEach { content.upsertChannels(it) }
         stampedM3u.chunked(500).forEach { content.upsertMovies(it) }
         rebuildSearchIndex(p.id)
 
         if (p.epgUrl.isBlank() && playlist.epgUrl.isNotBlank()) {
             db.profileDao().update(p.copy(epgUrl = playlist.epgUrl))
         }
-        return "${channels.size} channels · ${movies.size} movies"
+        return "${orderedChannels.size} channels · ${movies.size} movies"
     }
 
     suspend fun seriesDetails(p: Profile, seriesId: Long): SeriesDetails = withContext(Dispatchers.IO) {
