@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-08-21T12:52:06.628Z",
+  "roster": "enktel-line.live.csv",
+  "publicIndex": "enktel-scrape.m3u",
+  "totals": {
+    "lineChannels": 18154,
+    "publicStreams": 11175,
+    "matched": 584,
+    "viaId": 404,
+    "viaName": 180,
+    "unmatched": 17570,
+    "coverage": "3.2%"
+  },
+  "note": "A panel stream URL does not encode its upstream, so nothing here is \"the origin of\" a panel URL. These are independent public streams of the same channels. A low coverage figure is the expected result: the channels a line is paid for are the ones nobody publishes free."
+}
