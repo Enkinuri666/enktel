@@ -26,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 157
-        versionName = "1.60.37"
+        versionCode = 158
+        versionName = "1.60.38"
         vectorDrawables { useSupportLibrary = true }
 
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
@@ -71,6 +71,26 @@ android {
         buildConfigField("String", "DEFAULT_SERVER", "\"$defaultServer\"")
         buildConfigField("String", "DEFAULT_USERNAME", "\"$defaultUser\"")
         buildConfigField("String", "DEFAULT_PASSWORD", "\"$defaultPass\"")
+
+        // The playlist a build with no baked-in line falls back to, so a fresh
+        // install has something to watch before it has an account. These are
+        // the free-to-air streams the scraper collects and verifies — complete,
+        // public URLs that carry no credentials and need no login, unlike a
+        // panel catalog, where the credentials *are* the stream URL.
+        //
+        // Points at the generated lineup rather than the full scrape: 2,923
+        // channels already grouped by country and genre with 97.5% logo and
+        // 98.7% EPG coverage is a storefront, where 11,175 ungrouped ones are
+        // a dump. Repoint it with -PenkFreePlaylistUrl once it is served from
+        // a real CDN rather than from the repo.
+        val freePlaylist = (project.findProperty("enkFreePlaylistUrl") as? String)
+            ?: System.getenv("ENK_FREE_PLAYLIST_URL")
+            ?: "https://raw.githubusercontent.com/Enkinuri666/enktel/main/data/playlists/enktel-lineup.m3u"
+        val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
+            ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
+            ?: ""
+        buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
+        buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
     }
 
     // Room writes the resolved schema for every version under

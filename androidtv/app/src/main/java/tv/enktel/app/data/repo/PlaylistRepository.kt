@@ -69,9 +69,25 @@ class PlaylistRepository(
      * Calling this more than once is safe: the profile check happens first.
      */
     suspend fun seedDefaultProfile(): Result<Profile>? {
-        if (!DefaultLine.canSeed) return null
         if (dao.first() != null) return null
-        return addXtream(DefaultLine.NAME, DefaultLine.server, DefaultLine.username, DefaultLine.password)
+
+        // A build carrying a line signs into it; that account is the whole
+        // catalog, so nothing else is worth seeding.
+        if (DefaultLine.canSeed) {
+            return addXtream(DefaultLine.NAME, DefaultLine.server, DefaultLine.username, DefaultLine.password)
+        }
+
+        // Otherwise fall back to the free-to-air playlist. A public build had
+        // no credentials to seed with and so used to drop the viewer on the
+        // login form with nothing to watch — but a few thousand of the
+        // channels collected here need no account at all, and an install that
+        // opens on live TV is a different product from one that opens on a
+        // password field. The paid line is still one tap away in Settings.
+        if (DefaultLine.hasFreePlaylist) {
+            return addM3u(DefaultLine.FREE_NAME, DefaultLine.freePlaylistUrl, DefaultLine.freePlaylistEpg)
+        }
+
+        return null
     }
 
     /**
