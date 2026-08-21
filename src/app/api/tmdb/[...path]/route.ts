@@ -21,17 +21,18 @@ import { TMDB_CACHE_CONTROL, tmdbPathAllowed, tmdbUpstream } from "@/lib/tmdb-pr
 
 export const dynamic = "force-dynamic";
 
+// `params` is a plain object here, not a promise: this app is on Next 14,
+// where the async-params signature does not exist yet.
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ path: string[] }> },
+  { params }: { params: { path: string[] } },
 ) {
   const key = process.env.TMDB_API_KEY;
   if (!key) {
     return NextResponse.json({ error: "TMDB is not configured on this server" }, { status: 503 });
   }
 
-  const { path } = await context.params;
-  const joined = (path ?? []).join("/");
+  const joined = (params.path ?? []).join("/");
 
   // An unrestricted proxy would let anyone spend our rate limit on any TMDB
   // endpoint, so only the handful the app actually calls are reachable.
