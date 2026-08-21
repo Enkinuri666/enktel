@@ -23,6 +23,7 @@ import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.data.m3u.M3uParser
+import tv.enktel.app.data.net.gunzipIfNeeded
 import tv.enktel.app.data.str
 import tv.enktel.app.data.xtream.XtreamClient
 import java.io.IOException
@@ -389,8 +390,16 @@ class ContentRepository(
         val playlist = http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
             val raw = resp.body.byteStream()
-            val stream = maybeGunzipStream(raw, p.m3uUrl, resp.header("Content-Encoding"))
+            val stream = gunzipIfNeeded(raw)
             stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+        }
+
+        // A 200 that parses to nothing is a failed download wearing a success
+        // costume — a gzip body read as text, an HTML error page, a captive
+        // portal. Treating it as "your playlist is empty" is what let a broken
+        // sync mark itself complete and never run again, so it throws instead.
+        if (playlist.entries.isEmpty()) {
+            throw IOException("Playlist downloaded but contained no channels — the URL did not return an M3U playlist")
         }
 
         val groups = LinkedHashMap<String, String>() // name -> kind
@@ -500,19 +509,6 @@ class ContentRepository(
         )
     }
 
-    /** Sniff first two bytes for gzip magic number; supports .m3u.gz / gzipped M3Us that
-     *  don't declare Content-Encoding. OkHttp transparently ungzips only when it sees the
-     *  Accept-Encoding request header + Content-Encoding response header, so we cover the
-     *  edge cases here. */
-    private fun maybeGunzipStream(input: java.io.InputStream, url: String, encoding: String?): java.io.InputStream {
-        val buffered = input.buffered(64 * 1024)
-        if (encoding?.contains("gzip", true) == true) return buffered
-        buffered.mark(2)
-        val b1 = buffered.read(); val b2 = buffered.read()
-        buffered.reset()
-        val looksGz = b1 == 0x1f && b2 == 0x8b
-        return if (looksGz || url.lowercase().endsWith(".gz")) java.util.zip.GZIPInputStream(buffered) else buffered
-    }
 
     companion object {
         private val YEAR_IN_NAME = Regex("""\((\d{4})\)""")
