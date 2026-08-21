@@ -121,6 +121,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
     else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
     val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
@@ -252,8 +253,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // shape) if the panel rejects the primary candidate.  Covers the
         // wide variance in how Xtream-compatible panels actually serve a
         // stream behind the same API.
-        val candidates = tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
-            p, ch, preferHls = streamFormat != "ts",
+        val candidates = tv.enktel.app.data.net.RelayUrls.wrapAll(
+            tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
+                p, ch, preferHls = streamFormat != "ts",
+            ),
+            enabled = relayPlayback,
         )
         // Applied before the stream opens, not after: the data source reads the
         // UA when it is created. Blank resets to the app default so one
