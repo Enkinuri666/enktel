@@ -361,12 +361,44 @@ class ContentRepository(
         // Diff against the catalogue we are about to replace, so "new" means
         // new *to this line* rather than whatever date the provider stamped on
         // ingest. Read before the clear, obviously.
-        val prevMovies = content.movies(p.id).first().associate { it.key to it.firstSeenAt }
-        val prevSeries = content.series(p.id).first().associate { it.key to it.firstSeenAt }
+        val prevMovieRows = content.movies(p.id).first()
+        val prevSeriesRows = content.series(p.id).first()
+        val prevMovies = prevMovieRows.associate { it.key to it.firstSeenAt }
+        val prevSeries = prevSeriesRows.associate { it.key to it.firstSeenAt }
+        // What IMDb said, kept across the wipe.
+        //
+        // A sync clears the catalogue and re-inserts it from the panel payload,
+        // so every enriched column goes back to its default and is refetched
+        // afterwards. For TMDB that is merely wasteful. For IMDb it does not
+        // work at all: the ratings come through one shared server-side key with
+        // a daily request budget, and starting from zero on every sync of every
+        // install would spend it before most catalogues finished once.
+        //
+        // The id is a permanent property of a title, and a rating moves by
+        // hundredths over years, so neither is worth re-asking for. Keyed on
+        // the row key, same as the stamps above.
+        val prevImdbMovies = prevMovieRows.filter { it.imdbId.isNotBlank() }.associateBy { it.key }
+        val prevImdbSeries = prevSeriesRows.filter { it.imdbId.isNotBlank() }.associateBy { it.key }
         val movieStamps = FreshCatalogue.stamp(movies.map { it.key }, prevMovies)
         val seriesStamps = FreshCatalogue.stamp(seriesList.map { it.key }, prevSeries)
-        val stampedMovies = movies.mapIndexed { i, m -> m.copy(firstSeenAt = movieStamps[i]) }
-        val stampedSeries = seriesList.mapIndexed { i, s -> s.copy(firstSeenAt = seriesStamps[i]) }
+        val stampedMovies = movies.mapIndexed { i, m ->
+            val kept = prevImdbMovies[m.key]
+            m.copy(
+                firstSeenAt = movieStamps[i],
+                imdbId = kept?.imdbId ?: m.imdbId,
+                imdbRating = kept?.imdbRating ?: m.imdbRating,
+                imdbVotes = kept?.imdbVotes ?: m.imdbVotes,
+            )
+        }
+        val stampedSeries = seriesList.mapIndexed { i, s ->
+            val kept = prevImdbSeries[s.key]
+            s.copy(
+                firstSeenAt = seriesStamps[i],
+                imdbId = kept?.imdbId ?: s.imdbId,
+                imdbRating = kept?.imdbRating ?: s.imdbRating,
+                imdbVotes = kept?.imdbVotes ?: s.imdbVotes,
+            )
+        }
 
         content.clearCategories(p.id); content.clearChannels(p.id)
         content.clearMovies(p.id); content.clearSeries(p.id)

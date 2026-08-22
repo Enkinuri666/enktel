@@ -138,6 +138,26 @@ data class Movie(
     val backdrop: String = "",
     /** Runtime in minutes from TMDB, 0 when unknown. */
     val runtimeMins: Int = 0,
+    /**
+     * IMDb's own id for this title (`tt0137523`), blank when unmapped.
+     *
+     * Comes from TMDB during enrichment, and is what both the IMDb link and
+     * the rating lookup are keyed on — without it there is no way to ask IMDb
+     * anything about a title, since nothing else the panel supplies identifies
+     * it unambiguously.
+     */
+    val imdbId: String = "",
+    /**
+     * IMDb's rating out of 10, 0 when unknown.
+     *
+     * Deliberately not folded into [rating]. That one is whatever the panel
+     * published — usually TMDB's number, sometimes its own, occasionally
+     * nothing — and overwriting it would destroy the only rating most rows
+     * have on a line whose titles IMDb has never heard of.
+     */
+    val imdbRating: Double = 0.0,
+    /** How many votes that rating rests on. 9.4 from 40 people is not 9.4. */
+    val imdbVotes: Int = 0,
 )
 
 @Entity(tableName = "series", indices = [Index("profileId"), Index("profileId", "categoryId"), Index("tmdbId")])
@@ -165,6 +185,12 @@ data class Series(
     val backdrop: String = "",
     /** Average episode runtime in minutes from TMDB, 0 when unknown. */
     val runtimeMins: Int = 0,
+    /** See [Movie.imdbId]. */
+    val imdbId: String = "",
+    /** See [Movie.imdbRating]. */
+    val imdbRating: Double = 0.0,
+    /** See [Movie.imdbVotes]. */
+    val imdbVotes: Int = 0,
 )
 
 @Entity(tableName = "watchlist")

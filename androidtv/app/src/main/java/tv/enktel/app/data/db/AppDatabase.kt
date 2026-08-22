@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 15, // v15 gives each provider its own User-Agent
+    version = 16, // v16 stores IMDb ids and ratings alongside TMDB metadata
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -283,13 +283,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // TMDB knows IMDb's id for most titles but carries none of
+                // IMDb's ratings, so the id is stored to key the lookup on and
+                // the rating is stored beside it rather than over the existing
+                // `rating` column — that one holds whatever the panel
+                // published, and for a line whose catalogue IMDb has never
+                // heard of it is the only rating a row will ever have.
+                //
+                // Defaults, so every existing row migrates to "not looked up
+                // yet" and the enrichment worker fills them in on its own
+                // schedule. Nothing is lost if it never gets to a row.
+                for (table in listOf("movies", "series")) {
+                    db.execSQL("ALTER TABLE $table ADD COLUMN imdbId TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN imdbRating REAL NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN imdbVotes INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                    MIGRATION_14_15,
+                    MIGRATION_14_15, MIGRATION_15_16,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

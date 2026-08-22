@@ -156,6 +156,11 @@ private fun MovieDetailsBody(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // IMDb's number and the panel's are shown side by side rather than one
+        // replacing the other. They are computed from different audiences and
+        // routinely disagree, and for a title IMDb has never heard of the
+        // panel's is the only one there is.
+        if (m.imdbRating > 0) Badge("IMDb ${"%.1f".format(m.imdbRating)}", color = ImdbYellow)
         if (m.rating > 0) Badge("★ ${"%.1f".format(m.rating)}")
         if (details?.genre?.isNotBlank() == true) Badge(details.genre.take(30))
         // Same fallback as the hero image: TMDB's runtime is in the row
@@ -210,6 +215,7 @@ private fun MovieDetailsBody(
                 )
             })
         }
+        ImdbButton(m.imdbId)
         FavButton(graph, p.id, "vod", m.streamId)
         WatchlistButton(graph, p.id, "vod", m.streamId, m.name, m.poster)
         DownloadButton(
@@ -430,6 +436,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 Text(s.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (s.imdbRating > 0) Badge("IMDb ${"%.1f".format(s.imdbRating)}", color = ImdbYellow)
                     if (s.rating > 0) Badge("★ ${"%.1f".format(s.rating)}")
                     if (s.genre.isNotBlank()) Badge(s.genre.take(30))
                     Badge("${seasons.size} season${if (seasons.size == 1) "" else "s"}")
@@ -463,6 +470,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                             )
                         })
                     }
+                    ImdbButton(s.imdbId)
                     FavButton(graph, p.id, "series", s.seriesId)
                     WatchlistButton(graph, p.id, "series", s.seriesId, s.name, s.poster)
                     tv.enktel.app.ui.components.ShareButton(
@@ -623,4 +631,43 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         }
     }
     }
+}
+
+/** IMDb's brand yellow. A fixed mark, so it does not follow the theme accent. */
+private val ImdbYellow = Color(0xFFF5C518)
+
+/**
+ * "IMDb ↗", but only when the device can actually get there.
+ *
+ * The device is asked before the button is offered, rather than after it is
+ * pressed. A sideloaded Fire TV Stick frequently has neither the IMDb app nor
+ * a browser installed, and firing an `ACTION_VIEW` at one is then a no-op that
+ * `runCatching` swallows — the button does nothing, reports nothing, and looks
+ * broken. That is exactly the fault the trailer button had before it was
+ * replaced by the in-app player, and it is not worth repeating.
+ *
+ * `resolveActivity` can only see a handler because the manifest declares both
+ * schemes under `<queries>`; from API 30 an undeclared intent resolves to null
+ * however many browsers are installed.
+ */
+@Composable
+private fun ImdbButton(imdbId: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Keyed on the id: a details screen is reused as the viewer moves between
+    // titles, and the answer changes with the id, not with the recomposition.
+    val target = androidx.compose.runtime.remember(imdbId) {
+        tv.enktel.app.data.metadata.ImdbLinks.targets(imdbId).firstOrNull { url ->
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url.toUri())
+            context.packageManager.resolveActivity(intent, 0) != null
+        }
+    } ?: return
+
+    FocusButton("IMDb ↗", onClick = {
+        runCatching {
+            context.startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW, target.toUri())
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    })
 }
