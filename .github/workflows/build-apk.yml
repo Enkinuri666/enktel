@@ -75,11 +75,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
-        with:
-          # TEMPORARY, with the schema step below. The post-action writes a
-          # cache report of well over a hundred lines, which buries the schema
-          # diff too deep in the log tail to read back.
-          add-job-summary: never
 
       - name: Lint (both flavors, release variant)
         run: ./gradlew :app:lintTvRelease :app:lintMobileRelease --no-daemon
@@ -112,30 +107,6 @@ jobs:
             echo "$DIRTY" >&2
             exit 1
           fi
-
-      # TEMPORARY — removed in the following commit.
-      #
-      # Room writes app/schemas/<db>/<version>.json during KSP and the check
-      # above requires it committed. It cannot be produced where this change
-      # was written: that environment has no Android SDK, and its egress policy
-      # refuses both the SDK download host and Google Maven, so Gradle resolves
-      # neither AGP nor androidx. Room's identityHash is derived from the whole
-      # schema and is not something to hand-write.
-      #
-      # Printed as a diff against the previous version rather than as the whole
-      # file: the two differ only in the version, the hash and the two tables
-      # that gained columns, so this is a few dozen lines instead of a hundred
-      # kilobytes. `always()` because the check above has already failed here.
-      - name: TEMP print the generated Room schema as a diff
-        if: always()
-        run: |
-          ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache
-          OLD="$(ls app/schemas/*/15.json 2>/dev/null | head -1)"
-          NEW="$(ls app/schemas/*/16.json 2>/dev/null | head -1)"
-          if [ -z "$NEW" ]; then echo "SCHEMA16_MISSING"; exit 0; fi
-          echo "SCHEMA16_DIFF_BEGIN"
-          diff -u "$OLD" "$NEW" || true
-          echo "SCHEMA16_DIFF_END"
 
       - name: Build debug APKs (tv + mobile)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
