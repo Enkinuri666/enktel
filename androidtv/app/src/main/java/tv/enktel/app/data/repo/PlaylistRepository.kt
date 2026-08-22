@@ -132,7 +132,7 @@ class PlaylistRepository(
      */
     suspend fun importM3u(ctx: android.content.Context, uri: android.net.Uri): Result<Profile> =
         runCatching {
-            val url = PlaylistFiles.import(ctx, uri)
+            val url = PlaylistFiles.copyIn(ctx, uri)
             addM3u(PlaylistFiles.displayName(ctx, uri), url, epgUrl = "").getOrThrow()
         }
 

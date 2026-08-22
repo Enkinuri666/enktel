@@ -34,7 +34,7 @@ object PlaylistFiles {
      * @return a `file://` URL for [tv.enktel.app.data.repo.PlaylistRepository.addM3u]
      * @throws java.io.IOException when the document cannot be opened or is empty
      */
-    fun import(ctx: Context, uri: Uri): String {
+    fun copyIn(ctx: Context, uri: Uri): String {
         val target = File(dir(ctx), "${System.currentTimeMillis()}.m3u")
 
         ctx.contentResolver.openInputStream(uri)?.use { input ->
