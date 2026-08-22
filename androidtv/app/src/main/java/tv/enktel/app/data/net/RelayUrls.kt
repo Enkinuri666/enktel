@@ -88,6 +88,49 @@ object RelayUrls {
         return wrapped.takeIf { it != url.trim() && it != url }
     }
 
+    /**
+     * Country-pinned relay endpoints, in the order worth trying.
+     *
+     * A geo-block is satisfied by *one* country, not by "somewhere other than
+     * yours" — a British broadcaster refuses an American address as firmly as
+     * an Australian one. So a blocked stream is retried from each country this
+     * project can ask from, most likely first.
+     *
+     * US leads because the lineup is 83.7% American (2,446 of 2,923). GB is
+     * second at 307. Two extra requests is the worst case, and only ever on a
+     * request that has already failed.
+     *
+     * There is no Croatian entry, and that is not an oversight: no serverless
+     * region exists in Croatia, so nothing here can present a Croatian address.
+     * The twelve HR channels sit on `.hr` and `.ba` hosts, and one that
+     * geo-locks stays locked whichever of these is asked. That case wants a
+     * Croatian exit — Settings → Backup gateways takes one — or a source that
+     * does not block, which is a different piece of work.
+     */
+    fun regionBases(base: String = DEFAULT_BASE): List<String> {
+        val endpoint = base.trim().trimEnd('/')
+        if (endpoint.isEmpty()) return emptyList()
+        return listOf("$endpoint/us", "$endpoint/gb")
+    }
+
+    /**
+     * Every relay URL worth trying for a request that just failed, in order.
+     *
+     * Empty when relaying this URL would be wrong — see [fallbackFor], which
+     * decides that once for the whole chain.
+     */
+    fun fallbackChain(url: String, base: String = DEFAULT_BASE): List<String> {
+        if (fallbackFor(url, base) == null) return emptyList()
+        return regionBases(base).mapNotNull { fallbackFor(url, it) }
+    }
+
+    /** A human name for whichever endpoint answered, for the on-screen note. */
+    fun regionOf(relayUrl: String): String = when {
+        relayUrl.contains("/api/stream/us?", true) -> "the US relay"
+        relayUrl.contains("/api/stream/gb?", true) -> "the UK relay"
+        else -> "the relay"
+    }
+
     private fun hostOf(url: String): String? = try {
         java.net.URI(url.trim()).host
     } catch (_: Throwable) {

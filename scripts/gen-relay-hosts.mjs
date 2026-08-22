@@ -24,6 +24,20 @@ import { readFileSync, writeFileSync } from "node:fs";
 const PLAYLIST = "public/playlists/enktel-lineup.m3u";
 const OUT = "src/lib/relay-hosts.generated.ts";
 
+/** RFC 1918 and friends — anything that points back inside a network. */
+function isPublicIpv4(host) {
+  const p = host.split(".").map(Number);
+  if (p.length !== 4 || p.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+  const [a, b] = p;
+  if (a === 0 || a === 10 || a === 127) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false; // carrier-grade NAT
+  if (a >= 224) return false; // multicast and reserved
+  return true;
+}
+
 const text = readFileSync(PLAYLIST, "utf8");
 
 const hosts = new Set();
@@ -36,12 +50,23 @@ for (const line of text.split("\n")) {
   } catch {
     continue;
   }
-  // A bare address on the list would let the relay be pointed at an address
-  // rather than a name, which is the shape every SSRF filter bypass takes.
-  // The route blocks private ranges separately; this keeps them off the
-  // allowlist in the first place.
-  if (/^[\d.]+$/.test(host) || host.includes(":")) continue;
+  // IPv6 literals are skipped: none appear in the lineup, and the route's
+  // private-range filter is written for dotted quads.
+  if (host.includes(":")) continue;
   if (!host.includes(".")) continue;
+
+  // Bare IPv4 is kept, but only if it is publicly routable.
+  //
+  // Excluding addresses outright was the first instinct and it was wrong:
+  // three of the twelve Croatian channels — National Geographic, Nickelodeon
+  // and Nova TV — are published on 176.61.157.250, so a name-only allowlist
+  // silently made exactly those unrelayable. These are addresses this project
+  // already sends viewers to; refusing to relay them protects nobody.
+  //
+  // A private or link-local address is a different matter. The route blocks
+  // those at request time as a second lock, and this keeps them from ever
+  // reaching the list to begin with.
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isPublicIpv4(host)) continue;
   hosts.add(host);
 }
 

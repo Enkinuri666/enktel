@@ -2,6 +2,7 @@ package tv.enktel.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import tv.enktel.app.data.net.RelayUrls
 
@@ -126,5 +127,51 @@ class RelayUrlsTest {
             "https://enktel.tv/api/stream?u=http%3A%2F%2Fapi.elg-26.com%2Flive%2Fuser%2Fpass%2F42.ts",
             relayed,
         )
+    }
+
+    // ---- country-pinned endpoints -------------------------------------
+
+    /**
+     * US first because the lineup is 83.7% American, GB second at 307
+     * channels. Order is the whole point: a blocked stream pays one extra
+     * request per country tried, so the likely one goes first.
+     */
+    @Test
+    fun `the chain tries the US then the UK`() {
+        assertEquals(
+            listOf("https://enktel.tv/api/stream/us", "https://enktel.tv/api/stream/gb"),
+            RelayUrls.regionBases(),
+        )
+
+        val chain = RelayUrls.fallbackChain("http://cdn.example/live/1.m3u8")
+        assertEquals(2, chain.size)
+        assertTrue(chain[0].startsWith("https://enktel.tv/api/stream/us?u="))
+        assertTrue(chain[1].startsWith("https://enktel.tv/api/stream/gb?u="))
+    }
+
+    /**
+     * No Croatian entry, and not by omission: no serverless region exists in
+     * Croatia, so no endpoint here can present a Croatian address. A test that
+     * asserted one would be asserting a lie.
+     */
+    @Test
+    fun `there is no croatian endpoint to try`() {
+        assertTrue(RelayUrls.regionBases().none { it.endsWith("/hr") })
+    }
+
+    /** Whatever [fallbackFor] refuses, the chain refuses for the same reason. */
+    @Test
+    fun `the chain is empty where relaying is wrong`() {
+        assertTrue(RelayUrls.fallbackChain("https://enktel.tv/api/guide").isEmpty())
+        assertTrue(RelayUrls.fallbackChain("file:///data/playlists/1.m3u").isEmpty())
+        assertTrue(RelayUrls.fallbackChain("http://cdn.example/1.m3u8", base = "").isEmpty())
+    }
+
+    @Test
+    fun `each region names itself for the on-screen note`() {
+        val chain = RelayUrls.fallbackChain("http://cdn.example/live/1.m3u8")
+        assertEquals("the US relay", RelayUrls.regionOf(chain[0]))
+        assertEquals("the UK relay", RelayUrls.regionOf(chain[1]))
+        assertEquals("the relay", RelayUrls.regionOf("https://enktel.tv/api/stream?u=x"))
     }
 }

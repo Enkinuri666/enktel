@@ -104,17 +104,22 @@ class StreamHealthInterceptor(
      */
     private fun tryRelay(chain: Interceptor.Chain, original: Request): Response? {
         val base = try { relayBase() } catch (_: Throwable) { "" }
-        val relayed = RelayUrls.fallbackFor(original.url.toString(), base) ?: return null
-        val relayHost = relayed.toHttpUrlOrNull()?.host ?: return null
+        val candidates = RelayUrls.fallbackChain(original.url.toString(), base)
+        if (candidates.isEmpty()) return null
 
-        val rebuilt = original.newBuilder().url(relayed).build()
-        val r = try { chain.proceed(rebuilt) } catch (_: IOException) { return null }
-        if (r.isSuccessful) {
-            notify("Playing via relay — ${original.url.host} refused this location")
-            StreamHealth.setActiveGateway(relayHost)
-            return r
+        for (relayed in candidates) {
+            val rebuilt = original.newBuilder().url(relayed).build()
+            val r = try { chain.proceed(rebuilt) } catch (_: IOException) { continue }
+            if (r.isSuccessful) {
+                val where = RelayUrls.regionOf(relayed)
+                notify("Playing via $where — ${original.url.host} refused this location")
+                relayed.toHttpUrlOrNull()?.host?.let { StreamHealth.setActiveGateway(it) }
+                return r
+            }
+            // A 403 from the relay is the upstream refusing that country too,
+            // which is the whole reason there is more than one to try.
+            r.close()
         }
-        r.close()
         return null
     }
 
@@ -127,8 +132,8 @@ class StreamHealthInterceptor(
      * refusal.
      */
     private fun blockedMessage(host: String): String =
-        "$host refused this location, and the relay's too. This channel is " +
-            "geo-locked to a region neither can reach."
+        "$host refused this location, and every relay country too. This " +
+            "channel is geo-locked somewhere none of them can reach."
 
     private fun tryBackup(chain: Interceptor.Chain, original: Request): Response? {
         val list = try { gateways() } catch (_: Throwable) { emptyList() }
