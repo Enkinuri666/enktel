@@ -18,8 +18,19 @@ import java.net.URLEncoder
  */
 object RelayUrls {
 
-    /** Relay endpoint. Same origin as the playlist and guide. */
-    const val DEFAULT_BASE = "https://watch.enktel.tv/api/stream"
+    /**
+     * Relay endpoint. Same origin as the playlist and guide.
+     *
+     * enktel.tv, not watch.enktel.tv. `/api/stream` is a route in *this*
+     * repository and deploys with this site; watch.enktel.tv is a separate
+     * property — the browser player — and serves no such route. The comment
+     * above was already right about which origin this belongs to; the constant
+     * disagreed with it, so every relayed request went to a host that answers
+     * a 404 page, and the Direct/Relay switch in Settings has never done
+     * anything but break playback. This is the same mistake that pointed the
+     * playlist and the guide at the wrong host.
+     */
+    const val DEFAULT_BASE = "https://enktel.tv/api/stream"
 
     /**
      * Wrap one URL for the relay, or return it unchanged.
@@ -41,6 +52,46 @@ object RelayUrls {
         if (target.startsWith("$endpoint?", true)) return url
 
         return "$endpoint?u=${URLEncoder.encode(target, "UTF-8")}"
+    }
+
+    /**
+     * The relay URL to retry a failed request with, or null when relaying it
+     * would be wrong.
+     *
+     * Separate from [wrap] because the two answer different questions. [wrap]
+     * is "route this deliberately"; this is "that failed, is the relay worth a
+     * try". It refuses three cases, each of which is a real request this app
+     * makes:
+     *
+     *  - a request already aimed at the relay's own host. That covers the
+     *    guide, the playlist and the TMDB and OMDb proxies, which all live on
+     *    that origin: a 403 from one of those is the service saying no, and
+     *    asking it again through itself would not change the answer. It also
+     *    stops the relay nesting inside itself on a rewritten HLS manifest.
+     *  - anything that is not http(s) — a `file://` playlist the viewer
+     *    imported has no upstream to fetch.
+     *  - a URL [wrap] declines to change, so a caller never re-issues an
+     *    identical request and calls it a retry.
+     *
+     * java.net.URI rather than OkHttp's HttpUrl so this is a plain function
+     * that a unit test can call without a request or a chain.
+     */
+    fun fallbackFor(url: String, base: String = DEFAULT_BASE): String? {
+        val endpoint = base.trim().trimEnd('/')
+        if (endpoint.isEmpty()) return null
+
+        val relayHost = hostOf(endpoint) ?: return null
+        val targetHost = hostOf(url) ?: return null
+        if (targetHost.equals(relayHost, ignoreCase = true)) return null
+
+        val wrapped = wrap(url, endpoint, enabled = true)
+        return wrapped.takeIf { it != url.trim() && it != url }
+    }
+
+    private fun hostOf(url: String): String? = try {
+        java.net.URI(url.trim()).host
+    } catch (_: Throwable) {
+        null
     }
 
     /** [wrap] over an ordered candidate list, preserving its order. */
