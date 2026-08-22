@@ -69,6 +69,25 @@ data class Channel(
      * playlist. Empty means "use the app default".
      */
     val userAgent: String = "",
+    /**
+     * Other hosts carrying this same channel, newline-separated, best first.
+     *
+     * The relay answers a block by asking from another country, which cannot
+     * help when no available country is permitted — a Croatian broadcaster is
+     * served from neither Washington nor London — and cannot help at all when a
+     * host is simply down. Playing the channel from a different host entirely
+     * works in both cases, and works wherever the viewer is.
+     *
+     * Newline-separated rather than a relation: this is a short ordered list
+     * read only when the primary has already failed, and a join table for two
+     * strings per row would cost a migration, a DAO and a query on the zap path
+     * to buy nothing.
+     *
+     * Blank for Xtream channels. A panel's alternates would be other panels,
+     * which the app does not have; this is populated for playlist profiles from
+     * the index published beside the lineup.
+     */
+    val altUrls: String = "",
 )
 
 @Entity(tableName = "categories")

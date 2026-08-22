@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 16, // v16 stores IMDb ids and ratings alongside TMDB metadata
+    version = 17, // v17 stores alternate stream hosts per channel
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -303,13 +303,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Where else this channel can be played from, newline-separated.
+                //
+                // Default empty, so every existing row migrates to "no
+                // alternates known" and the next playlist sync fills in what
+                // the published index has. Nothing is lost if a sync never
+                // happens: the column is only read after a stream has already
+                // failed.
+                db.execSQL("ALTER TABLE channels ADD COLUMN altUrls TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
                     MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                    MIGRATION_14_15, MIGRATION_15_16,
+                    MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and

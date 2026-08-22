@@ -445,6 +445,15 @@ class ContentRepository(
             throw IOException("Playlist downloaded but contained no channels — the URL did not return an M3U playlist")
         }
 
+        // Other hosts for these channels, if the playlist publishes an index
+        // beside itself. Best-effort: a sync must not fail over a file that is
+        // only ever read after a stream has already failed.
+        val alternates = if (PlaylistFiles.isLocal(p.m3uUrl)) {
+            emptyMap()
+        } else {
+            tv.enktel.app.data.net.AlternateSources.fetch(http, p.m3uUrl)
+        }
+
         val groups = LinkedHashMap<String, String>() // name -> kind
         val channels = ArrayList<Channel>()
         val movies = ArrayList<Movie>()
@@ -469,6 +478,12 @@ class ContentRepository(
                     catchupType = e.catchupType, catchupSource = e.catchupSource,
                     sortIdx = liveIdx,
                     isRadio = e.isRadio, userAgent = e.userAgent,
+                    // Keyed on the EPG id, which is what the index is built
+                    // against — the row key is positional and changes whenever
+                    // the playlist does.
+                    altUrls = tv.enktel.app.data.net.AlternateSources.encode(
+                        alternates[e.tvgId].orEmpty().filter { it != e.url },
+                    ),
                 )
             }
         }
