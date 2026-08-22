@@ -108,6 +108,28 @@ jobs:
             exit 1
           fi
 
+      # TEMPORARY — removed in the following commit.
+      #
+      # Room's identityHash is a digest over the whole schema and is the one
+      # part of app/schemas/<db>/17.json that cannot be derived by hand. This
+      # environment has no Android SDK and its egress policy refuses both the
+      # SDK host and Google Maven, so KSP cannot be run there to produce it.
+      # Everything else in the file is a mechanical edit of version 16.
+      #
+      # A wrong hash does not fail a build. It throws on a device, after the
+      # migration, with the viewer's profiles already committed to the new
+      # version — so it is taken from the build rather than guessed.
+      - name: TEMP print the generated Room schema as a diff
+        if: always()
+        run: |
+          ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache
+          OLD="$(ls app/schemas/*/16.json 2>/dev/null | head -1)"
+          NEW="$(ls app/schemas/*/17.json 2>/dev/null | head -1)"
+          if [ -z "$NEW" ]; then echo "SCHEMA17_MISSING"; exit 0; fi
+          echo "SCHEMA17_DIFF_BEGIN"
+          diff -u "$OLD" "$NEW" || true
+          echo "SCHEMA17_DIFF_END"
+
       - name: Build debug APKs (tv + mobile)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
         run: ./gradlew :app:assembleTvDebug :app:assembleMobileDebug --no-daemon
