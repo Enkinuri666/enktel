@@ -110,27 +110,27 @@ jobs:
 
       # TEMPORARY — removed in the following commit.
       #
-      # Room writes app/schemas/<db>/<version>.json during KSP, and the check
-      # above requires it to be committed. It cannot be produced where this
-      # change was written: that environment has no Android SDK, and both the
-      # SDK download host and Google Maven are refused by its egress policy, so
-      # Gradle cannot resolve AGP or androidx at all. This prints what the build
-      # generated so the real file can be committed rather than guessed — Room's
-      # identityHash is not something to hand-write.
+      # Room writes app/schemas/<db>/<version>.json during KSP and the check
+      # above requires it committed. It cannot be produced where this change
+      # was written: that environment has no Android SDK, and its egress policy
+      # refuses both the SDK download host and Google Maven, so Gradle resolves
+      # neither AGP nor androidx. Room's identityHash is derived from the whole
+      # schema and is not something to hand-write.
       #
-      # gzip+base64 on a single line: every log line carries a timestamp prefix,
-      # and one line cannot be corrupted by wrapping. `always()` because the
-      # check above has already failed by this point.
-      - name: TEMP dump the generated Room schema
+      # Printed as a diff against the previous version rather than as the whole
+      # file: the two differ only in the version, the hash and the two tables
+      # that gained columns, so this is a few dozen lines instead of a hundred
+      # kilobytes. `always()` because the check above has already failed here.
+      - name: TEMP print the generated Room schema as a diff
         if: always()
         run: |
           ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache
-          F="$(ls app/schemas/*/16.json 2>/dev/null | head -1)"
-          if [ -z "$F" ]; then echo "SCHEMA16_MISSING"; exit 0; fi
-          echo "SCHEMA16_BEGIN"
-          gzip -9 -c "$F" | base64 -w0
-          echo ""
-          echo "SCHEMA16_END"
+          OLD="$(ls app/schemas/*/15.json 2>/dev/null | head -1)"
+          NEW="$(ls app/schemas/*/16.json 2>/dev/null | head -1)"
+          if [ -z "$NEW" ]; then echo "SCHEMA16_MISSING"; exit 0; fi
+          echo "SCHEMA16_DIFF_BEGIN"
+          diff -u "$OLD" "$NEW" || true
+          echo "SCHEMA16_DIFF_END"
 
       - name: Build debug APKs (tv + mobile)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release != 'true' }}
