@@ -75,6 +75,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # TEMPORARY, with the schema step below. The post-action writes a
+          # cache report of well over a hundred lines, which buries the schema
+          # diff too deep in the log tail to read back.
+          add-job-summary: never
 
       - name: Lint (both flavors, release variant)
         run: ./gradlew :app:lintTvRelease :app:lintMobileRelease --no-daemon
