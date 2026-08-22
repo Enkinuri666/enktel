@@ -1,9 +1,18 @@
 [versions]
+# Everything here is the newest *stable* release as of this commit.
+#
+# Stable, not newest-published. At the time of writing Kotlin has 2.4.20-RC,
+# navigation 2.10.0-rc01 and work 2.12.0-rc01 on the wire, and none of them are
+# in this file. A release candidate in a build that ships signed APKs to
+# viewers' devices trades a real property — someone else already hit the bugs —
+# for a version number, and there is nothing in those three that this app asks
+# for. Left here so the next reader can see the gap is deliberate rather than
+# stale.
 agp = "9.3.1"
 kotlin = "2.4.10"
 ksp = "2.3.11"
 coreKtx = "1.19.0"
-composeBom = "2026.06.01"
+composeBom = "2026.08.00"
 tvMaterial = "1.1.0"
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
@@ -11,7 +20,7 @@ navigation = "2.9.8"
 media3 = "1.11.0"
 room = "2.8.4"
 datastore = "1.2.1"
-okhttp = "5.4.0"
+okhttp = "5.5.0"
 serializationJson = "1.11.0"
 coil = "3.5.0"
 work = "2.11.2"
@@ -20,8 +29,8 @@ coroutines = "1.11.0"
 # module that uses them is excluded from the build unless ENKTEL_BASELINE_PROFILE
 # is set, so a version that turns out to be wrong cannot break the app build.
 benchmark = "1.4.1"
-uiautomator = "2.3.0"
-testExtJunit = "1.2.1"
+uiautomator = "2.4.0"
+testExtJunit = "1.3.0"
 
 junit = "4.13.2"
 
