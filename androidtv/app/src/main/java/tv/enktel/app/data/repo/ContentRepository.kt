@@ -24,6 +24,7 @@ import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.data.m3u.LocalFirst
 import tv.enktel.app.data.m3u.M3uParser
+import tv.enktel.app.data.m3u.PlaylistFiles
 import tv.enktel.app.data.net.gunzipIfNeeded
 import tv.enktel.app.data.str
 import tv.enktel.app.data.xtream.XtreamClient
@@ -384,15 +385,24 @@ class ContentRepository(
     }
 
     private suspend fun refreshM3u(p: Profile): String {
-        val req = Request.Builder().url(p.m3uUrl)
-            // Ask upstream for gzip; also handle URLs ending in .gz manually below.
-            .header("Accept-Encoding", "gzip")
-            .build()
-        val playlist = http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
-            val raw = resp.body.byteStream()
-            val stream = gunzipIfNeeded(raw)
-            stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+        // An imported playlist is a file this app copied at import time; a
+        // subscribed one is fetched. Both end up in the same parser, and both
+        // go through gunzipIfNeeded, since a file picked off a device is as
+        // likely to be gzipped as anything served over HTTP.
+        val playlist = if (PlaylistFiles.isLocal(p.m3uUrl)) {
+            gunzipIfNeeded(PlaylistFiles.open(p.m3uUrl))
+                .reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+        } else {
+            val req = Request.Builder().url(p.m3uUrl)
+                // Ask upstream for gzip; also handle URLs ending in .gz manually below.
+                .header("Accept-Encoding", "gzip")
+                .build()
+            http.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
+                val raw = resp.body.byteStream()
+                val stream = gunzipIfNeeded(raw)
+                stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+            }
         }
 
         // A 200 that parses to nothing is a failed download wearing a success
