@@ -73,13 +73,13 @@ https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 #EXTINF:-1 tvg-id="mjh-all-starcinema-fast" tvg-logo="https://i.mjh.nz/.images/auto-all-starcinema-fast-9f2397.png" tvg-country="AU" group-title="AU - Movies",All-Star Cinema
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/all-starcinema-fast.m3u8
-#EXTINF:-1 tvg-id="mjh-radio-ih-6333" tvg-logo="https://i.iheart.com/v3/re/new_assets/5e1be9430d9b69e12e6931a4" tvg-country="AU" group-title="AU - Music",92.7 Mix FM
+#EXTINF:-1 tvg-id="mjh-radio-ih-6333" tvg-logo="https://i.iheart.com/v3/re/new_assets/5e1be9430d9b69e12e6931a4" tvg-country="AU" group-title="AU - Music" radio="true",92.7 Mix FM
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/radio-ih-6333.m3u8
-#EXTINF:-1 tvg-id="mjh-radio-ih-9042" tvg-logo="https://i.iheart.com/v3/re/new_assets/60fd422611a963a6033d5584" tvg-country="AU" group-title="AU - Music",99.7 Bridge FM
+#EXTINF:-1 tvg-id="mjh-radio-ih-9042" tvg-logo="https://i.iheart.com/v3/re/new_assets/60fd422611a963a6033d5584" tvg-country="AU" group-title="AU - Music" radio="true",99.7 Bridge FM
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/radio-ih-9042.m3u8
-#EXTINF:-1 tvg-id="mjh-radio-ih-10742" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6a697fa58c64e578d302edd4" tvg-country="AU" group-title="AU - Music",SBS Radio 4
+#EXTINF:-1 tvg-id="mjh-radio-ih-10742" tvg-logo="https://i.iheart.com/v3/re/assets.streams/6a697fa58c64e578d302edd4" tvg-country="AU" group-title="AU - Music" radio="true",SBS Radio 4
 #EXTVLCOPT:http-user-agent=otg/1.5.1 (AppleTv Apple TV 4; tvOS16.0; appletv.client) libcurl/7.58.0 OpenSSL/1.0.2o zlib/1.2.11 clib/1.8.56
 https://i.mjh.nz/.r/radio-ih-10742.m3u8
 #EXTINF:-1 tvg-id="mjh-10-qld" tvg-logo="https://10play.com.au/ip/s3/2025/06/25/b18ae76555d114f7bfaf1c3bfa43dd3f-1384577.png" tvg-country="AU" group-title="AU - Entertainment",10
@@ -1101,7 +1101,7 @@ https://estrella-news-oando.amagi.tv/playlist.m3u8
 http://247preview.foxnews.com/hls/live/2020027/fncv3preview/primary.m3u8
 #EXTINF:-1 tvg-id="FoxNewsChannel.us@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Fox_News_Channel_logo.svg/960px-Fox_News_Channel_logo.svg.png" tvg-country="US" group-title="US - News",Fox News Channel (720p)
 http://45.190.28.50/FOX_NEWS/index.m3u8
-#EXTINF:-1 tvg-id="FoxNewsRadio.us@SD" tvg-logo="https://radio.foxnews.com/wp-content/uploads/2017/10/default_logo-150x150.png" tvg-country="US" group-title="US - News",Fox News Radio (720p)
+#EXTINF:-1 tvg-id="FoxNewsRadio.us@SD" tvg-logo="https://radio.foxnews.com/wp-content/uploads/2017/10/default_logo-150x150.png" tvg-country="US" group-title="US - News" radio="true",Fox News Radio (720p)
 https://radiovid.foxnews.com/hls/live/661547/RADIOVID/index.m3u8
 #EXTINF:-1 tvg-id="FoxWeather.us" tvg-name="Fox Weather" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Fox_Weather_logo.svg/960px-Fox_Weather_logo.svg.png" tvg-country="US" group-title="US - News",Fox Weather
 https://247wlive.foxweather.com/stream/index.m3u8
@@ -2399,7 +2399,7 @@ https://jmp2.uk/plu-6868152657543d1f8be4ece3.m3u8
 https://rpn.bozztv.com/ebstv/ebsmusika/index.m3u8
 #EXTINF:-1 tvg-id="PlutoTVKaraokeporStingray.us@LatAm" tvg-logo="https://images.pluto.tv/channels/5f85cf621d6d2200079f1de0/colorLogoPNG.png" tvg-country="US" group-title="US - Music",Karaoke por Stingray (720p)
 https://jmp2.uk/plu-5f85cf621d6d2200079f1de0.m3u8
-#EXTINF:-1 tvg-id="KPVMLD258.us@SD" tvg-logo="https://i.imgur.com/iPtuku6.png" tvg-country="US" group-title="US - Music",KPVM Ace Country Radio
+#EXTINF:-1 tvg-id="KPVMLD258.us@SD" tvg-logo="https://i.imgur.com/iPtuku6.png" tvg-country="US" group-title="US - Music" radio="true",KPVM Ace Country Radio
 https://2-fss-1.streamhoster.com/pl_122/206858-4412960-1/playlist.m3u8
 #EXTINF:-1 tvg-id="LaQueBuenaAtlanta.us@SD" tvg-logo="https://iili.io/JysD2a4.png" tvg-country="US" group-title="US - Music",La Que Buena Atlanta
 https://streamyes.alsolnet.com/quebuenaatlanta/live/index.m3u8
@@ -5332,7 +5332,7 @@ https://jmp2.uk/plu-66b3af1c3a4ad200081c7d03.m3u8
 https://d39g1vxj2ef6in.cloudfront.net/v1/master/3fec3e5cac39a52b2132f9c66c83dae043dc17d4/prod-rakuten-stitched/master.m3u8?ads.xumo_channelId=88883098
 #EXTINF:-1 tvg-id="ZarinTV.us@SD" tvg-country="US" group-title="US - Entertainment",Zarin TV (1080p)
 https://fl1002.bozztv.com/gf-zarintv/index.m3u8
-#EXTINF:-1 tvg-id="BBCRadio5SportsExtra.uk" tvg-name="BBC Radio 5 Sports Extra" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd5s-epg.png" tvg-country="GB" group-title="GB - Sports",BBC Radio 5 Sports Extra
+#EXTINF:-1 tvg-id="BBCRadio5SportsExtra.uk" tvg-name="BBC Radio 5 Sports Extra" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd5s-epg.png" tvg-country="GB" group-title="GB - Sports" radio="true",BBC Radio 5 Sports Extra
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_five_live_sports_extra&bitrate=320000
 #EXTINF:-1 tvg-id="DAZNCombat.uk" tvg-name="DAZN Combat" tvg-logo="https://i.postimg.cc/VsW3Jsrz/logo-DAZN-Combat.png" tvg-country="GB" group-title="GB - Sports",DAZN Combat
 https://jmp2.uk/plu-64805922536e0c0008a1a1e6.m3u8
@@ -5649,17 +5649,17 @@ https://amg02784-amg02784c2-amgplt0002.playout.now3.amagi.tv/ts-eu-w1-n2/playlis
 https://2c88ed8c4df9479aa0c7138dc42115e2.mediatailor.eu-west-1.amazonaws.com/v1/master/0547f18649bd788bec7b67b746e47670f558b6b2/production-LiveChannel-6194/master.m3u8
 #EXTINF:-1 tvg-id="AfrobeatTVEntertainment.uk@SD" tvg-logo="https://i.imgur.com/232ndRK.png" tvg-country="GB" group-title="GB - Music",Afrobeats (1080p)
 https://stream.ecable.tv/afrobeats/index.m3u8
-#EXTINF:-1 tvg-id="BBCRadio2.uk" tvg-name="BBC Radio 2" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd2-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 2
+#EXTINF:-1 tvg-id="BBCRadio2.uk" tvg-name="BBC Radio 2" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd2-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 2
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_two&bitrate=320000
-#EXTINF:-1 tvg-id="BBCRadio3.uk" tvg-name="BBC Radio 3" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd3-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 3
+#EXTINF:-1 tvg-id="BBCRadio3.uk" tvg-name="BBC Radio 3" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd3-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 3
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_three&bitrate=320000
-#EXTINF:-1 tvg-id="BBCRadio4FM.uk" tvg-name="BBC Radio 4" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd4-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 4
+#EXTINF:-1 tvg-id="BBCRadio4FM.uk" tvg-name="BBC Radio 4" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd4-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 4
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_fourfm&bitrate=320000
-#EXTINF:-1 tvg-id="BBCRadio4Extra.uk" tvg-name="BBC Radio 4 Extra" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd4x-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 4 Extra
+#EXTINF:-1 tvg-id="BBCRadio4Extra.uk" tvg-name="BBC Radio 4 Extra" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd4x-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 4 Extra
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_four_extra&bitrate=320000
-#EXTINF:-1 tvg-id="BBCRadio5Live.uk" tvg-name="BBC Radio 5 Live" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd5l-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 5 Live
+#EXTINF:-1 tvg-id="BBCRadio5Live.uk" tvg-name="BBC Radio 5 Live" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd5l-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 5 Live
 https://lsn.lv/bbcradio.m3u8?station=bbc_radio_five_live&bitrate=320000
-#EXTINF:-1 tvg-id="BBCRadio6Music.uk" tvg-name="BBC Radio 6 Music" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd6-epg.png" tvg-country="GB" group-title="GB - Music",BBC Radio 6 Music
+#EXTINF:-1 tvg-id="BBCRadio6Music.uk" tvg-name="BBC Radio 6 Music" tvg-logo="https://experiencersinternational.github.io/tvsetup/tvg-ico/bbcrd6-epg.png" tvg-country="GB" group-title="GB - Music" radio="true",BBC Radio 6 Music
 https://lsn.lv/bbcradio.m3u8?station=bbc_6music&bitrate=320000
 #EXTINF:-1 tvg-id="MTVGlobal.uk" tvg-name="MTV Global" tvg-logo="https://i.imgur.com/n2BoU7Q.png" tvg-country="GB" group-title="GB - Music",MTV Global
 http://315e5a5d.ottrast.com/iptv/MM4E93NGF5LADZ/12055/index.m3u8

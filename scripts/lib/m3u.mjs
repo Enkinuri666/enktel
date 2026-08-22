@@ -342,6 +342,12 @@ export function toM3u(entries, opts = {}) {
       e.tvgCountry && `tvg-country="${escapeAttr(e.tvgCountry)}"`,
       e.tvgLanguage && `tvg-language="${escapeAttr(e.tvgLanguage)}"`,
       e.group && `group-title="${escapeAttr(e.group)}"`,
+      // Round-trips the flag `parsePlaylist` reads. Leaving it out was silent
+      // data loss: a source that tags its stations `radio="true"` had that
+      // stripped on the way through, so every station arrived downstream
+      // looking like a television channel — filling Live TV and leaving the
+      // radio section empty.
+      e.radio && 'radio="true"',
     ].filter(Boolean);
 
     out.push(`#EXTINF:-1 ${attrs.join(' ')},${e.name}`.replace(/\s+,/, ','));
