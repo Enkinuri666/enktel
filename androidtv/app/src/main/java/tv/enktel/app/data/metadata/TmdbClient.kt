@@ -60,10 +60,34 @@ class TmdbClient(
         const val SERVICE_BASE = "https://enktel.tv/api/tmdb"
         private const val LANG = "en-US"
         private val LenientJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
+        /** `tt` followed by at least seven digits — IMDb's own id shape. */
+        private val IMDB_ID = Regex("^tt[0-9]{7,}$")
+
+        fun looksLikeImdbId(value: String): Boolean = IMDB_ID.matches(value.trim())
+
+        /**
+         * Pull IMDb's id out of a TMDB payload, from wherever it put it.
+         *
+         * A movie carries `imdb_id` at the top level; a series carries it only
+         * under `external_ids`, which is why the request appends that. Reading
+         * one and not the other would have given films IMDb links and left
+         * every series without one.
+         *
+         * TMDB also answers with JSON `null` or an empty string for a title it
+         * has no IMDb mapping for, so a value is taken only if it looks like an
+         * IMDb id. Anything else is a link to a 404.
+         */
+        fun imdbIdOf(json: JsonObject): String {
+            val candidates = listOf(json.str("imdb_id"), json.get("external_ids").str("imdb_id"))
+            return candidates.filterNotNull().firstOrNull { looksLikeImdbId(it) }.orEmpty()
+        }
     }
 
     data class Enrichment(
         val tmdbId: Long,
+        /** IMDb's `tt…` id, or blank when TMDB knows no mapping. */
+        val imdbId: String = "",
         val overview: String,
         val genres: List<String>,
         val studios: List<String>,
@@ -215,7 +239,8 @@ class TmdbClient(
      * Returns null when no video is available or the key isn't set.
      */
     suspend fun trailerYoutubeKey(kind: String, tmdbId: Long): String? = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
+        // See [fetch]: a blank key means "use the proxy", not "give up".
+        if (tmdbId <= 0) return@withContext null
         val urlBase = "$apiBase/$kind/$tmdbId/videos?language=$LANG"
         val req = get(urlBase)
         val json: JsonElement = try {
@@ -241,11 +266,21 @@ class TmdbClient(
     }
 
     private suspend fun fetch(kind: String, tmdbId: Long, isSeries: Boolean): Enrichment? = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank() || tmdbId <= 0) return@withContext null
+        // Not `apiKey.isBlank()`. Blank is the *default*, and it is what
+        // selects the server-side proxy up in [viaService] — so guarding on it
+        // here made the proxy dead code: every install without a personal TMDB
+        // key enriched nothing, which is every install the proxy was built
+        // for. The only value that makes this call impossible is a missing id.
+        if (tmdbId <= 0) return@withContext null
         // Accept either a v3 numeric key OR a v4 bearer token. We detect
         // token-style keys by their length (v4 tokens are ~200 chars,
         // v3 keys are 32 hex chars) and send the appropriate auth.
-        val urlBase = "$apiBase/$kind/$tmdbId?language=$LANG&append_to_response=keywords,credits"
+        // external_ids carries imdb_id for a series. A movie reports it at the
+        // top level and a series never does, and appending it costs no extra
+        // request — `append_to_response` is on the proxy's forwarded-parameter
+        // list, so this works through the proxy as well as against TMDB direct.
+        val urlBase =
+            "$apiBase/$kind/$tmdbId?language=$LANG&append_to_response=keywords,credits,external_ids"
         val req = get(urlBase)
         val json: JsonElement = try {
             http.newCall(req).execute().use { r ->
@@ -287,6 +322,7 @@ class TmdbClient(
 
         Enrichment(
             tmdbId = tmdbId,
+            imdbId = imdbIdOf(json),
             overview = json.str("overview").orEmpty(),
             genres = genres,
             studios = studios,

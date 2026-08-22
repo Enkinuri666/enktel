@@ -17,6 +17,25 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <!--
+            Package visibility for the IMDb link on a title's details page.
+
+            From API 30 an app cannot see which activities handle an intent
+            unless it declares the intent here first, so resolveActivity()
+            answers null even on a device that does have a browser and the
+            button would never appear. The details screen asks before it
+            offers: a sideloaded TV stick often has neither the IMDb app nor a
+            browser, and a button that fires an intent into a void is the exact
+            fault the trailer button used to have.
+        -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="imdb" />
+        </intent>
     </queries>
 
     <application

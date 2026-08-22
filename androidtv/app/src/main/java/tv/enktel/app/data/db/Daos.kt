@@ -167,6 +167,31 @@ interface ContentDao {
     )
 
     /**
+     * Record what IMDb says about a title.
+     *
+     * Its own statement rather than more parameters on [enrichMovie] because
+     * the two lookups fail independently: TMDB answers for a title OMDb has
+     * never heard of, and OMDb answers for one whose TMDB record is thin. One
+     * combined write would make each failure erase the other's result.
+     *
+     * The id is written even when no rating came back, so a later run can
+     * retry the rating without paying for the TMDB round trip again — and so
+     * the IMDb link works for a title whose rating OMDb withholds.
+     */
+    @Query("""UPDATE movies SET imdbId = :imdbId,
+             imdbRating = CASE WHEN :rating > 0 THEN :rating ELSE imdbRating END,
+             imdbVotes = CASE WHEN :rating > 0 THEN :votes ELSE imdbVotes END
+             WHERE key = :key""")
+    suspend fun setMovieImdb(key: String, imdbId: String, rating: Double, votes: Int)
+
+    /** See [setMovieImdb]. */
+    @Query("""UPDATE series SET imdbId = :imdbId,
+             imdbRating = CASE WHEN :rating > 0 THEN :rating ELSE imdbRating END,
+             imdbVotes = CASE WHEN :rating > 0 THEN :votes ELSE imdbVotes END
+             WHERE key = :key""")
+    suspend fun setSeriesImdb(key: String, imdbId: String, rating: Double, votes: Int)
+
+    /**
      * Write back a sanitised title, and nothing else.
      *
      * The worker used to do this with `upsertMovies(listOf(m.copy(name = …)))`,
