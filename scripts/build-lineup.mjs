@@ -26,6 +26,7 @@ import { parsePlaylist, toCsv, toM3u, toText } from './lib/m3u.mjs';
 import { countryOf, normalizeCountry } from './lib/countries.mjs';
 import { GENRES, classifyGenre, lineupGroup, lineupSorter } from './lib/genres.mjs';
 import { fetchLogos, loadGuideIndex } from './lib/guide-sources.mjs';
+import { looksLikeRadio } from './lib/radio.mjs';
 import { matchChannel } from './lib/xmltv.mjs';
 
 const DEFAULTS = {
@@ -256,6 +257,12 @@ async function main() {
     // 3. Genre. A general-interest channel matches no rule, and there are
     // hundreds of them — dropping those would quietly delete a third of the
     // lineup, so they fall into the default bucket and are counted separately.
+    // Radio before genre. A feed that tags its stations says so and is
+    // believed; the rest are classified by name, because a station that
+    // reaches the player unflagged is indistinguishable from a TV channel and
+    // lands in Live TV with the radio section left empty.
+    entry.radio = looksLikeRadio(entry);
+
     entry.genre = classifyGenre(entry);
     if (!entry.genre) {
       stats.unclassified++;

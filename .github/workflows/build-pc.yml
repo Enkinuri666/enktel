@@ -41,10 +41,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node 20
+      # Node 20 is past end-of-life, so CI was building the desktop app on a
+      # runtime that no longer gets security fixes. 22 is the active LTS that
+      # Vite 5 actually lists as supported — 24 is also LTS but postdates
+      # Vite 5.3, and 25 is a Current release, which is not what a signed
+      # desktop build should be produced on.
+      - name: Set up Node 22 (LTS)
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: pc/package-lock.json
 

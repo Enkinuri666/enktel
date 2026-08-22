@@ -2,6 +2,7 @@ package tv.enktel.app.data.repo
 
 import kotlinx.coroutines.flow.Flow
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.m3u.PlaylistFiles
 import tv.enktel.app.data.db.ProfileDao
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
@@ -123,8 +124,22 @@ class PlaylistRepository(
         saved.copy(id = id)
     }
 
+    /**
+     * Import a playlist the viewer picked off their device.
+     *
+     * The document is copied into app storage first — see [PlaylistFiles] for
+     * why a `content://` grant is not something a profile can hold onto.
+     */
+    suspend fun importM3u(ctx: android.content.Context, uri: android.net.Uri): Result<Profile> =
+        runCatching {
+            val url = PlaylistFiles.copyIn(ctx, uri)
+            addM3u(PlaylistFiles.displayName(ctx, uri), url, epgUrl = "").getOrThrow()
+        }
+
     suspend fun addM3u(name: String, url: String, epgUrl: String): Result<Profile> = runCatching {
-        require(url.startsWith("http")) { "Playlist URL must start with http(s)://" }
+        require(url.startsWith("http") || PlaylistFiles.isLocal(url)) {
+            "Playlist URL must start with http(s):// or be an imported file"
+        }
         val profile = Profile(name = name, kind = "m3u", m3uUrl = url.trim(), epgUrl = epgUrl.trim())
         val id = dao.insert(profile)
         settings.setActiveProfile(id)
@@ -133,7 +148,12 @@ class PlaylistRepository(
 
     suspend fun switchTo(id: Long) = settings.setActiveProfile(id)
 
-    suspend fun delete(id: Long) = dao.delete(id)
+    suspend fun delete(id: Long) {
+        // Drop the imported copy with the profile; nothing else references it,
+        // and leaving it behind leaks a file the viewer cannot see or reach.
+        runCatching { dao.byId(id)?.let { PlaylistFiles.forget(it.m3uUrl) } }
+        dao.delete(id)
+    }
 
     suspend fun markSynced(p: Profile) = dao.update(p.copy(lastSync = System.currentTimeMillis()))
 

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.BuildConfig
@@ -208,13 +209,75 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
             ProviderUserAgent(graph, p, scope)
         }
+        val playlistPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            if (uri != null) scope.launch {
+                status = "Importing\u2026"
+                val imported = graph.playlists.importM3u(ctx, uri)
+                status = imported.fold({ p ->
+                    // Sync straight away. An imported profile that sits empty
+                    // until something else triggers a refresh reads as a failed
+                    // import, and the parse is the only real check that the
+                    // file was a playlist at all.
+                    runCatching { graph.content.refreshAll(p) }.fold(
+                        { summary ->
+                            runCatching { graph.playlists.markSynced(p) }
+                            "Imported ${p.name} \u2014 $summary"
+                        },
+                        { e -> "Imported, but sync failed: ${e.message ?: "unknown"}" },
+                    )
+                }, { e -> "Import failed: ${e.message ?: "unknown"}" })
+            }
+        }
+
+        val exportPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("audio/x-mpegurl"),
+        ) { uri ->
+            if (uri != null) scope.launch {
+                status = runCatching {
+                    val p = graph.playlists.activeProfile() ?: error("No playlist selected")
+                    val channels = graph.content.channels(p.id).first()
+                    val text = tv.enktel.app.data.m3u.M3uWriter.write(
+                        channels,
+                        epgUrl = p.epgUrl,
+                        // An M3U profile stores a URL per row. An Xtream line
+                        // builds them, which means an exported Xtream playlist
+                        // necessarily contains the line's username and
+                        // password — it is a working key to the account, so
+                        // treat the file as one.
+                        urlOf = { ch ->
+                            if (p.kind == "m3u") ch.url
+                            else tv.enktel.app.data.xtream.StreamUrlResolver
+                                .forChannel(p, ch, preferHls = true).firstOrNull().orEmpty()
+                        },
+                    )
+                    ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
+                        ?: error("Could not open the file for writing")
+                    val warning = if (p.kind == "xtream") " \u2014 contains your line's credentials" else ""
+                    "Exported ${channels.size} channels$warning"
+                }.getOrElse { e -> "Export failed: ${e.message ?: "unknown"}" }
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
+            FocusButton("\u2b06 Import file", onClick = { playlistPicker.launch(arrayOf("*/*")) })
+            FocusButton("\u2b07 Export", onClick = {
+                val p = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
+                val stem = p?.name?.replace(Regex("[^A-Za-z0-9 _-]"), "")?.trim().orEmpty()
+                exportPicker.launch("${stem.ifBlank { "enktel" }}.m3u")
+            })
             FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
             FocusButton("📶 Network Speed Test", onClick = { nav.navigate("speedTest") })
         }
 
         Spacer(Modifier.height(10.dp))
+        // Import accepts anything the picker will show. These files arrive as
+        // .m3u, .m3u8, .dat, .txt and with no extension at all, and the name
+        // says nothing about the contents — the parser is what decides, so
+        // filtering by MIME type here would only hide valid playlists.
+
         tv.enktel.app.ui.components.ChipRowLabel("Live stream format")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             tv.enktel.app.ui.components.GlassChip("HLS (m3u8)", selected = streamFormat == "hls", onClick = { scope.launch { graph.settings.setStreamFormat("hls") } })
