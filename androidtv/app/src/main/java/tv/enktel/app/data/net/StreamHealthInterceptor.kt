@@ -1,7 +1,7 @@
 package tv.enktel.app.data.net
 
 import android.os.SystemClock
-import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
@@ -22,10 +22,24 @@ import java.io.IOException
  * re-issues against the backup.  The chain records both the primary
  * failure (for the toast) and the backup success (for the health chip)
  * so the user knows what just happened.
+ *
+ * There are two recoveries, tried in that order. A backup gateway, which the
+ * viewer configures and which swaps the host for a mirror of the same panel;
+ * and failing that the relay, which needs no configuration and changes only
+ * *where the request comes from*. The second is what answers a geo-block:
+ * those are refusals aimed at the address, not the credentials, so the only
+ * thing that changes the answer is asking from somewhere else.
  */
 class StreamHealthInterceptor(
     private val gateways: () -> List<String>,
     private val notify: (String) -> Unit = {},
+    /**
+     * Where to relay through when a host refuses this device.
+     *
+     * A lambda so a test can point it somewhere inert, and so a future setting
+     * can move it without touching this class.
+     */
+    private val relayBase: () -> String = { RelayUrls.DEFAULT_BASE },
 ) : Interceptor {
 
     @Throws(IOException::class)
@@ -44,12 +58,9 @@ class StreamHealthInterceptor(
         if (resp.code == 403) {
             StreamHealth.recordBlocked(host)
             resp.close()
-            val alt = tryBackup(chain, original) ?: throw IOException("403 Forbidden — no backup gateway configured")
-            if (alt.isSuccessful) {
-                notify("Switched to backup gateway ${alt.request.url.host}")
-                StreamHealth.setActiveGateway(alt.request.url.host)
-            }
-            return alt
+            return tryBackup(chain, original)
+                ?: tryRelay(chain, original)
+                ?: throw IOException(blockedMessage(host))
         }
         if (resp.isSuccessful) {
             StreamHealth.recordSuccess(elapsed)
@@ -62,13 +73,67 @@ class StreamHealthInterceptor(
         original: Request,
         why: IOException,
     ): Response? {
-        val alt = tryBackup(chain, original) ?: return null
-        if (alt.isSuccessful) {
-            notify("Backup gateway recovered from: ${why.message}")
-            StreamHealth.setActiveGateway(alt.request.url.host)
-        }
+        // The helpers announce whichever path worked; this only adds the
+        // reason, which the 403 path does not have.
+        val alt = tryBackup(chain, original) ?: tryRelay(chain, original) ?: return null
+        notify("Recovered from: ${why.message}")
         return alt
     }
+
+    /**
+     * Last resort: fetch the same URL through our own origin.
+     *
+     * A 403 on a stream is almost always geographic — the host is answering
+     * the *address the request came from*, not the credentials — so the one
+     * thing that changes the answer is asking from somewhere else. The relay
+     * is somewhere else. Nothing about the request changes but its origin: the
+     * URL is passed through whole, credentials and all, and a stream the line
+     * is not entitled to is refused exactly as it would be direct.
+     *
+     * This is deliberately not gated on the Direct/Relay setting. That switch
+     * chooses the *normal* path, and its default is Direct because direct is
+     * better whenever it works. This is the abnormal path — the request has
+     * already failed — and a viewer should not have to know the switch exists
+     * to watch a channel that a host will not serve to their country.
+     *
+     * Two things are never relayed. A request already aimed at the relay's own
+     * host, which would nest the relay inside itself; and that same rule keeps
+     * the metadata proxies out of it, since the guide, playlist, TMDB and OMDb
+     * endpoints all live on that origin — a 403 from those means the service
+     * said no, and asking it again from itself would not change its mind.
+     */
+    private fun tryRelay(chain: Interceptor.Chain, original: Request): Response? {
+        val base = try { relayBase() } catch (_: Throwable) { "" }
+        val candidates = RelayUrls.fallbackChain(original.url.toString(), base)
+        if (candidates.isEmpty()) return null
+
+        for (relayed in candidates) {
+            val rebuilt = original.newBuilder().url(relayed).build()
+            val r = try { chain.proceed(rebuilt) } catch (_: IOException) { continue }
+            if (r.isSuccessful) {
+                val where = RelayUrls.regionOf(relayed)
+                notify("Playing via $where — ${original.url.host} refused this location")
+                relayed.toHttpUrlOrNull()?.host?.let { StreamHealth.setActiveGateway(it) }
+                return r
+            }
+            // A 403 from the relay is the upstream refusing that country too,
+            // which is the whole reason there is more than one to try.
+            r.close()
+        }
+        return null
+    }
+
+    /**
+     * What to say when nothing worked.
+     *
+     * "403 Forbidden" told a viewer nothing they could act on. A block that
+     * survives the relay is one the relay's own location cannot satisfy
+     * either, which is worth saying plainly rather than reporting as a generic
+     * refusal.
+     */
+    private fun blockedMessage(host: String): String =
+        "$host refused this location, and every relay country too. This " +
+            "channel is geo-locked somewhere none of them can reach."
 
     private fun tryBackup(chain: Interceptor.Chain, original: Request): Response? {
         val list = try { gateways() } catch (_: Throwable) { emptyList() }
@@ -82,7 +147,11 @@ class StreamHealthInterceptor(
             }.build()
             val rebuilt = original.newBuilder().url(newUrl).build()
             val r = try { chain.proceed(rebuilt) } catch (_: IOException) { continue }
-            if (r.isSuccessful) return r
+            if (r.isSuccessful) {
+                notify("Switched to backup gateway $h")
+                StreamHealth.setActiveGateway(h)
+                return r
+            }
             r.close()
         }
         return null

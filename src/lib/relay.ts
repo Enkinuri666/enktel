@@ -1,3 +1,5 @@
+import { LINEUP_RELAY_HOSTS } from "./relay-hosts.generated";
+
 /**
  * Relay helpers, kept out of the route module.
  *
@@ -17,13 +19,44 @@
  */
 export const DEFAULT_RELAY_HOSTS = ["api.elg-26.com", "line.enktel.online"];
 
-/** The configured allowlist, or the default when unset. */
+/**
+ * The allowlist: the panel hosts, plus every host the published lineup points
+ * at, plus anything configured.
+ *
+ * The lineup hosts have to be here or the relay cannot answer the case it
+ * exists for. Geo-blocks land overwhelmingly on the free lineup — 1,073 hosts
+ * this project publishes itself — and with only the two panel hosts listed,
+ * every one of those was refused by us before it ever reached the upstream
+ * that was blocking it.
+ *
+ * Generated rather than widened: `LINEUP_RELAY_HOSTS` is derived from the
+ * playlist by scripts/gen-relay-hosts.mjs, so the list stays bounded to hosts
+ * this project already sends viewers to. Allowing everything would make this
+ * an open proxy, which is the one thing the allowlist exists to prevent.
+ *
+ * ENKTEL_RELAY_HOSTS *adds* to that set rather than replacing it. Replacing
+ * was the old behaviour and it is a trap: setting the variable to add one
+ * reseller host would silently drop all thousand-odd lineup hosts and turn the
+ * geo-block recovery back off, with nothing to indicate why.
+ */
 export function relayHosts(configured: string | undefined): string[] {
   const list = (configured || "")
     .split(",")
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
-  return list.length ? list : DEFAULT_RELAY_HOSTS;
+  // Deduped with a plain loop rather than a Set: this tsconfig targets below
+  // ES2015, where spreading a Set needs downlevelIteration. Spreading arrays
+  // and iterating one with for..of are both fine there.
+  const merged = [...DEFAULT_RELAY_HOSTS, ...LINEUP_RELAY_HOSTS, ...list];
+  const seen: Record<string, true> = {};
+  const out: string[] = [];
+  for (const host of merged) {
+    if (!seen[host]) {
+      seen[host] = true;
+      out.push(host);
+    }
+  }
+  return out;
 }
 
 /**
