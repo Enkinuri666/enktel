@@ -110,6 +110,27 @@ object StreamHealth {
     }
 
     /**
+     * Record what a recovery just did, so it is visible somewhere.
+     *
+     * The interceptor has always described its own failovers through a
+     * `notify` callback, and the app never supplied one — so the description
+     * went into an empty lambda and a stream that failed over looked exactly
+     * like one that never tried. That is a bad property in general and a
+     * blocking one when the question is "did the failover run at all", which
+     * is the only question a viewer staring at a blocked channel can ask.
+     *
+     * Stored as [Snapshot.lastError] because that is the field the health chip
+     * and the system monitor already show. Not an error, despite the name; the
+     * field predates there being anything but errors to put in it.
+     */
+    @Synchronized
+    fun note(message: String) {
+        lastError = message
+        lastErrorAtMs = nowMs()
+        publish()
+    }
+
+    /**
      * Re-evaluate without a new reading.
      *
      * The chip is driven by this on a timer. Without it a fault that has

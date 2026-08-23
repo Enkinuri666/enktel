@@ -23,7 +23,6 @@ import tv.enktel.app.data.repo.WatchlistRepository
 import tv.enktel.app.data.xtream.XtreamClient
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
-import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 /**
@@ -41,6 +40,14 @@ class AppGraph(app: Application) {
     // Volatile so the health interceptor can read the latest without a Flow
     // subscription — updated whenever the setting flow emits (see below).
     @Volatile private var backupGatewaysSnapshot: List<String> = emptyList()
+
+    /**
+     * The viewer's own relay endpoint, or blank for the built-in one.
+     *
+     * Same reason as the gateways above: read on the failure path of any
+     * request, so it cannot be a Flow subscription there.
+     */
+    @Volatile private var relayBaseSnapshot: String = ""
 
     // Read on every request by UserAgentInterceptor, so changing it in
     // Settings (or via the Panel Doctor's auto-tune) takes effect immediately
@@ -63,11 +70,15 @@ class AppGraph(app: Application) {
         .writeTimeout(60, TimeUnit.SECONDS)
         .callTimeout(0, TimeUnit.SECONDS) // unlimited overall — long VOD downloads shouldn't be capped
         .retryOnConnectionFailure(true)
-        // Explicit NO_PROXY defeats HTTP_PROXY_AUTH (407) loops caused by an
-        // OS-level or JVM-level proxy that gets applied to every OkHttp call
-        // without credentials. Users who really need a proxy can put it in
-        // Settings → Backup gateways which is applied per-request instead.
-        .proxy(Proxy.NO_PROXY)
+        // Still no inherited proxy: an OS- or JVM-level one applied to every
+        // call without credentials produces a 407 loop, and picking one up
+        // silently is worse than refusing all of them. A selector rather than
+        // a pinned Proxy so the refusal has one exception — an exit the viewer
+        // configured deliberately, used only for hosts that have already
+        // refused this device. See ProxyRoute; it answers NO_PROXY for
+        // everything else, which is what `.proxy(Proxy.NO_PROXY)` did here.
+        .proxySelector(tv.enktel.app.data.net.ProxyRoute.selector())
+        .proxyAuthenticator(tv.enktel.app.data.net.ProxyRoute.authenticator())
         // Negotiate with old panels *and* old devices.
         //
         // MODERN_TLS alone (OkHttp's default) restricts the cipher list, and
@@ -102,6 +113,14 @@ class AppGraph(app: Application) {
         .addInterceptor(
             tv.enktel.app.data.net.StreamHealthInterceptor(
                 gateways = { backupGatewaysSnapshot },
+                // Every message this produced used to go into the default
+                // empty lambda, so a stream that failed over and a stream that
+                // never tried looked identical — to the viewer and to anyone
+                // trying to work out which had happened.
+                notify = { tv.enktel.app.data.net.StreamHealth.note(it) },
+                relayBase = {
+                    relayBaseSnapshot.ifBlank { tv.enktel.app.data.net.RelayUrls.DEFAULT_BASE }
+                },
             )
         )
         // Adds ISRG Root X1/X2 as trust anchors on pre-7.1.1 Android, where the
@@ -178,6 +197,16 @@ class AppGraph(app: Application) {
         val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
+        }
+        bgScope.launch {
+            settings.relayBase.collect { relayBaseSnapshot = it }
+        }
+        bgScope.launch {
+            settings.proxyConfig.collect { (endpoint, user, pass) ->
+                tv.enktel.app.data.net.ProxyRoute.configure(
+                    tv.enktel.app.data.net.ProxyRoute.parse(endpoint, user, pass),
+                )
+            }
         }
         bgScope.launch {
             settings.customUserAgent.collect { userAgentOverride = it }

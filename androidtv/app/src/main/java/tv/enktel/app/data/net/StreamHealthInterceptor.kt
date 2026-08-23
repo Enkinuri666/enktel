@@ -60,6 +60,7 @@ class StreamHealthInterceptor(
             resp.close()
             return tryBackup(chain, original)
                 ?: tryRelay(chain, original)
+                ?: tryProxy(chain, original)
                 ?: throw IOException(blockedMessage(host))
         }
         if (resp.isSuccessful) {
@@ -75,7 +76,10 @@ class StreamHealthInterceptor(
     ): Response? {
         // The helpers announce whichever path worked; this only adds the
         // reason, which the 403 path does not have.
-        val alt = tryBackup(chain, original) ?: tryRelay(chain, original) ?: return null
+        val alt = tryBackup(chain, original)
+            ?: tryRelay(chain, original)
+            ?: tryProxy(chain, original)
+            ?: return null
         notify("Recovered from: ${why.message}")
         return alt
     }
@@ -124,6 +128,45 @@ class StreamHealthInterceptor(
     }
 
     /**
+     * Go out through the viewer's own exit.
+     *
+     * Last, deliberately. The relay is ours, free and quick, and it answers the
+     * overwhelming majority of blocks — 83.7% of the lineup is American and the
+     * US endpoint settles those. This is for what it cannot reach: a channel
+     * published only inside a country nobody rents serverless capacity in.
+     * Croatia is the case that forced it — HRT exists on two hosts, both
+     * regional, with no third source anywhere in iptv-org.
+     *
+     * Nothing about the request changes; it leaves from somewhere else. The
+     * host is marked first so the retry actually takes the new route: OkHttp
+     * asks [ProxyRoute]'s selector per request, and the selector answers
+     * NO_PROXY for a host it has not been told about.
+     */
+    private fun tryProxy(chain: Interceptor.Chain, original: Request): Response? {
+        val host = original.url.host
+        // False when nothing is configured, and when this host is already going
+        // through the proxy — in which case the request that just failed was
+        // the proxied one, and repeating it changes nothing.
+        if (!ProxyRoute.routeThroughProxy(host)) return null
+
+        val r = try {
+            chain.proceed(original.newBuilder().build())
+        } catch (_: IOException) {
+            ProxyRoute.stopRouting(host)
+            return null
+        }
+        if (r.isSuccessful) {
+            notify("Playing via your proxy — $host refused this location")
+            StreamHealth.setActiveGateway(ProxyRoute.current().host)
+            return r
+        }
+        r.close()
+        // It did not help, so stop paying for the extra hop on this host.
+        ProxyRoute.stopRouting(host)
+        return null
+    }
+
+    /**
      * What to say when nothing worked.
      *
      * "403 Forbidden" told a viewer nothing they could act on. A block that
@@ -133,7 +176,8 @@ class StreamHealthInterceptor(
      */
     private fun blockedMessage(host: String): String =
         "$host refused this location, and every relay country too. This " +
-            "channel is geo-locked somewhere none of them can reach."
+            "channel is served only inside one country — Settings → Network " +
+            "takes a proxy or a relay endpoint there."
 
     private fun tryBackup(chain: Interceptor.Chain, original: Request): Response? {
         val list = try { gateways() } catch (_: Throwable) { emptyList() }

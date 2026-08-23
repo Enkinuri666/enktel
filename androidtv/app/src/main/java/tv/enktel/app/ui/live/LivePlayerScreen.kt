@@ -122,6 +122,9 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
     val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
+    // Blank means the built-in endpoint. A viewer who runs their own — the
+    // answer for a country this project cannot deploy into — points it here.
+    val relayBase by graph.settings.relayBase.collectAsStateWithLifecycle(initialValue = "")
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
     val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
@@ -267,6 +270,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         )
         val candidates = tv.enktel.app.data.net.RelayUrls.wrapAll(
             shapes + tv.enktel.app.data.net.AlternateSources.decode(ch.altUrls),
+            base = relayBase.ifBlank { tv.enktel.app.data.net.RelayUrls.DEFAULT_BASE },
             enabled = relayPlayback,
         )
         // Applied before the stream opens, not after: the data source reads the
