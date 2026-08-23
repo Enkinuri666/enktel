@@ -55,6 +55,21 @@ class SettingsStore(private val context: Context) {
      * and the stream host is what is broken.
      */
     private val RELAY_PLAYBACK = booleanPreferencesKey("relay_playback")
+
+    /**
+     * A relay endpoint of the viewer's own, replacing the built-in one.
+     *
+     * The built-in relay runs where this project can deploy, which is not
+     * everywhere. A channel geo-locked to a country with no serverless region —
+     * Croatia is the case that forced this — is unreachable through it no
+     * matter how many regions are added, because none of them is *that*
+     * country. The viewer can be in a position to fix that when we are not: a
+     * small host inside the right country, running the same `/api/stream`
+     * route or any prefix relay that takes `?u=`, and this pointed at it.
+     *
+     * Blank means the built-in one.
+     */
+    private val RELAY_BASE = stringPreferencesKey("relay_base")
     private val CAPTION_MODE = stringPreferencesKey("caption_mode") // off | auto | en | hr
     private val SKIP_INTRO_SEC = intPreferencesKey("skip_intro_sec")
     private val PIP_ENABLED = booleanPreferencesKey("pip_enabled")
@@ -277,6 +292,9 @@ class SettingsStore(private val context: Context) {
 
     /** See [RELAY_PLAYBACK]. Direct playback unless the viewer turns this on. */
     val relayPlayback: Flow<Boolean> = context.dataStore.data.map { it[RELAY_PLAYBACK] ?: false }
+
+    /** The viewer's own relay endpoint, or blank for the built-in one. */
+    val relayBase: Flow<String> = context.dataStore.data.map { it[RELAY_BASE].orEmpty() }
 
     /**
      * Closed captions on live TV — off, automatic, English or Croatian.
@@ -524,6 +542,7 @@ class SettingsStore(private val context: Context) {
     suspend fun setAutoplayNextEp(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_NEXT_EP] = v }
     suspend fun setTunneling(v: Boolean) = context.dataStore.edit { it[TUNNELING] = v }
     suspend fun setRelayPlayback(v: Boolean) = context.dataStore.edit { it[RELAY_PLAYBACK] = v }
+    suspend fun setRelayBase(v: String) = context.dataStore.edit { it[RELAY_BASE] = v.trim() }
     suspend fun setSkipIntroSec(v: Int) = context.dataStore.edit { it[SKIP_INTRO_SEC] = v }
     suspend fun setPipEnabled(v: Boolean) = context.dataStore.edit { it[PIP_ENABLED] = v }
     suspend fun setAutoPipOnBack(v: Boolean) = context.dataStore.edit { it[AUTO_PIP_ON_BACK] = v }

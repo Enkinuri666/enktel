@@ -42,6 +42,14 @@ class AppGraph(app: Application) {
     // subscription — updated whenever the setting flow emits (see below).
     @Volatile private var backupGatewaysSnapshot: List<String> = emptyList()
 
+    /**
+     * The viewer's own relay endpoint, or blank for the built-in one.
+     *
+     * Same reason as the gateways above: read on the failure path of any
+     * request, so it cannot be a Flow subscription there.
+     */
+    @Volatile private var relayBaseSnapshot: String = ""
+
     // Read on every request by UserAgentInterceptor, so changing it in
     // Settings (or via the Panel Doctor's auto-tune) takes effect immediately
     // rather than needing the OkHttp client rebuilt.
@@ -102,6 +110,14 @@ class AppGraph(app: Application) {
         .addInterceptor(
             tv.enktel.app.data.net.StreamHealthInterceptor(
                 gateways = { backupGatewaysSnapshot },
+                // Every message this produced used to go into the default
+                // empty lambda, so a stream that failed over and a stream that
+                // never tried looked identical — to the viewer and to anyone
+                // trying to work out which had happened.
+                notify = { tv.enktel.app.data.net.StreamHealth.note(it) },
+                relayBase = {
+                    relayBaseSnapshot.ifBlank { tv.enktel.app.data.net.RelayUrls.DEFAULT_BASE }
+                },
             )
         )
         // Adds ISRG Root X1/X2 as trust anchors on pre-7.1.1 Android, where the
@@ -178,6 +194,9 @@ class AppGraph(app: Application) {
         val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
+        }
+        bgScope.launch {
+            settings.relayBase.collect { relayBaseSnapshot = it }
         }
         bgScope.launch {
             settings.customUserAgent.collect { userAgentOverride = it }

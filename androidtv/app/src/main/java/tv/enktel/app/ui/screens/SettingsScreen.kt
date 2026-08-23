@@ -58,6 +58,16 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
     val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
+    val relayBase by graph.settings.relayBase.collectAsStateWithLifecycle(initialValue = "")
+    // Local echo of the stored value: a text field driven straight from a Flow
+    // fights the keyboard, since every keystroke round-trips through DataStore
+    // and comes back as a new value mid-edit. Plain `remember` is enough —
+    // every keystroke is persisted, so the effect below restores the field
+    // from storage after a configuration change.
+    var relayBaseField by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(relayBase) {
+        if (relayBaseField.isBlank() && relayBase.isNotBlank()) relayBaseField = relayBase
+    }
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
@@ -297,6 +307,26 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "and right whenever it works. Relay fetches through enktel.tv instead, for when " +
                 "this network cannot reach the host. It does not grant access to anything your " +
                 "line is not already entitled to.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = relayBaseField,
+            onValueChange = {
+                relayBaseField = it
+                scope.launch { graph.settings.setRelayBase(it) }
+            },
+            label = "Relay endpoint (blank = enktel.tv)",
+        )
+        Text(
+            "The built-in relay asks from the United States or the United Kingdom, so it " +
+                "answers a channel that refuses those countries and no others. A channel " +
+                "locked to somewhere else — Croatia, say — needs a relay inside that " +
+                "country, and there is no way for us to run one everywhere. Point this at " +
+                "your own and the app will use it: any endpoint that takes ?u=<stream url> " +
+                "and fetches it, including this app's own /api/stream on a host of yours.",
             color = EnktelTextDim,
             fontSize = 11.sp,
         )
@@ -645,7 +675,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         tv.enktel.app.ui.components.TvTextField(
             value = newGw,
             onValueChange = { newGw = it },
-            label = "Add gateway host (e.g. http://mirror.example.com:8080)",
+            label = "Add mirror host (e.g. http://mirror.example.com:8080)",
         )
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -659,7 +689,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (backupGw.isEmpty()) {
             Text(
-                "No gateways yet. When your primary panel is unreachable (403 / 502 / timeout), the resolver will fall back to whatever hosts you add here in order.",
+                "No gateways yet. When your primary panel is unreachable (403 / 502 / " +
+                    "timeout), the same path is retried against each host here in turn — " +
+                    "http://mirror.example:8080/live/u/p/1.ts for a stream that was " +
+                    "http://panel.example/live/u/p/1.ts. These are mirrors of your panel, " +
+                    "not proxies: a host that does not serve your panel's paths will not " +
+                    "help, and a VPN or proxy address belongs in Relay endpoint above.",
                 color = EnktelTextDim, fontSize = 11.sp,
             )
         } else {

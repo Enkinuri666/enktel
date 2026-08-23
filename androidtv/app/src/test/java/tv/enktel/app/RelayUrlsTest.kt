@@ -174,4 +174,42 @@ class RelayUrlsTest {
         assertEquals("the UK relay", RelayUrls.regionOf(chain[1]))
         assertEquals("the relay", RelayUrls.regionOf("https://enktel.tv/api/stream?u=x"))
     }
+
+    // ---- a relay the viewer supplies --------------------------------
+
+    /**
+     * The whole point of the setting: a country this project cannot deploy
+     * into. Croatia has no serverless region, so the built-in endpoints ask
+     * from Washington and London and a Croatian broadcaster refuses both. A
+     * viewer with a host inside Croatia can answer it when we cannot.
+     */
+    @Test
+    fun `a supplied endpoint is used in place of the built-in one`() {
+        val mine = "https://relay.example.hr/api/stream"
+        assertEquals(
+            "https://relay.example.hr/api/stream?u=https%3A%2F%2Fwebtvstream.bhtelecom.ba%2Fhrt1.m3u8",
+            RelayUrls.fallbackFor("https://webtvstream.bhtelecom.ba/hrt1.m3u8", mine),
+        )
+        assertEquals(
+            listOf("https://relay.example.hr/api/stream/us", "https://relay.example.hr/api/stream/gb"),
+            RelayUrls.regionBases(mine),
+        )
+    }
+
+    /** A trailing slash is the most likely way to type it, and must not double. */
+    @Test
+    fun `a trailing slash on a supplied endpoint is tolerated`() {
+        assertEquals(
+            "https://relay.example.hr/api/stream?u=http%3A%2F%2Fcdn.example%2F1.m3u8",
+            RelayUrls.fallbackFor("http://cdn.example/1.m3u8", "https://relay.example.hr/api/stream/"),
+        )
+    }
+
+    /** Its own origin is still never relayed through itself. */
+    @Test
+    fun `a supplied endpoint does not relay its own host`() {
+        assertNull(
+            RelayUrls.fallbackFor("https://relay.example.hr/some/path", "https://relay.example.hr/api/stream"),
+        )
+    }
 }
