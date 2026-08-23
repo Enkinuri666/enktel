@@ -68,6 +68,11 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     androidx.compose.runtime.LaunchedEffect(relayBase) {
         if (relayBaseField.isBlank() && relayBase.isNotBlank()) relayBaseField = relayBase
     }
+    val proxyEndpoint by graph.settings.proxyEndpoint.collectAsStateWithLifecycle(initialValue = "")
+    var proxyField by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(proxyEndpoint) {
+        if (proxyField.isBlank() && proxyEndpoint.isNotBlank()) proxyField = proxyEndpoint
+    }
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
@@ -327,6 +332,24 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "country, and there is no way for us to run one everywhere. Point this at " +
                 "your own and the app will use it: any endpoint that takes ?u=<stream url> " +
                 "and fetches it, including this app's own /api/stream on a host of yours.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = proxyField,
+            onValueChange = {
+                proxyField = it
+                scope.launch { graph.settings.setProxyEndpoint(it) }
+            },
+            label = "Proxy for blocked hosts (e.g. socks5://1.2.3.4:1080)",
+        )
+        Text(
+            "The last resort, and the only one that reaches a channel published inside " +
+                "one country and nowhere else — Croatian channels are the usual example. " +
+                "Used only for hosts that have already refused this device, so everything " +
+                "else stays direct and full speed. HTTP or SOCKS.",
             color = EnktelTextDim,
             fontSize = 11.sp,
         )

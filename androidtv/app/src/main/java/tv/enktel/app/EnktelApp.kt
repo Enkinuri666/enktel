@@ -23,7 +23,6 @@ import tv.enktel.app.data.repo.WatchlistRepository
 import tv.enktel.app.data.xtream.XtreamClient
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
-import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 /**
@@ -71,11 +70,15 @@ class AppGraph(app: Application) {
         .writeTimeout(60, TimeUnit.SECONDS)
         .callTimeout(0, TimeUnit.SECONDS) // unlimited overall — long VOD downloads shouldn't be capped
         .retryOnConnectionFailure(true)
-        // Explicit NO_PROXY defeats HTTP_PROXY_AUTH (407) loops caused by an
-        // OS-level or JVM-level proxy that gets applied to every OkHttp call
-        // without credentials. Users who really need a proxy can put it in
-        // Settings → Backup gateways which is applied per-request instead.
-        .proxy(Proxy.NO_PROXY)
+        // Still no inherited proxy: an OS- or JVM-level one applied to every
+        // call without credentials produces a 407 loop, and picking one up
+        // silently is worse than refusing all of them. A selector rather than
+        // a pinned Proxy so the refusal has one exception — an exit the viewer
+        // configured deliberately, used only for hosts that have already
+        // refused this device. See ProxyRoute; it answers NO_PROXY for
+        // everything else, which is what `.proxy(Proxy.NO_PROXY)` did here.
+        .proxySelector(tv.enktel.app.data.net.ProxyRoute.selector())
+        .proxyAuthenticator(tv.enktel.app.data.net.ProxyRoute.authenticator())
         // Negotiate with old panels *and* old devices.
         //
         // MODERN_TLS alone (OkHttp's default) restricts the cipher list, and
@@ -197,6 +200,13 @@ class AppGraph(app: Application) {
         }
         bgScope.launch {
             settings.relayBase.collect { relayBaseSnapshot = it }
+        }
+        bgScope.launch {
+            settings.proxyConfig.collect { (endpoint, user, pass) ->
+                tv.enktel.app.data.net.ProxyRoute.configure(
+                    tv.enktel.app.data.net.ProxyRoute.parse(endpoint, user, pass),
+                )
+            }
         }
         bgScope.launch {
             settings.customUserAgent.collect { userAgentOverride = it }
