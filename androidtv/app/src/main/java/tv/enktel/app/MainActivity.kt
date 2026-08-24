@@ -225,10 +225,26 @@ private fun MainNav(
     // flow emits on its own schedule; a direct query does not.
     var start by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
+        // Imports made before attachments existed are profiles, and a profile
+        // is shown instead of the lineup rather than alongside it. Converted
+        // here, before anything reads the profile list, so the viewer never
+        // meets the half-migrated state.
+        val migrated = runCatching { graph.playlists.migrateImportedProfiles() }.getOrNull()
+
         if (graph.playlists.activeProfile() == null) {
             runCatching { graph.playlists.seedDefaultProfile() }
         }
         start = if (graph.playlists.activeProfile() == null) "onboarding" else "home"
+
+        // A converted file only becomes channels when its new host syncs.
+        // Deliberately after `start` is set: this reaches the network, and a
+        // slow or offline sync must not hold up the first screen.
+        if (migrated != null && migrated.converted > 0) {
+            graph.playlists.byId(migrated.hostId)?.let { host ->
+                runCatching { graph.content.refreshAll(host) }
+                    .onSuccess { runCatching { graph.playlists.markSynced(host) } }
+            }
+        }
     }
 
     if (profiles == null || activeId < 0 || start == null) return
