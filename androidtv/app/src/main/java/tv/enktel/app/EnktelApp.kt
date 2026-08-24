@@ -157,7 +157,9 @@ class AppGraph(app: Application) {
     val xtream = XtreamClient(http)
     val trialClient = tv.enktel.app.data.net.EagleTrialClient(http)
     val playlists = PlaylistRepository(db.profileDao(), settings, xtream, trialClient)
-    val content = ContentRepository(app, db, xtream, http)
+    // settings passed so a sync also folds in whatever playlist files the
+    // viewer imported — they attach to a profile rather than replacing it.
+    val content = ContentRepository(app, db, xtream, http, settings)
     // settings passed so the "EPG timezone offset" chips in Settings actually
     // move the guide — before this they were written and read by nothing.
     val epg = EpgRepository(db, xtream, http, settings)

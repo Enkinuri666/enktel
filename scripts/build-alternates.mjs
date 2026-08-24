@@ -30,6 +30,15 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 const PLAYLIST = "public/playlists/enktel-lineup.m3u";
+/**
+ * URLs displaced from the primary slot by scripts/merge-channels.mjs.
+ *
+ * When a supplied list replaces a channel's URL, the one it replaced is not
+ * discarded — it was working for somebody. These come first among the
+ * alternates, ahead of anything iptv-org contributes, because this project has
+ * actually served them.
+ */
+const SEED = "data/playlists/enktel-alternates.seed.json";
 const OUT = "data/playlists/enktel-alternates.json";
 const PUBLIC_OUT = "public/playlists/enktel-alternates.json";
 const STREAMS = "https://raw.githubusercontent.com/iptv-org/api/gh-pages/streams.json";
@@ -41,7 +50,7 @@ const STREAMS = "https://raw.githubusercontent.com/iptv-org/api/gh-pages/streams
  * a quality one. Three sources means two things have to fail before a viewer
  * sees an error, and past that the returns are small next to the bytes.
  */
-const MAX_ALTERNATES = 2;
+const MAX_ALTERNATES = 3;
 
 /** iptv-org ids carry a feed suffix the lineup's do not: `Nova.hr@SD`. */
 const fold = (id) => (id || "").split("@")[0].trim().toLowerCase();
@@ -70,6 +79,13 @@ async function iptvOrgStreams() {
 
 const rows = parseLineup(readFileSync(PLAYLIST, "utf8"));
 
+let seed = {};
+try {
+  seed = JSON.parse(readFileSync(SEED, "utf8"));
+} catch {
+  // Absent until a list has been merged, which is the normal state.
+}
+
 // What the lineup already publishes, in order, per channel.
 const own = new Map();
 for (const { id, url } of rows) {
@@ -91,8 +107,10 @@ let urls = 0;
 for (const [id, mine] of own) {
   const primary = mine[0];
   const pool = [];
-  // The lineup's own duplicates first: those were verified alive by this
-  // project's own checker, where iptv-org's are only claimed.
+  // Displaced primaries first — this project published them until a moment ago.
+  for (const u of seed[id] ?? []) if (u !== primary && !pool.includes(u)) pool.push(u);
+  // Then the lineup's own duplicates: verified alive by this project's own
+  // checker, where iptv-org's are only claimed.
   for (const u of mine.slice(1)) if (!pool.includes(u)) pool.push(u);
   for (const u of upstream.get(fold(id)) ?? []) {
     if (u !== primary && !pool.includes(u)) pool.push(u);

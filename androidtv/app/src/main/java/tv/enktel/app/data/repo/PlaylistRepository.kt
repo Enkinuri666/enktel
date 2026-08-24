@@ -2,6 +2,7 @@ package tv.enktel.app.data.repo
 
 import kotlinx.coroutines.flow.Flow
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.m3u.ImportedPlaylist
 import tv.enktel.app.data.m3u.PlaylistFiles
 import tv.enktel.app.data.db.ProfileDao
 import tv.enktel.app.data.get
@@ -125,16 +126,55 @@ class PlaylistRepository(
     }
 
     /**
-     * Import a playlist the viewer picked off their device.
+     * What an import did: the profile the channels were added to, and the
+     * attachment record, or null when the file became the first profile.
+     */
+    data class Imported(val profile: Profile, val attached: ImportedPlaylist?)
+
+    /**
+     * Import a playlist the viewer picked off their device, **adding** it to
+     * what they already have.
+     *
+     * This used to build a profile out of the file and make it active. Every
+     * screen reads the active profile, so a twenty-channel file replaced the
+     * viewer's whole lineup: the old channels were still in the database under
+     * a profile nothing was pointing at, which presents as having lost them.
+     * An import is an addition, so it attaches to the profile that is already
+     * open and its channels are merged into that catalogue on the next sync,
+     * under categories named after the file.
      *
      * The document is copied into app storage first — see [PlaylistFiles] for
      * why a `content://` grant is not something a profile can hold onto.
+     *
+     * A device with no profile at all is the one case that still creates one:
+     * there is nothing to add onto, and an attachment belonging to no profile
+     * would never be read.
      */
-    suspend fun importM3u(ctx: android.content.Context, uri: android.net.Uri): Result<Profile> =
+    suspend fun importM3u(ctx: android.content.Context, uri: android.net.Uri): Result<Imported> =
         runCatching {
             val url = PlaylistFiles.copyIn(ctx, uri)
-            addM3u(PlaylistFiles.displayName(ctx, uri), url, epgUrl = "").getOrThrow()
+            val name = PlaylistFiles.displayName(ctx, uri)
+            val host = activeProfile()
+            if (host == null) {
+                Imported(addM3u(name, url, epgUrl = "").getOrThrow(), attached = null)
+            } else {
+                Imported(host, settings.addImportedPlaylist(host.id, name, url))
+            }
         }
+
+    /** Playlist files attached to a profile, across all profiles. */
+    val importedPlaylists: Flow<List<ImportedPlaylist>> = settings.importedPlaylists
+
+    /**
+     * Detach a file and delete the copy behind it.
+     *
+     * The channels it contributed stay in the database until the next sync,
+     * which is what the caller should trigger — nothing else knows those rows
+     * came from this file.
+     */
+    suspend fun removeImportedPlaylist(id: Long) {
+        settings.removeImportedPlaylist(id)?.let { PlaylistFiles.forget(it.url) }
+    }
 
     suspend fun addM3u(name: String, url: String, epgUrl: String): Result<Profile> = runCatching {
         require(url.startsWith("http") || PlaylistFiles.isLocal(url)) {
@@ -152,6 +192,13 @@ class PlaylistRepository(
         // Drop the imported copy with the profile; nothing else references it,
         // and leaving it behind leaks a file the viewer cannot see or reach.
         runCatching { dao.byId(id)?.let { PlaylistFiles.forget(it.m3uUrl) } }
+        // Same for anything attached to it. These outlive the profile
+        // otherwise — they live in preferences, which `dao.delete` never
+        // touches — and would be read forever against a profile id that no
+        // longer exists.
+        runCatching {
+            settings.removeImportedPlaylistsFor(id).forEach { PlaylistFiles.forget(it.url) }
+        }
         dao.delete(id)
     }
 
