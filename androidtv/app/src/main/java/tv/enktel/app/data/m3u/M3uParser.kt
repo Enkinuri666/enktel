@@ -19,6 +19,10 @@ data class M3uEntry(
     val isRadio: Boolean = false,
     /** `#EXTVLCOPT:http-user-agent=` for this entry only. */
     val userAgent: String = "",
+    /** `widevine` | `playready` | `clearkey`, from `#KODIPROP`. Blank for none. */
+    val drmScheme: String = "",
+    /** `license_key` exactly as written. See [DrmInfo] for its structure. */
+    val drmLicense: String = "",
 ) {
     /**
      * Is this a film to sit in the movies library, or a channel that is on air?
@@ -68,6 +72,13 @@ object M3uParser {
         // by the entry it belongs to -- otherwise one channel's override leaks
         // onto every channel below it.
         var vlcUa = ""
+        // Same lifetime as vlcUa, and for the same reason: these sit between
+        // the #EXTINF and the URL, so they are carried across iterations and
+        // cleared once consumed. Leaking a licence onto the channels below
+        // would be worse than leaking an agent — every one of them would try
+        // to decrypt a stream that is not encrypted.
+        var drmType = ""
+        var drmKey = ""
 
         reader.forEachLine { raw ->
             val line = raw.trim()
@@ -90,6 +101,17 @@ object M3uParser {
                     val v = line.substringAfter(':', "").trim()
                     if (v.startsWith("http-user-agent=", true)) {
                         vlcUa = v.substringAfter('=').trim()
+                    }
+                }
+                // Kodi's inputstream.adaptive properties, which is the only
+                // convention there is for saying a stream is encrypted — the
+                // M3U format itself has nothing for it, so every list that
+                // needs DRM borrowed these.
+                pending && line.startsWith("#KODIPROP", true) -> {
+                    val prop = DrmInfo.kodiProp(line)
+                    when (prop?.first) {
+                        "license_type" -> drmType = DrmInfo.scheme(prop.second)
+                        "license_key" -> drmKey = prop.second
                     }
                 }
                 // Group on its own line, an older spelling of group-title.
@@ -118,9 +140,13 @@ object M3uParser {
                         catchupSource = attrs["catchup-source"].orEmpty(),
                         isRadio = attrs["radio"].equals("true", true),
                         userAgent = vlcUa,
+                        drmScheme = drmType,
+                        drmLicense = drmKey,
                     )
                     pending = false
                     vlcUa = ""
+                    drmType = ""
+                    drmKey = ""
                 }
             }
         }

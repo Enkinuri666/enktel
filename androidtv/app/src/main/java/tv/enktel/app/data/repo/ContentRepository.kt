@@ -373,6 +373,7 @@ class ContentRepository(
                     catchupType = e.catchupType, catchupSource = e.catchupSource,
                     sortIdx = ++sortIdx,
                     isRadio = e.isRadio, userAgent = e.userAgent,
+                    drmScheme = e.drmScheme, drmLicense = e.drmLicense,
                 )
             }
 
@@ -583,6 +584,7 @@ class ContentRepository(
                     catchupType = e.catchupType, catchupSource = e.catchupSource,
                     sortIdx = liveIdx,
                     isRadio = e.isRadio, userAgent = e.userAgent,
+                    drmScheme = e.drmScheme, drmLicense = e.drmLicense,
                     // Keyed on the EPG id, which is what the index is built
                     // against — the row key is positional and changes whenever
                     // the playlist does.
