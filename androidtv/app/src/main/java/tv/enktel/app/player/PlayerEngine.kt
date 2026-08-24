@@ -114,6 +114,17 @@ class PlayerEngine(
     private var streamHttpFactory: OkHttpDataSource.Factory? = null
 
     /**
+     * The DRM for the item being prepared, or null when it is in the clear.
+     *
+     * Held on the engine for the same reason as [forcedMimeType]: the fallback
+     * chain re-enters `playInternal` per candidate, and the media source
+     * factory is built once at construction, so the provider has to read the
+     * current value rather than be handed one.
+     */
+    @Volatile
+    private var pendingDrm: tv.enktel.app.data.m3u.DrmInfo? = null
+
+    /**
      * Per-channel User-Agent, from `#EXTVLCOPT:http-user-agent=`.
      *
      * Some sources answer for exactly one User-Agent and 403 everything else,
@@ -621,6 +632,32 @@ class PlayerEngine(
                 }
             }
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractors).apply {
+            // Encrypted streams.
+            //
+            // Everything a licence *server* handles is declared on the
+            // MediaItem and needs nothing here — Media3's own provider reads
+            // the DrmConfiguration and does the rest. This exists for the other
+            // shape a playlist uses: ClearKey with the keys written into the
+            // list itself, which has no server to ask and so cannot be
+            // expressed as a licence URI at all.
+            val fallback = androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider()
+            setDrmSessionManagerProvider { item ->
+                val drm = pendingDrm
+                if (drm != null && drm.isInlineClearKey) {
+                    androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            androidx.media3.exoplayer.drm.FrameworkMediaDrm.DEFAULT_PROVIDER,
+                        )
+                        .build(
+                            androidx.media3.exoplayer.drm.LocalMediaDrmCallback(
+                                drm.clearKeyJson.toByteArray(Charsets.UTF_8),
+                            ),
+                        )
+                } else {
+                    fallback.get(item)
+                }
+            }
             // Absorb a dropped segment inside the media source instead of
             // letting it become a player error.
             //
@@ -1013,11 +1050,21 @@ class PlayerEngine(
         title: String = "",
         subtitle: String = "",
         artworkUrl: String = "",
+        /**
+         * What the playlist said about encryption, if anything.
+         *
+         * Blank for almost everything. A stream in the clear must not open a
+         * DRM session — doing so fails on hardware with no provisioned
+         * Widevine, which is a good deal of the cheap Android TV boxes this
+         * runs on, and fails it for a stream that never needed one.
+         */
+        drm: tv.enktel.app.data.m3u.DrmInfo? = null,
     ) {
         candidateQueue = mutableListOf()
         triedFallback.value = false
         forcedMimeType = forceMimeType
         liveReconnects = 0
+        pendingDrm = drm?.takeUnless { it.isEmpty }
         pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
         playInternal(Candidate(url, forceMimeType), live, startPositionMs, externalSubUrl)
     }
@@ -1097,8 +1144,10 @@ class PlayerEngine(
         title: String = "",
         subtitle: String = "",
         artworkUrl: String = "",
+        drm: tv.enktel.app.data.m3u.DrmInfo? = null,
     ) {
         if (urls.isEmpty()) return
+        pendingDrm = drm?.takeUnless { it.isEmpty }
         pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
         val expanded = urls.distinct().map { initialCandidate(it) }
         candidateQueue = expanded.drop(1).toMutableList()
@@ -1158,6 +1207,27 @@ class PlayerEngine(
                     .setMinPlaybackSpeed(0.97f)
                     .build()
             )
+            // A licence server the playlist named. Inline ClearKey is not
+            // expressible here — it has no URI to fetch — and is handled by the
+            // session manager provider instead.
+            pendingDrm?.takeIf { it.needsLicenseServer }?.let { drm ->
+                val uuid = when (drm.scheme) {
+                    tv.enktel.app.data.m3u.DrmInfo.WIDEVINE -> C.WIDEVINE_UUID
+                    tv.enktel.app.data.m3u.DrmInfo.PLAYREADY -> C.PLAYREADY_UUID
+                    else -> C.CLEARKEY_UUID
+                }
+                setDrmConfiguration(
+                    MediaItem.DrmConfiguration.Builder(uuid)
+                        .setLicenseUri(drm.licenseUrl)
+                        .setLicenseRequestHeaders(drm.licenseHeaders)
+                        // One session across the whole stream. A live channel
+                        // rotates keys, and a per-period session on a DASH
+                        // manifest that never ends is a new licence request
+                        // every few seconds.
+                        .setMultiSession(true)
+                        .build()
+                )
+            }
             if (externalSubUrl.isNotBlank()) {
                 val mime = when {
                     externalSubUrl.endsWith(".vtt", true) -> androidx.media3.common.MimeTypes.TEXT_VTT

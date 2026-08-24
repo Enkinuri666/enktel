@@ -286,6 +286,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 title = ch.name,
                 subtitle = nowNext.now?.title.orEmpty(),
                 artworkUrl = ch.logo,
+                // What the playlist declared about encryption. Blank for
+                // almost everything, and blank is what keeps a stream in the
+                // clear from opening a DRM session it does not need.
+                drm = tv.enktel.app.data.m3u.DrmInfo(ch.drmScheme, ch.drmLicense),
             )
         }
         if (tv.enktel.app.player.ZapPlan.needsReleaseBeforeAcquire(p.maxConnections)) {

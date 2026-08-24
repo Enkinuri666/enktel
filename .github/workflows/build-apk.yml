@@ -90,21 +90,37 @@ jobs:
       # the repo still only carried exports up to 13. Room's migration tests
       # read these files, so the two newest schemas had nothing to test against.
       #
-      # --no-build-cache is the whole trick. The schema is written as a side
-      # effect to a directory outside build/, so a cache hit on kspTvDebugKotlin
-      # restores the task's declared outputs, never writes the schema, and
-      # leaves the tree clean — the check would pass without having looked at
-      # anything. Forcing real execution makes both failure modes visible in one
-      # `git status`: a version bump with no committed export appears as an
-      # untracked file, and an entity change under an unchanged version appears
-      # as a modified one.
+      # Forcing real execution is the whole trick, and it takes both flags. The
+      # schema is written as a side effect to a directory outside build/, so a
+      # cache hit on kspTvDebugKotlin restores the task's declared outputs,
+      # never writes the schema, and leaves the tree clean.
+      #
+      # --no-build-cache alone was not enough, and the check was silently
+      # vacuous because of it: the unit-test step above already runs
+      # kspTvDebugKotlin, so by the time this step ran the task was UP-TO-DATE
+      # and skipped regardless of the cache. A schema with a deliberately
+      # invalid identityHash passed this check unnoticed. --rerun forces this
+      # one task to execute even so.
+      #
+      # With it, both failure modes are visible in one `git status`: a version
+      # bump with no committed export appears as an untracked file, and an
+      # entity change under an unchanged version appears as a modified one.
       - name: Check the exported Room schemas are committed
         run: |
-          ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache
+          ./gradlew :app:kspTvDebugKotlin --no-daemon --no-build-cache --rerun
           DIRTY="$(git status --porcelain app/schemas)"
           if [ -n "$DIRTY" ]; then
             echo "::error::app/schemas does not match what the build produced. Run ./gradlew :app:kspTvDebugKotlin --no-build-cache and commit the result." >&2
             echo "$DIRTY" >&2
+            # Print what the build actually produced, not just which files
+            # differ. A schema carries an identityHash that only the annotation
+            # processor can compute, so "run Gradle and commit the result" is no
+            # help to anyone without an Android SDK to hand -- and the whole
+            # point of this check is to catch a schema nobody could generate
+            # locally. `add -N` is what makes a newly created file visible to
+            # `git diff`; without it a first-time schema shows as a bare `??`.
+            git add -N app/schemas
+            git --no-pager diff -- app/schemas >&2
             exit 1
           fi
 

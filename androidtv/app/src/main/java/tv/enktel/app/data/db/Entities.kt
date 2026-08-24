@@ -88,6 +88,24 @@ data class Channel(
      * the index published beside the lineup.
      */
     val altUrls: String = "",
+    /**
+     * `widevine` | `playready` | `clearkey`, from the playlist's `#KODIPROP`.
+     *
+     * Blank for the overwhelming majority: almost nothing in a scraped lineup
+     * is encrypted, and a blank scheme is what tells the player to skip the
+     * DRM path entirely rather than open a session for a stream in the clear.
+     */
+    val drmScheme: String = "",
+    /**
+     * `license_key` exactly as the playlist wrote it.
+     *
+     * Stored whole rather than split into endpoint, headers and keys. What a
+     * list writes here is one string with its own internal structure, and
+     * taking it apart at sync time would mean re-deciding that structure in the
+     * database; [tv.enktel.app.data.m3u.DrmInfo] reads it apart once, where the
+     * rules are tested.
+     */
+    val drmLicense: String = "",
 )
 
 @Entity(tableName = "categories")

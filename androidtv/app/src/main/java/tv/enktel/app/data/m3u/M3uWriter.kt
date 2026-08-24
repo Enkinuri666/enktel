@@ -53,6 +53,16 @@ object M3uWriter {
                 append("#EXTVLCOPT:http-user-agent=").append(ch.userAgent).append('\n')
             }
 
+            // The DRM the channel came in with, in the same form. Without this
+            // an export silently strips it, and re-importing the file yields a
+            // channel that looks intact and cannot be decrypted.
+            if (ch.drmScheme.isNotBlank() && ch.drmLicense.isNotBlank()) {
+                append("#KODIPROP:inputstream.adaptive.license_type=")
+                    .append(kodiScheme(ch.drmScheme)).append('\n')
+                append("#KODIPROP:inputstream.adaptive.license_key=")
+                    .append(ch.drmLicense).append('\n')
+            }
+
             append(url).append('\n')
         }
     }
@@ -64,4 +74,17 @@ object M3uWriter {
      * parseable, which matters more than the exact character.
      */
     private fun attr(value: String): String = value.replace('"', '\'').replace("\n", " ")
+
+    /**
+     * The system identifier for a scheme, which is what is written back.
+     *
+     * The parser accepts the short names too, but a file this app produces
+     * should be readable by anything that reads Kodi properties, and the
+     * qualified spelling is the one every such reader knows.
+     */
+    private fun kodiScheme(scheme: String): String = when (scheme) {
+        tv.enktel.app.data.m3u.DrmInfo.WIDEVINE -> "com.widevine.alpha"
+        tv.enktel.app.data.m3u.DrmInfo.PLAYREADY -> "com.microsoft.playready"
+        else -> "org.w3.clearkey"
+    }
 }

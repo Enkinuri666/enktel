@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntry::class, UserList::class, UserListItem::class,
         MovieFts::class, SeriesFts::class,
     ],
-    version = 17, // v17 stores alternate stream hosts per channel
+    version = 18, // v18 stores the DRM a playlist declares per channel
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -316,6 +316,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // What the playlist said about encryption, if anything.
+                //
+                // Both default empty, which reads as "not encrypted" — correct
+                // for every row that exists, since nothing in the lineup
+                // carried DRM before there was anywhere to put it. The next
+                // sync fills in whatever the playlist declares.
+                db.execSQL("ALTER TABLE channels ADD COLUMN drmScheme TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE channels ADD COLUMN drmLicense TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "enktel.db")
                 .addMigrations(
@@ -323,6 +336,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                     MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+                    MIGRATION_17_18,
                 )
                 // Last resort only. Anything that reaches this line has lost the
                 // user's profiles, favourites, watch progress, recordings and
