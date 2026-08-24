@@ -39,6 +39,28 @@ interface ContentDao {
     @Query("SELECT c.* FROM channels c JOIN favorites f ON f.profileId = c.profileId AND f.kind = 'live' AND f.refId = c.streamId WHERE c.profileId = :profileId ORDER BY f.addedAt DESC")
     fun favoriteChannels(profileId: Long): Flow<List<Channel>>
 
+    /**
+     * Where the profile's own rows stop, so imported playlists can be appended
+     * after them. A scalar, because the alternative is reading every channel
+     * row into memory on each sync to take a maximum of one column.
+     */
+    @Query("SELECT COALESCE(MAX(sortIdx), 0) FROM channels WHERE profileId = :profileId")
+    suspend fun maxChannelSortIdx(profileId: Long): Int
+
+    @Query("SELECT COALESCE(MAX(sortIdx), 0) FROM categories WHERE profileId = :profileId AND kind = :kind")
+    suspend fun maxCategorySortIdx(profileId: Long, kind: String): Int
+
+    /**
+     * Channel numbers already spoken for on this profile.
+     *
+     * `channelByNum` takes the first row matching a number, so two channels
+     * answering to 101 makes number entry pick one of them arbitrarily. An
+     * imported file numbers itself from its own lineup and knows nothing about
+     * the profile's, so its numbers have to be checked before they are kept.
+     */
+    @Query("SELECT num FROM channels WHERE profileId = :profileId AND num > 0")
+    suspend fun channelNumbers(profileId: Long): List<Int>
+
     @Query("SELECT * FROM channels WHERE key = :key") suspend fun channel(key: String): Channel?
     @Query("SELECT * FROM channels WHERE profileId = :profileId AND num = :num LIMIT 1")
     suspend fun channelByNum(profileId: Long, num: Int): Channel?

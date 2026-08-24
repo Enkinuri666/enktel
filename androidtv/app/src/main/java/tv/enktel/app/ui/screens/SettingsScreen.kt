@@ -56,6 +56,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
+    val importedPlaylists by graph.playlists.importedPlaylists.collectAsStateWithLifecycle(initialValue = emptyList())
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
     val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
     val relayBase by graph.settings.relayBase.collectAsStateWithLifecycle(initialValue = "")
@@ -230,15 +231,17 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             if (uri != null) scope.launch {
                 status = "Importing\u2026"
                 val imported = graph.playlists.importM3u(ctx, uri)
-                status = imported.fold({ p ->
-                    // Sync straight away. An imported profile that sits empty
+                status = imported.fold({ result ->
+                    // Sync straight away. An import that sits doing nothing
                     // until something else triggers a refresh reads as a failed
                     // import, and the parse is the only real check that the
                     // file was a playlist at all.
+                    val p = result.profile
                     runCatching { graph.content.refreshAll(p) }.fold(
                         { summary ->
                             runCatching { graph.playlists.markSynced(p) }
-                            "Imported ${p.name} \u2014 $summary"
+                            val where = result.attached?.let { " \u2014 added to ${p.name}" }.orEmpty()
+                            "Imported ${result.attached?.name ?: p.name}$where \u2014 $summary"
                         },
                         { e -> "Imported, but sync failed: ${e.message ?: "unknown"}" },
                     )
@@ -292,6 +295,51 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         // .m3u, .m3u8, .dat, .txt and with no extension at all, and the name
         // says nothing about the contents — the parser is what decides, so
         // filtering by MIME type here would only hide valid playlists.
+
+        // Imported files are listed because they are otherwise invisible: they
+        // are not profiles, so they do not appear above, and their channels
+        // are mixed in with everything else. Without this there is no way to
+        // see what has been added, or to take it back out again.
+        //
+        // Scoped to the profile the viewer is looking at. `activeProfile()`
+        // falls back to the first row when nothing is set, so this has to as
+        // well, or a fresh install would list nothing it had just imported.
+        val hostId = activeId.takeIf { it != 0L } ?: profiles.firstOrNull()?.id ?: 0L
+        val attachedHere = importedPlaylists.filter { it.profileId == hostId }
+        if (attachedHere.isNotEmpty()) {
+            tv.enktel.app.ui.components.ChipRowLabel("Imported files")
+            Text(
+                "These add to your channels rather than replacing them. Each one gets its own categories.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+            attachedHere.forEach { file ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 6.dp),
+                ) {
+                    Text(file.name, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    FocusButton("Remove", onClick = {
+                        scope.launch {
+                            status = "Removing ${file.name}\u2026"
+                            graph.playlists.removeImportedPlaylist(file.id)
+                            // The channels it contributed are still in the
+                            // database until a sync rewrites the catalogue, so
+                            // detaching without re-syncing would leave them on
+                            // screen with nothing behind them.
+                            val p = graph.playlists.activeProfile()
+                            status = if (p == null) "Removed ${file.name}" else {
+                                runCatching { graph.content.refreshAll(p) }.fold(
+                                    { "Removed ${file.name} \u2014 $it" },
+                                    { e -> "Removed, but sync failed: ${e.message ?: "unknown"}" },
+                                )
+                            }
+                        }
+                    })
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
 
         tv.enktel.app.ui.components.ChipRowLabel("Live stream format")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {

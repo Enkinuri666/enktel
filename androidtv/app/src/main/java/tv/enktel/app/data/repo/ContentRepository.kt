@@ -22,6 +22,7 @@ import tv.enktel.app.data.double
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
+import tv.enktel.app.data.m3u.ImportedPlaylist
 import tv.enktel.app.data.m3u.LocalFirst
 import tv.enktel.app.data.m3u.M3uParser
 import tv.enktel.app.data.m3u.PlaylistFiles
@@ -66,6 +67,12 @@ class ContentRepository(
     private val db: AppDatabase,
     private val xtream: XtreamClient,
     private val http: OkHttpClient,
+    /**
+     * Where imported playlist attachments are recorded. Nullable so the
+     * repository can still be constructed without one — a sync then simply
+     * has nothing to attach, rather than failing.
+     */
+    private val settings: tv.enktel.app.data.prefs.SettingsStore? = null,
 ) {
     private val content get() = db.contentDao()
     private val searchIndex get() = db.searchDao()
@@ -285,7 +292,105 @@ class ContentRepository(
 
     /** Full catalogue sync for a profile. Returns human-readable summary. */
     suspend fun refreshAll(p: Profile): String = withContext(Dispatchers.IO) {
-        if (p.kind == "xtream") refreshXtream(p) else refreshM3u(p)
+        val summary = if (p.kind == "xtream") refreshXtream(p) else refreshM3u(p)
+        // Imported files are folded in *after* the profile's own catalogue,
+        // because a sync begins by clearing the profile's rows. Anything
+        // written before that point would be deleted by the sync it was part
+        // of; the viewer would see their import appear and then vanish on the
+        // next refresh, which is the bug this whole path exists to fix.
+        val added = applyImportedPlaylists(p)
+        if (added.isEmpty()) summary else "$summary · $added"
+    }
+
+    /**
+     * Merge every file attached to this profile into its catalogue.
+     *
+     * Additive by construction: this upserts and never clears. The profile's
+     * own channels have already been written by the time it runs, and each
+     * attachment's rows sit in a `streamId` range of their own
+     * ([ImportedPlaylist.streamIdFor]) so nothing can overwrite anything.
+     *
+     * Best-effort per file. One unreadable import — a document the viewer
+     * deleted off their device before the copy was made, a file that turned
+     * out not to be a playlist — must not fail the sync and take the rest of
+     * the lineup with it.
+     *
+     * @return a short summary, or "" when there is nothing attached
+     */
+    private suspend fun applyImportedPlaylists(p: Profile): String {
+        val attachments = settings?.importedPlaylistsFor(p.id).orEmpty()
+        if (attachments.isEmpty()) return ""
+
+        // Appended after whatever the profile itself contributed, so an import
+        // lands at the end of the channel list rather than in the middle of it.
+        var sortIdx = content.maxChannelSortIdx(p.id)
+        var catIdx = content.maxCategorySortIdx(p.id, "live")
+
+        // Numbers the profile's own channels already answer to. An imported
+        // file numbers itself against its own lineup, so a clash is likely, and
+        // it would make number entry pick between two channels arbitrarily. A
+        // clashing number is dropped rather than the channel — the channel is
+        // still there in its category, it just has no number.
+        val usedNumbers = HashSet(content.channelNumbers(p.id))
+
+        var totalChannels = 0
+        var failed = 0
+
+        for (attachment in attachments) {
+            val entries = runCatching {
+                gunzipIfNeeded(PlaylistFiles.open(attachment.url))
+                    .reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+            }.getOrNull()?.entries
+
+            if (entries.isNullOrEmpty()) {
+                failed++
+                continue
+            }
+
+            val groups = LinkedHashSet<String>()
+            val channels = ArrayList<Channel>(entries.size)
+
+            // A VOD row in an attachment is played as a channel rather than
+            // dropped. Films from an imported file have no panel behind them
+            // to fetch details from, and the alternative — filing them into
+            // the movies library — would put untitled rows with no artwork
+            // beside a catalogue that has both.
+            entries.take(ImportedPlaylist.MAX_CHANNELS).forEachIndexed { i, e ->
+                val category = attachment.categoryFor(e.group)
+                groups += category
+                val streamId = attachment.streamIdFor(i)
+                channels += Channel(
+                    key = "${p.id}:$streamId", profileId = p.id, streamId = streamId,
+                    name = e.name,
+                    // `add` returns false when the number is already taken,
+                    // which covers a clash with the profile's own channels and
+                    // a clash between two imported files.
+                    num = if (e.chno > 0 && usedNumbers.add(e.chno)) e.chno else 0,
+                    logo = e.logo,
+                    categoryId = category, categoryName = category,
+                    epgId = e.tvgId, url = e.url,
+                    hasArchive = e.catchupDays > 0, archiveDays = e.catchupDays,
+                    catchupType = e.catchupType, catchupSource = e.catchupSource,
+                    sortIdx = ++sortIdx,
+                    isRadio = e.isRadio, userAgent = e.userAgent,
+                )
+            }
+
+            val categories = groups.map { name ->
+                Category(
+                    key = "${p.id}:live:$name", profileId = p.id, kind = "live",
+                    categoryId = name, name = name, sortIdx = ++catIdx,
+                )
+            }
+
+            content.upsertCategories(categories)
+            channels.chunked(500).forEach { content.upsertChannels(it) }
+            totalChannels += channels.size
+        }
+
+        if (totalChannels == 0 && failed > 0) return "$failed imported file(s) could not be read"
+        val note = if (failed > 0) " ($failed could not be read)" else ""
+        return "$totalChannels channels from ${attachments.size - failed} imported file(s)$note"
     }
 
     private suspend fun refreshXtream(p: Profile): String {

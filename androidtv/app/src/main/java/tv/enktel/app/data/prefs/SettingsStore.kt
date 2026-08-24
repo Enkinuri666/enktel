@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import tv.enktel.app.data.m3u.ImportedPlaylist
 
 private val Context.dataStore by preferencesDataStore("enktel_settings")
 
@@ -143,6 +144,16 @@ class SettingsStore(private val context: Context) {
     private val VOD_FORCE_MP4 = booleanPreferencesKey("vod_force_mp4")
     private val CUSTOM_UA = stringPreferencesKey("custom_user_agent")
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_splash_seen")
+
+    /**
+     * Playlist files the viewer imported, one record per line.
+     *
+     * A setting rather than a table because it records a *choice* — which
+     * files to also load — and not the catalogue itself. The channels these
+     * produce are ordinary rows in `channels`, written on every sync like any
+     * other; this is only the list of what to read.
+     */
+    private val IMPORTED_PLAYLISTS = stringPreferencesKey("imported_playlists")
 
     // v1.20.0: TMDB API key for the metadata enrichment worker. v3 numeric
     // key OR v4 read-only bearer token accepted. Blank = worker no-ops.
@@ -582,4 +593,60 @@ class SettingsStore(private val context: Context) {
     suspend fun setStartOnBoot(v: Boolean) = context.dataStore.edit { it[START_ON_BOOT] = v }
     suspend fun startOnBootNow(): Boolean = startOnBoot.first()
     suspend fun setBackAction(v: String) = context.dataStore.edit { it[BACK_ACTION] = v }
+
+    // ---- imported playlists -------------------------------------------
+
+    val importedPlaylists: Flow<List<ImportedPlaylist>> =
+        context.dataStore.data.map { ImportedPlaylist.decode(it[IMPORTED_PLAYLISTS]) }
+
+    suspend fun importedPlaylistsNow(): List<ImportedPlaylist> = importedPlaylists.first()
+
+    /** Attachments belonging to one profile, in the order they were added. */
+    suspend fun importedPlaylistsFor(profileId: Long): List<ImportedPlaylist> =
+        importedPlaylistsNow().filter { it.profileId == profileId }.sortedBy { it.id }
+
+    /**
+     * Attach a file to a profile, and hand back the record that was stored.
+     *
+     * The slot is assigned here, inside the same edit that writes the record,
+     * so two imports started at once cannot be given the same one.
+     */
+    suspend fun addImportedPlaylist(profileId: Long, name: String, url: String): ImportedPlaylist {
+        var stored: ImportedPlaylist? = null
+        context.dataStore.edit { prefs ->
+            val current = ImportedPlaylist.decode(prefs[IMPORTED_PLAYLISTS])
+            val record = ImportedPlaylist(
+                id = System.currentTimeMillis(),
+                profileId = profileId,
+                name = name,
+                url = url,
+                slot = ImportedPlaylist.nextSlot(current, profileId),
+            )
+            prefs[IMPORTED_PLAYLISTS] = ImportedPlaylist.encode(current + record)
+            stored = record
+        }
+        return stored ?: error("Could not store the imported playlist")
+    }
+
+    /** Detach one file. Returns it, so the caller can delete the copy. */
+    suspend fun removeImportedPlaylist(id: Long): ImportedPlaylist? {
+        var removed: ImportedPlaylist? = null
+        context.dataStore.edit { prefs ->
+            val current = ImportedPlaylist.decode(prefs[IMPORTED_PLAYLISTS])
+            removed = current.firstOrNull { it.id == id }
+            prefs[IMPORTED_PLAYLISTS] = ImportedPlaylist.encode(current.filter { it.id != id })
+        }
+        return removed
+    }
+
+    /** Detach everything belonging to a profile that is being deleted. */
+    suspend fun removeImportedPlaylistsFor(profileId: Long): List<ImportedPlaylist> {
+        var removed: List<ImportedPlaylist> = emptyList()
+        context.dataStore.edit { prefs ->
+            val current = ImportedPlaylist.decode(prefs[IMPORTED_PLAYLISTS])
+            removed = current.filter { it.profileId == profileId }
+            prefs[IMPORTED_PLAYLISTS] = ImportedPlaylist.encode(current.filter { it.profileId != profileId })
+        }
+        return removed
+    }
 }
