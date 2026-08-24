@@ -15,6 +15,7 @@
     "match:upstream": "node scripts/match-upstream.mjs",
     "build:lineup": "node scripts/build-lineup.mjs",
     "sync:public": "cp data/playlists/enktel-lineup.m3u public/playlists/enktel-lineup.m3u",
+    "merge:channels": "node scripts/merge-channels.mjs",
     "build:alternates": "node scripts/build-alternates.mjs",
     "gen:relay-hosts": "node scripts/gen-relay-hosts.mjs",
     "build:roster": "node scripts/build-roster.mjs",
