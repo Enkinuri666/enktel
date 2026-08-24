@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.BuildConfig
@@ -56,6 +57,22 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     val profiles by graph.playlists.profiles.collectAsStateWithLifecycle(initialValue = emptyList())
     val activeId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
+    val relayBase by graph.settings.relayBase.collectAsStateWithLifecycle(initialValue = "")
+    // Local echo of the stored value: a text field driven straight from a Flow
+    // fights the keyboard, since every keystroke round-trips through DataStore
+    // and comes back as a new value mid-edit. Plain `remember` is enough —
+    // every keystroke is persisted, so the effect below restores the field
+    // from storage after a configuration change.
+    var relayBaseField by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(relayBase) {
+        if (relayBaseField.isBlank() && relayBase.isNotBlank()) relayBaseField = relayBase
+    }
+    val proxyEndpoint by graph.settings.proxyEndpoint.collectAsStateWithLifecycle(initialValue = "")
+    var proxyField by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(proxyEndpoint) {
+        if (proxyField.isBlank() && proxyEndpoint.isNotBlank()) proxyField = proxyEndpoint
+    }
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
 
@@ -207,19 +224,135 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
             ProviderUserAgent(graph, p, scope)
         }
+        val playlistPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            if (uri != null) scope.launch {
+                status = "Importing\u2026"
+                val imported = graph.playlists.importM3u(ctx, uri)
+                status = imported.fold({ p ->
+                    // Sync straight away. An imported profile that sits empty
+                    // until something else triggers a refresh reads as a failed
+                    // import, and the parse is the only real check that the
+                    // file was a playlist at all.
+                    runCatching { graph.content.refreshAll(p) }.fold(
+                        { summary ->
+                            runCatching { graph.playlists.markSynced(p) }
+                            "Imported ${p.name} \u2014 $summary"
+                        },
+                        { e -> "Imported, but sync failed: ${e.message ?: "unknown"}" },
+                    )
+                }, { e -> "Import failed: ${e.message ?: "unknown"}" })
+            }
+        }
+
+        val exportPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+            contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("audio/x-mpegurl"),
+        ) { uri ->
+            if (uri != null) scope.launch {
+                status = runCatching {
+                    val p = graph.playlists.activeProfile() ?: error("No playlist selected")
+                    val channels = graph.content.channels(p.id).first()
+                    val text = tv.enktel.app.data.m3u.M3uWriter.write(
+                        channels,
+                        epgUrl = p.epgUrl,
+                        // An M3U profile stores a URL per row. An Xtream line
+                        // builds them, which means an exported Xtream playlist
+                        // necessarily contains the line's username and
+                        // password — it is a working key to the account, so
+                        // treat the file as one.
+                        urlOf = { ch ->
+                            if (p.kind == "m3u") ch.url
+                            else tv.enktel.app.data.xtream.StreamUrlResolver
+                                .forChannel(p, ch, preferHls = true).firstOrNull().orEmpty()
+                        },
+                    )
+                    ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
+                        ?: error("Could not open the file for writing")
+                    val warning = if (p.kind == "xtream") " \u2014 contains your line's credentials" else ""
+                    "Exported ${channels.size} channels$warning"
+                }.getOrElse { e -> "Export failed: ${e.message ?: "unknown"}" }
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
+            FocusButton("\u2b06 Import file", onClick = { playlistPicker.launch(arrayOf("*/*")) })
+            FocusButton("\u2b07 Export", onClick = {
+                val p = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
+                val stem = p?.name?.replace(Regex("[^A-Za-z0-9 _-]"), "")?.trim().orEmpty()
+                exportPicker.launch("${stem.ifBlank { "enktel" }}.m3u")
+            })
             FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
             FocusButton("📶 Network Speed Test", onClick = { nav.navigate("speedTest") })
         }
 
         Spacer(Modifier.height(10.dp))
+        // Import accepts anything the picker will show. These files arrive as
+        // .m3u, .m3u8, .dat, .txt and with no extension at all, and the name
+        // says nothing about the contents — the parser is what decides, so
+        // filtering by MIME type here would only hide valid playlists.
+
         tv.enktel.app.ui.components.ChipRowLabel("Live stream format")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             tv.enktel.app.ui.components.GlassChip("HLS (m3u8)", selected = streamFormat == "hls", onClick = { scope.launch { graph.settings.setStreamFormat("hls") } })
             tv.enktel.app.ui.components.GlassChip("MPEG-TS", selected = streamFormat == "ts", onClick = { scope.launch { graph.settings.setStreamFormat("ts") } })
         }
         Text("MPEG-TS starts faster on some panels; HLS adapts quality automatically.", color = EnktelTextDim, fontSize = 11.sp)
+
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.ChipRowLabel("Playback route")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+            tv.enktel.app.ui.components.GlassChip("Direct", selected = !relayPlayback, onClick = { scope.launch { graph.settings.setRelayPlayback(false) } })
+            tv.enktel.app.ui.components.GlassChip("Relay", selected = relayPlayback, onClick = { scope.launch { graph.settings.setRelayPlayback(true) } })
+        }
+        Text(
+            "Direct opens the stream host from this device — fewest hops, lowest latency, " +
+                "and right whenever it works. Relay fetches through enktel.tv instead, for when " +
+                "this network cannot reach the host. It does not grant access to anything your " +
+                "line is not already entitled to.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = relayBaseField,
+            onValueChange = {
+                relayBaseField = it
+                scope.launch { graph.settings.setRelayBase(it) }
+            },
+            label = "Relay endpoint (blank = enktel.tv)",
+        )
+        Text(
+            "The built-in relay asks from the United States or the United Kingdom, so it " +
+                "answers a channel that refuses those countries and no others. A channel " +
+                "locked to somewhere else — Croatia, say — needs a relay inside that " +
+                "country, and there is no way for us to run one everywhere. Point this at " +
+                "your own and the app will use it: any endpoint that takes ?u=<stream url> " +
+                "and fetches it, including this app's own /api/stream on a host of yours.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
+
+        Spacer(Modifier.height(10.dp))
+        tv.enktel.app.ui.components.TvTextField(
+            value = proxyField,
+            onValueChange = {
+                proxyField = it
+                scope.launch { graph.settings.setProxyEndpoint(it) }
+            },
+            label = "Proxy for blocked hosts (e.g. socks5://1.2.3.4:1080)",
+        )
+        Text(
+            "The last resort, and the only one that reaches a channel published inside " +
+                "one country and nowhere else — Croatian channels are the usual example. " +
+                "Used only for hosts that have already refused this device, so everything " +
+                "else stays direct and full speed. HTTP or SOCKS.",
+            color = EnktelTextDim,
+            fontSize = 11.sp,
+        )
 
         tv.enktel.app.ui.components.ChipRowLabel("Player buffer")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -565,7 +698,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         tv.enktel.app.ui.components.TvTextField(
             value = newGw,
             onValueChange = { newGw = it },
-            label = "Add gateway host (e.g. http://mirror.example.com:8080)",
+            label = "Add mirror host (e.g. http://mirror.example.com:8080)",
         )
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -579,7 +712,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (backupGw.isEmpty()) {
             Text(
-                "No gateways yet. When your primary panel is unreachable (403 / 502 / timeout), the resolver will fall back to whatever hosts you add here in order.",
+                "No gateways yet. When your primary panel is unreachable (403 / 502 / " +
+                    "timeout), the same path is retried against each host here in turn — " +
+                    "http://mirror.example:8080/live/u/p/1.ts for a stream that was " +
+                    "http://panel.example/live/u/p/1.ts. These are mirrors of your panel, " +
+                    "not proxies: a host that does not serve your panel's paths will not " +
+                    "help, and a VPN or proxy address belongs in Relay endpoint above.",
                 color = EnktelTextDim, fontSize = 11.sp,
             )
         } else {

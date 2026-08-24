@@ -45,6 +45,27 @@ export const COUNTRY_PATTERNS = {
   RS: /\b(rs|srb|serbia|serbian|srbija)\b/i,
   BA: /\b(ba|bih|bosnia|bosnian)\b/i,
   SI: /\b(si|slo|slovenia|slovenian|slovenija)\b/i,
+  XK: /\b(xk|kos|kosovo|kosova|kosove|kosovar)\b/i,
+  // MENA. The panel rosters are almost entirely Arabic-language, and without
+  // these every one of their channels falls back to '' — which then loses the
+  // matcher's country guard, and "MBC 1" quietly takes the Mauritian id.
+  AE: /\b(ae|uae|emirates|emirati|abu ?dhabi|dubai|sharjah|ajman)\b/i,
+  SA: /\b(sa|ksa|saudi|arabia|arabian|riyadh|jeddah)\b/i,
+  QA: /\b(qa|qat|qatar|qatari|doha)\b/i,
+  EG: /\b(eg|egy|egypt|egyptian|masr|misr|cairo|nile)\b/i,
+  LB: /\b(lb|lbn|lebanon|lebanese|liban|libanon|beirut)\b/i,
+  SY: /\b(sy|syr|syria|syrian|souriya|damascus)\b/i,
+  IQ: /\b(iq|irq|iraq|iraqi|iraqia|iraqiya|baghdad)\b/i,
+  JO: /\b(jo|jor|jordan|jordanian|amman)\b/i,
+  PS: /\b(ps|pse|palestine|palestinian|filastin|gaza)\b/i,
+  OM: /\b(om|omn|oman|omani|muscat)\b/i,
+  KW: /\b(kw|kwt|kuwait|kuwaiti)\b/i,
+  BH: /\b(bh|bhr|bahrain|bahraini)\b/i,
+  TN: /\b(tn|tun|tunisia|tunisian|tunis|tunisie)\b/i,
+  MA: /\b(ma|mar|morocco|moroccan|maroc|maghreb)\b/i,
+  DZ: /\b(dz|alg|algeria|algerian|algerie)\b/i,
+  TR: /\b(tr|tur|turkey|turkish|turkiye|turk)\b/i,
+  FR: /\b(fr|fra|france|french|francais)\b/i,
 };
 
 /**

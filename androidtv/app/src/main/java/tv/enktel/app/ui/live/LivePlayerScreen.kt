@@ -121,6 +121,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tv.enktel.app.data.net.NetworkClass.suggestedBufferProfile
     else bufferProfileRaw
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
+    val relayPlayback by graph.settings.relayPlayback.collectAsStateWithLifecycle(initialValue = false)
+    // Blank means the built-in endpoint. A viewer who runs their own — the
+    // answer for a country this project cannot deploy into — points it here.
+    val relayBase by graph.settings.relayBase.collectAsStateWithLifecycle(initialValue = "")
     val hudAutoHideSec by graph.settings.hudAutoHideSec.collectAsStateWithLifecycle(initialValue = 8)
     val decoderMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
     val minBufferMsRaw by graph.settings.minBufferMs.collectAsStateWithLifecycle(initialValue = 0)
@@ -252,8 +256,22 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         // shape) if the panel rejects the primary candidate.  Covers the
         // wide variance in how Xtream-compatible panels actually serve a
         // stream behind the same API.
-        val candidates = tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
+        // Shape variants first, then other hosts entirely.
+        //
+        // StreamUrlResolver produces different *spellings* of the same stream —
+        // HLS, raw TS, extensionless, the legacy no-/live/ layout — which is
+        // what a panel that serves one shape and 404s the rest needs. None of
+        // that helps when the host itself refuses this country or has gone
+        // down: every spelling points at the same machine. The alternates are
+        // different machines carrying the same channel, so they go last, once
+        // asking this one differently has been exhausted.
+        val shapes = tv.enktel.app.data.xtream.StreamUrlResolver.forChannel(
             p, ch, preferHls = streamFormat != "ts",
+        )
+        val candidates = tv.enktel.app.data.net.RelayUrls.wrapAll(
+            shapes + tv.enktel.app.data.net.AlternateSources.decode(ch.altUrls),
+            base = relayBase.ifBlank { tv.enktel.app.data.net.RelayUrls.DEFAULT_BASE },
+            enabled = relayPlayback,
         )
         // Applied before the stream opens, not after: the data source reads the
         // UA when it is created. Blank resets to the app default so one

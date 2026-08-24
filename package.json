@@ -12,7 +12,13 @@
     "export:catalog": "node scripts/export-xtream-catalog.mjs",
     "test:scripts": "node --test scripts/lib/*.test.mjs",
     "match:epg": "node scripts/match-epg.mjs",
-    "build:lineup": "node scripts/build-lineup.mjs"
+    "match:upstream": "node scripts/match-upstream.mjs",
+    "build:lineup": "node scripts/build-lineup.mjs",
+    "sync:public": "cp data/playlists/enktel-lineup.m3u public/playlists/enktel-lineup.m3u",
+    "build:alternates": "node scripts/build-alternates.mjs",
+    "gen:relay-hosts": "node scripts/gen-relay-hosts.mjs",
+    "build:roster": "node scripts/build-roster.mjs",
+    "import:panel": "node scripts/import-panel-export.mjs"
   },
   "dependencies": {
     "@paypal/paypal-js": "^10.0.1",

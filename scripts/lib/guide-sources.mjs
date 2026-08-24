@@ -17,12 +17,30 @@ export const UA =
 export const IPTV_ORG = {
   channels: 'https://iptv-org.github.io/api/channels.json',
   logos: 'https://iptv-org.github.io/api/logos.json',
+  guides: 'https://iptv-org.github.io/api/guides.json',
 };
+
+/**
+ * The same JSON, served from the branch the Pages site is published from.
+ *
+ * Not a redundancy for its own sake: a network that allows GitHub but not
+ * arbitrary hosts — a locked-down CI runner, an egress policy with an
+ * allowlist — can reach `raw.githubusercontent.com` and cannot reach
+ * `iptv-org.github.io`, and then every id and every logo goes missing with no
+ * error a caller would recognise as "wrong network", just an empty guide.
+ */
+const MIRROR_BASE = 'https://raw.githubusercontent.com/iptv-org/api/gh-pages/';
+
+/** @param {string} url @returns {string} the mirror for a Pages URL, or '' */
+export function mirrorOf(url) {
+  const m = /^https:\/\/iptv-org\.github\.io\/api\/(.+)$/.exec(String(url ?? ''));
+  return m ? `${MIRROR_BASE}${m[1]}` : '';
+}
 
 /** Stop reading a guide once this much has arrived without a channel list. */
 const MAX_HEAD_BYTES = 32 * 1024 * 1024;
 
-async function getJson(url, timeout = 120_000) {
+async function fetchJson(url, timeout) {
   const res = await fetch(url, {
     redirect: 'follow',
     signal: AbortSignal.timeout(timeout),
@@ -30,6 +48,27 @@ async function getJson(url, timeout = 120_000) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+/**
+ * Fetch reference JSON, falling back to the mirror.
+ *
+ * Both errors are reported when both fail — "iptv-org.github.io: fetch failed"
+ * on its own reads like the data moved, when the useful fact is that neither
+ * host was reachable.
+ */
+async function getJson(url, timeout = 120_000) {
+  try {
+    return await fetchJson(url, timeout);
+  } catch (err) {
+    const mirror = mirrorOf(url);
+    if (!mirror) throw err;
+    try {
+      return await fetchJson(mirror, timeout);
+    } catch (mirrorErr) {
+      throw new Error(`${err.message} (mirror: ${mirrorErr.message})`);
+    }
+  }
 }
 
 /**
@@ -125,6 +164,33 @@ function betterLogo(candidate, current) {
   if (candidate.inUse !== current.inUse) return candidate.inUse;
   if (candidate.raster !== current.raster) return candidate.raster;
   return candidate.area > current.area;
+}
+
+/**
+ * Channel id → the XMLTV guide sites that carry it.
+ *
+ * A `tvg-id` is only worth having if some guide actually publishes programmes
+ * under it. This is what makes the difference between "matched" and "matched
+ * and covered" reportable, rather than something a viewer discovers when the
+ * guide comes up empty.
+ *
+ * @returns {Promise<Map<string, string[]>>}
+ */
+export async function fetchGuideSites() {
+  const guides = await getJson(IPTV_ORG.guides);
+  const byChannel = new Map();
+
+  for (const guide of guides) {
+    if (!guide?.channel || !guide?.site) continue;
+    const sites = byChannel.get(guide.channel);
+    if (sites) {
+      if (!sites.includes(guide.site)) sites.push(guide.site);
+    } else {
+      byChannel.set(guide.channel, [guide.site]);
+    }
+  }
+
+  return byChannel;
 }
 
 /**

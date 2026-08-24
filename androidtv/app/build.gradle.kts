@@ -26,10 +26,18 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 155
-        versionName = "1.60.35"
+        versionCode = 168
+        versionName = "1.60.48"
         vectorDrawables { useSupportLibrary = true }
 
+        // These must be the host *this* Next.js app deploys to, which is
+        // enktel.tv. watch.enktel.tv is a different property — the browser
+        // player — and this repo's own copy says as much ("apps at enktel.tv,
+        // or the new browser player at watch.enktel.tv"). Pointing the app
+        // there gave 404 HTML to an M3U parser and to an XMLTV parser, and is
+        // why the trial button could never have worked: /api/trial is in this
+        // repo, and this repo is not what answers on watch.enktel.tv.
+        //
         // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
         // is expected to accept a POST and return JSON with the shape
         //   { server_url, username, password, expires_at }
@@ -49,6 +57,79 @@ android {
             ?: "https://watch.enktel.tv/checkout?plan=annual"
         buildConfigField("String", "EAGLE_TRIAL_URL", "\"$trialUrl\"")
         buildConfigField("String", "EAGLE_UPGRADE_URL", "\"$upgradeUrl\"")
+
+        // The line a fresh install starts on. See
+        // tv.enktel.app.data.repo.DefaultLine for why only the server has a
+        // default: an APK is a zip, so a credential compiled into a public
+        // build is a published credential, and an Xtream line capped at a few
+        // connections does not survive being shared. A private build can bake
+        // them in with -PenkDefaultUser / -PenkDefaultPass (or
+        // ENK_DEFAULT_USER / ENK_DEFAULT_PASS); neither touches a committed
+        // file.
+        // This has to be the host the reseller actually issues lines on —
+        // `STREAM_SERVER_URL` in src/lib/reseller.ts, which is also what
+        // /api/trial hands back as `server_url` and what verifyStreamCredentials
+        // authenticates against. It was line.enktel.online, which is a
+        // different machine: a subscriber typing correct credentials into the
+        // prefilled form was pointing them at a host that does not hold their
+        // line, and got the origin's HTTP 512 rather than a login failure.
+        val defaultServer = (project.findProperty("enkDefaultServer") as? String)
+            ?: System.getenv("ENK_DEFAULT_SERVER")
+            ?: "http://api.elg-26.com"
+        val defaultUser = (project.findProperty("enkDefaultUser") as? String)
+            ?: System.getenv("ENK_DEFAULT_USER")
+            ?: ""
+        val defaultPass = (project.findProperty("enkDefaultPass") as? String)
+            ?: System.getenv("ENK_DEFAULT_PASS")
+            ?: ""
+        buildConfigField("String", "DEFAULT_SERVER", "\"$defaultServer\"")
+        buildConfigField("String", "DEFAULT_USERNAME", "\"$defaultUser\"")
+        buildConfigField("String", "DEFAULT_PASSWORD", "\"$defaultPass\"")
+
+        // The playlist a build with no baked-in line falls back to, so a fresh
+        // install has something to watch before it has an account. These are
+        // the free-to-air streams the scraper collects and verifies — complete,
+        // public URLs that carry no credentials and need no login, unlike a
+        // panel catalog, where the credentials *are* the stream URL.
+        //
+        // Points at the generated lineup rather than the full scrape: 2,923
+        // channels already grouped by country and genre with 97.5% logo and
+        // 98.7% EPG coverage is a storefront, where 11,175 ungrouped ones are
+        // a dump.
+        //
+        // Served from our own origin rather than raw.githubusercontent.com. A
+        // device reported `Failed to connect to raw.githubusercontent.com` on
+        // the guide, which follows a redirect to GitHub Pages — and the
+        // playlist came from GitHub too, so both pieces of runtime data
+        // depended on GitHub being reachable from the viewer's network. On a
+        // mobile network that is not a safe assumption, and no amount of
+        // retrying in the app fixes it.
+        val freePlaylist = (project.findProperty("enkFreePlaylistUrl") as? String)
+            ?: System.getenv("ENK_FREE_PLAYLIST_URL")
+            ?: "https://enktel.tv/playlists/enktel-lineup.m3u"
+        // The playlist's own x-tvg-url was inherited from whichever source
+        // header the scraper happened to read — a free-tier worker on
+        // onrender.com that nobody here chose and that answers nothing. This
+        // is the guide the project already knows: scripts/lib/sources.mjs
+        // declares it for the Brisbane feed, and it is what a tv_grab points
+        // at in practice.
+        //
+        // /api/guide fetches the upstream server-side and streams it back, so
+        // the viewer only ever talks to our origin and one upstream fetch
+        // serves every device. ENKTEL_GUIDE_UPSTREAM repoints it without a
+        // redeploy.
+        //
+        // It still covers the AU channels and the mjh-* ids rather than the
+        // whole lineup, which is 84% American. That is the right trade only
+        // because the lineup is sorted local-first — a guide for the channels
+        // the viewer lands on beats a guide for none of them. A lineup
+        // spanning four countries wants a guide built for it, which means
+        // self-hosting iptv-org/epg; it publishes no hosted guide of its own.
+        val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
+            ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
+            ?: "https://enktel.tv/api/guide"
+        buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
+        buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
     }
 
     // Room writes the resolved schema for every version under

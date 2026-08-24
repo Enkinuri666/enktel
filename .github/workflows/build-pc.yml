@@ -41,10 +41,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Node 20
+      # Node 20 is past end-of-life, so CI was building the desktop app on a
+      # runtime that no longer gets security fixes.
+      #
+      # 24 is the newest LTS. Vite resolves to 5.4.21 here and declares
+      # `node: ^18.0.0 || >=20.0.0`, so 24 is inside its supported range —
+      # and this workflow rebuilds on any change to itself, so the Tauri
+      # build proves that rather than anyone inferring it. 25 is a Current
+      # release and has no business producing a signed desktop installer.
+      - name: Set up Node 24 (LTS)
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: pc/package-lock.json
 

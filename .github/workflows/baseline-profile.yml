@@ -3,6 +3,24 @@ name: Generate Baseline Profile
 # Records a baseline profile by running the app on an emulator, and uploads the
 # result as an artifact to be committed into app/src/main/baseline-prof.txt.
 #
+# BLOCKED as of AGP 9.3.1 with benchmark 1.4.1. A dispatched run reaches Gradle
+# configuration and dies with:
+#
+#   GradleException: Module `:app` is not a supported android module.
+#     at androidx.baselineprofile.gradle.utils.AgpPlugin.configureWithAndroidPlugin
+#
+# The plugin resolves perfectly well — it simply refuses to attach to a module
+# built by an AGP it does not recognise, and 1.4.1 predates AGP 9. There is
+# nothing to fix on this side; it needs a benchmark release that knows about
+# AGP 9 (1.5.x, in rc at the time of writing), at which point bumping
+# `benchmark` in gradle/libs.versions.toml should be the whole change.
+#
+# Everything else in the chain was proven working before it reached that point:
+# the emulator boots, adb connects, :baselineprofile configures, and the
+# signing guard in app/build.gradle.kts is satisfied by the keystore step
+# below. That is why this is left in place rather than deleted — the only
+# missing piece is a third-party version.
+#
 # Manual only, and deliberately so. It boots an emulator, which is slow and the
 # least reliable thing in any Android CI setup — none of which belongs in the
 # path of building an APK. The generator module is likewise excluded from the

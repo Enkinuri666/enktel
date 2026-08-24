@@ -118,7 +118,7 @@ jobs:
       - name: Set up Android SDK build-tools
         uses: android-actions/setup-android@v4
         with:
-          packages: 'build-tools;36.0.0 platforms;android-36'
+          packages: 'build-tools;37.0.0 platforms;android-37.1'
 
       # Fail before spending seven minutes on a build we can't sign.
       - name: Decode release keystore
@@ -158,8 +158,17 @@ jobs:
       # than trusting the Gradle config stayed correct.
       - name: Verify APK signatures
         run: |
-          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          [ -x "$APKSIGNER" ] || APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          # apksigner lives under a versioned build-tools directory, so naming
+          # a generation here is a pin that has to be remembered every time the
+          # compile target moves. It wasn't: this said 36.0.0 while the build
+          # installed 37.0.0, the path did not exist, and every signed release
+          # was verified by the fallback below. Take the newest installed one
+          # and fail loudly, rather than carry a path expected to miss.
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::No apksigner found under $ANDROID_HOME/build-tools." >&2
+            exit 1
+          fi
           for apk in \
             app/build/outputs/apk/tv/release/app-tv-release.apk \
             app/build/outputs/apk/mobile/release/app-mobile-release.apk

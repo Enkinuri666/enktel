@@ -1,0 +1,449 @@
+{
+  "generatedAt": "2026-08-20T18:42:07.150Z",
+  "source": "data/sources/iptvcat-my-list.m3u8",
+  "mode": "playlist",
+  "sources": [
+    {
+      "id": "iptv-org-catalog",
+      "count": 39752,
+      "ok": true
+    }
+  ],
+  "thresholds": {
+    "id": 0.9,
+    "logo": 0.85
+  },
+  "totals": {
+    "channels": 200,
+    "epgIds": 155,
+    "epgCoverage": "77.5%",
+    "guideCovered": 99,
+    "guideCoverage": "49.5%",
+    "logos": 165,
+    "logoCoverage": "82.5%",
+    "curated": 0,
+    "unclassified": 154
+  },
+  "idsBy": {
+    "exact": 155
+  },
+  "unresolvedBy": {
+    "no-match": 41,
+    "ambiguous": 4
+  },
+  "byCountry": {
+    "BA": 29,
+    "AU": 98,
+    "HR": 26,
+    "XK": 45
+  },
+  "byGenre": {
+    "Sports": 4,
+    "24/7 Series": 12,
+    "News": 9,
+    "Documentary": 4,
+    "Reality": 3,
+    "Kids": 1,
+    "Religion": 3,
+    "Movies": 3,
+    "Music": 3,
+    "Entertainment": 158
+  },
+  "unresolved": [
+    {
+      "id": "130",
+      "name": "Arena Sport 3 BA (1080p)",
+      "display": "Arena Sport 3 BA (1080p)",
+      "country": "BA",
+      "reason": "no-match"
+    },
+    {
+      "id": "83",
+      "name": "Leaderboard Sports News (1080p)",
+      "display": "Leaderboard Sports News (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "136",
+      "name": "Malta (720p) [Not 24/7]",
+      "display": "Malta (720p) [Not 24 7]",
+      "country": "BA",
+      "reason": "no-match"
+    },
+    {
+      "id": "127",
+      "name": "Al Jazeera Balkans (1080p)",
+      "display": "Al Jazeera Balkans (1080p)",
+      "country": "BA",
+      "reason": "no-match"
+    },
+    {
+      "id": "128",
+      "name": "Al Jazeera Balkans (1080p)",
+      "display": "Al Jazeera Balkans (1080p)",
+      "country": "BA",
+      "reason": "no-match"
+    },
+    {
+      "id": "41",
+      "name": "BBC News Asia Pacific (720p)",
+      "display": "BBC News Asia Pacific (720p)",
+      "country": "",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "42",
+      "name": "BBC News Asia Pacific (720p)",
+      "display": "BBC News Asia Pacific (720p)",
+      "country": "",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "46",
+      "name": "Breaking News by LeadStory (1080p)",
+      "display": "Breaking News By Lead Story (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "47",
+      "name": "CTB Perth News (720p)",
+      "display": "CTB Perth News (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "73",
+      "name": "History and Warfare Now (1080p)",
+      "display": "History And Warfare Now (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "97",
+      "name": "PBS Antiques Road Trip (1080p)",
+      "display": "PBS Antiques Road Trip (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "98",
+      "name": "PBS History (1080p)",
+      "display": "PBS History (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "99",
+      "name": "PBS Science (1080p)",
+      "display": "PBS Science (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "111",
+      "name": "Shalom World Australia (1080p)",
+      "display": "Shalom World Australia (1080p)",
+      "country": "AU",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "39",
+      "name": "Action Hollywood Movies (1080p)",
+      "display": "Action Hollywood Movies (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "89",
+      "name": "MyTime Movie Network (1080p)",
+      "display": "My Time Movie Network (1080p)",
+      "country": "AU",
+      "reason": "ambiguous",
+      "ambiguousWith": [
+        "MyTimeMovieNetwork.br",
+        "MyTimeMovieNetwork.es",
+        "MyTimeMovieNetwork.mx",
+        "MyTimeMovieNetwork.uk"
+      ],
+      "logoFrom": "MyTimeMovieNetwork.br"
+    },
+    {
+      "id": "28",
+      "name": "10 Bold Adelaide (1080p)",
+      "display": "10 Bold Adelaide (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "30",
+      "name": "3AW Melbourne (1080p)",
+      "display": "3AW Melbourne (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "38",
+      "name": "ABC Australia Vietnam (1080p)",
+      "display": "ABC Australia Vietnam (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "45",
+      "name": "Bondi Vet (720p)",
+      "display": "Bondi Vet (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "52",
+      "name": "Channel 9 Adelaide (720p) [Geo-blocked]",
+      "display": "Channel 9 Adelaide (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "53",
+      "name": "Channel 9 Brisbane (720p) [Geo-blocked]",
+      "display": "Channel 9 Brisbane (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "54",
+      "name": "Channel 9 Melbourne (720p) [Geo-blocked]",
+      "display": "Channel 9 Melbourne (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "55",
+      "name": "Channel 9 Melbourne (720p) [Geo-blocked]",
+      "display": "Channel 9 Melbourne (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "56",
+      "name": "Channel 9 Perth (720p) [Geo-blocked]",
+      "display": "Channel 9 Perth (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "57",
+      "name": "Channel 9 Sydney (720p) [Geo-blocked]",
+      "display": "Channel 9 Sydney (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "58",
+      "name": "Channel 9 Sydney (720p) [Geo-blocked]",
+      "display": "Channel 9 Sydney (720p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "62",
+      "name": "Dry Bar Comedy (720p)",
+      "display": "Dry Bar Comedy (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "63",
+      "name": "Failarmy International (720p)",
+      "display": "Failarmy International (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "66",
+      "name": "Four in a Bed (720p)",
+      "display": "Four In A Bed (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "72",
+      "name": "Highway Thru Hell (1080p)",
+      "display": "Highway Thru Hell (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "75",
+      "name": "Homes Under The Hammer (720p)",
+      "display": "Homes Under The Hammer (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "81",
+      "name": "Inside Outside (720p)",
+      "display": "Inside Outside (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "78",
+      "name": "ITV Choice (1080p) [Geo-blocked]",
+      "display": "ITV Choice (1080p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "84",
+      "name": "Life Downunder (720p)",
+      "display": "Life Downunder (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "144",
+      "name": "Muzzik ZZ TV (720p)",
+      "display": "Muzzik ZZ TV (720p)",
+      "country": "BA",
+      "reason": "no-match"
+    },
+    {
+      "id": "91",
+      "name": "Nosey (1080p)",
+      "display": "Nosey (1080p)",
+      "country": "AU",
+      "reason": "ambiguous",
+      "ambiguousWith": [
+        "KAGSLD234.us",
+        "KFMBTV85.us",
+        "KICUTV363.us",
+        "KMAXTV312.us",
+        "KMSB114.us",
+        "KOCOTV55.us",
+        "KSDK55.us",
+        "KTBU552.us",
+        "KTHV115.us",
+        "KTMW503.us",
+        "KULXCD103.us",
+        "KUVIDT454.us",
+        "KVHP293.us",
+        "Nosey.us",
+        "WATL362.us",
+        "WGAL88.us",
+        "WGRZ25.us",
+        "WKBDTV505.us",
+        "WLMT306.us",
+        "WLNYTV555.us",
+        "WLTVDT233.us",
+        "WPKDTV196.us",
+        "WTVT135.us",
+        "WUVGDT344.us",
+        "WVENTV434.us",
+        "WYFF46.us"
+      ],
+      "logoFrom": "KAGSLD234.us"
+    },
+    {
+      "id": "92",
+      "name": "Nosey (1080p)",
+      "display": "Nosey (1080p)",
+      "country": "AU",
+      "reason": "ambiguous",
+      "ambiguousWith": [
+        "KAGSLD234.us",
+        "KFMBTV85.us",
+        "KICUTV363.us",
+        "KMAXTV312.us",
+        "KMSB114.us",
+        "KOCOTV55.us",
+        "KSDK55.us",
+        "KTBU552.us",
+        "KTHV115.us",
+        "KTMW503.us",
+        "KULXCD103.us",
+        "KUVIDT454.us",
+        "KVHP293.us",
+        "Nosey.us",
+        "WATL362.us",
+        "WGAL88.us",
+        "WGRZ25.us",
+        "WKBDTV505.us",
+        "WLMT306.us",
+        "WLNYTV555.us",
+        "WLTVDT233.us",
+        "WPKDTV196.us",
+        "WTVT135.us",
+        "WUVGDT344.us",
+        "WVENTV434.us",
+        "WYFF46.us"
+      ],
+      "logoFrom": "KAGSLD234.us"
+    },
+    {
+      "id": "102",
+      "name": "Pointless (1080p) [Geo-blocked]",
+      "display": "Pointless (1080p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "103",
+      "name": "Pop (1080p) [Geo-blocked]",
+      "display": "Pop (1080p) [Geo Blocked]",
+      "country": "AU",
+      "reason": "ambiguous",
+      "ambiguousWith": [
+        "BoingPlus.it",
+        "Pop.uk",
+        "Pop.us",
+        "POPTV.si",
+        "PopTV.us",
+        "TVPop.cl"
+      ],
+      "logoFrom": "BoingPlus.it"
+    },
+    {
+      "id": "109",
+      "name": "Real Crime (1080p)",
+      "display": "Real Crime (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "118",
+      "name": "The Hotel Inspector (1080p)",
+      "display": "The Hotel Inspector (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "119",
+      "name": "The Pet Collective International (720p)",
+      "display": "The Pet Collective International (720p)",
+      "country": "AU",
+      "reason": "no-match",
+      "logoFrom": ""
+    },
+    {
+      "id": "120",
+      "name": "The Wicked Tuna Channel (1080p)",
+      "display": "The Wicked Tuna Channel (1080p)",
+      "country": "AU",
+      "reason": "no-match"
+    },
+    {
+      "id": "124",
+      "name": "Undercover Boss (720p)",
+      "display": "Undercover Boss (720p)",
+      "country": "AU",
+      "reason": "no-match"
+    }
+  ]
+}

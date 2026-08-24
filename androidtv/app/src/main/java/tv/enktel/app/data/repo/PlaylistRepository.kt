@@ -2,6 +2,7 @@ package tv.enktel.app.data.repo
 
 import kotlinx.coroutines.flow.Flow
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.m3u.PlaylistFiles
 import tv.enktel.app.data.db.ProfileDao
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
@@ -56,6 +57,41 @@ class PlaylistRepository(
         }
 
     /**
+     * Sign this build's default line in, if it has one and there is no profile
+     * yet.
+     *
+     * Returns null rather than a failed [Result] when there is nothing to do —
+     * a build with no baked-in credentials, or a device that already has a
+     * profile — because neither is an error and the caller should not report
+     * one. A login that is attempted and *fails* returns the failure, so a
+     * wrong or expired line still lands the viewer on the onboarding form
+     * instead of an empty home screen.
+     *
+     * Calling this more than once is safe: the profile check happens first.
+     */
+    suspend fun seedDefaultProfile(): Result<Profile>? {
+        if (dao.first() != null) return null
+
+        // A build carrying a line signs into it; that account is the whole
+        // catalog, so nothing else is worth seeding.
+        if (DefaultLine.canSeed) {
+            return addXtream(DefaultLine.NAME, DefaultLine.server, DefaultLine.username, DefaultLine.password)
+        }
+
+        // Otherwise fall back to the free-to-air playlist. A public build had
+        // no credentials to seed with and so used to drop the viewer on the
+        // login form with nothing to watch — but a few thousand of the
+        // channels collected here need no account at all, and an install that
+        // opens on live TV is a different product from one that opens on a
+        // password field. The paid line is still one tap away in Settings.
+        if (DefaultLine.hasFreePlaylist) {
+            return addM3u(DefaultLine.FREE_NAME, DefaultLine.freePlaylistUrl, DefaultLine.freePlaylistEpg)
+        }
+
+        return null
+    }
+
+    /**
      * Turns a [TrialCredentials] payload into a validated Xtream profile.
      * Same login-then-persist pattern as [addXtream] so the panel gets a real
      * auth challenge before we save anything, but we tag the row with
@@ -88,8 +124,22 @@ class PlaylistRepository(
         saved.copy(id = id)
     }
 
+    /**
+     * Import a playlist the viewer picked off their device.
+     *
+     * The document is copied into app storage first — see [PlaylistFiles] for
+     * why a `content://` grant is not something a profile can hold onto.
+     */
+    suspend fun importM3u(ctx: android.content.Context, uri: android.net.Uri): Result<Profile> =
+        runCatching {
+            val url = PlaylistFiles.copyIn(ctx, uri)
+            addM3u(PlaylistFiles.displayName(ctx, uri), url, epgUrl = "").getOrThrow()
+        }
+
     suspend fun addM3u(name: String, url: String, epgUrl: String): Result<Profile> = runCatching {
-        require(url.startsWith("http")) { "Playlist URL must start with http(s)://" }
+        require(url.startsWith("http") || PlaylistFiles.isLocal(url)) {
+            "Playlist URL must start with http(s):// or be an imported file"
+        }
         val profile = Profile(name = name, kind = "m3u", m3uUrl = url.trim(), epgUrl = epgUrl.trim())
         val id = dao.insert(profile)
         settings.setActiveProfile(id)
@@ -98,7 +148,12 @@ class PlaylistRepository(
 
     suspend fun switchTo(id: Long) = settings.setActiveProfile(id)
 
-    suspend fun delete(id: Long) = dao.delete(id)
+    suspend fun delete(id: Long) {
+        // Drop the imported copy with the profile; nothing else references it,
+        // and leaving it behind leaks a file the viewer cannot see or reach.
+        runCatching { dao.byId(id)?.let { PlaylistFiles.forget(it.m3uUrl) } }
+        dao.delete(id)
+    }
 
     suspend fun markSynced(p: Profile) = dao.update(p.copy(lastSync = System.currentTimeMillis()))
 

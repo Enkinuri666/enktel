@@ -28,6 +28,7 @@ Married At First Sight	AU - Reality	AU	https://i.mjh.nz/.r/married-at-first-sigh
 The Real Housewives VAULT	AU - Reality	AU	https://i.mjh.nz/.r/therealhousewivesvault-fast.m3u8
 ABC Entertains (720p)	AU - Kids	AU	https://c.mjh.nz/abc-me.m3u8
 ABC Kids	AU - Kids	AU	https://c.mjh.nz/abc-kids.m3u8
+Mission Asia (1080p)	AU - Religion	AU	https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 All-Star Cinema	AU - Movies	AU	https://i.mjh.nz/.r/all-starcinema-fast.m3u8
 92.7 Mix FM	AU - Music	AU	https://i.mjh.nz/.r/radio-ih-6333.m3u8
 99.7 Bridge FM	AU - Music	AU	https://i.mjh.nz/.r/radio-ih-9042.m3u8
@@ -120,7 +121,6 @@ LMN	AU - Entertainment	AU	https://i.mjh.nz/.r/lmn-fast.m3u8
 Medical And Rescue	AU - Entertainment	AU	https://i.mjh.nz/.r/medicalnrescue-fast.m3u8
 Mighty Machines	AU - Entertainment	AU	https://i.mjh.nz/.r/mightymachines-fast.m3u8
 Million Dollar Listing VAULT	AU - Entertainment	AU	https://i.mjh.nz/.r/cas40-fast.m3u8
-Mission Asia (1080p)	AU - Entertainment	AU	https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 Moviesphere	AU - Entertainment	AU	https://i.mjh.nz/.r/10-moviesphere.m3u8
 Mythbusters	AU - Entertainment	AU	https://i.mjh.nz/.r/mythbusters-fast.m3u8
 NCIS	AU - Entertainment	AU	https://i.mjh.nz/.r/ncis-fast.m3u8
@@ -710,6 +710,7 @@ Pluto TV Science	US - Documentary	US	https://jmp2.uk/plu-563a970aa1a1f7fe7c9daad
 Pluto TV True Crime	US - Documentary	US	https://jmp2.uk/plu-62e9289f8d467f0007fbc701.m3u8
 Pluto TV True Crime	US - Documentary	US	https://jmp2.uk/plu-5812be1c249444e05d09cc50.m3u8
 Pluto TV Turbo	US - Documentary	US	https://jmp2.uk/plu-6014761dfb91870008ea6463.m3u8
+Samsung Wild Life (720p) [Geo-blocked]	US - Documentary	US	https://pb-olm46bexcljjf.akamaized.net/Samsung_Wild_Life.m3u8
 Sensing Murder	US - Documentary	US	https://jmp2.uk/plu-5e9ed47c26ebb000074af566.m3u8
 Smithsonian Channel Pluto TV	US - Documentary	US	https://jmp2.uk/plu-6298bd10d88ef000073f16b7.m3u8
 Smithsonian Channel Pluto TV	US - Documentary	US	https://jmp2.uk/plu-63a084934734f30007457b2c.m3u8
@@ -866,6 +867,105 @@ Turma da Mônica (720p)	US - Kids	US	https://jmp2.uk/plu-5f997e44949bc70007a6941
 TVS Hi Tops (720p)	US - Kids	US	https://rpn.bozztv.com/gusa/gusa-hitops/index.m3u8
 TVS Pinball Network (480p)	US - Kids	US	https://rpn.bozztv.com/gusa/gusa-TVSCartoonNetwork/index.m3u8
 Watch it KID! (720p)	US - Kids	US	https://stream-us-east-1.getpublica.com/playlist.m3u8?network_id=2245
+3ABN Dare To Dream Network	US - Religion	US	https://3abn.bozztv.com/3abn2/d2d_live/smil:d2d_live.smil/playlist.m3u8
+3ABN English	US - Religion	US	https://3abn.bozztv.com/3abn2/3abn_live/smil:3abn_live.smil/playlist.m3u8
+3ABN French	US - Religion	US	https://3abn.bozztv.com/3abn2/Fre_live/smil:Fre_live.smil/playlist.m3u8
+3ABN International Network (720p)	US - Religion	US	https://3abn.bozztv.com/3abn2/Int_live/smil:Int_live.smil/playlist.m3u8
+3ABN Latino	US - Religion	US	https://3abn.bozztv.com/3abn2/Lat_live/smil:Lat_live.smil/playlist.m3u8
+3ABN Proclaim! Network	US - Religion	US	https://3abn.bozztv.com/3abn2/Pro_live/smil:Pro_live.smil/playlist.m3u8
+ABN Afghanistan (540p)	US - Religion	US	https://mediaserver.abnvideos.com/streams/abnafghanistan.m3u8
+ABN Africa (480p)	US - Religion	US	https://mediaserver.abnvideos.com/streams/abnafrica.m3u8
+ABN China (720p)	US - Religion	US	https://mediaserver.abnvideos.com/streams/abnchina.m3u8
+ABN TV India (540p)	US - Religion	US	https://mediaserver.abnvideos.com/streams/abntvindia.m3u8
+ABN Urdu (540p)	US - Religion	US	https://mediaserver.abnvideos.com/streams/abnurdu.m3u8
+Al Hayat TV (720p)	US - Religion	US	https://cdn3.wowza.com/5/OE5HREpIcEkySlNT/alhayat-live/ngrp:livestream_all/playlist.m3u8
+Alkarma TV Australia	US - Religion	US	https://58cc65c534c67.streamlock.net/alkarmatv.com/alkarmaau.smil/playlist.m3u8
+Alkarma TV Australia (1080p)	US - Religion	US	https://5a8308add0b31.streamlock.net/alkarmatv.com/alkarmaau.smil/playlist.m3u8
+Almagd TV North America (1080p)	US - Religion	US	https://5aafcc5de91f1.streamlock.net/almagd.tv/almagd.smil/playlist.m3u8
+Amazing Facts TV (1080p)	US - Religion	US	https://hlspackager.akamaized.net/live/DB/AMAZING_FACTS/HLS/AMAZING_FACTS.m3u8
+Better Life TV (720p)	US - Religion	US	https://tgn.bozztv.com/betterlife/betterlife/betterlife/index.m3u8
+BX Inspire (720p)	US - Religion	US	https://reflect-stream-bronxnet.cablecast.tv/live-18/live/stream-7/live.m3u8
+Canal de la Fe (720p)	US - Religion	US	https://cdn-cloudfront.us-east-1.prod.ingest.aws-infra.dacast.com/live/dad6a736-9efb-40ce-89b6-81d1d54f92bd/master.m3u8
+Catholic TV (1080p)	US - Religion	US	https://catholictvhd-lh.akamaized.net/hls/live/2043390/CTVLiveHD/master.m3u8
+CBN Espanol (1080p)	US - Religion	US	https://fastly.live.brightcove.com/6383462549112/us-east-1/734546207001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoiczFpM3ZpLmVncmVzcy50N2M3emwiLCJhY2NvdW50X2lkIjoiNzM0NTQ2MjA3MDAxIiwiZWhuIjoiZmFzdGx5LmxpdmUuYnJpZ2h0Y292ZS5jb20iLCJpc3MiOiJibGl2ZS1wbGF5YmFjay1zb3VyY2UtYXBpIiwic3ViIjoicGF0aG1hcHRva2VuIiwiYXVkIjpbIjczNDU0NjIwNzAwMSJdLCJqdGkiOiI2MzgzNDYyNTQ5MTEyIn0.g04lznsvgqgIXQt2ZH0H_tWtIeTsMgGjVORsjOJ0T6U/playlist-hls.m3u8
+CBN Family (1080p)	US - Religion	US	https://fastly.live.brightcove.com/6380399588112/us-east-1/734546207001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoiczFpM3ZpLmVncmVzcy50N2M3emwiLCJhY2NvdW50X2lkIjoiNzM0NTQ2MjA3MDAxIiwiZWhuIjoiZmFzdGx5LmxpdmUuYnJpZ2h0Y292ZS5jb20iLCJpc3MiOiJibGl2ZS1wbGF5YmFjay1zb3VyY2UtYXBpIiwic3ViIjoicGF0aG1hcHRva2VuIiwiYXVkIjpbIjczNDU0NjIwNzAwMSJdLCJqdGkiOiI2MzgwMzk5NTg4MTEyIn0.LYfIeObmX4AEStY_xCnPZwMJHXgOAPFMTKfztq-9F8U/playlist-hls.m3u8
+CFN Catholic Faith Network (720p)	US - Religion	US	https://uni8rtmp.tulix.tv/cfntv/cfntv/playlist.m3u8
+Cornerstone TV (720p)	US - Religion	US	https://2-fss-1.themediacdn.com/pl_122/206280-3059514-1/playlist.m3u8
+CSat TV	US - Religion	US	https://5b622f07944df.streamlock.net/csat.tv/csat.smil/playlist.m3u8
+CSat TV	US - Religion	US	https://5d12bc59c4748.streamlock.net/redirect/csat.tv/csat.smil?type=m3u8
+CTN (720p)	US - Religion	US	https://d3k5y954fiztgy.cloudfront.net/FREECAST/CTN-2b0dd347-f7b0-e7ed-9096-68966d29db50/index.m3u8
+Daystar Español (720p)	US - Religion	US	https://live-mcl.cdn01.net/smarttv/64wj6m6d8/playlist.m3u8
+Daystar TV	US - Religion	US	http://170.254.17.2/DAYSTAR/index.m3u8
+Daystar TV (1080p)	US - Religion	US	https://live-mcl.cdn01.net/smarttv/48vy43564/playlist.m3u8
+Dr. Gene Scott	US - Religion	US	https://wescottcc.piksel.tech/Manifest/UTB-NetworkStream.m3u8
+Dr. Gene Scott (1080p)	US - Religion	US	https://wescottcc.piksel.tech/hls/live/2041478/adp/playlist.m3u8
+Elevation Church (1080p)	US - Religion	US	https://linear-1066.frequency.stream/dist/stirr/1066/hls/master/playlist.m3u8
+EWTN (720p) [Geo-blocked]	US - Religion	US	https://cdn3.wowza.com/1/QjRzVXJtVml5SUVx/WGJRSWxz/hls/live/playlist.m3u8
+EWTN Africa-Asia (720p)	US - Religion	US	https://cdn3.wowza.com/1/ZVBYYXFLLzE0c3NC/Qk1FMURC/hls/live/playlist.m3u8
+EWTN Asia-Pacific (720p)	US - Religion	US	https://cdn3.wowza.com/1/QmVNUVhTNTZSS3Uz/YWQ0aHpi/hls/live/playlist.m3u8
+EWTN Canada (720p)	US - Religion	US	https://cdn3.wowza.com/1/YW5wSWZiRGd2eFlU/bGV0aVBq/hls/live/playlist.m3u8
+EWTN Europe (720p)	US - Religion	US	https://cdn3.wowza.com/1/T2NXeHF6UGlGbHY3/WFluRldQ/hls/live/playlist.m3u8
+EWTN Spain & Latin America (720p)	US - Religion	US	https://cdn3.wowza.com/1/SmVrQmZCUXZhVDgz/b3J3MFJv/hls/live/playlist.m3u8
+EWTN Spanish (720p) [Geo-blocked]	US - Religion	US	https://cdn3.wowza.com/1/TUI5dU5ucnUxdGFD/ZFlVeGRl/hls/live/playlist.m3u8
+GBN Global Buddhist Network (1080p)	US - Religion	US	https://github.com/BellezaEmporium/IPTV_Exception/raw/master/channels/us/gbnus.m3u8
+Global Christian Network America (GCN) (720p)	US - Religion	US	http://liveen24-manminglobal3.ktcdn.co.kr/liveen24/gcnus_1300k.stream/playlist.m3u8
+God's Learning Channel (480p)	US - Religion	US	https://2-fss-1.streamhoster.com/pl_122/200562-1176456-1/playlist.m3u8
+Gospel Broadcasting Network (GBN) (1080p)	US - Religion	US	https://cdn3.wowza.com/5/Ny9jK1A1Q3h4N1VZ/live/myStream/playlist.m3u8
+Gospel Truth TV (1080p)	US - Religion	US	https://na.linear.zype.com/bf94f9f4-383c-40e0-9d49-279a4f33ab8d/f29b8836-d990-4c8d-b421-192a8f43edc4-zype/manifest.m3u8
+Hope Channel Inter-America	US - Religion	US	https://jstre.am/live/jsl:EC0Mq0i6HJU.m3u8
+Hope Channel Inter-America English (1080p)	US - Religion	US	https://jstre.am/live/jsl:UP9KAdlVrm8.m3u8
+Hope Channel International (1080p)	US - Religion	US	https://jstre.am/live/jsl:cZXINbwrFj6.m3u8
+Hope Channel North America (1080p)	US - Religion	US	https://jstre.am/live/jsl:0sUSK6VA7GT.m3u8
+In Touch+ (1080p) [Geo-blocked]	US - Religion	US	https://amg01540-amg01540c1-amgplt0095.playout.now3.amagi.tv/playlist.m3u8
+It Is Written TV (1080p)	US - Religion	US	https://itiswrittentv.akamaized.net/xR8gyATuHMVx69u9G79DXnpNRL/playlist.m3u8
+It's Supernatural! Network (1080p)	US - Religion	US	https://content.uplynk.com/channel/b880a791bf95426d917a509e0c44796a.m3u8
+JBS (720p)	US - Religion	US	https://rpn3.bozztv.com/jbstv-srt/srt-push/jbstv/playlist.m3u8
+Jewish Life Television (1080p)	US - Religion	US	https://jlt-jltv-strimm.otteravision.com/jlt/jltv/jltv.m3u8
+KQSL Channel 8 (720p)	US - Religion	US	https://uni01rtmp.tulix.tv/kqsltv/kqsltv/playlist.m3u8
+KSCE Vida Cristiana (360p)	US - Religion	US	https://2-fss-2.streamhoster.com/pl_120/200226-1449024-1/playlist.m3u8
+Life! Christian Broadcasting Network (360p)	US - Religion	US	https://2-fss-2.streamhoster.com/pl_138/200226-1359204-1/playlist.m3u8
+LIFE! End Times TV (360p)	US - Religion	US	https://2-fss-1.streamhoster.com/pl_122/200226-1427780-1/playlist.m3u8
+Lighting Lives Blessing Nations His Light (LLBN) (720p)	US - Religion	US	https://brightstar-hislight-pull-secure.akamaized.net/brightstarhislight/stream.m3u8
+Lighting Lives Blessing Nations His Word (LLBN) (720p)	US - Religion	US	https://brightstar-hisword-pull-secure.akamaized.net/brightstarhisword/stream.m3u8
+Lighting Lives Blessing Nations TV Arabic (LLBN) (480p)	US - Religion	US	https://brightstar-arabic-pull-secure.akamaized.net/brightstararabic/stream.m3u8
+Lighting Lives Blessing Nations TV Chinese (LLBN) (480p)	US - Religion	US	https://brightstar-chinese-pull-secure.akamaized.net/brightstarchinese/stream.m3u8
+Lighting Lives Blessing Nations TV Korean (LLBN) (480p)	US - Religion	US	https://brightstar-korean-pull-secure.akamaized.net/brightstarkorean/stream.m3u8
+Lighting Lives Blessing Nations TV Latino (LLBN) (480p)	US - Religion	US	https://brightstar-latino-pull-secure.akamaized.net/brightstarlatino/stream.m3u8
+Lighting Lives Blessing Nations TV Romanian (LLBN) (480p)	US - Religion	US	https://brightstar-romanian-pull-secure.akamaized.net/brightstarromanian/stream.m3u8
+Lighting Lives Blessing Nations TV South Asia (LLBN) (480p)	US - Religion	US	https://brightstar-southasia-pull-secure.akamaized.net/brightstarsouthasia/stream.m3u8
+Living Faith TV (540p)	US - Religion	US	https://cdn-unified-hls.streamspot.com/ingest1/0b5c0f18e9/playlist.m3u8?origin=1
+Logos TV	US - Religion	US	https://597f64b67707a.streamlock.net/logoschannel.com/logostv.smil/playlist.m3u8
+Maria Vision USA (1080p)	US - Religion	US	https://1601580044.rsc.cdn77.org/live/_jcn_/amls:PALMIAMI/playlist.m3u8
+Ministerio La Voz De Un Remanente TV	US - Religion	US	https://vs20.live.opencaster.com/remanente_5925b089/index.m3u8
+Mohabat TV	US - Religion	US	https://mohabathls.wns.live/hls/stream.m3u8
+Muslim Network TV	US - Religion	US	https://afghantv.app/hls2/muslimnetwork/index.m3u8
+NRBTV	US - Religion	US	https://uni6rtmp.tulix.tv/nrbnetwork/myStream.sdp/playlist.m3u8
+NRBTV	US - Religion	US	https://stream-us-east-1.getpublica.com/playlist.m3u8?network_id=15811
+NRBTV (720p)	US - Religion	US	http://145.239.5.177/215/index.m3u8
+OCN TV	US - Religion	US	https://5d12bc59c4748.streamlock.net/redirect/ocnbroadcasting.com/ocnbroadcasting2?type=m3u8
+Payame Aramesh TV (720p)	US - Religion	US	https://hls.keshishhamid.live/hls/stream.m3u8
+Potta-Divine TV USA (480p)	US - Religion	US	https://playout7multirtmp.tulix.tv/live21/Stream1/playlist.m3u8
+RTH-TV2 Gospel (720p)	US - Religion	US	https://2-fss-2.streamhoster.com/pl_120/amlst:206708-4202592/playlist.m3u8
+SBN TV (720p)	US - Religion	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_c5402f016A/live.m3u8
+SBN TV Global (720p)	US - Religion	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_8D363D13Eb/live.m3u8
+SBN TV International (720p)	US - Religion	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_09a4778E89/live.m3u8
+Shalom World (1080p)	US - Religion	US	https://broadcaster-1.cclouds.in/srt-2/channel2_abr/playlist.m3u8
+Shalom World Europe (1080p)	US - Religion	US	https://broadcaster-1.cclouds.in/srt/channel1_abr/playlist.m3u8
+Shalom World Prayer (1080p)	US - Religion	US	https://broadcaster-1.cclouds.in/srt-4/channel4_abr/playlist.m3u8
+SUMtv English	US - Religion	US	https://rpn.bozztv.com/ssstv/ssstv1-cdn/smil:ssstv1web.smil/playlist.m3u8
+SUMtv English (1080p)	US - Religion	US	https://bozztv.com/uni10rtmp/ssstv1-cdn/smil:ssstv1web.smil/playlist.m3u8
+SUMtv Latino	US - Religion	US	https://rpn.bozztv.com/ssstv/ssstv2-cdn/smil:ssstv2web.smil/playlist.m3u8
+SUMtv Latino (1080p)	US - Religion	US	https://bozztv.com/uni10rtmp/ssstv2-cdn/smil:ssstv2web.smil/playlist.m3u8
+The Word Network (1080p)	US - Religion	US	https://clouditize.piksel.tech/hls/live/2043070/ClouditizeStream1/playlist.m3u8
+theDove TV (720p)	US - Religion	US	https://thedovetv.bozztv.com/thedovetv/thedovetv/index.m3u8
+TLN Media Chicago (720p)	US - Religion	US	https://fuel-streaming-prod01.fuelmedia.io/v1/sem/cb165faa-41c9-42ad-83ee-ad5ca9fb927c.m3u8
+TLN Media San Francisco (720p)	US - Religion	US	https://fuel-streaming-prod01.fuelmedia.io/v1/sem/b29d27bb-88af-42d1-937a-5bdf76b71c17.m3u8
+Velayat TV (480p)	US - Religion	US	https://nl.livekadeh.com/hls2/velayattv.m3u8
+Vida Mejor TV (480p)	US - Religion	US	https://tgn.bozztv.com/betterlife/bettervida/bettervida/index.m3u8
+VTN Victory Television Network (720p)	US - Religion	US	https://jk3lzkn4lw79-hls-live.5centscdn.com/VTN2/bcaafe9ad8d42834b08e762ac58596b8.sdp/playlist.m3u8
+W14DK-D 14.1 TV Delmarva	US - Religion	US	https://2-fss-2.streamhoster.com/pl_118/amlst:204972-1949480/playlist.m3u8
+WATC The Loop (1080p)	US - Religion	US	https://tgn.bozztv.com/watc57/watc57-theloop/watc57-theloop/index.m3u8
+WLMB (1080p)	US - Religion	US	https://rpn.bozztv.com/wlmb/wlmb/wlmb/index.m3u8
 00s Replay	US - Movies	US	https://jmp2.uk/plu-62ba60f059624e000781c436.m3u8
 24 Hour Free Movies (720p)	US - Movies	US	https://d1j2u714xk898n.cloudfront.net/scheduler/scheduleMaster/145.m3u8
 30A TV Classic Movies (720p)	US - Movies	US	https://30a-tv.com/feeds/pzaz/30atvmovies.m3u8
@@ -1124,12 +1224,6 @@ Yo! MTV (1080p)	US - Music	US	https://jmp2.uk/plu-5d14fc31252d35decbc4080b.m3u8
 30A Television Channel (720p)	US - Entertainment	US	https://30a-tv.com/feeds/masters/30atv.m3u8
 30A The Beach Show (720p)	US - Entertainment	US	https://30a-tv.com/beachy.m3u8
 30A We Love Cars (720p)	US - Entertainment	US	https://30a-tv.com/feeds/vidaa/cars.m3u8
-3ABN Dare To Dream Network	US - Entertainment	US	https://3abn.bozztv.com/3abn2/d2d_live/smil:d2d_live.smil/playlist.m3u8
-3ABN English	US - Entertainment	US	https://3abn.bozztv.com/3abn2/3abn_live/smil:3abn_live.smil/playlist.m3u8
-3ABN French	US - Entertainment	US	https://3abn.bozztv.com/3abn2/Fre_live/smil:Fre_live.smil/playlist.m3u8
-3ABN International Network (720p)	US - Entertainment	US	https://3abn.bozztv.com/3abn2/Int_live/smil:Int_live.smil/playlist.m3u8
-3ABN Latino	US - Entertainment	US	https://3abn.bozztv.com/3abn2/Lat_live/smil:Lat_live.smil/playlist.m3u8
-3ABN Proclaim! Network	US - Entertainment	US	https://3abn.bozztv.com/3abn2/Pro_live/smil:Pro_live.smil/playlist.m3u8
 48 Hours	US - Entertainment	US	https://jmp2.uk/plu-62e925bc68d18a00077bb990.m3u8
 48 Hours	US - Entertainment	US	https://jmp2.uk/plu-6346937a46f9a2000889073d.m3u8
 48 Hours	US - Entertainment	US	https://jmp2.uk/plu-634690323ce5fa0007c621f2.m3u8
@@ -1164,11 +1258,6 @@ ABC 7 Denver CO (KMGH) (720p)	US - Entertainment	US	https://content.uplynk.com/c
 ABC 7 Washington DC (WJLA) (1080p)	US - Entertainment	US	https://linear-681.frequency.stream/dist/stirr/681/hls/master/playlist.m3u8
 ABC 9 Tucson AZ (KGUN) (720p)	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/a53514a7-f2aa-4d34-802e-c2b5594fc0d7/playlist.m3u8
 ABC West (720p)	US - Entertainment	US	http://stream.cammonitorplus.net/1797/index.m3u8
-ABN Afghanistan (540p)	US - Entertainment	US	https://mediaserver.abnvideos.com/streams/abnafghanistan.m3u8
-ABN Africa (480p)	US - Entertainment	US	https://mediaserver.abnvideos.com/streams/abnafrica.m3u8
-ABN China (720p)	US - Entertainment	US	https://mediaserver.abnvideos.com/streams/abnchina.m3u8
-ABN TV India (540p)	US - Entertainment	US	https://mediaserver.abnvideos.com/streams/abntvindia.m3u8
-ABN Urdu (540p)	US - Entertainment	US	https://mediaserver.abnvideos.com/streams/abnurdu.m3u8
 Acapulco Shore	US - Entertainment	US	https://jmp2.uk/plu-64dab1f835425100080e1e7b.m3u8
 Acapulco Shore Pluto TV	US - Entertainment	US	https://jmp2.uk/plu-61a52615cbef2500072876e2.m3u8
 Access 19	US - Entertainment	US	https://reflect-montgomerycommunitymedia.cablecast.tv/live-8/live/stream-3/live.m3u8
@@ -1197,18 +1286,13 @@ Akaku 55 (Hawaii) (1080p)	US - Entertainment	US	https://castus-vod-dev.s3.amazon
 AKC TV	US - Entertainment	US	https://install.akctvcontrol.com/speed/broadcast/138/desktop-playlist.m3u8
 AKC TV (1080p)	US - Entertainment	US	https://broadcast.blivenyc.com/speed/broadcast/22/desktop-playlist.m3u8
 AKC TV Meet The Breeds	US - Entertainment	US	https://install.akctvcontrol.com/speed/broadcast/139/desktop-playlist.m3u8
-Al Hayat TV (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/OE5HREpIcEkySlNT/alhayat-live/ngrp:livestream_all/playlist.m3u8
 Alerte à Malibu	US - Entertainment	US	https://jmp2.uk/plu-60afaa535580be0007ac9ee4.m3u8
-Alkarma TV Australia	US - Entertainment	US	https://58cc65c534c67.streamlock.net/alkarmatv.com/alkarmaau.smil/playlist.m3u8
-Alkarma TV Australia (1080p)	US - Entertainment	US	https://5a8308add0b31.streamlock.net/alkarmatv.com/alkarmaau.smil/playlist.m3u8
 All Weddings WE tv	US - Entertainment	US	https://amc-allweddings-1-us.xumo.wurl.tv/playlist.m3u8
 All Weddings We TV (720p) [Geo-blocked]	US - Entertainment	US	https://pb-amiq9wz02dhco.akamaized.net/playlist.m3u8
 ALLBLK Gems	US - Entertainment	US	https://jmp2.uk/plu-6793ea255225b515b4ba91a7.m3u8
 ALLBLK Gems (720p)	US - Entertainment	US	https://df1zke3zj042m.cloudfront.net/playlist.m3u8
-Almagd TV North America (1080p)	US - Entertainment	US	https://5aafcc5de91f1.streamlock.net/almagd.tv/almagd.smil/playlist.m3u8
 Always Funny Videos	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/a0713659-0883-4501-9aba-f7e651becae9/playlist.m3u8
 Always Funny Videos (720p)	US - Entertainment	US	https://d24l3uppudokci.cloudfront.net/playlist.m3u8
-Amazing Facts TV (1080p)	US - Entertainment	US	https://hlspackager.akamaized.net/live/DB/AMAZING_FACTS/HLS/AMAZING_FACTS.m3u8
 America's Boating Channel (1080p)	US - Entertainment	US	https://streams2.sofast.tv/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/04c3a27e-c2a0-420b-8eef-7dae9ab93056/manifest.m3u8
 America's Funniest Home Videos	US - Entertainment	US	https://jmp2.uk/plu-69143de2a570568f53230cab.m3u8
 America's Funniest Home Videos	US - Entertainment	US	https://jmp2.uk/plu-690dc8ed1ee9b6ac66607ce2.m3u8
@@ -1308,7 +1392,6 @@ BET Pluto TV	US - Entertainment	US	https://jmp2.uk/plu-5ca670f6593a5d78f0e85aed.
 BET Throwbacks	US - Entertainment	US	https://jmp2.uk/plu-61326275b3c86a00078e4833.m3u8
 Better Health TV (480p)	US - Entertainment	US	https://tgn.bozztv.com/betterlife/betterhealth/betterhealth/index.m3u8
 Better Life Nature Channel (480p)	US - Entertainment	US	https://tgn.bozztv.com/betterlife/betternature/betternature/index.m3u8
-Better Life TV (720p)	US - Entertainment	US	https://tgn.bozztv.com/betterlife/betterlife/betterlife/index.m3u8
 Beverly Hillbillies	US - Entertainment	US	https://jmp2.uk/plu-5f7796e470510900070d4e3d.m3u8
 Beverly Hills 90210	US - Entertainment	US	https://jmp2.uk/plu-5f4d83e0a382c00007bc02e7.m3u8
 Beverly Hills Television 10 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/V2Y2VmhqMEFDTUkx/beverlyhills/G0072_006/playlist.m3u8
@@ -1342,7 +1425,6 @@ Buzzr	US - Entertainment	US	https://jmp2.uk/plu-5812bfbe4ced4f7b601b12e6.m3u8
 Buzzr	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/d4038326-a3e3-4aba-b1f1-f0526c912c74/playlist.m3u8
 BX Arts (720p)	US - Entertainment	US	https://reflect-stream-bronxnet.cablecast.tv/live-19/live/stream-2/live.m3u8
 BX Culture (720p)	US - Entertainment	US	https://reflect-stream-bronxnet.cablecast.tv/live-7/live/stream-3/live.m3u8
-BX Inspire (720p)	US - Entertainment	US	https://reflect-stream-bronxnet.cablecast.tv/live-18/live/stream-7/live.m3u8
 BX Omni (720p)	US - Entertainment	US	https://reflect-stream-bronxnet.cablecast.tv/live-16/live/stream-1/live.m3u8
 BYU TV	US - Entertainment	US	https://amg02604-byutv-amg02604c2-firetv-us-4981.playouts.now.amagi.tv/playlist.m3u8
 BYUtv (1080p)	US - Entertainment	US	https://d13j8jpstr8iqz.cloudfront.net/BYUtv.m3u8
@@ -1352,14 +1434,10 @@ CAN TV19 (1080p)	US - Entertainment	US	https://cantv.streamguys1.com/cantv/cantv
 CAN TV21 (1080p)	US - Entertainment	US	https://cantv.streamguys1.com/cantv/cantv21hls/playlist.m3u8
 CAN TV27 (1080p)	US - Entertainment	US	https://cantv.streamguys1.com/cantv/cantv27hls/playlist.m3u8
 CAN TV36 (1080p)	US - Entertainment	US	https://cantv.streamguys1.com/cantv/cantv36hls/playlist.m3u8
-Canal de la Fe (720p)	US - Entertainment	US	https://cdn-cloudfront.us-east-1.prod.ingest.aws-infra.dacast.com/live/dad6a736-9efb-40ce-89b6-81d1d54f92bd/master.m3u8
 Canela.TV (1080p)	US - Entertainment	US	https://d3cx6yargdnl7q.cloudfront.net/canelatv.m3u8
 Car Chase (720p)	US - Entertainment	US	https://jmp2.uk/plu-65244c403fd33c0008ffff31.m3u8
 Carlsbad City TV Channel (Carlsbad CA) (720p)	US - Entertainment	US	https://edge-f.swagit.com/live/carlsbadca/live-3-a-1/playlist.m3u8
 Catfish	US - Entertainment	US	https://jmp2.uk/plu-64f8a2a23a0d700008a6ed7b.m3u8
-Catholic TV (1080p)	US - Entertainment	US	https://catholictvhd-lh.akamaized.net/hls/live/2043390/CTVLiveHD/master.m3u8
-CBN Espanol (1080p)	US - Entertainment	US	https://fastly.live.brightcove.com/6383462549112/us-east-1/734546207001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoiczFpM3ZpLmVncmVzcy50N2M3emwiLCJhY2NvdW50X2lkIjoiNzM0NTQ2MjA3MDAxIiwiZWhuIjoiZmFzdGx5LmxpdmUuYnJpZ2h0Y292ZS5jb20iLCJpc3MiOiJibGl2ZS1wbGF5YmFjay1zb3VyY2UtYXBpIiwic3ViIjoicGF0aG1hcHRva2VuIiwiYXVkIjpbIjczNDU0NjIwNzAwMSJdLCJqdGkiOiI2MzgzNDYyNTQ5MTEyIn0.g04lznsvgqgIXQt2ZH0H_tWtIeTsMgGjVORsjOJ0T6U/playlist-hls.m3u8
-CBN Family (1080p)	US - Entertainment	US	https://fastly.live.brightcove.com/6380399588112/us-east-1/734546207001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoiczFpM3ZpLmVncmVzcy50N2M3emwiLCJhY2NvdW50X2lkIjoiNzM0NTQ2MjA3MDAxIiwiZWhuIjoiZmFzdGx5LmxpdmUuYnJpZ2h0Y292ZS5jb20iLCJpc3MiOiJibGl2ZS1wbGF5YmFjay1zb3VyY2UtYXBpIiwic3ViIjoicGF0aG1hcHRva2VuIiwiYXVkIjpbIjczNDU0NjIwNzAwMSJdLCJqdGkiOiI2MzgwMzk5NTg4MTEyIn0.LYfIeObmX4AEStY_xCnPZwMJHXgOAPFMTKfztq-9F8U/playlist-hls.m3u8
 CBS	US - Entertainment	US	http://tvsen7.aynascope.net/cbs/index.m3u8
 CBS (1080p)	US - Entertainment	US	http://stream.cammonitorplus.net/1783/index.m3u8
 CBS 12 Cincinnati OH (WKRC) (1080p)	US - Entertainment	US	https://linear-691.frequency.stream/dist/stirr/691/hls/master/playlist.m3u8
@@ -1379,7 +1457,6 @@ Celebrity Name Game (1080p) [Geo-blocked]	US - Entertainment	US	https://amg00353
 Celebrity Scene TV (720p)	US - Entertainment	US	https://rpn.bozztv.com/gusa/gusa-celebrityscene/index.m3u8
 Cerritos TV3 (360p)	US - Entertainment	US	https://cdn3.wowza.com/5/UWpORHhLSEs5SkJs/cerritos/G0010_002/playlist.m3u8
 CFM TV Channel 98 (360p)	US - Entertainment	US	https://cdn3.wowza.com/5/djRwZmQvTEJidmZD/cityftmyers/G2083_002/playlist.m3u8
-CFN Catholic Faith Network (720p)	US - Entertainment	US	https://uni8rtmp.tulix.tv/cfntv/cfntv/playlist.m3u8
 Champaign Government Television (CGTV) (Champaign IL) (720p)	US - Entertainment	US	https://champaign-cablecast.cablecast.tv/live/stream-2/live.m3u8
 Channel 10 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/cFh0V0QwUVc4SDl2/santa-paula/G0930_002/playlist.m3u8
 Channel 11 (Scottsdale AZ)	US - Entertainment	US	https://cdn3.wowza.com/5/RXJNMFI3VlVkOEFP/scottsdale/G0040_007/chunklist.m3u8
@@ -1438,7 +1515,6 @@ Cops	US - Entertainment	US	https://jmp2.uk/plu-661cf62d24e1d000087dae0d.m3u8
 Cops	US - Entertainment	US	https://jmp2.uk/plu-5e1f7e089f23700009d66303.m3u8
 COPS	US - Entertainment	US	https://a7d6af1c184e465db4f39316a5181c1f.mediatailor.us-east-1.amazonaws.com/v1/master/0fb304b2320b25f067414d481a779b77db81760d/RakutenTV-eu_COPS/playlist.m3u8
 Cops (720p)	US - Entertainment	US	https://langleyproductions-cops-2-eu.rakuten.wurl.tv/playlist.m3u8
-Cornerstone TV (720p)	US - Entertainment	US	https://2-fss-1.themediacdn.com/pl_122/206280-3059514-1/playlist.m3u8
 Costa Mesa's Municipal Access Channel CMTV 3 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/UWpORHhLSEs5SkJs/costamesa/G0075_002/playlist.m3u8
 COStv	US - Entertainment	US	https://irctv.cablecast.tv/live/stream-1/live.m3u8
 Create (1080p)	US - Entertainment	US	https://create.lls.pbs.org/index.m3u8
@@ -1449,8 +1525,6 @@ CreaTV The Outlet Channel 30 (San Jose CA) (720p)	US - Entertainment	US	https://
 Crímenes imperfectos	US - Entertainment	US	https://jmp2.uk/plu-5e94cd036cc69d0007e8a1ba.m3u8
 Crunchyroll (720p)	US - Entertainment	US	https://jmp2.uk/plu-65652f7fc0fc88000883537a.m3u8
 Cruz TV	US - Entertainment	US	https://reflect-communitytv.cablecast.tv/live-4/live/stream-2/live.m3u8
-CSat TV	US - Entertainment	US	https://5b622f07944df.streamlock.net/csat.tv/csat.smil/playlist.m3u8
-CSat TV	US - Entertainment	US	https://5d12bc59c4748.streamlock.net/redirect/csat.tv/csat.smil?type=m3u8
 CSI	US - Entertainment	US	https://jmp2.uk/plu-5efbd29e4aa26700076c0d06.m3u8
 CSI en Español	US - Entertainment	US	https://jmp2.uk/plu-604928d54a4f730007ff76bc.m3u8
 CSI: Miami	US - Entertainment	US	https://jmp2.uk/plu-63eb9c5351f5d000085e8d7e.m3u8
@@ -1459,7 +1533,6 @@ CSI: Miami	US - Entertainment	US	https://jmp2.uk/plu-62f54c11b3af68000702c304.m3
 CSI: Miami en español	US - Entertainment	US	https://jmp2.uk/plu-632b5950b515b000079e6b81.m3u8
 CSI: NY	US - Entertainment	US	https://jmp2.uk/plu-62f54c6439183b000769fb8f.m3u8
 CSI: NY en español	US - Entertainment	US	https://jmp2.uk/plu-632b606e12a67b0007c9e371.m3u8
-CTN (720p)	US - Entertainment	US	https://d3k5y954fiztgy.cloudfront.net/FREECAST/CTN-2b0dd347-f7b0-e7ed-9096-68966d29db50/index.m3u8
 Curro Jiménez	US - Entertainment	US	https://jmp2.uk/plu-5f1acd36779de70007a680d1.m3u8
 CVTV Channel 192 (1080p)	US - Entertainment	US	https://livestream.telvue.com/cvtv2/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 CVTV Channel 194 (1080p)	US - Entertainment	US	https://livestream.telvue.com/cvtv1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
@@ -1467,9 +1540,6 @@ Cypress Public Access Channel 36 (Cypress CA) (360p)	US - Entertainment	US	https
 Daria	US - Entertainment	US	https://jmp2.uk/plu-62d0895ebe7a970008785244.m3u8
 Dark Matter TV (720p)	US - Entertainment	US	https://tricoast-tv-dark-matter-01-us.ono.wurl.tv/playlist.m3u8
 Dating Disasters	US - Entertainment	US	https://jmp2.uk/plu-651f239d9c7aeb0008286823.m3u8
-Daystar Español (720p)	US - Entertainment	US	https://live-mcl.cdn01.net/smarttv/64wj6m6d8/playlist.m3u8
-Daystar TV	US - Entertainment	US	http://170.254.17.2/DAYSTAR/index.m3u8
-Daystar TV (1080p)	US - Entertainment	US	https://live-mcl.cdn01.net/smarttv/48vy43564/playlist.m3u8
 DC Council Channel (1080p)	US - Entertainment	US	https://video.oct.dc.gov/out/u/15_12.m3u8
 DC.gov Council Hearing Room 120 (Washington DC) (1080p)	US - Entertainment	US	https://video.oct.dc.gov/out/u/97_12.m3u8
 DC.gov DKN (Washington DC) (1080p)	US - Entertainment	US	https://video.oct.dc.gov/out/u/DKN.m3u8
@@ -1518,8 +1588,6 @@ Dove Channel	US - Entertainment	US	https://d2v2e5kw14egus.cloudfront.net/playlis
 Dove Channel	US - Entertainment	US	https://linear-896.frequency.stream/dist/xumo/896/hls/master/playlist.m3u8
 Dove Channel (1080p)	US - Entertainment	US	https://linear-896.frequency.stream/dist/cineverse/896/hls/master/playlist.m3u8
 Dr Phil's MeritTV (1080p)	US - Entertainment	US	https://d9069ugodwkju.cloudfront.net/Merit_Street.m3u8
-Dr. Gene Scott	US - Entertainment	US	https://wescottcc.piksel.tech/Manifest/UTB-NetworkStream.m3u8
-Dr. Gene Scott (1080p)	US - Entertainment	US	https://wescottcc.piksel.tech/hls/live/2041478/adp/playlist.m3u8
 DroneTV (1080p)	US - Entertainment	US	https://airvuz-dronetv-1-us.ohlscdn.wurl.tv/playlist.m3u8
 Dry Bar Comedy (720p)	US - Entertainment	US	https://drybar-drybarcomedy-1-au.samsung.wurl.tv/playlist.m3u8
 Dry Bar Comedy+	US - Entertainment	US	https://drybar-drybarcomedy-1-ca.samsung.wurl.tv/playlist.m3u8
@@ -1544,7 +1612,6 @@ El encantador de perros	US - Entertainment	US	https://jmp2.uk/plu-61099f2b40d064
 El Reino Infantil	US - Entertainment	US	https://jmp2.uk/plu-6523f672a6c38300088cb807.m3u8
 Electric Now	US - Entertainment	US	https://amg01705-amg01705c1-amgplt0095.playout.now3.amagi.tv/playlist.m3u8
 ElectricNOW (1080p) [Geo-blocked]	US - Entertainment	US	https://pb-aexv6wqzkg929.akamaized.net/ElectricNOW.m3u8
-Elevation Church (1080p)	US - Entertainment	US	https://linear-1066.frequency.stream/dist/stirr/1066/hls/master/playlist.m3u8
 Empenos a lo bestia	US - Entertainment	US	https://jmp2.uk/plu-5f23102d5e239d00074b092a.m3u8
 Empeños a lo bestia	US - Entertainment	US	https://jmp2.uk/plu-60218baa464ef900073168c1.m3u8
 En el punto de mira	US - Entertainment	US	https://jmp2.uk/plu-61922be835f3910007fc58f6.m3u8
@@ -1567,13 +1634,6 @@ Estrella TV	US - Entertainment	US	https://d1accqs1infy2u.cloudfront.net/Estrella
 Estrella TV	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/20bf77c0-dc60-46ae-8e87-c01cc7a836fc/playlist.m3u8
 Estrella TV	US - Entertainment	US	https://estrellatv-xumo.amagi.tv/playlist.m3u8
 Estrella TV (1080p)	US - Entertainment	US	https://estrellatv-oando.amagi.tv/playlist.m3u8
-EWTN (720p) [Geo-blocked]	US - Entertainment	US	https://cdn3.wowza.com/1/QjRzVXJtVml5SUVx/WGJRSWxz/hls/live/playlist.m3u8
-EWTN Africa-Asia (720p)	US - Entertainment	US	https://cdn3.wowza.com/1/ZVBYYXFLLzE0c3NC/Qk1FMURC/hls/live/playlist.m3u8
-EWTN Asia-Pacific (720p)	US - Entertainment	US	https://cdn3.wowza.com/1/QmVNUVhTNTZSS3Uz/YWQ0aHpi/hls/live/playlist.m3u8
-EWTN Canada (720p)	US - Entertainment	US	https://cdn3.wowza.com/1/YW5wSWZiRGd2eFlU/bGV0aVBq/hls/live/playlist.m3u8
-EWTN Europe (720p)	US - Entertainment	US	https://cdn3.wowza.com/1/T2NXeHF6UGlGbHY3/WFluRldQ/hls/live/playlist.m3u8
-EWTN Spain & Latin America (720p)	US - Entertainment	US	https://cdn3.wowza.com/1/SmVrQmZCUXZhVDgz/b3J3MFJv/hls/live/playlist.m3u8
-EWTN Spanish (720p) [Geo-blocked]	US - Entertainment	US	https://cdn3.wowza.com/1/TUI5dU5ucnUxdGFD/ZFlVeGRl/hls/live/playlist.m3u8
 Fail Army (720p)	US - Entertainment	US	https://bd93cfed.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWV1X0ZhaWxBcm15X0hMUw/playlist.m3u8
 Failarmy	US - Entertainment	US	https://failarmy-international-it.samsung.wurl.tv/playlist.m3u8
 FailArmy	US - Entertainment	US	https://jmp2.uk/plu-5f5141c1605ddf000748eb1b.m3u8
@@ -1645,7 +1705,6 @@ Game Show Central	US - Entertainment	US	https://jmp2.uk/plu-62e90e8cb05d2b0007f1
 Game Show Central	US - Entertainment	US	https://pb-bunear28tuvaw.akamaized.net/v1/gsn_gameshowchannnel_1/samsungheadend_us/latest/main/hls/playlist.m3u8
 Game Show Central (720p)	US - Entertainment	US	https://jmp2.uk/plu-5e54187aae660e00093561d6.m3u8
 Ganj e Hozour TV (1080p)	US - Entertainment	US	https://media.parvizshahbazi.com/ganjehozour/Main_tv/playlist.m3u8
-GBN Global Buddhist Network (1080p)	US - Entertainment	US	https://github.com/BellezaEmporium/IPTV_Exception/raw/master/channels/us/gbnus.m3u8
 Gem Shopping Network (720p)	US - Entertainment	US	https://amg01460-gemshoppingnetw-gem-ono-x662c.amagi.tv/playlist.m3u8
 Ghost Dimension	US - Entertainment	US	https://jmp2.uk/plu-619e1bb3e9af5a0007f235ad.m3u8
 Ghost Dimension	US - Entertainment	US	https://jmp2.uk/plu-619e259fd8b672000729b1d7.m3u8
@@ -1663,15 +1722,11 @@ Gilroy CMAP TV Channel 18 (720p)	US - Entertainment	US	https://livestream.telvue
 Gilroy CMAP TV Channel 19 (720p)	US - Entertainment	US	https://livestream.telvue.com/cmap4/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Gilroy CMAP TV Channel 20 (720p)	US - Entertainment	US	https://livestream.telvue.com/cmap5/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Glendale 11 AZ (360p)	US - Entertainment	US	https://edge-f.swagit.com/live/glendaleaz/live-1-a-1/playlist.m3u8
-Global Christian Network America (GCN) (720p)	US - Entertainment	US	http://liveen24-manminglobal3.ktcdn.co.kr/liveen24/gcnus_1300k.stream/playlist.m3u8
 Global Fashion Channel (1080p)	US - Entertainment	US	https://pubgfc.teleosmedia.com/linear/globalfashionchannel/globalfashionchannel/playlist.m3u8
 Go USA TV (720p)	US - Entertainment	US	https://brandusa-gousa-1-be.samsung.wurl.tv/playlist.m3u8
-God's Learning Channel (480p)	US - Entertainment	US	https://2-fss-1.streamhoster.com/pl_122/200562-1176456-1/playlist.m3u8
 Gordon Ramsay (720p)	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/c8364f36-c60b-4a39-8d86-0b92db4611c0/index.m3u8
 Gordon Ramsay's Hell's Kitchen	US - Entertainment	US	https://jmp2.uk/plu-62ea45010d0611000839868c.m3u8
 Gordon Ramsay's Hell's Kitchen	US - Entertainment	US	https://jmp2.uk/plu-5b4e99f4423e067bd6df6903.m3u8
-Gospel Broadcasting Network (GBN) (1080p)	US - Entertainment	US	https://cdn3.wowza.com/5/Ny9jK1A1Q3h4N1VZ/live/myStream/playlist.m3u8
-Gospel Truth TV (1080p)	US - Entertainment	US	https://na.linear.zype.com/bf94f9f4-383c-40e0-9d49-279a4f33ab8d/f29b8836-d990-4c8d-b421-192a8f43edc4-zype/manifest.m3u8
 GoTraveler (720p) [Geo-blocked]	US - Entertainment	US	https://amg09501-amg09501c1-klowdtv-us-2398.playouts.now.amagi.tv/playlist/amg09501-quester-gotraveler-klowdtvus/playlist.m3u8
 GoUSA TV	US - Entertainment	US	https://brandusa-gousa-1-in.samsung.wurl.tv/playlist.m3u8
 Great Entertainment Television (720p)	US - Entertainment	US	https://a-cdn.klowdtv.com/live2/greattv_720p/playlist.m3u8
@@ -1729,10 +1784,6 @@ Homicide Hunter	US - Entertainment	US	https://jmp2.uk/plu-619e21b213ef6b0007d8c1
 Homicide Hunter	US - Entertainment	US	https://jmp2.uk/plu-619e286e093e7c0007489e6a.m3u8
 Homicide Hunter	US - Entertainment	US	https://jmp2.uk/plu-619e4a3518d6970008bebc95.m3u8
 Homicide Hunter	US - Entertainment	US	https://jmp2.uk/plu-60e452730e76f20007598de8.m3u8
-Hope Channel Inter-America	US - Entertainment	US	https://jstre.am/live/jsl:EC0Mq0i6HJU.m3u8
-Hope Channel Inter-America English (1080p)	US - Entertainment	US	https://jstre.am/live/jsl:UP9KAdlVrm8.m3u8
-Hope Channel International (1080p)	US - Entertainment	US	https://jstre.am/live/jsl:cZXINbwrFj6.m3u8
-Hope Channel North America (1080p)	US - Entertainment	US	https://jstre.am/live/jsl:0sUSK6VA7GT.m3u8
 Hot Bench (720p)	US - Entertainment	US	https://jmp2.uk/plu-6036e6e7ac69c400072afca2.m3u8
 HSN	US - Entertainment	US	https://a-cdn.klowdtv.com/live2/hsn_720p/playlist.m3u8
 HSN	US - Entertainment	US	https://jmp2.uk/plu-5f8a02476b72230007e62b7d.m3u8
@@ -1758,7 +1809,6 @@ Il Banco dei Pugni	US - Entertainment	US	https://jmp2.uk/plu-60e4507a06171800072
 Impact Network (720p)	US - Entertainment	US	https://edge1.lifestreamcdn.com/live/impactroku1/index.m3u8
 Impossible Quiz Show (1080p)	US - Entertainment	US	https://bbc-impossible-1-us.roku.wurl.tv/playlist.m3u8
 In the kitchen (720p)	US - Entertainment	US	https://qvc-amd-live.akamaized.net/hls/live/2034113/lsqvc4us/master.m3u8
-In Touch+ (1080p) [Geo-blocked]	US - Entertainment	US	https://amg01540-amg01540c1-amgplt0095.playout.now3.amagi.tv/playlist.m3u8
 Inazuma Eleven	US - Entertainment	US	https://jmp2.uk/plu-611e75226b7f420007c3f319.m3u8
 Inazuma Eleven	US - Entertainment	US	https://jmp2.uk/plu-612375086abc84000738fc03.m3u8
 InfoWars The American Journal (1080p)	US - Entertainment	US	https://freespeech.akamaized.net/hls/live/2016873/live3/playlist.m3u8
@@ -1776,17 +1826,13 @@ Iron Chef	US - Entertainment	US	https://jmp2.uk/plu-6582f8dadfed030008e5a93d.m3u
 Iron Chef	US - Entertainment	US	https://jmp2.uk/plu-682b385876963fba9abf0f26.m3u8
 Iron Chef	US - Entertainment	US	https://jmp2.uk/plu-682b3932faaa60cd7dbf87b4.m3u8
 Iron Chef	US - Entertainment	US	https://jmp2.uk/plu-682b39defaaa60cd7dbfa5c3.m3u8
-It Is Written TV (1080p)	US - Entertainment	US	https://itiswrittentv.akamaized.net/xR8gyATuHMVx69u9G79DXnpNRL/playlist.m3u8
-It's Supernatural! Network (1080p)	US - Entertainment	US	https://content.uplynk.com/channel/b880a791bf95426d917a509e0c44796a.m3u8
 JAG	US - Entertainment	US	https://jmp2.uk/plu-66a105f4a79dea0008aa5e0f.m3u8
-JBS (720p)	US - Entertainment	US	https://rpn3.bozztv.com/jbstv-srt/srt-push/jbstv/playlist.m3u8
 Jersey Shore	US - Entertainment	US	https://jmp2.uk/plu-609bfa51fbecc1000733152e.m3u8
 Jewelry Television (720p)	US - Entertainment	US	https://content.jwplatform.com/live/broadcast/oe7UD7Ag.m3u8
 Jewelry TV 2 (720p)	US - Entertainment	US	https://cdn.jwplayer.com/live/broadcast/0rrJ3kkM.m3u8
 Jewish Life Television	US - Entertainment	US	https://a-cdn.klowdtv.com/live3/jltv_720p/playlist.m3u8
 Jewish Life Television	US - Entertainment	US	https://jlt-jltv-stirr.otteravision.com/jlt/jltv/jltv.m3u8
 Jewish Life Television	US - Entertainment	US	https://jlt-jltv-xumo.otteravision.com/jlt/jltv/jltv.m3u8
-Jewish Life Television (1080p)	US - Entertainment	US	https://jlt-jltv-strimm.otteravision.com/jlt/jltv/jltv.m3u8
 Johnny Carson TV	US - Entertainment	US	https://johnnycarson-vizio.amagi.tv/playlist.m3u8
 Jornada nas Estrelas A Nova Geração	US - Entertainment	US	https://jmp2.uk/plu-69162ad79505d0f3b1ebf07d.m3u8
 Jornada nas Estrelas Deep Space Nine	US - Entertainment	US	https://jmp2.uk/plu-69162af591700f4c4c135c95.m3u8
@@ -1830,7 +1876,6 @@ KOKI-DT1 (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear
 KPVM AWE Plus	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_120/206858-4404552-1/playlist.m3u8
 KPVM Prime TV25	US - Entertainment	US	https://2-fss-1.streamhoster.com/pl_122/206858-4405346-1/playlist.m3u8
 KQED-DT2 (1080p)	US - Entertainment	US	https://kqeddt2.lls.pbs.org/kqeddt2-hls.m3u8
-KQSL Channel 8 (720p)	US - Entertainment	US	https://uni01rtmp.tulix.tv/kqsltv/kqsltv/playlist.m3u8
 KRCA-TV Estrella Los Angeles (720p)	US - Entertainment	US	https://content.uplynk.com/channel/829a8c85f9e840c6bed963856c231428.m3u8
 KRGV-DT2 [Geo-blocked]	US - Entertainment	US	https://d3svnrf3rmq619.cloudfront.net/krgv-live/smil:krgv-somos.smil/playlist.m3u8
 KRIS-DT1 (1080p)	US - Entertainment	US	https://content.uplynk.com/channel/e72660594b7a4182982af1690609683d.m3u8
@@ -1839,7 +1884,6 @@ KRIV-DT1 (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear
 KSAZ-DT1 (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-ksaz-lgus/playlist.m3u8
 KSAZ-TV 10.1	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/6bb80abf-8f73-46f3-a520-bb810d93f1d0/index.m3u8
 KSBY 6.1	US - Entertainment	US	https://content.uplynk.com/channel/5545aa8a7e5a480d85fd1cff8d0cf610.m3u8
-KSCE Vida Cristiana (360p)	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_120/200226-1449024-1/playlist.m3u8
 KSHB 41 (Kansas City MO) (720p)	US - Entertainment	US	https://content.uplynk.com/channel/50d0fa1b042945a3a4f550f9b8412c83.m3u8
 KTBC-DT1 (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-ktbc-lgus/playlist.m3u8
 KTTV 11.1	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/317a6700-b890-4066-a2e7-dea5c15fd915/index.m3u8
@@ -1866,24 +1910,12 @@ Les Nouveaux Detectives	US - Entertainment	US	https://jmp2.uk/plu-5f8edb6df1ebb8
 Lex TV (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/M0lyamVmM2JWcjhQ/lfucg/G0264_005/playlist.m3u8
 LGTV (1080p)	US - Entertainment	US	https://livestream.telvue.com/lexmedia3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/lexmedia3/stream1/playlist.m3u8
 LHCAZTV	US - Entertainment	US	https://cdn3.wowza.com/5/cHYzekYzM2kvTVFH/lakehavasucity/G0643_003/playlist.m3u8
-Life! Christian Broadcasting Network (360p)	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_138/200226-1359204-1/playlist.m3u8
-LIFE! End Times TV (360p)	US - Entertainment	US	https://2-fss-1.streamhoster.com/pl_122/200226-1427780-1/playlist.m3u8
 Lifetime Latin America	US - Entertainment	US	http://170.83.16.50/LIFETIME/index.m3u8
 Lifetime Latin America	US - Entertainment	US	https://streamer.metronethn.com/Lifetime/index.m3u8
-Lighting Lives Blessing Nations His Light (LLBN) (720p)	US - Entertainment	US	https://brightstar-hislight-pull-secure.akamaized.net/brightstarhislight/stream.m3u8
-Lighting Lives Blessing Nations His Word (LLBN) (720p)	US - Entertainment	US	https://brightstar-hisword-pull-secure.akamaized.net/brightstarhisword/stream.m3u8
 Lighting Lives Blessing Nations Smart Life Style TV (LLBN) (720p)	US - Entertainment	US	https://brightstar-sls-pull-secure.akamaized.net/brightstarsls/stream.m3u8
-Lighting Lives Blessing Nations TV Arabic (LLBN) (480p)	US - Entertainment	US	https://brightstar-arabic-pull-secure.akamaized.net/brightstararabic/stream.m3u8
-Lighting Lives Blessing Nations TV Chinese (LLBN) (480p)	US - Entertainment	US	https://brightstar-chinese-pull-secure.akamaized.net/brightstarchinese/stream.m3u8
-Lighting Lives Blessing Nations TV Korean (LLBN) (480p)	US - Entertainment	US	https://brightstar-korean-pull-secure.akamaized.net/brightstarkorean/stream.m3u8
-Lighting Lives Blessing Nations TV Latino (LLBN) (480p)	US - Entertainment	US	https://brightstar-latino-pull-secure.akamaized.net/brightstarlatino/stream.m3u8
-Lighting Lives Blessing Nations TV Romanian (LLBN) (480p)	US - Entertainment	US	https://brightstar-romanian-pull-secure.akamaized.net/brightstarromanian/stream.m3u8
-Lighting Lives Blessing Nations TV South Asia (LLBN) (480p)	US - Entertainment	US	https://brightstar-southasia-pull-secure.akamaized.net/brightstarsouthasia/stream.m3u8
-Living Faith TV (540p)	US - Entertainment	US	https://cdn-unified-hls.streamspot.com/ingest1/0b5c0f18e9/playlist.m3u8?origin=1
 Localish	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/0ecc85a2-5e1b-482a-9c69-3eaaee160f2e/index.m3u8
 Localish (1080p)	US - Entertainment	US	https://dnmfq3sh1jipj.cloudfront.net/DisneyLocalish.m3u8
 Logo Pluto TV	US - Entertainment	US	https://jmp2.uk/plu-5ce5a8954311f992edbe1da2.m3u8
-Logos TV	US - Entertainment	US	https://597f64b67707a.streamlock.net/logoschannel.com/logostv.smil/playlist.m3u8
 Lompoc TAP TV Channel 23 (720p)	US - Entertainment	US	https://livestream.telvue.com/lompoccmttv1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Lompoc TAP TV Channel 24 (720p)	US - Entertainment	US	https://livestream.telvue.com/lompoccmttv2/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Lompoc TAP TV Channel 25 (720p)	US - Entertainment	US	https://livestream.telvue.com/lompoccmttv3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
@@ -1901,7 +1933,6 @@ Love & Hip Hop	US - Entertainment	US	https://jmp2.uk/plu-5d51ddf0369acdb278dfb05
 Love Nature en Espanol (1080p) [Geo-blocked]	US - Entertainment	US	https://amg01515-amg01515c17-xumo-us-2489.playouts.now.amagi.tv/bamus-lovenaturespanish-roku/playlist.m3u8
 MacGyver	US - Entertainment	US	https://jmp2.uk/plu-63eb9dc84e83e70008abea92.m3u8
 MacGyver	US - Entertainment	US	https://jmp2.uk/plu-63eb95baa99571000898a078.m3u8
-Maria Vision USA (1080p)	US - Entertainment	US	https://1601580044.rsc.cdn77.org/live/_jcn_/amls:PALMIAMI/playlist.m3u8
 Married... with Children	US - Entertainment	US	https://jmp2.uk/plu-66bb3212fe11e5000883ea6b.m3u8
 Martin County MCTV (Martin County FL) (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/UWpORHhLSEs5SkJs/martin/G0074_002/playlist.m3u8
 Más adrenalina	US - Entertainment	US	https://jmp2.uk/plu-687fea9a4fa995eff284a1c8.m3u8
@@ -1926,7 +1957,6 @@ Midsomer Murders	US - Entertainment	US	https://pb-10d2295rjh7ki.akamaized.net/pl
 Midsomer Murders	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/d76934f9-bea8-4cc2-a812-c2e8a9c5d40a/playlist.m3u8
 Midsomer Murders	US - Entertainment	US	https://all3media-midsomer-1-us.xumo.wurl.tv/playlist.m3u8
 Midsomer Murders (1080p)	US - Entertainment	US	https://all3media-midsomer-1-us.roku.wurl.tv/playlist.m3u8
-Ministerio La Voz De Un Remanente TV	US - Entertainment	US	https://vs20.live.opencaster.com/remanente_5925b089/index.m3u8
 Minuto Para Ganar	US - Entertainment	US	https://jmp2.uk/plu-5e46e64dc73db400094b5f0b.m3u8
 Mission Impossible	US - Entertainment	US	https://jmp2.uk/plu-62ea43aa0c43540007f2db96.m3u8
 Mission Impossible	US - Entertainment	US	https://jmp2.uk/plu-5f77977bd924d80007eee60c.m3u8
@@ -1934,7 +1964,6 @@ Misterios Medicos	US - Entertainment	US	https://jmp2.uk/plu-5f230e416b68ff00075b
 Misterios sin resolver	US - Entertainment	US	https://jmp2.uk/plu-5f4d882d5233170007ee880e.m3u8
 Misterios sin Resolver	US - Entertainment	US	https://jmp2.uk/plu-5f610042272f68000867685b.m3u8
 Mobile County Public Schools TV Network (MCPSS)	US - Entertainment	US	https://5b200f5268ceb.streamlock.net/MCPSS/MCPSS247.smil/playlist.m3u8
-Mohabat TV	US - Entertainment	US	https://mohabathls.wns.live/hls/stream.m3u8
 Monroe Community Media Education Channel	US - Entertainment	US	https://reflect-monroe-public-access.cablecast.tv/live-4/live/live.m3u8
 Monroe Community Media Public Access Channel	US - Entertainment	US	https://reflect-monroe-public-access.cablecast.tv/live-3/live/live.m3u8
 Monroe County Television MCTV (Monroe County FL) (1080p)	US - Entertainment	US	https://castus-vod-dev.s3.amazonaws.com/vod_clients/monroe/live/ch1/video.m3u8
@@ -1951,7 +1980,6 @@ MST3K	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/99c48388-377e-
 MST3K	US - Entertainment	US	https://amg00163-shoutfactory-mst3k-xumo-r2pwd.amagi.tv/playlist.m3u8
 MST3K (1080p)	US - Entertainment	US	https://mst3k-roku.amagi.tv/playlist.m3u8
 MTC TV	US - Entertainment	US	https://mtchls.wns.live/hls/stream.m3u8
-Muslim Network TV	US - Entertainment	US	https://afghantv.app/hls2/muslimnetwork/index.m3u8
 Mystery TV	US - Entertainment	US	https://jmp2.uk/plu-61c4a09d6c959f0007189c93.m3u8
 Mystery TV	US - Entertainment	US	https://amg00841-aenetworksukane-mysterytv-samsunguk-mggb7.amagi.tv/playlist/amg00841-aenetworksukane-mysterytv-samsunguk/playlist.m3u8
 Mystery TV (1080p)	US - Entertainment	US	https://aenetworks-mysterytv-rakuten.amagi.tv/playlist.m3u8
@@ -2021,9 +2049,6 @@ Nosey	US - Entertainment	US	https://jmp2.uk/plu-5aec96ec5126c2157123c657.m3u8
 Nosey	US - Entertainment	US	https://wurlnosey.global.transmit.live/hls/678a8e220d785cafbf154147/v1/nosey_2/samsung_us/latest/main/hls/playlist.m3u8
 Nosey	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/f111d6c2-02bf-45fb-9a90-2e55b18d9f70/playlist.m3u8
 Nosey (1080p)	US - Entertainment	US	https://nosey-intl-1-samsungau.amagi.tv/playlist.m3u8
-NRBTV	US - Entertainment	US	https://uni6rtmp.tulix.tv/nrbnetwork/myStream.sdp/playlist.m3u8
-NRBTV	US - Entertainment	US	https://stream-us-east-1.getpublica.com/playlist.m3u8?network_id=15811
-NRBTV (720p)	US - Entertainment	US	http://145.239.5.177/215/index.m3u8
 NTD TV (1080p)	US - Entertainment	US	https://ntd02.akamaized.net/HD-NY/index.m3u8
 NTD TV Asia-Pacific	US - Entertainment	US	https://live.ntdtv.com/aplive200/playlist.m3u8
 NTD TV Canada	US - Entertainment	US	https://live.ntdtv.com/mllive860/playlist.m3u8
@@ -2035,7 +2060,6 @@ Números	US - Entertainment	US	https://jmp2.uk/plu-67f960680072d6b187a0682e.m3u8
 O Encantador de Cães	US - Entertainment	US	https://jmp2.uk/plu-61099df8cee03b00074b2ecf.m3u8
 Oceanside Community Television (KOCT) Community Channel 18 (720p)	US - Entertainment	US	https://securestream10.champds.com/LIVE/KOCTCALIVE/KOCTCALIVE.m3u8
 Oceanside Community Television (KOCT) Education and Government Channel 19 (720p)	US - Entertainment	US	https://securestream10.champds.com/LIVE/KOCTCALIVE2/KOCTCALIVE2.m3u8
-OCN TV	US - Entertainment	US	https://5d12bc59c4748.streamlock.net/redirect/ocnbroadcasting.com/ocnbroadcasting2?type=m3u8
 Olelo Community Media Channel 49 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/V2Y2VmhqMEFDTUkx/olelo/G0125_009/playlist.m3u8
 Olelo Community Media Channel 53 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/V2Y2VmhqMEFDTUkx/olelo/G0125_011/playlist.m3u8
 Olelo Community Media Channel 54 (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/V2Y2VmhqMEFDTUkx/olelo/G0125_012/playlist.m3u8
@@ -2069,7 +2093,6 @@ Paranormal State	US - Entertainment	US	https://jmp2.uk/plu-60804d85858bd00007c5d
 Pars TV	US - Entertainment	US	https://parshls.wns.live/hls/stream.m3u8
 Pasiones Latin America	US - Entertainment	US	http://45.162.193.35/PASIONESHD/index.m3u8
 Pasiones Latin America	US - Entertainment	US	http://190.93.224.42/PASIONES/index.m3u8
-Payame Aramesh TV (720p)	US - Entertainment	US	https://hls.keshishhamid.live/hls/stream.m3u8
 People Are Awesome	US - Entertainment	US	https://jukin-peopleareawesome-2-ca.samsung.wurl.tv/playlist.m3u8
 People Are Awesome	US - Entertainment	US	https://jukin-peopleareawesome-2-dk.samsung.wurl.tv/playlist.m3u8
 People Are Awesome	US - Entertainment	US	https://jukin-peopleareawesome-2-es.samsung.wurl.tv/playlist.m3u8
@@ -2180,7 +2203,6 @@ Portlandia	US - Entertainment	US	https://amc-portlandia-1-us.xumo.wurl.tv/playli
 Portlandia (720p)	US - Entertainment	US	https://d1uvnirn6lhs2f.cloudfront.net/playlist.m3u8
 Positiv TV	US - Entertainment	US	http://trn03.bozztv.com/gin-positiv/index.m3u8
 Positiv TV (1080p)	US - Entertainment	US	https://livecdn.use1-0004.jwplive.com/live/sites/fGLyccP5/media/FoWynVnP/live.isml/.m3u8
-Potta-Divine TV USA (480p)	US - Entertainment	US	https://playout7multirtmp.tulix.tv/live21/Stream1/playlist.m3u8
 PowerNation (1080p)	US - Entertainment	US	https://amg01258-raycomsports-powernationau-samsungau-18bwc.amagi.tv/playlist.m3u8
 PowerNation TV	US - Entertainment	US	https://amg01258-raycomsports-powernationnz-samsungnz-q92ks.amagi.tv/playlist.m3u8
 PowerNation TV	US - Entertainment	US	https://jmp2.uk/plu-63b48016d9dd51000828fa37.m3u8
@@ -2223,7 +2245,6 @@ RiffTrax (720p)	US - Entertainment	US	https://wurlrifftrax.global.transmit.live/
 Rifle Community TV RCTV (Rifle CO) (720p)	US - Entertainment	US	https://livestream.telvue.com/riflecmttv2/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Roar (1080p)	US - Entertainment	US	https://fast-channels.sinclairstoryline.com/TBD/index.m3u8
 RTH-TV1 (1080p)	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_120/amlst:206708-4203440/playlist.m3u8
-RTH-TV2 Gospel (720p)	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_120/amlst:206708-4202592/playlist.m3u8
 RTVi US (1080p)	US - Entertainment	US	https://amg17233-amg17233c1-wisptv-us-6409.playouts.now.amagi.tv/playlist.m3u8
 RVTV	US - Entertainment	US	https://rvtv-stirr.b-cdn.net/rvtv-on-stirr/playlist.m3u8
 RVTV (1080p)	US - Entertainment	US	https://rvtv-on-freecast.b-cdn.net/RVTV-on-Freecast/index.m3u8
@@ -2232,14 +2253,10 @@ RVTV Grants Pass (720p)	US - Entertainment	US	https://livestream.telvue.com/rogu
 RVTV Prime (720p)	US - Entertainment	US	https://livestream.telvue.com/roguevalleycmttv1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 RVTV Voices (720p)	US - Entertainment	US	https://livestream.telvue.com/roguevalleycmttv3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 S Premium! (360p)	US - Entertainment	US	https://vodcdn.bamboo-cloud.com/livehls/68d0876e06304461862415b2/master.m3u8
-Samsung Wild Life (720p) [Geo-blocked]	US - Entertainment	US	https://pb-olm46bexcljjf.akamaized.net/Samsung_Wild_Life.m3u8
 Sanctuary	US - Entertainment	US	https://jmp2.uk/plu-63eb57d6c111bc0008fe2658.m3u8
 Santa Maria Community Television Education Channel (720p)	US - Entertainment	US	https://livestream.telvue.com/santamariactv2/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Santa Maria Community Television Government Channel (720p)	US - Entertainment	US	https://livestream.telvue.com/santamariactv1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 Santa Maria Community Television Public Access Channel (720p)	US - Entertainment	US	https://livestream.telvue.com/santamariactv3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
-SBN TV (720p)	US - Entertainment	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_c5402f016A/live.m3u8
-SBN TV Global (720p)	US - Entertainment	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_8D363D13Eb/live.m3u8
-SBN TV International (720p)	US - Entertainment	US	https://watch.sardius.media/channels/Ea867F3e1F56B06/site_09a4778E89/live.m3u8
 Schwab Network	US - Entertainment	US	https://content.uplynk.com/channel/f9aafa1f132e40af9b9e7238bc18d128.m3u8
 Schwab Network (1080p)	US - Entertainment	US	https://tdameritrade-distro.amagi.tv/playlist.m3u8
 Scientology Network (1080p)	US - Entertainment	US	https://stream6.scientology.org/master.m3u8
@@ -2251,9 +2268,6 @@ Sent TV Global Network Atlanta (SGTN-49) (720p)	US - Entertainment	US	https://rp
 SFGovTV San Francisco The Government Channel (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/ZFdxUW9BQWt2UWRL/sanfrancisco/G0051_048/playlist.m3u8
 SFGovTV2 San Francisco The City Channel (720p)	US - Entertainment	US	https://cdn3.wowza.com/5/ZFdxUW9BQWt2UWRL/sanfrancisco/G0051_050/playlist.m3u8
 Shabakeh 7	US - Entertainment	US	https://sh7hls.wns.live/hls/stream.m3u8
-Shalom World (1080p)	US - Entertainment	US	https://broadcaster-1.cclouds.in/srt-2/channel2_abr/playlist.m3u8
-Shalom World Europe (1080p)	US - Entertainment	US	https://broadcaster-1.cclouds.in/srt/channel1_abr/playlist.m3u8
-Shalom World Prayer (1080p)	US - Entertainment	US	https://broadcaster-1.cclouds.in/srt-4/channel4_abr/playlist.m3u8
 Shemaroo Bollywood (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00864-shemarooenterta-shemabollywood-ono/playlist.m3u8
 Shop LC	US - Entertainment	US	https://cdn-shop-lc-01.akamaized.net/Content/HLS_HLS/Live/channel(ott)/master.m3u8
 Shop LC	US - Entertainment	US	https://cdn-shop-lc-01.vos360.video/Content/HLS_HLS/Live/channel(ShopLCStirrTV)/master.m3u8
@@ -2298,10 +2312,6 @@ Studio Universal Latin America	US - Entertainment	US	http://45.162.193.35/STUDIO
 Studio Universal Latin America	US - Entertainment	US	http://190.93.224.42/STUDIO-UNIVERSAL/index.m3u8
 Studio Universal Latin America Brazil (720p)	US - Entertainment	US	http://177.52.24.163/STUDIO-UNIVERSAL-HD/index.m3u8
 STV (360p)	US - Entertainment	US	https://vodcdn.bamboo-cloud.com/livehls/6a81edf1063044437202e65c/master.m3u8
-SUMtv English	US - Entertainment	US	https://rpn.bozztv.com/ssstv/ssstv1-cdn/smil:ssstv1web.smil/playlist.m3u8
-SUMtv English (1080p)	US - Entertainment	US	https://bozztv.com/uni10rtmp/ssstv1-cdn/smil:ssstv1web.smil/playlist.m3u8
-SUMtv Latino	US - Entertainment	US	https://rpn.bozztv.com/ssstv/ssstv2-cdn/smil:ssstv2web.smil/playlist.m3u8
-SUMtv Latino (1080p)	US - Entertainment	US	https://bozztv.com/uni10rtmp/ssstv2-cdn/smil:ssstv2web.smil/playlist.m3u8
 Supernatural Drama	US - Entertainment	US	https://jmp2.uk/plu-5f24662bebe0f0000767de32.m3u8
 Tastemade	US - Entertainment	US	https://jmp2.uk/plu-5f998c1fc54853000797bacd.m3u8
 Tastemade	US - Entertainment	US	https://amg00047-tastemade-amg00047c4-cineverse-us-1361.playouts.now.amagi.tv/playlist/amg00047-tastemadefast-tastemadefreetv16-cineverseus/playlist.m3u8
@@ -2396,8 +2406,6 @@ The Walking Dead en español (720p)	US - Entertainment	US	https://jmp2.uk/plu-5e
 The Walking Dead Universe	US - Entertainment	US	https://pb-7ien6yaxy2am1.akamaized.net/playlist.m3u8
 The Walking Dead Universe	US - Entertainment	US	https://amc-twdfanexperience-1-us.xumo.wurl.tv/playlist.m3u8
 The Walking Dead Universe (720p)	US - Entertainment	US	https://jmp2.uk/plu-62fa8176b9884200074ef5ae.m3u8
-The Word Network (1080p)	US - Entertainment	US	https://clouditize.piksel.tech/hls/live/2043070/ClouditizeStream1/playlist.m3u8
-theDove TV (720p)	US - Entertainment	US	https://thedovetv.bozztv.com/thedovetv/thedovetv/index.m3u8
 This Old House	US - Entertainment	US	https://jmp2.uk/plu-5d51e791b7dba3b2ae990ab2.m3u8
 This Old House	US - Entertainment	US	https://pb-qmu0m4a1cb5dj.akamaized.net/This_Old_House.m3u8
 This Old House (1080p)	US - Entertainment	US	https://thisoldhouse-2-us.roku.wurl.tv/playlist.m3u8
@@ -2411,8 +2419,6 @@ Tiny House Nation	US - Entertainment	US	https://adf47c43.wurl.com/master/f36d25e
 Tiny House Nation	US - Entertainment	US	https://jmp2.uk/plu-601a0342dcf4370007566891.m3u8
 Tiny House Nation	US - Entertainment	US	https://pb-yxy31pwnm3mp2.akamaized.net/v1/aenetworks_tinyhousenation_1/samsungheadend_us/latest/main/hls/playlist.m3u8
 Tiny House Nation (720p)	US - Entertainment	US	https://jmp2.uk/plu-6540ff4f7312a40008297b59.m3u8
-TLN Media Chicago (720p)	US - Entertainment	US	https://fuel-streaming-prod01.fuelmedia.io/v1/sem/cb165faa-41c9-42ad-83ee-ad5ca9fb927c.m3u8
-TLN Media San Francisco (720p)	US - Entertainment	US	https://fuel-streaming-prod01.fuelmedia.io/v1/sem/b29d27bb-88af-42d1-937a-5bdf76b71c17.m3u8
 TM TV (720p)	US - Entertainment	US	https://hls.tmtv.live/hls/stream.m3u8
 TMZ	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/57c1fa3c-566b-4998-b6de-d6de67031d99/index.m3u8
 TMZ (1080p) [Geo-blocked]	US - Entertainment	US	https://pb-ryciga1q62u8o.akamaized.net/TMZ.m3u8
@@ -2472,22 +2478,17 @@ Unsolved Mysteries	US - Entertainment	US	https://jmp2.uk/plu-5b4e96a0423e067bd6d
 Unsolved Mysteries (720p)	US - Entertainment	US	https://d31z96rdrmwfsp.cloudfront.net/master.m3u8
 Vaya semanita	US - Entertainment	US	https://jmp2.uk/plu-5f28009b150b2500077766b8.m3u8
 Vegas Life TV (1080p)	US - Entertainment	US	https://cdn.vegasplus.us/vegas/vltv/playlist.m3u8
-Velayat TV (480p)	US - Entertainment	US	https://nl.livekadeh.com/hls2/velayattv.m3u8
 VICE TV	US - Entertainment	US	https://vicetv-vicefast1-firetv.amagi.tv/playlist.m3u8
 VICE TV	US - Entertainment	US	https://d1ocru52bkg5e9.cloudfront.net/VICE.m3u8
-Vida Mejor TV (480p)	US - Entertainment	US	https://tgn.bozztv.com/betterlife/bettervida/bettervida/index.m3u8
 Village of Hastings-On-Hudson NY (WHOH-TV) (360p)	US - Entertainment	US	https://stream.swagit.com/live-edge/hastingsonhudsonny/smil:std-4x3-1-a/playlist.m3u8
 Vision Latina Network (1080p)	US - Entertainment	US	https://cdn-cloudfront.us-east-1.prod.ingest.aws-infra.dacast.com/live/c1804a4c-ccbf-46e5-87c3-0f8d4a94d9e3/master.m3u8
 VSiN (720p)	US - Entertainment	US	https://vsin-sgrewind.streamguys1.com/scte/live-2k/playlist.m3u8
-VTN Victory Television Network (720p)	US - Entertainment	US	https://jk3lzkn4lw79-hls-live.5centscdn.com/VTN2/bcaafe9ad8d42834b08e762ac58596b8.sdp/playlist.m3u8
-W14DK-D 14.1 TV Delmarva	US - Entertainment	US	https://2-fss-2.streamhoster.com/pl_118/amlst:204972-1949480/playlist.m3u8
 Walker Texas Ranger	US - Entertainment	US	https://jmp2.uk/plu-635659445b4c4700076d2ad1.m3u8
 Walker Texas Ranger	US - Entertainment	US	https://jmp2.uk/plu-62a0aefc7c5f9f00075b4e24.m3u8
 Walker Texas Ranger	US - Entertainment	US	https://jmp2.uk/plu-60afa749ac7f3200078adb40.m3u8
 Walker Texas Ranger	US - Entertainment	US	https://jmp2.uk/plu-62a0ae8b2241f500073e0925.m3u8
 Walker Texas Ranger	US - Entertainment	US	https://jmp2.uk/plu-62a0b114a1c8650007e93688.m3u8
 Wanted: Dead or Alive (720p)	US - Entertainment	US	https://aegis-cloudfront-1.tubi.video/d5171dc7-f8c6-469c-81eb-e1ffaaed5721/playlist.m3u8
-WATC The Loop (1080p)	US - Entertainment	US	https://tgn.bozztv.com/watc57/watc57-theloop/watc57-theloop/index.m3u8
 WATC The POINT Network (1080p)	US - Entertainment	US	https://tgn.bozztv.com/watc57/watc57-2/watc57-2/index.m3u8
 WATC TV57 (1080p)	US - Entertainment	US	https://tgn2.bozztv.com/watc57/watc57-1/watc57-1/index.m3u8
 WATC-DT 57.1	US - Entertainment	US	https://uni01rtmp.tulix.tv/watc57/watc57/playlist.m3u8
@@ -2539,7 +2540,6 @@ WITI-DT1 (1080p)	US - Entertainment	US	https://cdn-uw2-prod.tsv2.amagi.tv/linear
 WJAR 10.1	US - Entertainment	US	https://linear-694.frequency.stream/dist/stirr/694/hls/master/playlist.m3u8
 WJAX-DT1 (1080p)	US - Entertainment	US	https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00327-coxmediagroup-wjaxbreaking-ono/playlist.m3u8
 WJXT News4JAX (Jacksonville FL) (720p)	US - Entertainment	US	https://dai.google.com/linear/hls/event/RDmbn03GRCOLNG1eetEKhg/master.m3u8
-WLMB (1080p)	US - Entertainment	US	https://rpn.bozztv.com/wlmb/wlmb/wlmb/index.m3u8
 WLTV-DT 23.1	US - Entertainment	US	https://streaming-live-fcdn.api.prd.univisionnow.com/wltv/wltv.isml/hls/wltv.m3u8
 WMBC-DT1 (720p)	US - Entertainment	US	http://d029dcec.kazmazpaz.ru/iptv/GVR4V8HYAGBS5V/1098/manifest.m3u8
 WMBC-TV 63.1	US - Entertainment	US	http://61ce5915.amazzin.pw/iptv/FF38ZQWZHTSV8T4XX9RDZYLB/1098/index.m3u8
@@ -2727,6 +2727,21 @@ Tiny Pop	GB - Kids	GB	https://amg01753-narrativeuk-amg01753c1-rakuten-uk-2339.pl
 Tiny Pop	GB - Kids	GB	https://amg01753-narrativeuk-amg01753c1-rakuten-uk-2339.playouts.now.amagi.tv/playlist.m3u8
 Tiny Pop	GB - Kids	GB	https://amg01753-narrativeentert-tinypop-samsunguk-hvvb7.amagi.tv/playlist/amg01753-narrativeentert-tinypop-samsunguk/playlist.m3u8
 Tiny Pop (1080p)	GB - Kids	GB	https://amg01753-narrativeuk-amg01753c1-lg-gb-1830.playouts.now.amagi.tv/playlist/amg01753-narrativeuk-tinypop-lggb/playlist.m3u8
+Akaal Channel (396p) [Geo-blocked]	GB - Religion	GB	https://cdn-globecast.akamaized.net/live/eds/akaal_tv/hls1_smart_akaal/akaal_tv.m3u8
+Faith World TV (1080p)	GB - Religion	GB	https://faithworldtv.abs.tv/1826926230/index.m3u8
+GOD TV (396p)	GB - Religion	GB	https://d1msejlow1t3l4.cloudfront.net/211125/godtv/chunks.m3u8
+Kalemeh TV	GB - Religion	GB	https://klmhls.wns.live/hls/stream.m3u8
+Miracle TV (480p)	GB - Religion	GB	https://viewmedia7219.bozztv.com/wmedia/viewmedia100/web_030/Stream/playlist.m3u8
+MTA1 World (720p)	GB - Religion	GB	https://chlivemta1.akamaized.net/hls/live/2008145/mta1/playlist.m3u8
+MTA2 Europe (720p)	GB - Religion	GB	https://chlivemta1.akamaized.net/hls/live/2008145/mta2/playlist.m3u8
+MTA3 Al-Arabia (1080p)	GB - Religion	GB	https://chlivemta1.akamaized.net/hls/live/2010556/mta3alarabia/playlist.m3u8
+MTA4 Africa (1080p)	GB - Religion	GB	https://chlivemta.akamaized.net/hls/live/2010555/mtaafrica1/playlist.m3u8
+MTA5 Africa (1080p)	GB - Religion	GB	https://chlivemta.akamaized.net/hls/live/2010555/mtaafrica2/playlist.m3u8
+MTA6 Asia (1080p)	GB - Religion	GB	https://livemtaasia.akamaized.net/hls/live/2039224/mta6asia/playlist.m3u8
+MTA7 Asia (1080p)	GB - Religion	GB	https://livemtaasia.akamaized.net/hls/live/2039224/mtaasia2/playlist.m3u8
+MTA8 America (1080p)	GB - Religion	GB	https://chlivemta.akamaized.net/hls/live/2016718/mta8/playlist.m3u8
+Noor TV (720p)	GB - Religion	GB	https://sscsott.com/srt/noortvuk/index.m3u8
+Safeer TV (1080p)	GB - Religion	GB	https://cdn3.wowza.com/1/YStGZlJRdktzZkdK/VXROZWNW/hls/live/playlist.m3u8
 AMC Europe	GB - Movies	GB	https://dokagents.site/live/amc/mono.m3u8
 AMC Europe Czech Republic	GB - Movies	GB	http://88.212.15.19/live/test_amc_25p/playlist.m3u8
 AMC Europe Hungary	GB - Movies	GB	http://88.212.15.19/live/amc_hun/index.m3u8
@@ -2783,7 +2798,6 @@ Totalmusic Dance (720p)	GB - Music	GB	https://cdn.global.elektamedia.com/live/c7
 Trace UK	GB - Music	GB	https://d2l4tng0wskzvn.cloudfront.net/Trace_GB.m3u8
 Trace UK (1080p)	GB - Music	GB	https://channels.trace.plus/Traceprod/UK_FAST_hd/index.m3u8
 5 Exploring Britain	GB - Entertainment	GB	https://jmp2.uk/plu-5ddf901280e3550009139c86.m3u8
-Akaal Channel (396p) [Geo-blocked]	GB - Entertainment	GB	https://cdn-globecast.akamaized.net/live/eds/akaal_tv/hls1_smart_akaal/akaal_tv.m3u8
 Antiques Road Show UK (720p)	GB - Entertainment	GB	https://jmp2.uk/plu-638e10de75c3a30007092693.m3u8
 Arirang World	GB - Entertainment	GB	http://amdlive.ctnd.com.edgesuite.net/arirang_1ch/smil:arirang_1ch.smil/chunklist_b2256000_sleng.m3u8
 ATN Bangla UK (576p)	GB - Entertainment	GB	https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/atnbanglauk-off.stream/playlist.m3u8
@@ -2806,9 +2820,7 @@ English Club TV	GB - Entertainment	GB	https://dash2.antik.sk/live/test_ectv_hd_1
 English Club TV (576i)	GB - Entertainment	GB	https://stream8.cinerama.uz/1442/tracks-v1a1/mono.m3u8
 ENT Channel (720p)	GB - Entertainment	GB	https://cdn.global.elektamedia.com/live/c7eds/ENT_Channel/SA_LIVE_hls_enc/master.m3u8
 ENT Family (720p)	GB - Entertainment	GB	https://cdn.global.elektamedia.com/live/c7eds/ENT_Family/SA_LIVE_hls_enc/master.m3u8
-Faith World TV (1080p)	GB - Entertainment	GB	https://faithworldtv.abs.tv/1826926230/index.m3u8
 Gems TV (720p)	GB - Entertainment	GB	https://lo3.gemporia.com/abrgemporiaukgfx/smil:livestream.smil/playlist.m3u8
-GOD TV (396p)	GB - Entertainment	GB	https://d1msejlow1t3l4.cloudfront.net/211125/godtv/chunks.m3u8
 Great British Menu (720p)	GB - Entertainment	GB	https://all3media-great-british-menu-1-gb.rakuten.wurl.tv/playlist.m3u8
 Great British Menu (720p)	GB - Entertainment	GB	https://all3media-great-british-menu-1-gb.samsung.wurl.tv/playlist.m3u8
 Hala London (1080p)	GB - Entertainment	GB	https://halalondon-live.ercdn.net/halalondon/halalondon.m3u8
@@ -2817,11 +2829,9 @@ Horse & Country TV	GB - Entertainment	GB	https://hncfree-samsungau.amagi.tv/play
 Horse & Country TV	GB - Entertainment	GB	https://hncfree-samsung-uk.amagi.tv/playlist.m3u8
 Horse & Country TV (1080p)	GB - Entertainment	GB	https://hnc-free-viewlift.amagi.tv/HNC_AUSTRALIA.m3u8
 Jewellery Maker	GB - Entertainment	GB	https://lo3.gemporia.com/abrjewellerymaker/smil:livestreamFullHD.smil/playlist.m3u8
-Kalemeh TV	GB - Entertainment	GB	https://klmhls.wns.live/hls/stream.m3u8
 Kanal Jadid	GB - Entertainment	GB	https://kjhls.wns.live/hls/stream.m3u8
 Latest TV (480p)	GB - Entertainment	GB	https://5a0e89631aa14.streamlock.net/live/LatestTelevision/playlist.m3u8
 Magna Vision (1080p)	GB - Entertainment	GB	https://j78dpa3edq5r-hls-live.5centscdn.com/abr/0864028584026e6ad9cdf922473177a4/playlist.m3u8
-Miracle TV (480p)	GB - Entertainment	GB	https://viewmedia7219.bozztv.com/wmedia/viewmedia100/web_030/Stream/playlist.m3u8
 Most Haunted	GB - Entertainment	GB	https://jmp2.uk/plu-66d722d31878f200081c2c64.m3u8
 Most Haunted	GB - Entertainment	GB	https://jmp2.uk/plu-6081648340382e0007f73d45.m3u8
 Most Haunted (1080p)	GB - Entertainment	GB	https://amg00426-lds-amg00426c17-samsung-gb-10157.playouts.now.amagi.tv/playlist.m3u8
@@ -2829,15 +2839,6 @@ Mr Bean Animated	GB - Entertainment	GB	https://jmp2.uk/plu-69fca9f9b9c0f0d444f63
 Mr Bean Animated	GB - Entertainment	GB	https://amg00627-amg00627c28-rakuten-uk-3984.playouts.now.amagi.tv/playlist/amg00627-banijayfast-mrbeanukcc-rakutenuk/playlist.m3u8
 Mr Bean Animated	GB - Entertainment	GB	https://amg00627-amg00627c23-samsung-gb-3927.playouts.now.amagi.tv/playlist.m3u8
 Mr Bean Animated	GB - Entertainment	GB	https://d2t1w90tnft92.cloudfront.net/Mr_Bean_Animated.m3u8
-MTA1 World (720p)	GB - Entertainment	GB	https://chlivemta1.akamaized.net/hls/live/2008145/mta1/playlist.m3u8
-MTA2 Europe (720p)	GB - Entertainment	GB	https://chlivemta1.akamaized.net/hls/live/2008145/mta2/playlist.m3u8
-MTA3 Al-Arabia (1080p)	GB - Entertainment	GB	https://chlivemta1.akamaized.net/hls/live/2010556/mta3alarabia/playlist.m3u8
-MTA4 Africa (1080p)	GB - Entertainment	GB	https://chlivemta.akamaized.net/hls/live/2010555/mtaafrica1/playlist.m3u8
-MTA5 Africa (1080p)	GB - Entertainment	GB	https://chlivemta.akamaized.net/hls/live/2010555/mtaafrica2/playlist.m3u8
-MTA6 Asia (1080p)	GB - Entertainment	GB	https://livemtaasia.akamaized.net/hls/live/2039224/mta6asia/playlist.m3u8
-MTA7 Asia (1080p)	GB - Entertainment	GB	https://livemtaasia.akamaized.net/hls/live/2039224/mtaasia2/playlist.m3u8
-MTA8 America (1080p)	GB - Entertainment	GB	https://chlivemta.akamaized.net/hls/live/2016718/mta8/playlist.m3u8
-Noor TV (720p)	GB - Entertainment	GB	https://sscsott.com/srt/noortvuk/index.m3u8
 Now 80s	GB - Entertainment	GB	https://lightning-now80s-samsunguk.amagi.tv/playlist.m3u8
 Pointless UK (1080p)	GB - Entertainment	GB	https://dvqpty1sb3rry.cloudfront.net/PointlessUKPoweredbyBanijay_GB.m3u8
 Pop	GB - Entertainment	GB	https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01753-narrativeentert-popkids-lggb/playlist.m3u8
@@ -2862,7 +2863,6 @@ Real Wild	GB - Entertainment	GB	https://lds-realwild-samsunguk.amagi.tv/playlist
 Real Wild (1080p)	GB - Entertainment	GB	https://lds-realwild-samsungau.amagi.tv/playlist.m3u8
 RugbyPass TV	GB - Entertainment	GB	https://97bf7b92.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/U2Ftc3VuZy1nYl9SdWdieVBhc3NUVl9ITFM/playlist.m3u8
 RugbyPass TV	GB - Entertainment	GB	https://dt1kh32hg3tft.cloudfront.net/v1/world_rugby_rugbypasstv_1/samsungheadend_us/latest/main/hls/playlist.m3u8
-Safeer TV (1080p)	GB - Entertainment	GB	https://cdn3.wowza.com/1/YStGZlJRdktzZkdK/VXROZWNW/hls/live/playlist.m3u8
 Setareh TV	GB - Entertainment	GB	https://setarehhls.wns.live/hls/stream.m3u8
 Space Live powered by sen	GB - Entertainment	GB	https://jmp2.uk/plu-69a554497ed3b3fff0b9ca80.m3u8
 Space Live powered by sen	GB - Entertainment	GB	https://jmp2.uk/plu-69b16dc543d0f313203b714c.m3u8

@@ -48,7 +48,8 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     var mode by remember { mutableStateOf("xtream") }
     var name by remember { mutableStateOf("My Playlist") }
-    var server by remember { mutableStateOf("") }
+    // Prefilled so the common case is two fields, not three.
+    var server by remember { mutableStateOf(tv.enktel.app.data.repo.DefaultLine.server) }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var m3uUrl by remember { mutableStateOf("") }

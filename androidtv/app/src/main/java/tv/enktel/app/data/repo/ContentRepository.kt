@@ -22,7 +22,10 @@ import tv.enktel.app.data.double
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
+import tv.enktel.app.data.m3u.LocalFirst
 import tv.enktel.app.data.m3u.M3uParser
+import tv.enktel.app.data.m3u.PlaylistFiles
+import tv.enktel.app.data.net.gunzipIfNeeded
 import tv.enktel.app.data.str
 import tv.enktel.app.data.xtream.XtreamClient
 import java.io.IOException
@@ -358,12 +361,44 @@ class ContentRepository(
         // Diff against the catalogue we are about to replace, so "new" means
         // new *to this line* rather than whatever date the provider stamped on
         // ingest. Read before the clear, obviously.
-        val prevMovies = content.movies(p.id).first().associate { it.key to it.firstSeenAt }
-        val prevSeries = content.series(p.id).first().associate { it.key to it.firstSeenAt }
+        val prevMovieRows = content.movies(p.id).first()
+        val prevSeriesRows = content.series(p.id).first()
+        val prevMovies = prevMovieRows.associate { it.key to it.firstSeenAt }
+        val prevSeries = prevSeriesRows.associate { it.key to it.firstSeenAt }
+        // What IMDb said, kept across the wipe.
+        //
+        // A sync clears the catalogue and re-inserts it from the panel payload,
+        // so every enriched column goes back to its default and is refetched
+        // afterwards. For TMDB that is merely wasteful. For IMDb it does not
+        // work at all: the ratings come through one shared server-side key with
+        // a daily request budget, and starting from zero on every sync of every
+        // install would spend it before most catalogues finished once.
+        //
+        // The id is a permanent property of a title, and a rating moves by
+        // hundredths over years, so neither is worth re-asking for. Keyed on
+        // the row key, same as the stamps above.
+        val prevImdbMovies = prevMovieRows.filter { it.imdbId.isNotBlank() }.associateBy { it.key }
+        val prevImdbSeries = prevSeriesRows.filter { it.imdbId.isNotBlank() }.associateBy { it.key }
         val movieStamps = FreshCatalogue.stamp(movies.map { it.key }, prevMovies)
         val seriesStamps = FreshCatalogue.stamp(seriesList.map { it.key }, prevSeries)
-        val stampedMovies = movies.mapIndexed { i, m -> m.copy(firstSeenAt = movieStamps[i]) }
-        val stampedSeries = seriesList.mapIndexed { i, s -> s.copy(firstSeenAt = seriesStamps[i]) }
+        val stampedMovies = movies.mapIndexed { i, m ->
+            val kept = prevImdbMovies[m.key]
+            m.copy(
+                firstSeenAt = movieStamps[i],
+                imdbId = kept?.imdbId ?: m.imdbId,
+                imdbRating = kept?.imdbRating ?: m.imdbRating,
+                imdbVotes = kept?.imdbVotes ?: m.imdbVotes,
+            )
+        }
+        val stampedSeries = seriesList.mapIndexed { i, s ->
+            val kept = prevImdbSeries[s.key]
+            s.copy(
+                firstSeenAt = seriesStamps[i],
+                imdbId = kept?.imdbId ?: s.imdbId,
+                imdbRating = kept?.imdbRating ?: s.imdbRating,
+                imdbVotes = kept?.imdbVotes ?: s.imdbVotes,
+            )
+        }
 
         content.clearCategories(p.id); content.clearChannels(p.id)
         content.clearMovies(p.id); content.clearSeries(p.id)
@@ -382,15 +417,41 @@ class ContentRepository(
     }
 
     private suspend fun refreshM3u(p: Profile): String {
-        val req = Request.Builder().url(p.m3uUrl)
-            // Ask upstream for gzip; also handle URLs ending in .gz manually below.
-            .header("Accept-Encoding", "gzip")
-            .build()
-        val playlist = http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
-            val raw = resp.body.byteStream()
-            val stream = maybeGunzipStream(raw, p.m3uUrl, resp.header("Content-Encoding"))
-            stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+        // An imported playlist is a file this app copied at import time; a
+        // subscribed one is fetched. Both end up in the same parser, and both
+        // go through gunzipIfNeeded, since a file picked off a device is as
+        // likely to be gzipped as anything served over HTTP.
+        val playlist = if (PlaylistFiles.isLocal(p.m3uUrl)) {
+            gunzipIfNeeded(PlaylistFiles.open(p.m3uUrl))
+                .reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+        } else {
+            val req = Request.Builder().url(p.m3uUrl)
+                // Ask upstream for gzip; also handle URLs ending in .gz manually below.
+                .header("Accept-Encoding", "gzip")
+                .build()
+            http.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) throw IOException("Playlist returned HTTP ${resp.code}")
+                val raw = resp.body.byteStream()
+                val stream = gunzipIfNeeded(raw)
+                stream.reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+            }
+        }
+
+        // A 200 that parses to nothing is a failed download wearing a success
+        // costume — a gzip body read as text, an HTML error page, a captive
+        // portal. Treating it as "your playlist is empty" is what let a broken
+        // sync mark itself complete and never run again, so it throws instead.
+        if (playlist.entries.isEmpty()) {
+            throw IOException("Playlist downloaded but contained no channels — the URL did not return an M3U playlist")
+        }
+
+        // Other hosts for these channels, if the playlist publishes an index
+        // beside itself. Best-effort: a sync must not fail over a file that is
+        // only ever read after a stream has already failed.
+        val alternates = if (PlaylistFiles.isLocal(p.m3uUrl)) {
+            emptyMap()
+        } else {
+            tv.enktel.app.data.net.AlternateSources.fetch(http, p.m3uUrl)
         }
 
         val groups = LinkedHashMap<String, String>() // name -> kind
@@ -417,12 +478,28 @@ class ContentRepository(
                     catchupType = e.catchupType, catchupSource = e.catchupSource,
                     sortIdx = liveIdx,
                     isRadio = e.isRadio, userAgent = e.userAgent,
+                    // Keyed on the EPG id, which is what the index is built
+                    // against — the row key is positional and changes whenever
+                    // the playlist does.
+                    altUrls = tv.enktel.app.data.net.AlternateSources.encode(
+                        alternates[e.tvgId].orEmpty().filter { it != e.url },
+                    ),
                 )
             }
         }
-        val categories = groups.entries.mapIndexed { i, (name, kind) ->
-            Category(key = "${p.id}:$kind:$name", profileId = p.id, kind = kind, categoryId = name, name = name, sortIdx = i)
-        }
+        // Local first. The free-to-air playlist is one list for every viewer and
+        // is overwhelmingly not theirs — a viewer outside the US meets 2,446
+        // American channels, most of which answer 403 on their licence border,
+        // before reaching the 158 that play where they are. Reordering cannot
+        // unblock a stream, but it decides which ones they land on.
+        val country = LocalFirst.deviceCountry()
+        val orderedChannels = LocalFirst.sort(channels, country) { it.categoryId }
+            .mapIndexed { i, c -> c.copy(sortIdx = i + 1) }
+
+        val categories = LocalFirst.sort(groups.entries.toList(), country) { it.key }
+            .mapIndexed { i, (name, kind) ->
+                Category(key = "${p.id}:$kind:$name", profileId = p.id, kind = kind, categoryId = name, name = name, sortIdx = i)
+            }
 
         // M3U row keys are positional, so one insertion at the top of a
         // playlist shifts every key below it. Identity has to come from the
@@ -434,14 +511,14 @@ class ContentRepository(
 
         content.clearCategories(p.id); content.clearChannels(p.id); content.clearMovies(p.id)
         content.upsertCategories(categories)
-        channels.chunked(500).forEach { content.upsertChannels(it) }
+        orderedChannels.chunked(500).forEach { content.upsertChannels(it) }
         stampedM3u.chunked(500).forEach { content.upsertMovies(it) }
         rebuildSearchIndex(p.id)
 
         if (p.epgUrl.isBlank() && playlist.epgUrl.isNotBlank()) {
             db.profileDao().update(p.copy(epgUrl = playlist.epgUrl))
         }
-        return "${channels.size} channels · ${movies.size} movies"
+        return "${orderedChannels.size} channels · ${movies.size} movies"
     }
 
     suspend fun seriesDetails(p: Profile, seriesId: Long): SeriesDetails = withContext(Dispatchers.IO) {
@@ -500,19 +577,6 @@ class ContentRepository(
         )
     }
 
-    /** Sniff first two bytes for gzip magic number; supports .m3u.gz / gzipped M3Us that
-     *  don't declare Content-Encoding. OkHttp transparently ungzips only when it sees the
-     *  Accept-Encoding request header + Content-Encoding response header, so we cover the
-     *  edge cases here. */
-    private fun maybeGunzipStream(input: java.io.InputStream, url: String, encoding: String?): java.io.InputStream {
-        val buffered = input.buffered(64 * 1024)
-        if (encoding?.contains("gzip", true) == true) return buffered
-        buffered.mark(2)
-        val b1 = buffered.read(); val b2 = buffered.read()
-        buffered.reset()
-        val looksGz = b1 == 0x1f && b2 == 0x8b
-        return if (looksGz || url.lowercase().endsWith(".gz")) java.util.zip.GZIPInputStream(buffered) else buffered
-    }
 
     companion object {
         private val YEAR_IN_NAME = Regex("""\((\d{4})\)""")

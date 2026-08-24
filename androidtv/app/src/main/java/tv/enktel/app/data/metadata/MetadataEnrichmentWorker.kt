@@ -40,8 +40,10 @@ class MetadataEnrichmentWorker(
         val app = applicationContext.applicationContext as? EnktelApp
             ?: return Result.success()
         val graph = app.graph
+        // Blank is not "off" any more: TmdbClient falls back to our own keyed
+        // proxy, so enrichment runs on a fresh install with nothing configured.
+        // A viewer who sets their own key in Settings talks to TMDB directly.
         val apiKey = graph.settings.tmdbApiKey.first()
-        if (apiKey.isBlank()) return Result.success() // opt-in feature
 
         val profileId = inputData.getLong(KEY_PROFILE_ID, graph.settings.activeProfileIdNow())
         if (profileId <= 0) return Result.success()
@@ -49,6 +51,9 @@ class MetadataEnrichmentWorker(
         if (profile.kind != "xtream") return Result.success() // Xtream only
 
         val client = TmdbClient(graph.http, apiKey)
+        // Always via our own service: OMDb has no per-viewer key to fall back
+        // to, the way TMDB does.
+        val omdb = OmdbClient(graph.http)
         val dao = graph.db.contentDao()
         val xtream = graph.xtream
         val staleBefore = System.currentTimeMillis() - MAX_AGE_MS
@@ -91,6 +96,9 @@ class MetadataEnrichmentWorker(
                 runtimeMins = e.runtimeMinutes,
                 now = System.currentTimeMillis(),
             )
+            applyImdb(omdb, e.imdbId, m.imdbRating) { id, rating, votes ->
+                dao.setMovieImdb(m.key, id, rating, votes)
+            }
             // Also normalise the title if the sanitizer produced a
             // materially cleaner form; skip if unchanged so we don't
             // churn the Movie row on every run.
@@ -131,6 +139,9 @@ class MetadataEnrichmentWorker(
                 runtimeMins = e.runtimeMinutes,
                 now = System.currentTimeMillis(),
             )
+            applyImdb(omdb, e.imdbId, s.imdbRating) { id, rating, votes ->
+                dao.setSeriesImdb(s.key, id, rating, votes)
+            }
             if (cleanName != s.name) dao.renameSeries(s.key, cleanName)
             delay(RATE_LIMIT_DELAY_MS)
             if (isStopped) return Result.retry()
@@ -152,6 +163,30 @@ class MetadataEnrichmentWorker(
         }
         android.util.Log.i(TAG, "enrichment run: +$enriched enriched, $remaining still pending")
         return Result.success()
+    }
+
+    /**
+     * Record IMDb's id and, when OMDb knows one, its rating.
+     *
+     * Best-effort by design: this runs after the TMDB write has already
+     * landed, so a title whose rating cannot be fetched keeps everything else
+     * it just gained. Nothing here can fail the enrichment of a row.
+     */
+    private suspend fun applyImdb(
+        omdb: OmdbClient,
+        imdbId: String,
+        knownRating: Double,
+        write: suspend (String, Double, Int) -> Unit,
+    ) {
+        if (!TmdbClient.looksLikeImdbId(imdbId)) return
+        // Already rated, so ask nobody. The ratings arrive through one shared
+        // server-side key with a daily budget, and a sync now preserves what
+        // was learned last time (see ContentRepository), so re-asking spends
+        // that budget on an answer already held. IMDb ratings move by
+        // hundredths over years — not data worth refreshing on a schedule.
+        if (knownRating > 0) return
+        val r = runCatching { omdb.rating(imdbId) }.getOrNull()
+        write(imdbId, r?.rating ?: 0.0, r?.votes ?: 0)
     }
 
     private suspend fun lookupTmdbId(
