@@ -47,6 +47,17 @@ class StreamHealthInterceptor(
         val original = chain.request()
         val start = SystemClock.elapsedRealtime()
         val host = original.url.host
+
+        // A host the exit has already served goes out through it from the
+        // start. A stream fetches a segment every few seconds; making each one
+        // collect a refusal before retrying is twice the requests and a stall
+        // per segment. If the exit has since died, fall through to the direct
+        // attempt and the ordinary recovery below.
+        if (ProxyRoute.isKnownGood(host)) {
+            proxied(original)?.let { return it }
+            ProxyRoute.noteFailed(host)
+        }
+
         val resp: Response = try {
             chain.proceed(original)
         } catch (io: IOException) {
@@ -55,12 +66,12 @@ class StreamHealthInterceptor(
             return failoverOrRethrow(chain, original, io) ?: throw io
         }
         val elapsed = SystemClock.elapsedRealtime() - start
-        if (resp.code == 403) {
+        if (resp.code in BLOCKED) {
             StreamHealth.recordBlocked(host)
             resp.close()
             return tryBackup(chain, original)
                 ?: tryRelay(chain, original)
-                ?: tryProxy(chain, original)
+                ?: tryProxy(original)
                 ?: throw IOException(blockedMessage(host))
         }
         if (resp.isSuccessful) {
@@ -78,7 +89,7 @@ class StreamHealthInterceptor(
         // reason, which the 403 path does not have.
         val alt = tryBackup(chain, original)
             ?: tryRelay(chain, original)
-            ?: tryProxy(chain, original)
+            ?: tryProxy(original)
             ?: return null
         notify("Recovered from: ${why.message}")
         return alt
@@ -137,33 +148,43 @@ class StreamHealthInterceptor(
      * Croatia is the case that forced it — HRT exists on two hosts, both
      * regional, with no third source anywhere in iptv-org.
      *
-     * Nothing about the request changes; it leaves from somewhere else. The
-     * host is marked first so the retry actually takes the new route: OkHttp
-     * asks [ProxyRoute]'s selector per request, and the selector answers
-     * NO_PROXY for a host it has not been told about.
+     * Nothing about the request changes; it leaves from somewhere else. See
+     * [proxied] for why that cannot be done by re-proceeding on this chain.
      */
-    private fun tryProxy(chain: Interceptor.Chain, original: Request): Response? {
+    private fun tryProxy(original: Request): Response? {
         val host = original.url.host
-        // False when nothing is configured, and when this host is already going
-        // through the proxy — in which case the request that just failed was
-        // the proxied one, and repeating it changes nothing.
-        if (!ProxyRoute.routeThroughProxy(host)) return null
+        if (!ProxyRoute.shouldTry(host)) return null
 
-        val r = try {
-            chain.proceed(original.newBuilder().build())
-        } catch (_: IOException) {
-            ProxyRoute.stopRouting(host)
-            return null
-        }
-        if (r.isSuccessful) {
+        val r = proxied(original)
+        if (r != null) {
+            ProxyRoute.noteWorked(host)
             notify("Playing via your proxy — $host refused this location")
             StreamHealth.setActiveGateway(ProxyRoute.current().host)
             return r
         }
-        r.close()
         // It did not help, so stop paying for the extra hop on this host.
-        ProxyRoute.stopRouting(host)
+        ProxyRoute.noteFailed(host)
         return null
+    }
+
+    /**
+     * Issue a request through the viewer's exit.
+     *
+     * Deliberately **not** `chain.proceed`. Proceeding re-enters the same
+     * client, and a 403 leaves a healthy connection in its pool that the retry
+     * then reuses — so the request goes out direct however the proxy is
+     * configured. [ProxyRoute] hands back a client whose proxy is pinned and
+     * whose connection pool is its own, which is the only way the detour is
+     * actually taken.
+     */
+    private fun proxied(request: Request): Response? {
+        val client = ProxyRoute.clientOrNull() ?: return null
+        return try {
+            val r = client.newCall(request.newBuilder().build()).execute()
+            if (r.isSuccessful) r else { r.close(); null }
+        } catch (_: IOException) {
+            null
+        }
     }
 
     /**
@@ -199,6 +220,20 @@ class StreamHealthInterceptor(
             r.close()
         }
         return null
+    }
+
+    private companion object {
+        /**
+         * Refusals aimed at where the request came from.
+         *
+         * 403 is the usual IPTV signal. 451 says the same thing explicitly —
+         * some CDNs answer a licence border with it rather than a bare
+         * forbidden — and it is worth the same recovery. Nothing else is
+         * included: 401 is about credentials and 404 is usually a stream that
+         * has genuinely moved, and treating either as a block would send every
+         * ordinary mistake through the relay and the viewer's proxy.
+         */
+        private val BLOCKED = setOf(403, 451)
     }
 
     private fun parseHostPort(raw: String): Pair<String, Int?> {

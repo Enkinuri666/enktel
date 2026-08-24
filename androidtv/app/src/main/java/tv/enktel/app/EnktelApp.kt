@@ -70,15 +70,17 @@ class AppGraph(app: Application) {
         .writeTimeout(60, TimeUnit.SECONDS)
         .callTimeout(0, TimeUnit.SECONDS) // unlimited overall — long VOD downloads shouldn't be capped
         .retryOnConnectionFailure(true)
-        // Still no inherited proxy: an OS- or JVM-level one applied to every
-        // call without credentials produces a 407 loop, and picking one up
-        // silently is worse than refusing all of them. A selector rather than
-        // a pinned Proxy so the refusal has one exception — an exit the viewer
-        // configured deliberately, used only for hosts that have already
-        // refused this device. See ProxyRoute; it answers NO_PROXY for
-        // everything else, which is what `.proxy(Proxy.NO_PROXY)` did here.
-        .proxySelector(tv.enktel.app.data.net.ProxyRoute.selector())
-        .proxyAuthenticator(tv.enktel.app.data.net.ProxyRoute.authenticator())
+        // No inherited proxy: an OS- or JVM-level one applied to every call
+        // without credentials produces a 407 loop, and picking one up silently
+        // is worse than refusing all of them.
+        //
+        // A viewer's own exit is deliberately *not* an exception here. It was,
+        // briefly, via a ProxySelector — and that silently did nothing. A
+        // geo-block is a healthy exchange that leaves a pooled connection
+        // behind, the retry's Address compares equal, so the pooled direct
+        // connection is reused and the selector is never consulted. Proxied
+        // requests go out on a client of their own instead; see ProxyRoute.
+        .proxy(java.net.Proxy.NO_PROXY)
         // Negotiate with old panels *and* old devices.
         //
         // MODERN_TLS alone (OkHttp's default) restricts the cipher list, and
@@ -196,6 +198,11 @@ class AppGraph(app: Application) {
     )
 
     init {
+        // Modelled on the client that has no StreamHealthInterceptor, so a
+        // proxied request differs from a direct one in nothing but its route —
+        // and so a failure through the exit cannot recover into itself.
+        tv.enktel.app.data.net.ProxyRoute.attach(diagHttp)
+
         val bgScope = appScope
         bgScope.launch {
             settings.backupGateways.collect { backupGatewaysSnapshot = it }
