@@ -1,7 +1,9 @@
 package tv.enktel.app.data.repo
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.m3u.ImportMigration
 import tv.enktel.app.data.m3u.ImportedPlaylist
 import tv.enktel.app.data.m3u.PlaylistFiles
 import tv.enktel.app.data.db.ProfileDao
@@ -19,6 +21,13 @@ class PlaylistRepository(
     private val settings: SettingsStore,
     private val xtream: XtreamClient,
     private val trialClient: EagleTrialClient? = null,
+    /**
+     * Only for clearing the rows of a profile this repository removes.
+     * Nullable so the repository still constructs without one; the rows are
+     * then left behind, which is wasteful but not visible — every query is
+     * filtered by profile id.
+     */
+    private val content: tv.enktel.app.data.db.ContentDao? = null,
 ) {
     val profiles: Flow<List<Profile>> = dao.all()
 
@@ -164,6 +173,66 @@ class PlaylistRepository(
 
     /** Playlist files attached to a profile, across all profiles. */
     val importedPlaylists: Flow<List<ImportedPlaylist>> = settings.importedPlaylists
+
+    /** What a migration did, for the caller that has to re-sync afterwards. */
+    data class Migrated(val hostId: Long, val converted: Int)
+
+    /**
+     * Convert imports made before attachments existed.
+     *
+     * Those imports are profiles, and a profile is shown *instead of* the
+     * lineup rather than alongside it — so a viewer with three old imports has
+     * three separate lineups to switch between instead of one that holds
+     * everything. This folds each of them into the profile they should have
+     * been added to in the first place.
+     *
+     * The copied file is deliberately **not** deleted: the attachment now
+     * points at it, and `PlaylistFiles.forget` would take the channels with
+     * it.
+     *
+     * Order matters for the same reason. The attachment record is stored
+     * before the profile row is removed, so an interruption can only ever
+     * leave a file referenced twice rather than not at all — and the check
+     * below then makes even that harmless on the next run.
+     *
+     * What is lost is small and worth naming: a converted profile's own EPG
+     * URL and its provider User-Agent do not survive, because an attachment
+     * has neither. The host's guide covers the channels, and the per-channel
+     * agents from `#EXTVLCOPT` — which is where these files carry them — are
+     * parsed as before.
+     *
+     * @return null when there was nothing to convert
+     */
+    suspend fun migrateImportedProfiles(): Migrated? {
+        val all = dao.all().first()
+        val plan = ImportMigration.plan(all, settings.activeProfileIdNow()) ?: return null
+
+        // A file already attached is one a previous run stored before it was
+        // interrupted. Attaching it again would show its channels twice.
+        val attached = settings.importedPlaylistsNow().map { it.url }.toHashSet()
+
+        for (p in plan.convert) {
+            if (attached.add(p.m3uUrl)) {
+                settings.addImportedPlaylist(plan.hostId, p.name, p.m3uUrl)
+            }
+            // The catalogue rows of a profile that is going away. Nothing
+            // reads them once its id is gone, so this is space rather than
+            // correctness — but it is a whole channel list per import.
+            content?.let {
+                it.clearChannels(p.id)
+                it.clearCategories(p.id)
+                it.clearMovies(p.id)
+                it.clearSeries(p.id)
+            }
+            dao.delete(p.id)
+        }
+
+        // Done last: the viewer may have had one of the converted profiles
+        // open, and leaving `activeProfile` on a deleted id shows an empty app.
+        plan.activeMovesTo?.let { settings.setActiveProfile(it) }
+
+        return Migrated(hostId = plan.hostId, converted = plan.convert.size)
+    }
 
     /**
      * Detach a file and delete the copy behind it.

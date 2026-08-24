@@ -156,7 +156,7 @@ class AppGraph(app: Application) {
 
     val xtream = XtreamClient(http)
     val trialClient = tv.enktel.app.data.net.EagleTrialClient(http)
-    val playlists = PlaylistRepository(db.profileDao(), settings, xtream, trialClient)
+    val playlists = PlaylistRepository(db.profileDao(), settings, xtream, trialClient, db.contentDao())
     // settings passed so a sync also folds in whatever playlist files the
     // viewer imported — they attach to a profile rather than replacing it.
     val content = ContentRepository(app, db, xtream, http, settings)
