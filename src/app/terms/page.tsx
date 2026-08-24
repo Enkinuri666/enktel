@@ -32,7 +32,7 @@ export default function TermsPage() {
         <h2>4. Payments</h2>
         <p>
           Monthly plans renew unless cancelled. 3-month and 12-month plans are one-time payments with no
-          automatic renewal. All prices are shown in EUR and are inclusive of any applicable processing fees
+          automatic renewal. All prices are shown in USD and are inclusive of any applicable processing fees
           unless stated otherwise.
         </p>
       </section>

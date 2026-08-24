@@ -4,14 +4,14 @@ import { Check, Trophy, Flame, Star } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { motion } from "framer-motion";
-import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
+import { PLAN_PRICE, PLAN_REGULAR_PRICE } from "@/lib/plans";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
 
 const plans = [
   {
     id: "monthly",
     name: "Monthly",
-    price: PLAN_PRICE_EUR.monthly,
+    price: PLAN_PRICE.monthly,
     duration: "per month",
     badge: null,
     highlighted: false,
@@ -20,22 +20,22 @@ const plans = [
   {
     id: "quarter",
     name: "3 Months",
-    price: PLAN_PRICE_EUR.quarter,
+    price: PLAN_PRICE.quarter,
     duration: "one-time · 3 months",
     badge: "WORLD CUP 2026",
     highlighted: false,
-    promoNote: `≈ €${(PLAN_PRICE_EUR.quarter / 3).toFixed(2)}/month`,
+    promoNote: `≈ $${(PLAN_PRICE.quarter / 3).toFixed(2)}/month`,
     features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches"],
   },
   {
     id: "annual",
     name: "12 Months",
-    price: PLAN_PRICE_EUR.annual,
-    regularPrice: PLAN_REGULAR_PRICE_EUR.annual,
+    price: PLAN_PRICE.annual,
+    regularPrice: PLAN_REGULAR_PRICE.annual,
     duration: "one-time · 12 months",
     badge: "BEST VALUE",
     highlighted: true,
-    promoNote: `≈ €${(PLAN_PRICE_EUR.annual / 12).toFixed(2)}/month — Save €${(PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual}`,
+    promoNote: `≈ $${(PLAN_PRICE.annual / 12).toFixed(2)}/month — Save $${(PLAN_REGULAR_PRICE.annual ?? PLAN_PRICE.annual) - PLAN_PRICE.annual}`,
     features: [`${CHANNEL_COUNT_LABEL} Live Channels`, "Croatian & Balkan Channels", "4K Ultra HD Quality", "30-Day Catch-Up TV", "Full VOD Library", "All World Cup 2026 Matches", "VIP Support"],
   },
 ];
@@ -58,7 +58,7 @@ export default function PricingPreview() {
           >
             <span className="text-2xl">🏆</span>
             <span className="text-white text-sm font-bold">FIFA World Cup 2026 — Promotional Pricing Active</span>
-            <span className="bg-brand-accent text-white text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO €90</span>
+            <span className="bg-brand-accent text-white text-xs font-black px-3 py-0.5 rounded-full">SAVE UP TO $90</span>
           </Link>
         </motion.div>
 
@@ -93,7 +93,7 @@ export default function PricingPreview() {
                       className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-black text-white shadow-lg"
                       style={{ background: "linear-gradient(90deg, #FF4757, #3B82F6)" }}
                     >
-                      <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE €90
+                      <Star className="w-3 h-3 fill-current" /> BEST VALUE — SAVE $90
                     </span>
                   </div>
                   <div className="bg-brand-card rounded-[14px] p-6 pt-8">
@@ -137,10 +137,10 @@ function PlanCardContent({ plan }: { plan: typeof plans[0] }) {
 
       <div className="mb-5">
         {"regularPrice" in plan && plan.regularPrice && (
-          <div className="text-brand-muted line-through text-sm mb-0.5">&euro;{plan.regularPrice}</div>
+          <div className="text-brand-muted line-through text-sm mb-0.5">&#36;{plan.regularPrice}</div>
         )}
         <div className="flex items-end gap-1">
-          <span className="text-5xl font-black text-white leading-none">&euro;{plan.price}</span>
+          <span className="text-5xl font-black text-white leading-none">&#36;{plan.price}</span>
         </div>
         <p className="text-brand-muted text-xs mt-1">{plan.duration}</p>
         {"promoNote" in plan && plan.promoNote && (

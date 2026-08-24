@@ -9,7 +9,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
-import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR } from "@/lib/plans";
+import { PLAN_PRICE, PLAN_REGULAR_PRICE } from "@/lib/plans";
 
 // ───────────────────────── Timeline engine ─────────────────────────
 const Easing = {
@@ -414,7 +414,7 @@ function SceneWhy() {
 }
 
 function ScenePricing() {
-  const annualSavings = (PLAN_REGULAR_PRICE_EUR.annual ?? PLAN_PRICE_EUR.annual) - PLAN_PRICE_EUR.annual;
+  const annualSavings = (PLAN_REGULAR_PRICE.annual ?? PLAN_PRICE.annual) - PLAN_PRICE.annual;
   return (
     <Sprite start={30.8} end={38}>
       <SceneFrame>
@@ -429,15 +429,15 @@ function ScenePricing() {
             <Reveal delay={0.85} y={26} dur={0.6} ease={Easing.easeOutBack}>
               <div className="rounded-2xl border px-6 py-6 text-left w-44 md:w-56" style={{ background: C.card, borderColor: C.line }}>
                 <div className="text-[0.65rem] tracking-[0.2em]" style={{ color: C.mute, fontFamily: "ui-monospace, monospace" }}>3 MONTHS</div>
-                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&euro;{PLAN_PRICE_EUR.quarter}</div>
+                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&#36;{PLAN_PRICE.quarter}</div>
               </div>
             </Reveal>
             <Reveal delay={1.05} y={26} dur={0.6} ease={Easing.easeOutBack}>
               <div className="relative rounded-2xl border-2 px-6 py-6 text-left w-44 md:w-56" style={{ background: C.primaryDeep, borderColor: C.secondary, boxShadow: `0 0 40px ${C.secondary}33` }}>
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[0.6rem] font-bold tracking-wider whitespace-nowrap" style={{ background: C.secondary, color: "#06122B" }}>BEST VALUE</div>
                 <div className="text-[0.65rem] tracking-[0.2em]" style={{ color: C.primaryBright, fontFamily: "ui-monospace, monospace" }}>12 MONTHS</div>
-                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&euro;{PLAN_PRICE_EUR.annual}</div>
-                <div className="text-[0.65rem] mt-0.5 font-semibold" style={{ color: "#7ef0a8" }}>Save &euro;{annualSavings}</div>
+                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&#36;{PLAN_PRICE.annual}</div>
+                <div className="text-[0.65rem] mt-0.5 font-semibold" style={{ color: "#7ef0a8" }}>Save &#36;{annualSavings}</div>
               </div>
             </Reveal>
           </div>

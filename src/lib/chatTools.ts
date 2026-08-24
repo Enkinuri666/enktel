@@ -1,7 +1,7 @@
 import type { OpenAI } from "openai";
 import { channels, channelCategories, CHANNEL_COUNT_LABEL } from "@/lib/channels";
 import { fetchEPGData } from "@/lib/epg";
-import { PLAN_PRICE_EUR, PLAN_REGULAR_PRICE_EUR, PLAN_DURATION_LABEL } from "@/lib/plans";
+import { PLAN_PRICE, PLAN_REGULAR_PRICE, PLAN_DURATION_LABEL, PLAN_CURRENCY } from "@/lib/plans";
 import { DEVICE_GUIDES } from "@/lib/deviceGuides";
 import { searchFaqs } from "@/lib/faqs";
 import { getMockUpcomingEvents } from "@/lib/mock-data";
@@ -47,7 +47,7 @@ export const CHAT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_pricing_plans",
-      description: "Get the current Enktel IPTV subscription plans, durations, and prices in EUR. Use this for any pricing or plan-length question.",
+      description: "Get the current Enktel IPTV subscription plans, durations, and prices in USD. Use this for any pricing or plan-length question.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -187,10 +187,14 @@ export async function runChatTool(name: string, input: Record<string, unknown>):
     case "get_pricing_plans": {
       const plans = Object.entries(PLAN_DURATION_LABEL).map(([id, duration]) => ({
         duration,
-        priceEUR: PLAN_PRICE_EUR[id],
-        regularPriceEUR: PLAN_REGULAR_PRICE_EUR[id] ?? null,
+        // Currency-neutral field names, with the code carried once as a
+        // sibling. These were priceEUR/regularPriceEUR, which is exactly the
+        // kind of name that goes stale silently — the assistant reads this
+        // JSON and would have gone on quoting euros after the switch to USD.
+        price: PLAN_PRICE[id],
+        regularPrice: PLAN_REGULAR_PRICE[id] ?? null,
       }));
-      return JSON.stringify({ plans, currency: "EUR", note: "Every plan is a one-time payment with no auto-renewal." });
+      return JSON.stringify({ plans, currency: PLAN_CURRENCY, note: "Every plan is a one-time payment with no auto-renewal." });
     }
 
     case "get_setup_guide": {

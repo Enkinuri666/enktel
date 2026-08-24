@@ -2,6 +2,7 @@ package tv.enktel.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -45,10 +46,28 @@ import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
 import java.net.URLEncoder
 
-private const val PAYPAL_EMAIL = "mpetr930@gmail.com"
 private const val NOTIFY_EMAIL = "info@enktel.tv"
 private const val PRICE = "\$99 USD"
 private const val PLAN = "12-month full access"
+
+/**
+ * The hosted PayPal checkout, preselected to the 12-month plan.
+ *
+ * This screen used to hand out a PayPal address and ask the buyer to send a
+ * personal "Friends & Family" payment, then email a screenshot so the account
+ * could be activated by hand. That is a worse deal for everyone: a personal
+ * transfer carries no purchase protection for the buyer, PayPal's User
+ * Agreement does not permit it for goods and services, and receiving
+ * commercial payments that way is a common trigger for account limitation on
+ * the seller's side. It also could not be automatic — every sale needed a
+ * human to read an email and provision a line.
+ *
+ * The site already had a full Orders v2 business integration behind
+ * /checkout, which captures the payment and provisions the subscription in the
+ * same request. Pointing at it makes the sale a real goods-and-services
+ * transaction and removes the manual step entirely.
+ */
+private val CHECKOUT_URL = BuildConfig.EAGLE_UPGRADE_URL
 
 @Composable
 fun UpgradeScreen(nav: NavHostController) {
@@ -90,44 +109,42 @@ fun UpgradeScreen(nav: NavHostController) {
                     .padding(16.dp),
             ) {
                 Text(
-                    "Step 1 — Send payment via PayPal",
+                    "Secure PayPal checkout",
                     color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Open PayPal and send $PRICE to:",
+                    "Pay $PRICE by card or PayPal balance. Your account is created " +
+                        "and activated automatically as soon as the payment clears — " +
+                        "there is nothing to send us.",
                     color = EnktelTextDim, fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    PAYPAL_EMAIL,
-                    color = EnktelBlue, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "IMPORTANT: Use \"Send to a Friend\" (personal payment), " +
-                        "NOT \"Pay for Goods or Services\". Leave the payment amount " +
-                        "field empty until you are on the PayPal send screen, then enter " +
-                        "$PRICE. All payments must be in USD.",
-                    color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(12.dp))
 
                 if (isMobile) {
-                    FocusButton("Open PayPal", accent = true, onClick = {
-                        runCatching {
+                    FocusButton("Pay $PRICE — Secure Checkout", accent = true, onClick = {
+                        val opened = runCatching {
                             ctx.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://www.paypal.com/myaccount/transfer/homepage/pay"))
+                                Intent(Intent.ACTION_VIEW, CHECKOUT_URL.toUri())
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                             )
-                        }
+                        }.isSuccess
+                        // A device with no browser is rare on a phone but not
+                        // impossible, and a button that silently does nothing
+                        // is the failure this app has shipped before. Show the
+                        // address so the sale is still reachable.
+                        if (!opened) formError = "No browser found — open $CHECKOUT_URL on your phone."
                     })
                 } else {
-                    val paypalUrl = "https://www.paypal.com/myaccount/transfer/homepage/pay"
+                    // A sideloaded Fire TV Stick often has no browser at all,
+                    // so ACTION_VIEW here would throw and be swallowed. A QR
+                    // code moves the checkout to the one device in the room
+                    // that definitely can complete it, and is also simply
+                    // easier than typing card details with a D-pad.
                     val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?" +
-                        "size=400x400&margin=10&data=" + URLEncoder.encode(paypalUrl, "UTF-8")
+                        "size=400x400&margin=10&data=" + URLEncoder.encode(CHECKOUT_URL, "UTF-8")
                     Text(
-                        "Scan with your phone to open PayPal:",
+                        "Scan with your phone to pay securely:",
                         color = EnktelTextDim, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -144,10 +161,18 @@ fun UpgradeScreen(nav: NavHostController) {
                     ) {
                         AsyncImage(
                             model = qrUrl,
-                            contentDescription = "PayPal QR",
+                            contentDescription = "Checkout QR",
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                    Spacer(Modifier.height(8.dp))
+                    // The QR is useless to anyone whose phone camera will not
+                    // read it, and unreadable to a screen reader.
+                    Text(
+                        CHECKOUT_URL,
+                        color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
                 }
             }
 
@@ -163,13 +188,14 @@ fun UpgradeScreen(nav: NavHostController) {
                     .padding(16.dp),
             ) {
                 Text(
-                    "Step 2 — Send your details + proof of payment",
+                    "Paid but not activated?",
                     color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Fill in your email and name below, then tap \"Send\" to email your " +
-                        "proof of payment to $NOTIFY_EMAIL. We'll activate your account.",
+                    "You should not need this. Checkout activates the account itself and " +
+                        "emails your login details. Use this only if you have paid and " +
+                        "nothing arrived — send us your details and we will sort it by hand.",
                     color = EnktelTextDim, fontSize = 12.sp,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -191,7 +217,7 @@ fun UpgradeScreen(nav: NavHostController) {
                     Spacer(Modifier.height(6.dp))
                 }
                 FocusButton(
-                    if (sent) "Re-send" else "Send payment notification",
+                    if (sent) "Re-send" else "Contact support",
                     accent = true,
                     onClick = {
                         formError = ""
@@ -203,17 +229,17 @@ fun UpgradeScreen(nav: NavHostController) {
                             formError = "Please enter your name."
                             return@FocusButton
                         }
-                        val subject = "EnkTel 4K Upgrade — Payment Notification"
+                        val subject = "EnkTel 4K — paid but not activated"
                         val body = buildString {
                             appendLine("EnkTel 4K — 12 Month Upgrade Request")
                             appendLine()
                             appendLine("Name: $contactName")
                             appendLine("Email: $userEmail")
                             appendLine("Plan: $PLAN ($PRICE)")
-                            appendLine("PayPal sent to: $PAYPAL_EMAIL")
+                            appendLine("Paid via: PayPal checkout ($CHECKOUT_URL)")
                             if (paymentRef.isNotBlank()) appendLine("Transaction ref: $paymentRef")
                             appendLine()
-                            appendLine("Please activate my account. Thank you!")
+                            appendLine("I paid through the checkout but my account is not active.")
                         }
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:")
@@ -247,9 +273,11 @@ fun UpgradeScreen(nav: NavHostController) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Account activation is usually within minutes, but can take " +
-                        "up to 2–3 hours due to PayPal processing times. " +
-                        "You will receive an email confirmation once your account is active.",
+                    "Your account is created the moment PayPal confirms the payment, and " +
+                        "your login details are emailed to you straight away — usually " +
+                        "within a minute. If PayPal holds the payment for review, which it " +
+                        "occasionally does, activation follows once it clears; that can take " +
+                        "2–3 hours and is out of our hands.",
                     color = Color.White, fontSize = 13.sp,
                 )
                 Spacer(Modifier.height(6.dp))

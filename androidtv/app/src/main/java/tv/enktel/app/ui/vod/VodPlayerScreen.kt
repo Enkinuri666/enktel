@@ -61,6 +61,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.WatchProgress
+import tv.enktel.app.data.repo.ResumePolicy
 import tv.enktel.app.player.PlayerEngine
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
@@ -306,16 +307,23 @@ fun VodPlayerScreen(
     /**
      * Write (or clear) the resume point for this title.
      *
-     * Clearing near the end is deliberate: a film you watched to the credits
-     * should not reappear in Continue Watching offering to resume the last
-     * thirty seconds.
+     * The thresholds live in ResumePolicy, which the Continue Watching query
+     * also restates in SQL. This used to carry its own rule — clear once past
+     * `totalMs - 30s` — and it was the wrong rule twice over. Almost nobody
+     * watches to within thirty seconds of the end; people stop when the
+     * credits roll, five to eight minutes out, so a film watched through kept
+     * its resume point for ever. And there was no floor at all, so opening
+     * something for twenty seconds and backing out created a row the details
+     * screen would then refuse to offer a Resume button for, because *it* has
+     * always used a one-minute floor.
      */
     suspend fun persistProgress(atMs: Long, totalMs: Long) {
         if (isLive || progressKey.isBlank() || totalMs <= 0) return
-        if (atMs > totalMs - 30_000) {
+        if (ResumePolicy.isFinished(atMs, totalMs)) {
             graph.content.clearProgress(progressKey)
             return
         }
+        if (!ResumePolicy.shouldSave(atMs, totalMs)) return
         graph.content.saveProgress(
             WatchProgress(
                 key = progressKey,
