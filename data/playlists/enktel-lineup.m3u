@@ -5985,34 +5985,36 @@ https://stream.luci.xyz/hls/LTV.m3u8
 https://str.gledamsport.com/proxy.php?c=nova&path=mono.m3u8&type=playlist
 #EXTINF:-1 tvg-id="ShiftTV.hr@SD" tvg-logo="https://i.imgur.com/mudXVT8.png" tvg-country="HR" group-title="HR - Entertainment",Shift TV (1080p)
 https://hls.shift.tv/live/shifttv/playlist.m3u8
-#EXTINF:-1 group-title="HR - Other",HRT 4 HD
+#EXTINF:-1 tvg-id="HRT4.hr" group-title="HR - Other",HRT 4 HD
 https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/HRT4/default/index.mpd
-#EXTINF:-1 group-title="HR - Other",RTL
+#EXTINF:-1 tvg-id="RTL.hr" group-title="HR - Other",RTL
 https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/RTL/default/index.mpd
-#EXTINF:-1 group-title="HR - Other",RTL 2
+#EXTINF:-1 tvg-id="RTL2.hr" group-title="HR - Other",RTL 2
 https://bpcdnmanprod.nexttv.ht.hr/bpk-tv/RTL2/default/index.mpd
-#EXTINF:-1 tvg-id="c20bcaa02939c4a9301442661d87df34" group-title="HR - Other",Doma HD
-http://195.91.102.40:9981/stream/channelid/550112194?ticket=16CE6DD35FC9860B3348AB765BB518BB09722A67&profile=webtv-h264-aac-matroska
-#EXTINF:-1 group-title="HR - Reality",Bravo! TV
+#EXTINF:-1 tvg-id="DomaTV.hr" group-title="HR - Other",Doma TV
+http://169.150.255.53/DomaTV/index.m3u8
+#EXTINF:-1 tvg-id="bravoTV.hr" group-title="HR - Reality",Bravo! TV
 https://streaming.radiohub.hr/RadioHub_WEB_streaming/BHWUC27pGZ/2.m3u8
-#EXTINF:-1 group-title="HR - Other",CMC TV
+#EXTINF:-1 tvg-id="CMC-CroatianMusicChannel.hr" group-title="HR - Other",CMC TV
 https://stream.cmctv.hr:49998/cmc/live.m3u8
-#EXTINF:-1 group-title="HR - Other",JUGOTON
+#EXTINF:-1 tvg-id="Jugoton.hr" group-title="HR - Other",JUGOTON
 https://stream.cmctv.hr:49998/jugoton/live.m3u8
-#EXTINF:-1 group-title="HR - Other",Klape i Tambure TV
+#EXTINF:-1 tvg-id="KlapeiTambure.hr" group-title="HR - Other",Klape i Tambure TV
 https://stream.cmctv.hr:49998/kit/live.m3u8
 #EXTINF:-1 group-title="HR - Music",Radio Televizija Banovina
-https://pool.alter-media.hr:1936/live/myStream/playlist.m3u8?DVR=
-#EXTINF:-1 group-title="HR - Other",TV Nova
+https://pool.alter-media.hr:1936/live/myStream/playlist.m3u8
+#EXTINF:-1 tvg-id="TVNova.hr" group-title="HR - Other",TV Nova
 https://stream.agatin.hr:3727/live/tvnovalive.m3u8
-#EXTINF:-1 group-title="HR - Other",Diadora TV
+#EXTINF:-1 tvg-id="DiadoraTV.hr" group-title="HR - Other",Diadora TV
 https://diadoratv.stream/live/diadora/playlist.m3u8
-#EXTINF:-1 group-title="HR - Other",TV Jadran
+#EXTINF:-1 tvg-id="TVJadran.hr" group-title="HR - Other",TV Jadran
 https://tvjadran.stream.agatin.hr:3412/live/tvjadranlive.m3u8
-#EXTINF:-1 group-title="HR - News",N1 HR
+#EXTINF:-1 tvg-id="N1.hr" group-title="HR - News",N1 HR
 https://best-str.umn.cdn.united.cloud/stream?stream=sp1400&sp=n1info&channel=n1hrv&u=n1info&p=n1Sh4redSecre7iNf0
-#EXTINF:-1 group-title="HR - Other",Sabor TV
+#EXTINF:-1 tvg-id="TVSabor.hr" group-title="HR - Other",Sabor TV
 https://itv2.sabor.hr/saborHLS/sabor.m3u8
+#EXTINF:-1 tvg-id="LaudatoTV.hr" group-title="HR - Other",Laudato TV
+http://169.150.255.53/Laudato/index.m3u8
 #EXTINF:-1 group-title="RS - Other",NOVA SR
 https://best-str.umn.cdn.united.cloud/stream?stream=hp3500&sp=novas&channel=novashd&u=novas&p=n0v43!23t001
 #EXTINF:-1 group-title="BA - Other",BN
