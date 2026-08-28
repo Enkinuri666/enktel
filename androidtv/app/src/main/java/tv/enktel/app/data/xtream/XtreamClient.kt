@@ -3,6 +3,8 @@ package tv.enktel.app.data.xtream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tv.enktel.app.data.LenientJson
@@ -14,6 +16,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Thin client for the Xtream Codes `player_api.php` panel API. */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 class XtreamClient(private val http: OkHttpClient) {
 
     suspend fun call(p: Profile, action: String?, extra: Map<String, String> = emptyMap()): JsonElement =
@@ -25,7 +28,27 @@ class XtreamClient(private val http: OkHttpClient) {
             extra.forEach { (k, v) -> url.append('&').append(k).append('=').append(v) }
             http.newCall(Request.Builder().url(url.toString()).build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw IOException("Panel returned HTTP ${resp.code}")
-                LenientJson.parseToJsonElement(resp.body.string().ifBlank { "null" })
+                // Parsed straight off the socket rather than through
+                // `body.string()`.
+                //
+                // `string()` materialises the whole response as a Java String
+                // — UTF-16, so two bytes per character — and the parser then
+                // builds its tree on top of that while the String is still
+                // referenced. get_vod_streams on a large line is tens of
+                // megabytes of JSON, so the peak was the payload twice over
+                // plus the tree, and a phone with a 256 MB heap ran out during
+                // "Sync now". Decoding from the stream never holds the text at
+                // all.
+                val source = resp.body.source()
+                // An empty body is a panel answering 200 with nothing, which
+                // happens. Checked before decoding because the decoder treats
+                // end-of-input as malformed JSON, and that would report a
+                // panel quirk as a parse failure.
+                if (source.exhausted()) {
+                    JsonNull
+                } else {
+                    LenientJson.decodeFromStream<JsonElement>(source.inputStream())
+                }
             }
         }
 

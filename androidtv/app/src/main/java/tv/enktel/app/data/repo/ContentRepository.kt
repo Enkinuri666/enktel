@@ -467,8 +467,12 @@ class ContentRepository(
         // Diff against the catalogue we are about to replace, so "new" means
         // new *to this line* rather than whatever date the provider stamped on
         // ingest. Read before the clear, obviously.
-        val prevMovieRows = content.movies(p.id).first()
-        val prevSeriesRows = content.series(p.id).first()
+        // Five columns, not whole rows. Reading these as entities is what made
+        // a large catalogue OOM: a Movie carries a plot, two artwork URLs, a
+        // cast list, a director and a tag string, and none of that is wanted
+        // here — the panel is about to supply all of it again.
+        val prevMovieRows = content.movieCarryOver(p.id)
+        val prevSeriesRows = content.seriesCarryOver(p.id)
         val prevMovies = prevMovieRows.associate { it.key to it.firstSeenAt }
         val prevSeries = prevSeriesRows.associate { it.key to it.firstSeenAt }
         // What IMDb said, kept across the wipe.
@@ -487,31 +491,42 @@ class ContentRepository(
         val prevImdbSeries = prevSeriesRows.filter { it.imdbId.isNotBlank() }.associateBy { it.key }
         val movieStamps = FreshCatalogue.stamp(movies.map { it.key }, prevMovies)
         val seriesStamps = FreshCatalogue.stamp(seriesList.map { it.key }, prevSeries)
-        val stampedMovies = movies.mapIndexed { i, m ->
-            val kept = prevImdbMovies[m.key]
-            m.copy(
-                firstSeenAt = movieStamps[i],
-                imdbId = kept?.imdbId ?: m.imdbId,
-                imdbRating = kept?.imdbRating ?: m.imdbRating,
-                imdbVotes = kept?.imdbVotes ?: m.imdbVotes,
-            )
-        }
-        val stampedSeries = seriesList.mapIndexed { i, s ->
-            val kept = prevImdbSeries[s.key]
-            s.copy(
-                firstSeenAt = seriesStamps[i],
-                imdbId = kept?.imdbId ?: s.imdbId,
-                imdbRating = kept?.imdbRating ?: s.imdbRating,
-                imdbVotes = kept?.imdbVotes ?: s.imdbVotes,
-            )
-        }
 
         content.clearCategories(p.id); content.clearChannels(p.id)
         content.clearMovies(p.id); content.clearSeries(p.id)
         content.upsertCategories(categories)
         live.chunked(500).forEach { content.upsertChannels(it) }
-        stampedMovies.chunked(500).forEach { content.upsertMovies(it) }
-        stampedSeries.chunked(500).forEach { content.upsertSeries(it) }
+        // A sequence, so the stamped rows are never a second full list.
+        //
+        // This was `movies.mapIndexed { … m.copy(…) }.chunked(500)`, which
+        // allocated a complete duplicate of the catalogue — every row copied,
+        // with the original still held for its `.size` in the summary below —
+        // and then chunked that. `asSequence()` makes the same mapIndexed lazy,
+        // so five hundred copies exist at a time instead of a hundred thousand.
+        movies.asSequence()
+            .mapIndexed { i, m ->
+                val kept = prevImdbMovies[m.key]
+                m.copy(
+                    firstSeenAt = movieStamps[i],
+                    imdbId = kept?.imdbId ?: m.imdbId,
+                    imdbRating = kept?.imdbRating ?: m.imdbRating,
+                    imdbVotes = kept?.imdbVotes ?: m.imdbVotes,
+                )
+            }
+            .chunked(500)
+            .forEach { content.upsertMovies(it) }
+        seriesList.asSequence()
+            .mapIndexed { i, sr ->
+                val kept = prevImdbSeries[sr.key]
+                sr.copy(
+                    firstSeenAt = seriesStamps[i],
+                    imdbId = kept?.imdbId ?: sr.imdbId,
+                    imdbRating = kept?.imdbRating ?: sr.imdbRating,
+                    imdbVotes = kept?.imdbVotes ?: sr.imdbVotes,
+                )
+            }
+            .chunked(500)
+            .forEach { content.upsertSeries(it) }
         // The catalogue has just been replaced wholesale, which is the one
         // moment the search index can be rebuilt without risk of drift.
         rebuildSearchIndex(p.id)

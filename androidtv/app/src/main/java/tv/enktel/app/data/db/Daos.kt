@@ -147,6 +147,27 @@ interface ContentDao {
     suspend fun distinctMovieYears(profileId: Long): List<Int>
 
     /**
+     * The handful of columns a sync has to carry across the catalogue wipe.
+     *
+     * A sync clears the profile's rows and re-inserts them from the panel
+     * payload, so anything the panel does not send — when a title was first
+     * seen on this line, and what IMDb said about it — has to be read first
+     * and put back.
+     *
+     * Reading those as whole entities is what made a large catalogue run out
+     * of memory. A Movie row carries a plot, a poster URL, a backdrop URL, a
+     * cast list, a director and a tag string; on a six-figure catalogue that
+     * is tens of megabytes of strings, loaded and then held for the length of
+     * the sync, to be used for five fields. Room projects straight into
+     * [CarryOver] instead.
+     */
+    @Query("SELECT `key`, firstSeenAt, imdbId, imdbRating, imdbVotes FROM movies WHERE profileId = :profileId")
+    suspend fun movieCarryOver(profileId: Long): List<CarryOver>
+
+    @Query("SELECT `key`, firstSeenAt, imdbId, imdbRating, imdbVotes FROM series WHERE profileId = :profileId")
+    suspend fun seriesCarryOver(profileId: Long): List<CarryOver>
+
+    /**
      * Push enriched fields from the worker without rewriting the entire row.
      *
      * The CASE guards are the whole point of writing this by hand rather than

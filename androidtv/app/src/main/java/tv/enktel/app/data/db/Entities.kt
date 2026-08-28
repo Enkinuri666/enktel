@@ -460,3 +460,18 @@ data class SeriesFts(
     val profileId: Long,
     val body: String,
 )
+
+/**
+ * A catalogue row reduced to what a sync must preserve across the wipe.
+ *
+ * Not an `@Entity` — it is a projection Room fills from a SELECT of five
+ * columns, so it never carries the plot, artwork URLs, cast or tags that make
+ * a full row expensive to hold. See `ContentDao.movieCarryOver`.
+ */
+data class CarryOver(
+    val key: String,
+    val firstSeenAt: Long,
+    val imdbId: String,
+    val imdbRating: Double,
+    val imdbVotes: Int,
+)
