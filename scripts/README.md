@@ -3,6 +3,66 @@
 Maintenance tooling that runs outside the Next.js app and the Android client.
 Plain Node ESM, no dependencies beyond the runtime — `node scripts/<name>.mjs`.
 
+## `scrape-vod.mjs` — public-domain / openly-licensed VOD
+
+The on-demand counterpart to the channel scraper. Collects films,
+documentaries and series from the Internet Archive and writes them out as a
+playlist the app imports like any other.
+
+```bash
+npm run scrape:vod                        # all kinds, English + Ex-Yu
+npm run scrape:vod:exyu                   # HR / SRB / BIH only
+node scripts/scrape-vod.mjs --kind movies --limit 500
+node scripts/scrape-vod.mjs --allow-noncommercial
+```
+
+Writes `data/playlists/<prefix>.m3u` plus a `.report.json` next to it.
+
+### The licence rule is the point
+
+A film being freely downloadable says nothing about whether it may be
+redistributed. So nothing is collected on the strength of where it was found:
+every item must carry a licence declaration that permits it, and anything
+without one is skipped however freely it is served.
+
+Accepted: CC Public Domain Mark, CC0, CC BY, CC BY-SA, CC BY-ND. ND and SA are
+fine because the work is passed through whole and unmodified.
+
+Refused by default: CC BY-NC and its variants. What counts as "commercial use"
+is genuinely unsettled, so that is a judgement about the business rather than
+about the file — `--allow-noncommercial` turns it on deliberately.
+
+Refused always: anything with no declared licence, or one that is not a
+redistribution grant. In practice this does most of the work. A sample of
+twelve `classic_tv` items yielded one usable title; the other eleven named a
+university terms-of-use page as their licence, which grants nothing. A low
+yield on a collection is the rule working, not a bug.
+
+The allowlist is URL prefixes, not a keyword search, because every CC licence
+URL contains `creativecommons.org` including the excluded ones. The licence is
+checked twice — once as a search narrowing, then again against the item's own
+metadata, which is the authority when the two disagree.
+
+### Kinds and languages
+
+`movies` is defined by subtraction — everything moving-image that is not
+tagged as a documentary or a TV series — rather than by
+`collection:(feature_films)`. That collection reflects how English material
+happens to have been catalogued: requiring it took the Ex-Yu results from 405
+licensed items to nine, then to zero.
+
+Language groups are `en` and `exyu` (Croatian, Serbian, Bosnian and
+Serbo-Croatian, asked for by both ISO code and English name, since the Archive
+carries both spellings).
+
+### File choice
+
+An item usually holds the same film several times. Selection is by
+decoder-friendliness first — H.264 MP4 leads, because every device this app
+runs on decodes it in hardware and a 1 GB stick will not manage Theora at
+feature length — then by size, taking the largest copy that is still sane to
+stream.
+
 ## `scrape-m3u8.mjs` — IPTV playlist scraper
 
 Collects `.m3u8` stream URLs from public IPTV indexes, de-duplicates them,
