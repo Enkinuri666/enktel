@@ -294,6 +294,16 @@ data class EpgProgram(
     val endMs: Long,
     val title: String,
     val desc: String = "",
+    /**
+     * What kind of programme this is, comma-separated, or "" when the guide
+     * did not say.
+     *
+     * Normalised at parse time by [tv.enktel.app.data.epg.ProgrammeGenres] so
+     * every reader gets the same cleaned value, the same way the title is
+     * sanitised once rather than by each screen — a guide's raw `<category>`
+     * elements are not fit to print.
+     */
+    val genre: String = "",
 )
 
 @Entity(tableName = "favorites")

@@ -31,6 +31,12 @@ object XmltvParser {
         var endMs = 0L
         var title = ""
         var desc = ""
+        // A programme may carry any number of <category> elements. Collected
+        // whole rather than read like title and desc, because the useful value
+        // is the set of them and the decision about which to keep belongs to
+        // ProgrammeGenres, not here.
+        val categories = ArrayList<String>(4)
+        val categoryBuf = StringBuilder()
         var tag = ""
         var inProgramme = false
 
@@ -45,15 +51,26 @@ object XmltvParser {
                         startMs = parseTime(parser.getAttributeValue(null, "start"))
                         endMs = parseTime(parser.getAttributeValue(null, "stop"))
                         title = ""; desc = ""
+                        categories.clear(); categoryBuf.setLength(0)
                     }
                 }
                 XmlPullParser.TEXT -> if (inProgramme) {
                     when (tag) {
                         "title" -> if (title.isEmpty()) title = parser.text.orEmpty().trim()
                         "desc" -> if (desc.isEmpty()) desc = parser.text.orEmpty().trim()
+                        // Accumulated rather than taken whole: a parser splits
+                        // text around an entity reference, so "Drama &amp; Crime"
+                        // arrives as three events. Appending and flushing on the
+                        // end tag keeps one category as one string instead of
+                        // three fragments.
+                        "category" -> categoryBuf.append(parser.text.orEmpty())
                     }
                 }
                 XmlPullParser.END_TAG -> {
+                    if (parser.name == "category" && inProgramme) {
+                        if (categoryBuf.isNotBlank()) categories += categoryBuf.toString()
+                        categoryBuf.setLength(0)
+                    }
                     if (parser.name == "programme") {
                         inProgramme = false
                         val keep = startMs in 1 until keepToMs && endMs > keepFromMs &&
@@ -69,6 +86,10 @@ object XmltvParser {
                                 // and VOD names are handled at sync time.
                                 title = tv.enktel.app.data.metadata.TitleSanitizer.cleanProgramme(title),
                                 desc = desc,
+                                // Normalised here for the same reason the title
+                                // is: every screen that shows it gets the clean
+                                // value without repeating the work.
+                                genre = ProgrammeGenres.normalise(categories),
                             )
                             if (batch.size >= batchSize) {
                                 emit(batch.toList()); total += batch.size; batch.clear()

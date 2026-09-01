@@ -511,7 +511,21 @@ private fun ProgramDialog(
                 if (canCatchup) Badge("CATCH-UP", EnktelOk)
             }
             Text(
-                "${channel.name} · ${TimeFormat.format("EEE d MMM HH:mm", prog.startMs)}–${TimeFormat.format("HH:mm", prog.endMs)}",
+                buildString {
+                    append(channel.name)
+                    append(" · ")
+                    append(TimeFormat.format("EEE d MMM HH:mm", prog.startMs))
+                    append("–")
+                    append(TimeFormat.format("HH:mm", prog.endMs))
+                    // Appended rather than given its own row: it is metadata
+                    // like the time, not a status like ON AIR, and most
+                    // programmes have none — an always-present empty row would
+                    // push the description down for nothing.
+                    if (prog.genre.isNotBlank()) {
+                        append(" · ")
+                        append(prog.genre)
+                    }
+                },
                 color = EnktelTextDim, fontSize = 12.sp,
             )
             if (prog.desc.isNotBlank()) {
@@ -684,6 +698,10 @@ private fun GuideDock(
                     )
                 }
                 Spacer(Modifier.height(9.dp))
+            }
+            if (prog.genre.isNotBlank()) {
+                Text(prog.genre, color = EnktelTextDim, fontSize = 11.sp, maxLines = 1)
+                Spacer(Modifier.height(4.dp))
             }
             if (prog.desc.isNotBlank()) {
                 Text(
