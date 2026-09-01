@@ -65,7 +65,7 @@ export default function DashboardExplainer() {
         </div>
 
         <div className="flex justify-center">
-          <Link href="/trial">
+          <Link href="/watch">
             <button className="group flex items-center gap-3 bg-brand-primary hover:bg-purple-600 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-primary/30">
               Get Your Free Trial Dashboard
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

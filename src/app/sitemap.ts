@@ -12,8 +12,6 @@ const routes = [
   "/search",
   "/latest-releases",
   "/coming-soon",
-  "/pricing",
-  "/trial",
   "/faqs",
   "/setup-guides",
   "/contact",

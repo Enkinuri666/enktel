@@ -84,7 +84,7 @@ export default function WebPlayerEcosystem() {
         </motion.div>
 
         <div className="text-center mt-8">
-          <Link href="/pricing" className="text-brand-secondary hover:underline text-sm font-medium">
+          <Link href="/watch" className="text-brand-secondary hover:underline text-sm font-medium">
             Not a member yet? See plans at enktel.tv →
           </Link>
         </div>

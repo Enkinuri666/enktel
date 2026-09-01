@@ -3,6 +3,107 @@
 Maintenance tooling that runs outside the Next.js app and the Android client.
 Plain Node ESM, no dependencies beyond the runtime — `node scripts/<name>.mjs`.
 
+## `scrape-vod.mjs` — public-domain / openly-licensed VOD
+
+The on-demand counterpart to the channel scraper. Collects films,
+documentaries and series from the Internet Archive and writes them out as a
+playlist the app imports like any other.
+
+```bash
+npm run scrape:vod                        # all kinds, English + Ex-Yu
+npm run scrape:vod:exyu                   # HR / SRB / BIH only
+node scripts/scrape-vod.mjs --kind movies --limit 500
+node scripts/scrape-vod.mjs --allow-noncommercial
+```
+
+Writes `data/playlists/<prefix>.m3u` plus a `.report.json` next to it.
+
+### Two rules, and both have to agree
+
+A film being freely downloadable says nothing about whether it may be
+redistributed. Nothing is collected on the strength of being served, and
+nothing on the strength of its licence field alone either. An item is taken
+only when **both** of these hold:
+
+1. it declares a licence that permits redistribution, and
+2. it belongs to a curated Archive collection.
+
+The second rule exists because the first one is not enough on its own. The
+`licenseurl` field is typed in by whoever uploaded the item, so on an
+unmoderated upload it is a claim about the rights, not evidence of them — a
+full run under licence-only selection returned items naming Hallmark and
+Paramount as their producers under a Creative Commons declaration no
+rightsholder had made. Collection membership is set by the Archive rather than
+by the uploader, so requiring it means a false declaration has to get past
+someone else's cataloguing too.
+
+Accepted: CC Public Domain Mark, CC0, CC BY, CC BY-SA, CC BY-ND. ND and SA are
+fine because the work is passed through whole and unmodified.
+
+Refused by default: CC BY-NC and its variants. What counts as "commercial use"
+is genuinely unsettled, so that is a judgement about the business rather than
+about the file — `--allow-noncommercial` turns it on deliberately.
+
+Refused always: anything with no declared licence, or one that is not a
+redistribution grant. In practice this does most of the work, and it is
+expensive — it discards roughly half of `feature_films` and almost all of
+Prelinger, both of which are overwhelmingly public domain but often record
+that in a field this does not read. That is the cautious side of the line and
+it is where the default stays. A low yield on a collection is the rule
+working, not a bug.
+
+The allowlist is URL prefixes, not a keyword search, because every CC licence
+URL contains `creativecommons.org` including the excluded ones. The licence is
+checked twice — once as a search narrowing, then again against the item's own
+metadata, which is the authority when the two disagree.
+
+### Kinds and languages
+
+Each kind is a set of curated collections:
+
+| Kind            | Collections                                   |
+| --------------- | --------------------------------------------- |
+| `movies`        | `feature_films`, `short_films`, `silent_films` |
+| `documentaries` | `prelinger`, `ephemera`                        |
+| `series`        | `classic_tv`                                   |
+
+Others were measured and left out. `newsandpublicaffairs`, `nasa` and
+`usgovfilms` are large and genuinely public domain, but hold raw ISS footage
+and congressional proceedings — public record rather than anything anyone
+browses a VOD rail for. `animationandcartoons` is a broad parent that mixes
+genuine classic shorts with fan uploads. `moviesandfilms` is the parent of
+`feature_films` and adds mostly non-film items.
+
+An earlier version defined `movies` by subtraction — everything moving-image
+not tagged as a documentary or a series. That was wrong, and only a full-size
+run showed it: `mediatype:(movies)` is the Archive's bucket for *any* moving
+image, so subtracting two tags left home videos, advertising reels, station
+idents and phone clips. It produced 864 "titles" of which almost none belonged
+in a catalogue.
+
+Language groups are `en` and `exyu` (Croatian, Serbian, Bosnian and
+Serbo-Croatian, asked for by both ISO code and English name, since the Archive
+carries both spellings).
+
+**`exyu` currently yields nothing, and that is the honest answer rather than a
+bug.** Every curated collection above returns zero licensed items in those
+languages — `feature_films`, `short_films`, `silent_films`, `prelinger`,
+`ephemera` and `classic_tv` alike. The Archive has plenty of Ex-Yu *video*,
+but it is uploads: home footage, station idents, music clips and off-air
+recordings of material still in copyright. An earlier version of this file
+blamed English cataloguing conventions for the zero and dropped the collection
+requirement to get past it; what that actually did was admit the uploads. The
+Archive is not a source for Ex-Yu on-demand film, and `npm run scrape:vod:exyu`
+exits non-zero saying so rather than writing an empty playlist over a good one.
+
+### File choice
+
+An item usually holds the same film several times. Selection is by
+decoder-friendliness first — H.264 MP4 leads, because every device this app
+runs on decodes it in hardware and a 1 GB stick will not manage Theora at
+feature length — then by size, taking the largest copy that is still sane to
+stream.
+
 ## `scrape-m3u8.mjs` — IPTV playlist scraper
 
 Collects `.m3u8` stream URLs from public IPTV indexes, de-duplicates them,

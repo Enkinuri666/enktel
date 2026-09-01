@@ -210,10 +210,10 @@ export default function DashboardPage() {
             <Link href="/login">
               <Button>Log In</Button>
             </Link>
-            <Link href="/trial">
+            <Link href="/watch">
               <Button variant="outline">Start Free Trial</Button>
             </Link>
-            <Link href="/pricing">
+            <Link href="/watch">
               <Button variant="outline">View Plans</Button>
             </Link>
           </div>
@@ -303,7 +303,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <Link href="/pricing" className="shrink-0">
+          <Link href="/watch" className="shrink-0">
             <Button size="sm">{expired ? "Reactivate Now" : "Upgrade Now"}</Button>
           </Link>
         </motion.div>
@@ -340,7 +340,7 @@ export default function DashboardPage() {
                   Renew now to avoid interruption.
                 </p>
               </div>
-              <Link href="/checkout" className="shrink-0">
+              <Link href="/watch" className="shrink-0">
                 <Button size="sm">Renew Now</Button>
               </Link>
             </div>

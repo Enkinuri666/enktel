@@ -1106,7 +1106,6 @@ private fun MainNav(
             )
         }
         composable("settings") { SettingsScreen(graph, nav) }
-        composable("upgrade") { tv.enktel.app.ui.screens.UpgradeScreen(nav) }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }

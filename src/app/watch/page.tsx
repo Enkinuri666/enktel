@@ -20,7 +20,7 @@ export default function WatchPage() {
 
         <div className="text-center mt-10">
           <Link
-            href="/checkout?plan=annual"
+            href="/watch"
             className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-base text-white transition-all duration-300 hover:-translate-y-1"
             style={{ background: "linear-gradient(135deg, #6C63FF 0%, #5348d4 100%)" }}
           >

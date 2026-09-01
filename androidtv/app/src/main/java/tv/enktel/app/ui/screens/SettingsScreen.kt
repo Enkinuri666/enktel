@@ -121,11 +121,6 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 onClick = { nav.navigate("systemMonitor") })
             FocusButton("🗂  Manage categories",
                 onClick = { nav.navigate("manageCategories") })
-            // v1.39.0 — companion to the AccountBanner above. Trial or
-            // near-expiry users can jump straight to /upgrade (WebView on
-            // mobile, QR on TV) without hunting for the button per category.
-            FocusButton("💳  Upgrade account",
-                onClick = { nav.navigate("upgrade") })
         }
         Text(
             "Diagnostics tests your network, the panel's URL shapes, your connection cap and the HTTP/TLS path — locally, no browser needed.",

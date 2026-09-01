@@ -19,11 +19,12 @@
     "build:alternates": "node scripts/build-alternates.mjs",
     "gen:relay-hosts": "node scripts/gen-relay-hosts.mjs",
     "build:roster": "node scripts/build-roster.mjs",
-    "import:panel": "node scripts/import-panel-export.mjs"
+    "import:panel": "node scripts/import-panel-export.mjs",
+    "scrape:vod": "node scripts/scrape-vod.mjs",
+    "scrape:vod:exyu": "node scripts/scrape-vod.mjs --lang exyu --prefix enktel-vod-exyu"
   },
   "dependencies": {
     "@paypal/paypal-js": "^10.0.1",
-    "@upstash/redis": "^1.38.2",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.7.2",

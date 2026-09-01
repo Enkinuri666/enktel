@@ -144,8 +144,7 @@ fun MobileScaffold(
         currentRoute.startsWith("trailer") ||
         currentRoute.startsWith("multi") ||
         currentRoute.startsWith("onboard") ||
-        currentRoute.startsWith("setup") ||
-        currentRoute.startsWith("upgrade")
+        currentRoute.startsWith("setup")
     val showBar = !kidsModeActive && !immersive
 
     // Ask the OS how tall its bottom system-nav (gesture pill / 3-button bar) is so we can
