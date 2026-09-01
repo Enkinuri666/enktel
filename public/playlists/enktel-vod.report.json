@@ -1,0 +1,51 @@
+{
+  "ranAt": "2026-09-01T04:17:43.273Z",
+  "pairs": [
+    {
+      "kind": "movies",
+      "lang": "en",
+      "found": 500,
+      "kept": 409
+    },
+    {
+      "kind": "movies",
+      "lang": "exyu",
+      "found": 0,
+      "kept": 0
+    },
+    {
+      "kind": "documentaries",
+      "lang": "en",
+      "found": 206,
+      "kept": 188
+    },
+    {
+      "kind": "documentaries",
+      "lang": "exyu",
+      "found": 0,
+      "kept": 0
+    },
+    {
+      "kind": "series",
+      "lang": "en",
+      "found": 500,
+      "kept": 442
+    },
+    {
+      "kind": "series",
+      "lang": "exyu",
+      "found": 0,
+      "kept": 0
+    }
+  ],
+  "skipped": {
+    "noLicence": 0,
+    "noFile": 38
+  },
+  "total": 1039,
+  "byGroup": {
+    "Public Domain Documentaries — English": 188,
+    "Public Domain Movies — English": 409,
+    "Public Domain Series — English": 442
+  }
+}

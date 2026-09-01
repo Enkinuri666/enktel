@@ -23,6 +23,7 @@ import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.data.m3u.ImportedPlaylist
+import tv.enktel.app.data.vod.FreeVodCatalog
 import tv.enktel.app.data.m3u.LocalFirst
 import tv.enktel.app.data.m3u.M3uParser
 import tv.enktel.app.data.m3u.PlaylistFiles
@@ -299,7 +300,57 @@ class ContentRepository(
         // of; the viewer would see their import appear and then vanish on the
         // next refresh, which is the bug this whole path exists to fix.
         val added = applyImportedPlaylists(p)
-        if (added.isEmpty()) summary else "$summary · $added"
+        // Same ordering rule, same reason: the free film library is written
+        // after the profile's own catalogue has been cleared and rebuilt.
+        val films = applyFreeVod(p)
+        listOf(summary, added, films).filter { it.isNotEmpty() }.joinToString(" · ")
+    }
+
+    /**
+     * Sync the profile's on-demand playlist into its movie library.
+     *
+     * Only the seeded free-to-air profile has one. It carries live channels
+     * and nothing else, so before this the free tier opened on live TV and an
+     * empty Movies tab — the public-domain catalogue the scraper collects
+     * existed as a generated file that nothing in the app ever read.
+     *
+     * Additive, like an attachment: [FreeVodCatalog] numbers these rows in a
+     * stream-id range of their own, so nothing here can overwrite a title from
+     * a panel. Best-effort for the same reason attachments are — a film
+     * library that failed to download must not fail the sync and take the
+     * viewer's channels with it.
+     *
+     * @return a short summary, or "" when there is no playlist or it failed
+     */
+    private suspend fun applyFreeVod(p: Profile): String {
+        if (!p.vodUrl.startsWith("http")) return ""
+
+        val entries = runCatching {
+            val req = Request.Builder().url(p.vodUrl)
+                .header("Accept-Encoding", "gzip")
+                .build()
+            http.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) throw IOException("Film library returned HTTP ${resp.code}")
+                gunzipIfNeeded(resp.body.byteStream())
+                    .reader(Charsets.UTF_8).buffered().use { M3uParser.parse(it) }
+            }
+        }.getOrNull()?.entries
+
+        // A 200 that parses to nothing is a failed download wearing a success
+        // costume, exactly as in refreshM3u. Here it is not worth throwing
+        // over — the channels synced fine — but it is worth not reporting a
+        // library that isn't there.
+        if (entries.isNullOrEmpty()) return ""
+
+        val now = System.currentTimeMillis()
+        content.upsertCategories(FreeVodCatalog.categories(p.id, entries))
+        // Chunked for the same reason the panel path is: the whole catalogue
+        // as one statement is a large allocation on a device that may have a
+        // few megabytes of headroom.
+        val movies = FreeVodCatalog.movies(p.id, entries, now)
+        movies.chunked(500).forEach { content.upsertMovies(it) }
+
+        return "${movies.size} free films"
     }
 
     /**

@@ -92,7 +92,17 @@ class PlaylistRepository(
         // opens on live TV is a different product from one that opens on a
         // password field. The paid line is still one tap away in Settings.
         if (DefaultLine.hasFreePlaylist) {
-            return addM3u(DefaultLine.FREE_NAME, DefaultLine.freePlaylistUrl, DefaultLine.freePlaylistEpg)
+            // The free playlist is live channels only, so seeding it alone
+            // opened the app on live TV and an empty Movies tab. The film
+            // library rides along on the same profile rather than as a second
+            // one, because a viewer switching profiles to find the films is a
+            // worse answer than both being in the place they already are.
+            return addM3u(
+                DefaultLine.FREE_NAME,
+                DefaultLine.freePlaylistUrl,
+                DefaultLine.freePlaylistEpg,
+                vodUrl = if (DefaultLine.hasFreeVod) DefaultLine.freeVodUrl else "",
+            )
         }
 
         return null
@@ -209,11 +219,23 @@ class PlaylistRepository(
         settings.removeImportedPlaylist(id)?.let { PlaylistFiles.forget(it.url) }
     }
 
-    suspend fun addM3u(name: String, url: String, epgUrl: String): Result<Profile> = runCatching {
+    suspend fun addM3u(
+        name: String,
+        url: String,
+        epgUrl: String,
+        /**
+         * An on-demand playlist synced into this profile's movie library.
+         * Only the seeded free tier passes one; see [Profile.vodUrl].
+         */
+        vodUrl: String = "",
+    ): Result<Profile> = runCatching {
         require(url.startsWith("http") || PlaylistFiles.isLocal(url)) {
             "Playlist URL must start with http(s):// or be an imported file"
         }
-        val profile = Profile(name = name, kind = "m3u", m3uUrl = url.trim(), epgUrl = epgUrl.trim())
+        val profile = Profile(
+            name = name, kind = "m3u", m3uUrl = url.trim(), epgUrl = epgUrl.trim(),
+            vodUrl = vodUrl.trim(),
+        )
         val id = dao.insert(profile)
         settings.setActiveProfile(id)
         profile.copy(id = id)

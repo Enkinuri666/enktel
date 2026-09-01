@@ -30,6 +30,21 @@ data class Profile(
      * [tv.enktel.app.data.net.UserAgents].
      */
     val userAgent: String = "",
+    /**
+     * An on-demand playlist synced into this profile's movie library.
+     *
+     * Distinct from [m3uUrl], which is the profile's own lineup and is read as
+     * channels. This one is read as films — see
+     * [tv.enktel.app.data.vod.FreeVodCatalog] — and is additive: the rows it
+     * writes sit in a stream-id range of their own, so a profile can carry a
+     * paid line and a free film library at the same time without either
+     * overwriting the other.
+     *
+     * Blank on every profile the viewer sets up themselves. It is populated on
+     * the seeded free-to-air profile, which otherwise offers live TV and an
+     * empty Movies tab.
+     */
+    val vodUrl: String = "",
 )
 
 @Entity(tableName = "channels", indices = [Index("profileId"), Index("profileId", "categoryId")])

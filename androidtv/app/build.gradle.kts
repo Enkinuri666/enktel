@@ -109,8 +109,16 @@ android {
         val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
             ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
             ?: "https://enktel.tv/api/guide"
+        // The on-demand half of the free tier. FREE_PLAYLIST_URL is live
+        // channels only, so a build with no line showed live TV and an empty
+        // Movies tab; this is the public-domain film catalogue collected by
+        // scripts/scrape-vod.mjs and published beside the lineup.
+        val freeVod = (project.findProperty("enkFreeVodUrl") as? String)
+            ?: System.getenv("ENK_FREE_VOD_URL")
+            ?: "https://enktel.tv/playlists/enktel-vod.m3u"
         buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
         buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
+        buildConfigField("String", "FREE_VOD_URL", "\"$freeVod\"")
     }
 
     // Room writes the resolved schema for every version under
