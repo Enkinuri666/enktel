@@ -219,6 +219,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             ProviderUserAgent(graph, p, scope)
+            FilmLibrary(graph, p, scope)
         }
         val playlistPicker = androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
@@ -1674,4 +1675,68 @@ private fun ProviderUserAgent(
             "actually answered for each agent it tried.",
         color = EnktelTextFaint, fontSize = 10.sp,
     )
+}
+
+/**
+ * The on-demand playlist this profile syncs films from.
+ *
+ * [tv.enktel.app.data.db.Profile.vodUrl] arrived with the seeded free tier and
+ * nothing but the seed could set it, so a viewer with a film library of their
+ * own had no way to add one short of a rebuild.
+ *
+ * Deliberately not the same field as the profile's M3U URL. That one is the
+ * channel lineup; a catalogue of films entered there is read as a thousand
+ * channels, which is the mistake this row exists to make unnecessary.
+ */
+@Composable
+private fun FilmLibrary(
+    graph: AppGraph,
+    profile: tv.enktel.app.data.db.Profile,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    var open by remember(profile.id) { mutableStateOf(false) }
+    // Re-keyed on the stored value so the box shows what was actually saved
+    // after a normalise — a typed `example.com/f.m3u` comes back with its
+    // scheme, and silently displaying the raw text would hide that.
+    var draft by remember(profile.id, profile.vodUrl) { mutableStateOf(profile.vodUrl) }
+    var note by remember(profile.id) { mutableStateOf("") }
+    val current = profile.vodUrl
+
+    FocusButton(
+        "🎞  Film library: " + if (current.isBlank()) "None" else "On",
+        accent = current.isNotBlank(),
+        onClick = { open = !open },
+    )
+    if (!open) return
+
+    Text(
+        "An on-demand M3U. Its titles are synced into Movies rather than into the channel " +
+            "list, and they sit alongside this profile's own catalogue rather than replacing it.",
+        color = EnktelTextDim, fontSize = 11.sp,
+    )
+    tv.enktel.app.ui.components.TvTextField(draft, { draft = it }, "Film library M3U URL")
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FocusButton("Save", accent = true, onClick = {
+            scope.launch {
+                val stored = graph.playlists.setVodUrl(profile, draft)
+                note = when {
+                    stored.isNotBlank() -> "Saved. Sync this playlist to pull the titles in."
+                    draft.isBlank() -> "Film library cleared."
+                    // Blank back from a non-blank entry means it was not a URL.
+                    // Saying so beats a silent no-op the viewer reads as a bug.
+                    else -> "That did not look like a URL, so nothing was saved."
+                }
+            }
+        })
+        if (current.isNotBlank()) {
+            FocusButton("Clear", onClick = {
+                scope.launch {
+                    graph.playlists.setVodUrl(profile, "")
+                    draft = ""
+                    note = "Film library cleared."
+                }
+            })
+        }
+    }
+    if (note.isNotBlank()) Text(note, color = EnktelTextDim, fontSize = 10.sp)
 }

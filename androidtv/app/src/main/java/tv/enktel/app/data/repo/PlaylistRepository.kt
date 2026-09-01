@@ -12,6 +12,7 @@ import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.data.prefs.SettingsStore
 import tv.enktel.app.data.str
+import tv.enktel.app.data.vod.FreeVodCatalog
 import tv.enktel.app.data.xtream.XtreamClient
 
 class PlaylistRepository(
@@ -234,7 +235,12 @@ class PlaylistRepository(
         }
         val profile = Profile(
             name = name, kind = "m3u", m3uUrl = url.trim(), epgUrl = epgUrl.trim(),
-            vodUrl = vodUrl.trim(),
+            // Same validator as [setVodUrl], so a URL typed on the onboarding
+            // form and one typed in Settings are stored identically. An
+            // unusable value becomes blank rather than failing the import: the
+            // lineup is the thing being added, and losing it over an optional
+            // second field would be the wrong trade.
+            vodUrl = FreeVodCatalog.normaliseSourceUrl(vodUrl),
         )
         val id = dao.insert(profile)
         settings.setActiveProfile(id)
@@ -268,6 +274,23 @@ class PlaylistRepository(
      * [tv.enktel.app.data.net.UserAgents].
      */
     suspend fun setUserAgent(p: Profile, ua: String) = dao.update(p.copy(userAgent = ua.trim()))
+
+    /**
+     * Point this profile at an on-demand playlist, or clear it.
+     *
+     * [Profile.vodUrl] arrived with the seeded free tier and nothing but the
+     * seed could set it, so a viewer with a film library of their own had no
+     * way to add one — the onboarding form's M3U field is the profile's
+     * *channel* lineup, and a catalogue of films entered there is read as a
+     * thousand channels.
+     *
+     * @return the stored value, which is "" when [url] was not usable
+     */
+    suspend fun setVodUrl(p: Profile, url: String): String {
+        val clean = FreeVodCatalog.normaliseSourceUrl(url)
+        dao.update(p.copy(vodUrl = clean))
+        return clean
+    }
 
     /**
      * Returns whichever of https:// / http:// the panel actually answers on,
