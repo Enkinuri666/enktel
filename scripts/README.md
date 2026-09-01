@@ -3,6 +3,30 @@
 Maintenance tooling that runs outside the Next.js app and the Android client.
 Plain Node ESM, no dependencies beyond the runtime — `node scripts/<name>.mjs`.
 
+## `build-docs.py` — the user manual and testers guide
+
+```bash
+pip install reportlab
+python3 scripts/build-docs.py          # writes both PDFs to docs/
+```
+
+Writes `docs/enktel_user_manual.pdf` and `docs/enktel_testers_guide.pdf`.
+
+The two voice-command PDFs in the repository root predate this script and
+were committed as binaries with no generator. By the time anyone looked at
+them again they were describing v1.12.0 of an app on 1.60.49, and there was
+no way to tell which parts were still true. That is the failure this script
+exists to prevent: **the version is read out of `androidtv/app/build.gradle.kts`
+rather than typed in**, so a document cannot claim to describe a build it was
+not generated from.
+
+Regenerate both whenever the version is bumped, and commit the output
+alongside the change that made it stale.
+
+Python rather than Node, unlike everything else here, because ReportLab is
+what produced the existing PDFs and matching it keeps one toolchain for
+documents instead of two.
+
 ## `scrape-vod.mjs` — public-domain / openly-licensed VOD
 
 The on-demand counterpart to the channel scraper. Collects films,
