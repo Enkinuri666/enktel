@@ -54,6 +54,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var m3uUrl by remember { mutableStateOf("") }
     var epgUrl by remember { mutableStateOf("") }
+    var vodUrl by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -96,6 +97,21 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 TvTextField(epgUrl, { epgUrl = it }, "EPG / XMLTV URL (optional)")
             }
+            Spacer(Modifier.height(12.dp))
+            // Offered for both kinds, because a film library is independent of
+            // how the channels arrive: an Xtream line can have one beside it
+            // just as an M3U lineup can.
+            //
+            // Separate from the M3U field above on purpose. That one is the
+            // profile's channel lineup, and a catalogue of films entered there
+            // is read as a thousand channels — which is exactly the mistake
+            // this field exists to make unnecessary.
+            TvTextField(vodUrl, { vodUrl = it }, "Film library M3U (optional)")
+            Text(
+                "An on-demand playlist. Its titles go to Movies, not to the channel list.",
+                color = EnktelTextDim,
+                fontSize = 11.sp,
+            )
             Spacer(Modifier.height(8.dp))
             if (error.isNotBlank()) {
                 Text(error, color = EnktelLive, fontSize = 13.sp)
@@ -110,8 +126,14 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                     scope.launch {
                         val result = if (mode == "xtream") {
                             graph.playlists.addXtream(name, server, username, password)
+                                .onSuccess { p ->
+                                    // Stored after the line validates rather
+                                    // than as part of it: a film library must
+                                    // not be able to fail a login.
+                                    if (vodUrl.isNotBlank()) graph.playlists.setVodUrl(p, vodUrl)
+                                }
                         } else {
-                            graph.playlists.addM3u(name, m3uUrl, epgUrl)
+                            graph.playlists.addM3u(name, m3uUrl, epgUrl, vodUrl)
                         }
                         result.fold(
                             onSuccess = { profile ->

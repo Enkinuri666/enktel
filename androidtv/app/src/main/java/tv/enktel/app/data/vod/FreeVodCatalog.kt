@@ -45,6 +45,32 @@ object FreeVodCatalog {
      */
     const val MAX_TITLES = 20_000
 
+    /**
+     * Clean up a film-library URL the viewer typed, or return "" if it is not
+     * one.
+     *
+     * Blank is a valid answer — it means "no film library" — so an unusable
+     * value returns blank rather than throwing. What must not happen is
+     * storing something that is not a URL: the sync would fail every run and
+     * report nothing, since the fetch is deliberately best-effort.
+     *
+     * A bare host is treated as https. Typing `example.com/films.m3u` is the
+     * common case and refusing it teaches nothing.
+     */
+    fun normaliseSourceUrl(raw: String): String {
+        val t = raw.trim()
+        if (t.isEmpty()) return ""
+        val withScheme = when {
+            t.startsWith("http://", true) || t.startsWith("https://", true) -> t
+            // A scheme this app cannot fetch is a mistake, not a host.
+            t.contains("://") -> return ""
+            else -> "https://$t"
+        }
+        // Must have something after the scheme to be a URL at all.
+        val host = withScheme.substringAfter("://").substringBefore('/')
+        return if (host.isBlank() || !host.contains('.')) "" else withScheme
+    }
+
     /** `Some Film (1935)` → `Some Film` + 1935. */
     private val TRAILING_YEAR = Regex("""\s*\((\d{4})\)\s*$""")
 

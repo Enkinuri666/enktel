@@ -125,6 +125,35 @@ class FreeVodCatalogTest {
         assertEquals("mp4", dotted[0].ext)
     }
 
+    // ── source URL ─────────────────────────────────────────────────────
+
+    @Test
+    fun `a typed url keeps its scheme and a bare host gains one`() {
+        assertEquals("https://x.org/f.m3u", FreeVodCatalog.normaliseSourceUrl("x.org/f.m3u"))
+        assertEquals("https://x.org/f.m3u", FreeVodCatalog.normaliseSourceUrl("  https://x.org/f.m3u  "))
+        // http is not upgraded: plenty of panels serve only http, and silently
+        // rewriting the scheme turns a working URL into a connection failure.
+        assertEquals("http://x.org/f.m3u", FreeVodCatalog.normaliseSourceUrl("http://x.org/f.m3u"))
+    }
+
+    @Test
+    fun `something that is not a url is stored as blank rather than kept`() {
+        // The sync is best-effort by design, so a stored non-URL would fail
+        // silently every run. Blank at least reads as "no film library".
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl(""))
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl("   "))
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl("my films"))
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl("localhost"))
+    }
+
+    @Test
+    fun `a scheme the app cannot fetch is refused rather than prefixed`() {
+        // Prefixing would turn "ftp://x.org/f.m3u" into
+        // "https://ftp://x.org/f.m3u", which is worse than refusing it.
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl("ftp://x.org/f.m3u"))
+        assertEquals("", FreeVodCatalog.normaliseSourceUrl("file:///sdcard/f.m3u"))
+    }
+
     @Test
     fun `categories are the playlist's groups, deduplicated and in order`() {
         val entries = listOf(
