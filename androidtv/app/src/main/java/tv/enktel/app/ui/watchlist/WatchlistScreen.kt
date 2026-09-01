@@ -43,9 +43,10 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
         else -> graph.watchlist.all(p.id)
     }.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    Column(Modifier.fillMaxSize().padding(top = shape.padV)) {
         Row(
-            Modifier.padding(horizontal = 48.dp),
+            Modifier.padding(horizontal = shape.padH),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SectionTitle("My Watchlist")
@@ -53,10 +54,10 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
         }
         ChipRowLabel(
             "Filter",
-            modifier = Modifier.padding(start = 48.dp, top = 6.dp, bottom = 6.dp),
+            modifier = Modifier.padding(start = shape.padH, top = 6.dp, bottom = 6.dp),
         )
         Row(
-            Modifier.padding(horizontal = 48.dp, vertical = 4.dp),
+            Modifier.padding(horizontal = shape.padH, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             GlassChip("All (${items.size})", selected = kind == "all", accent = EnktelPurple, onClick = { kind = "all" })

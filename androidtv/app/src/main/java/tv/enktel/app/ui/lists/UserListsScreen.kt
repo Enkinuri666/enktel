@@ -77,8 +77,12 @@ fun UserListsScreen(graph: AppGraph, nav: NavHostController) {
     var openList by remember { mutableStateOf<UserList?>(null) }
     var newName by remember { mutableStateOf("") }
 
+    // ScreenShape already decides this per flavour and per screen size, and
+    // its TV figure is the overscan safe zone rather than the 48 dp guess
+    // that was here — 48 dp sits inside the band a cropping panel eats.
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 20.dp else 48.dp
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val hPad = shape.padH
 
     val open = openList
     if (open != null) {
@@ -86,7 +90,7 @@ fun UserListsScreen(graph: AppGraph, nav: NavHostController) {
         return
     }
 
-    Column(Modifier.fillMaxSize().padding(top = if (isMobile) 12.dp else 20.dp)) {
+    Column(Modifier.fillMaxSize().padding(top = shape.padV)) {
         Row(Modifier.padding(horizontal = hPad), verticalAlignment = Alignment.CenterVertically) {
             SectionTitle("My Lists")
             Spacer(Modifier.weight(1f))

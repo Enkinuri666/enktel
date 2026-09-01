@@ -80,9 +80,13 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
     val blueAccent = EnktelBlue
     val okAccent = EnktelOk
 
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 28.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = shape.padH,
+            vertical = shape.padV,
+        ),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         item {

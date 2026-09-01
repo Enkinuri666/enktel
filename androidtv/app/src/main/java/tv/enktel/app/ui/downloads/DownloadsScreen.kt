@@ -67,7 +67,12 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
 
     var confirmDelete by remember { mutableStateOf<DownloadEntry?>(null) }
 
-    Column(Modifier.fillMaxSize().background(EnktelBg).padding(horizontal = 20.dp, vertical = 16.dp)) {
+    // Page padding is the overscan safe zone on TV, not taste: this screen
+    // was insetting 20 dp against a band a cropping panel eats at 58 dp,
+    // which put the first and last rows off the visible picture.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+
+    Column(Modifier.fillMaxSize().background(EnktelBg).padding(horizontal = shape.padH, vertical = shape.padV)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             SectionTitle("Downloads")
             Spacer(Modifier.width(12.dp))
