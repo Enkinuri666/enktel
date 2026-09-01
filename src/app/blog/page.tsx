@@ -106,7 +106,7 @@ export default function BlogPage() {
           <Link href="/login">
             <Button>Log In</Button>
           </Link>
-          <Link href="/trial">
+          <Link href="/watch">
             <Button variant="outline">Start Free Trial</Button>
           </Link>
         </div>
@@ -288,7 +288,7 @@ export default function BlogPage() {
           </div>
         </div>
         <Link
-          href="/trial"
+          href="/watch"
           className="shrink-0 bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
         >
           Start Free Trial

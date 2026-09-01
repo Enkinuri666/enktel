@@ -96,7 +96,7 @@ export default function LoginPage() {
 
         <p className="text-center text-brand-muted text-xs">
           Don&apos;t have an active line?{" "}
-          <Link href="/trial" className="text-brand-primary hover:underline">
+          <Link href="/watch" className="text-brand-primary hover:underline">
             Start a free trial
           </Link>
         </p>

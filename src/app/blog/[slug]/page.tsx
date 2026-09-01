@@ -40,7 +40,7 @@ export default function EditorialPostPage({ params }: { params: { slug: string }
           <Link href="/login">
             <Button>Log In</Button>
           </Link>
-          <Link href="/trial">
+          <Link href="/watch">
             <Button variant="outline">Start Free Trial</Button>
           </Link>
         </div>

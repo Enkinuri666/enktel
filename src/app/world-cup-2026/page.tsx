@@ -144,7 +144,7 @@ export default function WorldCup2026Page() {
       )}
 
       <div className="text-center">
-        <Link href="/checkout?plan=quarter">
+        <Link href="/watch">
           <Button size="lg">
             <Trophy className="w-4 h-4 mr-2" />
             Get World Cup Access

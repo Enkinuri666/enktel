@@ -17,8 +17,6 @@ const navLinks = [
   { href: "/web-player", label: "Web Player" },
   { href: "/latest-releases", label: "Latest Releases" },
   { href: "/coming-soon", label: "Coming Soon" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/trial", label: "Free Trial" },
 ];
 
 export default function Navbar() {
@@ -129,7 +127,7 @@ export default function Navbar() {
                 Log In
               </Link>
             )}
-            <Link href={loggedIn ? "/dashboard" : "/pricing"} className="hidden sm:block">
+            <Link href={loggedIn ? "/dashboard" : "/watch"} className="hidden sm:block">
               <Button size="sm">{loggedIn ? "My Dashboard" : "Get Started"}</Button>
             </Link>
             <button
@@ -189,7 +187,7 @@ export default function Navbar() {
               </Link>
             )}
             <div className="pt-2 pb-1">
-              <Link href={loggedIn ? "/dashboard" : "/pricing"} onClick={() => setMobileOpen(false)}>
+              <Link href={loggedIn ? "/dashboard" : "/watch"} onClick={() => setMobileOpen(false)}>
                 <Button fullWidth size="sm">{loggedIn ? "My Dashboard" : "Get Started"}</Button>
               </Link>
             </div>

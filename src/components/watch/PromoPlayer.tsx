@@ -9,7 +9,6 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
-import { PLAN_PRICE, PLAN_REGULAR_PRICE } from "@/lib/plans";
 
 // ───────────────────────── Timeline engine ─────────────────────────
 const Easing = {
@@ -413,46 +412,9 @@ function SceneWhy() {
   );
 }
 
-function ScenePricing() {
-  const annualSavings = (PLAN_REGULAR_PRICE.annual ?? PLAN_PRICE.annual) - PLAN_PRICE.annual;
-  return (
-    <Sprite start={30.8} end={38}>
-      <SceneFrame>
-        <div className="flex flex-col items-center gap-6">
-          <Kicker delay={0.2}>Simple, Transparent Pricing</Kicker>
-          <Reveal delay={0.45} y={22} dur={0.6}>
-            <div className="font-black tracking-tight text-2xl md:text-4xl text-white" style={{ fontFamily: FD }}>
-              Stream beyond limits — <span style={{ color: C.secondary }}>for less.</span>
-            </div>
-          </Reveal>
-          <div className="flex gap-4 md:gap-7">
-            <Reveal delay={0.85} y={26} dur={0.6} ease={Easing.easeOutBack}>
-              <div className="rounded-2xl border px-6 py-6 text-left w-44 md:w-56" style={{ background: C.card, borderColor: C.line }}>
-                <div className="text-[0.65rem] tracking-[0.2em]" style={{ color: C.mute, fontFamily: "ui-monospace, monospace" }}>3 MONTHS</div>
-                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&#36;{PLAN_PRICE.quarter}</div>
-              </div>
-            </Reveal>
-            <Reveal delay={1.05} y={26} dur={0.6} ease={Easing.easeOutBack}>
-              <div className="relative rounded-2xl border-2 px-6 py-6 text-left w-44 md:w-56" style={{ background: C.primaryDeep, borderColor: C.secondary, boxShadow: `0 0 40px ${C.secondary}33` }}>
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[0.6rem] font-bold tracking-wider whitespace-nowrap" style={{ background: C.secondary, color: "#06122B" }}>BEST VALUE</div>
-                <div className="text-[0.65rem] tracking-[0.2em]" style={{ color: C.primaryBright, fontFamily: "ui-monospace, monospace" }}>12 MONTHS</div>
-                <div className="font-black text-3xl md:text-4xl text-white mt-1.5" style={{ fontFamily: FD }}>&#36;{PLAN_PRICE.annual}</div>
-                <div className="text-[0.65rem] mt-0.5 font-semibold" style={{ color: "#7ef0a8" }}>Save &#36;{annualSavings}</div>
-              </div>
-            </Reveal>
-          </div>
-          <Reveal delay={1.5} y={14} dur={0.5}>
-            <div className="text-xs md:text-sm" style={{ color: C.mute, fontFamily: FD }}>No contract · Cancel anytime</div>
-          </Reveal>
-        </div>
-      </SceneFrame>
-    </Sprite>
-  );
-}
-
 function SceneCTA() {
   return (
-    <Sprite start={37.8} end={46}>
+    <Sprite start={30.8} end={39}>
       <SceneFrame>
         <div className="flex flex-col items-center gap-5">
           <Reveal delay={0.2} y={26} dur={0.7} ease={Easing.easeOutBack}>
@@ -472,7 +434,7 @@ function SceneCTA() {
           </Reveal>
           <Reveal delay={2.1} y={14} dur={0.55} ease={Easing.easeOutBack}>
             <Link
-              href="/checkout?plan=annual"
+              href="/watch"
               className="inline-flex items-center gap-2.5 font-bold text-sm md:text-base rounded-xl px-6 py-3 transition-transform hover:-translate-y-0.5"
               style={{ fontFamily: FD, color: "#06122B", background: C.secondary }}
             >
@@ -485,7 +447,7 @@ function SceneCTA() {
   );
 }
 
-const DURATION = 46;
+const DURATION = 39;
 
 export default function PromoPlayer() {
   return (
@@ -496,7 +458,6 @@ export default function PromoPlayer() {
       <SceneSports />
       <SceneFeatures />
       <SceneWhy />
-      <ScenePricing />
       <SceneCTA />
     </Stage>
   );

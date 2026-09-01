@@ -67,7 +67,7 @@ export default function Hero() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 mb-10">
-              <Link href="/pricing">
+              <Link href="/watch">
                 <button className="group relative flex items-center gap-3 text-white font-bold px-8 py-4 rounded-2xl text-base transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto justify-center overflow-hidden btn-glow bg-gradient-to-br from-brand-primary to-[#5348d4]">
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-[#7b73ff] to-brand-primary" />
                   <Play className="w-5 h-5 fill-white shrink-0 relative z-10" />
