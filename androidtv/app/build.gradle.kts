@@ -38,25 +38,6 @@ android {
         // why the trial button could never have worked: /api/trial is in this
         // repo, and this repo is not what answers on watch.enktel.tv.
         //
-        // v1.34.0 — Eagle 4K trial signup + upgrade CTA URLs. The trial endpoint
-        // is expected to accept a POST and return JSON with the shape
-        //   { server_url, username, password, expires_at }
-        // Overridable at build time via -PenkTrialUrl / -PenkUpgradeUrl so a
-        // deployer can point at a different panel without editing this file.
-        val trialUrl = (project.findProperty("enkTrialUrl") as? String)
-            ?: System.getenv("ENK_TRIAL_URL")
-            ?: "https://watch.enktel.tv/api/trial"
-        // The hosted PayPal checkout. `?plan=annual` preselects the
-        // 12-month plan, which is what the in-app upgrade CTA sells.
-        //
-        // Was ".../upgrade", which is not a route the site has — the field was
-        // never read by any Kotlin code, so nothing ever followed it to the
-        // 404 it pointed at.
-        val upgradeUrl = (project.findProperty("enkUpgradeUrl") as? String)
-            ?: System.getenv("ENK_UPGRADE_URL")
-            ?: "https://watch.enktel.tv/checkout?plan=annual"
-        buildConfigField("String", "EAGLE_TRIAL_URL", "\"$trialUrl\"")
-        buildConfigField("String", "EAGLE_UPGRADE_URL", "\"$upgradeUrl\"")
 
         // The line a fresh install starts on. See
         // tv.enktel.app.data.repo.DefaultLine for why only the server has a
