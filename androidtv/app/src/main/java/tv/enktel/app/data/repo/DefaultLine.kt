@@ -75,4 +75,24 @@ object DefaultLine {
     /** Is there a free playlist to fall back to when [canSeed] is false? */
     val hasFreePlaylist: Boolean
         get() = freePlaylistUrl.startsWith("http")
+
+    /**
+     * The on-demand half of the free tier.
+     *
+     * [freePlaylistUrl] carries live channels, so a viewer with no line got
+     * live TV and an empty Movies tab. This is the catalogue
+     * `scripts/scrape-vod.mjs` collects: public-domain and openly-licensed
+     * films, documentaries and series, every one of which carries both a
+     * redistribution licence and membership of a curated archive collection.
+     *
+     * Published from this project rather than linked from the archive
+     * directly, for the same reason the lineup is — a viewer's network has to
+     * reach one host we control, not whichever host a generated file happened
+     * to name.
+     */
+    val freeVodUrl: String get() = BuildConfig.FREE_VOD_URL
+
+    /** Is there a free film library to seed alongside the channels? */
+    val hasFreeVod: Boolean
+        get() = freeVodUrl.startsWith("http")
 }
