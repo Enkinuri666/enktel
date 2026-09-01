@@ -6,13 +6,22 @@
  * and series that are in the public domain or carry a licence that permits
  * redistribution.
  *
- * The distinction that matters is the licence, not the host. A film being
- * freely downloadable from a public archive says nothing about whether it may
- * be redistributed — plenty of what sits on the open web was uploaded by
- * someone with no right to put it there. So nothing is taken on the strength
- * of where it was found: every item has to carry a licence declaration that
- * says so, checked by [isRedistributable], and anything without one is skipped
- * however freely it happens to be served.
+ * Nothing is taken on the strength of being downloadable. A film being freely
+ * served from a public archive says nothing about whether it may be
+ * redistributed — plenty of what sits on the open web was uploaded by someone
+ * with no right to put it there. Two independent things have to agree before
+ * an item is collected:
+ *
+ *  - it carries a licence declaration that permits redistribution, checked by
+ *    [isRedistributable]; and
+ *  - it belongs to a curated Archive collection, listed in [KINDS].
+ *
+ * Neither is sufficient alone. The licence field is filled in by the uploader,
+ * so on an unmoderated upload it is a claim about the rights rather than
+ * evidence of them; collection membership is set by the Archive. Requiring
+ * both means a false declaration has to survive someone else's cataloguing to
+ * get through. See the note on [KINDS] for what happened when only the licence
+ * was required.
  */
 
 /**
@@ -161,38 +170,63 @@ export const LANGUAGE_GROUPS = {
 /**
  * What to ask the Archive for, per kind.
  *
- * `mediatype:(movies)` is the Archive's bucket for anything moving-image, so
- * the kinds are separated by subject and collection rather than by mediatype.
+ * Each kind is a set of *curated* Archive collections — ones a librarian
+ * assembled, not ones an uploader tagged themselves into.
+ *
+ * That is the whole design, and it replaces an earlier version of this file
+ * that asked for `mediatype:(movies)` and subtracted the kinds it did not
+ * want. Two things were wrong with it, both found by running it at full size
+ * rather than at the twelve-per-kind that proved the pipeline:
+ *
+ *  1. `mediatype:(movies)` is the Archive's bucket for *any* moving image, not
+ *     for films. Subtracting documentaries and TV from it leaves home videos,
+ *     advertising reels, screen recordings, station idents and phone clips —
+ *     864 "titles" of which almost none belonged in a catalogue.
+ *
+ *  2. `licenseurl` is typed in by whoever uploaded the item, so on unmoderated
+ *     uploads it is a claim rather than a fact. The full run surfaced items
+ *     naming Hallmark and Paramount as their producers, carrying a Creative
+ *     Commons declaration that is plainly not the rightsholder's. A licence
+ *     check that trusts the uploader is not a licence check.
+ *
+ * Collection membership is the missing half: it is set by the Archive, not by
+ * the uploader, so requiring it turns the licence field back into corroborating
+ * evidence instead of the only evidence. [isRedistributable] still runs on
+ * every item — this narrows what gets asked for, it does not replace the check.
  */
-const DOC_SUBJECTS = 'subject:(documentary) OR subject:(documentaries) OR collection:(documentary_films)';
-const TV_SUBJECTS = 'collection:(classic_tv) OR subject:(television) OR subject:("tv series")';
+const CURATED = {
+  // The Archive's curated film collections: public-domain features, plus the
+  // shorts and silents that sit beside them.
+  movies: ['feature_films', 'short_films', 'silent_films'],
+  // Prelinger is the canonical curated ephemeral-film archive; `ephemera` is
+  // the wider collection around it. NASA and the US government film
+  // collections are genuinely public domain and were measured too, but they
+  // hold raw ISS footage and congressional proceedings — public record rather
+  // than anything anyone would browse a VOD rail for.
+  documentaries: ['prelinger', 'ephemera'],
+  // Off-air recordings of series whose copyright has lapsed. `classic_tv` is
+  // curated; `animationandcartoons`, measured alongside it, is a broad parent
+  // that mixes genuine classic shorts with fan uploads, so it is left out.
+  series: ['classic_tv'],
+};
+
+const collectionClause = (ids) => `collection:(${ids.join(' OR ')})`;
 
 export const KINDS = {
-  /**
-   * Everything moving-image that is not obviously a documentary or a TV
-   * series.
-   *
-   * Deliberately a subtraction rather than `collection:(feature_films)`. That
-   * collection, and subject tags like "feature film", reflect how English
-   * material happens to have been catalogued: requiring one took the Ex-Yu
-   * results from 405 licensed items to nine, and then to zero. `mediatype`
-   * already means moving image, so the narrowing was buying nothing except a
-   * language bias.
-   */
   movies: {
     label: 'Movies',
     group: 'Public Domain Movies',
-    query: `mediatype:(movies) AND NOT (${DOC_SUBJECTS}) AND NOT (${TV_SUBJECTS})`,
+    query: `mediatype:(movies) AND ${collectionClause(CURATED.movies)}`,
   },
   documentaries: {
     label: 'Documentaries',
     group: 'Public Domain Documentaries',
-    query: `mediatype:(movies) AND (${DOC_SUBJECTS})`,
+    query: `mediatype:(movies) AND ${collectionClause(CURATED.documentaries)}`,
   },
   series: {
     label: 'Series',
     group: 'Public Domain Series',
-    query: `mediatype:(movies) AND (${TV_SUBJECTS})`,
+    query: `mediatype:(movies) AND ${collectionClause(CURATED.series)}`,
   },
 };
 

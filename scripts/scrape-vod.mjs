@@ -223,6 +223,21 @@ async function main() {
 
   await mkdir(opts.outDir, { recursive: true });
   const base = `${opts.outDir}/${opts.prefix}`;
+
+  // A run that collects nothing is a normal outcome here — the licence and
+  // collection rules are strict, and for some language groups the Archive
+  // genuinely holds nothing that passes them. What is not acceptable is
+  // quietly replacing a good playlist with an empty one, so say what happened
+  // and leave whatever is on disk alone.
+  if (entries.length === 0) {
+    console.error(
+      `Nothing passed the licence and collection rules for ` +
+        `kind=${opts.kinds.join(',')} lang=${opts.langs.join(',')}. ` +
+        `${base}.m3u left untouched.`,
+    );
+    process.exit(3);
+  }
+
   await writeFile(`${base}.m3u`, toM3U(entries), 'utf8');
   report.total = entries.length;
   report.byGroup = entries.reduce((acc, e) => ({ ...acc, [e.group]: (acc[e.group] || 0) + 1 }), {});

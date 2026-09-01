@@ -121,6 +121,41 @@ test('every query filters on both language and a declared licence', () => {
   }
 });
 
+test('every query requires membership of a curated collection', () => {
+  // The regression this exists for: an earlier version selected by
+  // `mediatype:(movies)` minus the kinds it did not want. `mediatype:(movies)`
+  // is the Archive's bucket for any moving image, so what came back was home
+  // videos, ad reels and screen recordings — and, because the licence field is
+  // uploader-supplied, some plainly commercial television carrying a Creative
+  // Commons declaration nobody with the rights had made.
+  //
+  // Collection membership is what the uploader cannot set for themselves, so
+  // no kind may go back to selecting on mediatype alone.
+  for (const kind of Object.keys(KINDS)) {
+    for (const lang of Object.keys(LANGUAGE_GROUPS)) {
+      const q = buildQuery(kind, lang);
+      assert.match(q, /collection:\(/, `${kind}/${lang} must require a curated collection`);
+      assert.doesNotMatch(
+        q,
+        /AND NOT \(/,
+        `${kind}/${lang} selects by subtraction, which lets everything through`,
+      );
+    }
+  }
+});
+
+test('the kinds name distinct collections rather than overlapping ones', () => {
+  // Two kinds sharing a collection would put the same item on two rails under
+  // two labels, which reads as a duplicate rather than as a second listing.
+  const seen = new Map();
+  for (const [kind, { query }] of Object.entries(KINDS)) {
+    for (const id of query.match(/collection:\(([^)]*)\)/)[1].split(' OR ')) {
+      assert.ok(!seen.has(id), `${id} is claimed by both ${seen.get(id)} and ${kind}`);
+      seen.set(id, kind);
+    }
+  }
+});
+
 test('allowing non-commercial drops the NC exclusion but keeps the licence requirement', () => {
   const q = buildQuery('movies', 'en', { allowNonCommercial: true });
   assert.match(q, /licenseurl:\[\* TO \*\]/);
