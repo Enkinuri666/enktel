@@ -129,6 +129,18 @@ object VoiceIntentParser {
             .replace(Regex("[.,!?;:]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
+            // People talk to a television the way they talk to a person, and
+            // the politeness is never part of the command. Stripped here so
+            // the exact-match rules below stay usable without every one of
+            // them having to spell out "please" and "can you".
+            //
+            // Only words that carry no intent. "I want to" reads like more of
+            // the same and is not: stripping it turned "I want to go to bed"
+            // into "go to bed", which then opened with a tune verb and
+            // changed the channel to one called "bed". A filler word can be
+            // dropped; a statement of intent cannot.
+            .replace(Regex("^(?:please |hey |ok |okay |could you |can you )+"), "")
+            .trim()
         if (text.isBlank()) return VoiceIntent.Unknown(raw)
 
         // ---- Player control -----------------------------------------------------
@@ -137,10 +149,24 @@ object VoiceIntentParser {
                 "pause the movie", "stop it", "hold on",
             )) return VoiceIntent.Pause
 
+        // Resume is split in two, and the split is the whole point.
+        //
+        // "play" and "continue" are ordinary English words that turn up inside
+        // titles and requests — "play squid game", "continue watching the
+        // bear" — and matchesAny treats a listed word as a match anywhere in
+        // the phrase. Every "play something" command therefore resumed the
+        // previous programme instead of doing what was asked, and it did so
+        // silently: resuming looks like it worked.
+        //
+        // So those two are recognised only as the entire utterance, while the
+        // verbs nobody says by accident keep matching loosely. Nothing is
+        // called "resume the batman", but plenty is called "play something".
+        if (text.equalsAny("play", "play it", "continue", "start it")) {
+            return VoiceIntent.Resume
+        }
         if (text.matchesAny(
-                "resume", "resume playing", "resume playback", "play", "play it",
-                "continue playing", "continue", "unpause", "keep playing",
-                "start it", "start playing",
+                "resume", "resume playing", "resume playback",
+                "continue playing", "unpause", "keep playing", "start playing",
             )) return VoiceIntent.Resume
 
         if (text.matchesAny("mute", "mute it", "silence")) return VoiceIntent.Mute
@@ -211,8 +237,20 @@ object VoiceIntentParser {
 
         // "turn to Nine HD" / "switch to bein sports" / "put on channel 42"
         // / "tune to CNN" / "go to fox news"
+        // Anchored to the start, which it was not.
+        //
+        // find() looks anywhere, so any sentence merely containing one of
+        // these verbs was read as a tune: "what should I watch tonight"
+        // tuned to a channel called "tonight", and "I want to go to bed"
+        // tuned to one called "bed". Both are ordinary English rather than
+        // commands, and both reached here before any discovery or search rule
+        // could see them.
+        //
+        // A tune instruction opens with its verb — nobody asks to change
+        // channel halfway through a sentence — so requiring that costs
+        // nothing and stops the catch-all swallowing the language around it.
         val tuneRegex = Regex(
-            "(?:turn|switch|change|tune|put|change to|go|watch) " +
+            "^(?:turn|switch|change|tune|put|change to|go|watch) " +
                 "(?:it |the channel |over )?" +
                 "(?:to |on )?(?:channel )?(.+)",
         )
@@ -532,6 +570,15 @@ object VoiceIntentParser {
 
         return VoiceIntent.Unknown(raw)
     }
+
+    /**
+     * The whole utterance is one of these, rather than merely containing one.
+     *
+     * For commands whose words also occur inside titles, "contains" is the
+     * wrong test — see the note on Resume above.
+     */
+    private fun String.equalsAny(vararg patterns: String): Boolean =
+        patterns.any { this == it }
 
     private fun String.matchesAny(vararg patterns: String): Boolean =
         patterns.any { this == it || this.startsWith("$it ") || this.endsWith(" $it") || " $it " in " $this " }
