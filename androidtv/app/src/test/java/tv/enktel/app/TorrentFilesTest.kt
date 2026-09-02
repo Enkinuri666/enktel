@@ -86,4 +86,44 @@ class TorrentFilesTest {
     @Test fun `the name shown is the filename, not the path`() {
         assertEquals("Film.2019.mkv", file(0, "/Film.2019/Film.2019.mkv", 8.0).name)
     }
+
+    private fun sel(id: Int, path: String, gb: Double, selected: Boolean) =
+        RealDebridClient.TorrentFile(id, path, (gb * 1_000_000_000).toLong(), selected)
+
+    @Test fun `links pair with the files that were actually fetched`() {
+        // Real-Debrid returns one link per *selected* file, in order — so an
+        // unselected episode must not shift the names onto the wrong links.
+        val files = listOf(
+            sel(0, "Show.S01/Show.S01E01.mkv", 2.0, true),
+            sel(1, "Show.S01/Show.S01E02.mkv", 2.0, false),
+            sel(2, "Show.S01/Show.S01E03.mkv", 2.0, true),
+        )
+        val out = TorrentFiles.playable(files, listOf("https://rd/1", "https://rd/3"))
+        assertEquals(listOf("Show.S01E01.mkv", "Show.S01E03.mkv"), out.map { it.name })
+        assertEquals(listOf("https://rd/1", "https://rd/3"), out.map { it.link })
+    }
+
+    @Test fun `a mismatch gives up on names rather than guessing wrong ones`() {
+        // Pairing by index anyway would put the wrong episode's name on the
+        // wrong link, which looks right and is worse than no name at all.
+        val files = listOf(
+            sel(0, "Show.S01/Show.S01E01.mkv", 2.0, true),
+            sel(1, "Show.S01/Show.S01E02.mkv", 2.0, true),
+        )
+        val out = TorrentFiles.playable(files, listOf("https://rd/1"))
+        assertEquals(listOf("File 1"), out.map { it.name })
+        assertEquals(listOf("https://rd/1"), out.map { it.link })
+    }
+
+    @Test fun `blank links are not offered as things to play`() {
+        val files = listOf(sel(0, "Film/film.mkv", 8.0, true))
+        assertEquals(1, TorrentFiles.playable(files, listOf("https://rd/1", "", "  ")).size)
+    }
+
+    @Test fun `a single-file torrent pairs as one playable`() {
+        val files = listOf(sel(0, "Film.2019/Film.2019.mkv", 8.0, true))
+        val out = TorrentFiles.playable(files, listOf("https://rd/1"))
+        assertEquals("Film.2019.mkv", out.single().name)
+        assertEquals(8_000_000_000L, out.single().bytes)
+    }
 }

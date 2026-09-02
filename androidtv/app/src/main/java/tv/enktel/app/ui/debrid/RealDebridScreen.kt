@@ -86,6 +86,11 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
     var pending by remember { mutableStateOf<RealDebridClient.Torrent?>(null) }
     var picked by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
+    // A season pack in the account is one row with twenty links behind it.
+    // Opening it lists them so the viewer can reach episode nine.
+    var opened by remember { mutableStateOf<RealDebridClient.Item?>(null) }
+    var episodes by remember { mutableStateOf<List<TorrentFiles.Playable>>(emptyList()) }
+
     /** Re-read both lists. Separate calls, so one failing must not blank the other. */
     suspend fun refreshLists(client: RealDebridClient) {
         client.downloads().onSuccess { downloads = it }.onFailure {
@@ -124,17 +129,45 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
         nav.navigate(vodPlayerRoute(url = url, title = title, progressKey = "rd:$id"))
     }
 
-    /** Resolve something that needs unrestricting first, then play it. */
-    fun resolveAndPlay(item: RealDebridClient.Item) {
+    /** Resolve one restricted link and play what comes back. */
+    fun resolveAndPlay(link: String, fallbackTitle: String) {
         if (busy) return
         busy = true
         status = "Resolving…"
         scope.launch {
-            graph.realDebrid().unrestrict(item.download).fold(
+            graph.realDebrid().unrestrict(link).fold(
                 onSuccess = {
                     status = ""
                     busy = false
-                    play(it.download, it.filename.ifBlank { item.filename }, it.id)
+                    play(it.download, it.filename.ifBlank { fallbackTitle }, it.id)
+                },
+                onFailure = { status = it.message.orEmpty(); busy = false },
+            )
+        }
+    }
+
+    /**
+     * Open a row in the account.
+     *
+     * One file plays straight away. Several means a pack, and playing the
+     * first link — which is all the row can otherwise reach — hands back
+     * episode one every time.
+     */
+    fun openTorrent(item: RealDebridClient.Item) {
+        if (busy) return
+        if (item.linkCount <= 1) {
+            resolveAndPlay(item.download, item.filename)
+            return
+        }
+        busy = true
+        status = "Opening…"
+        scope.launch {
+            graph.realDebrid().torrentInfo(item.id).fold(
+                onSuccess = {
+                    busy = false
+                    status = ""
+                    opened = item
+                    episodes = TorrentFiles.playable(it.files, it.links)
                 },
                 onFailure = { status = it.message.orEmpty(); busy = false },
             )
@@ -462,13 +495,51 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
 
+        opened?.let { pack ->
+            item {
+                Text("IN THIS PACK", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(
+                    pack.filename.ifBlank { "Untitled" },
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            items(episodes, key = { "e${it.link}" }) { e ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            e.name,
+                            color = androidx.compose.ui.graphics.Color.White,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (e.bytes > 0) {
+                            Text(e.bytes.humanBytes(), color = EnktelTextDim, fontSize = 11.sp)
+                        }
+                    }
+                    FocusButton("▶ Play", onClick = { resolveAndPlay(e.link, e.name) })
+                }
+            }
+            item {
+                FocusButton("Close", onClick = { opened = null; episodes = emptyList() })
+                Spacer(Modifier.height(14.dp))
+            }
+        }
+
         if (shownDownloads.isNotEmpty()) {
             item {
                 Text("MY DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
             items(shownDownloads, key = { it.id }) { d ->
                 // Already a direct URL, so this plays without a round trip.
-                DebridRow(d, onPlay = { play(d.download, d.filename, d.id) }) { remove(d, true) }
+                DebridRow(d, onPlay = { play(d.download, d.filename, d.id) }, onRemove = { remove(d, true) })
             }
         }
 
@@ -482,7 +553,12 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             items(shownTorrents, key = { it.id }) { t ->
-                DebridRow(t, onPlay = { resolveAndPlay(t) }) { remove(t, false) }
+                DebridRow(
+                    t,
+                    playLabel = if (t.linkCount > 1) "▶ ${t.linkCount} files" else "▶ Play",
+                    onPlay = { openTorrent(t) },
+                    onRemove = { remove(t, false) },
+                )
             }
         }
 
@@ -509,6 +585,7 @@ private fun DebridRow(
     item: RealDebridClient.Item,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
+    playLabel: String = "▶ Play",
 ) {
     // Removing is permanent at the account, and a remote's Select is easy to
     // press by accident, so the button asks once before it does it.
@@ -532,7 +609,7 @@ private fun DebridRow(
                 fontSize = 11.sp,
             )
         }
-        FocusButton("▶ Play", onClick = onPlay)
+        FocusButton(playLabel, onClick = onPlay)
         FocusButton(
             text = if (confirming) "Remove?" else "Remove",
             onClick = { if (confirming) onRemove() else confirming = true },
