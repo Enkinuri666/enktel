@@ -31,6 +31,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.debrid.RealDebrid
+import tv.enktel.app.data.debrid.DebridSearch
 import tv.enktel.app.data.debrid.RealDebridClient
 import tv.enktel.app.data.download.humanBytes
 import tv.enktel.app.data.repo.EnktelFeed
@@ -68,6 +69,7 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var link by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf("") }
 
     // Keyed on the token so disconnecting and reconnecting reloads rather than
     // showing the previous account's files.
@@ -119,6 +121,11 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
+    // Filtered once rather than inside the list builders, so the counts shown
+    // beside the box and the rows below it cannot disagree.
+    val shownDownloads = DebridSearch.filter(downloads, query) { it.filename }
+    val shownTorrents = DebridSearch.filter(torrents, query) { it.filename }
+
     if (token.isBlank()) {
         Column(Modifier.fillMaxSize().background(EnktelBg).padding(shape.padH, shape.padV)) {
             SectionTitle("Real-Debrid")
@@ -148,6 +155,23 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         item {
+            // Searches this account, not the internet. Real-Debrid publishes
+            // no endpoint that looks for content — its API unrestricts links
+            // and lists what you already have — so the only thing there is to
+            // search is the account itself.
+            Text("SEARCH MY ACCOUNT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            TvTextField(query, { query = it }, "Film or series name")
+            if (query.isNotBlank()) {
+                Text(
+                    "${shownDownloads.size + shownTorrents.size} of " +
+                        "${downloads.size + torrents.size} match",
+                    color = EnktelTextDim, fontSize = 11.sp,
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+
+        item {
             Text("PLAY A LINK", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
             Text(
                 "Paste a hoster link you already have. Real-Debrid turns it into a direct one.",
@@ -173,17 +197,17 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
             Spacer(Modifier.height(14.dp))
         }
 
-        if (downloads.isNotEmpty()) {
+        if (shownDownloads.isNotEmpty()) {
             item {
                 Text("MY DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
-            items(downloads, key = { it.id }) { d ->
+            items(shownDownloads, key = { it.id }) { d ->
                 // Already a direct URL, so this plays without a round trip.
                 DebridRow(d) { play(d.download, d.filename, d.id) }
             }
         }
 
-        if (torrents.isNotEmpty()) {
+        if (shownTorrents.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(14.dp))
                 Text("IN MY ACCOUNT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
@@ -192,16 +216,23 @@ fun RealDebridScreen(graph: AppGraph, nav: NavHostController) {
                     color = EnktelTextDim, fontSize = 11.sp,
                 )
             }
-            items(torrents, key = { it.id }) { t ->
+            items(shownTorrents, key = { it.id }) { t ->
                 DebridRow(t) { resolveAndPlay(t) }
             }
         }
 
-        if (!busy && downloads.isEmpty() && torrents.isEmpty()) {
+        if (!busy && shownDownloads.isEmpty() && shownTorrents.isEmpty()) {
             item {
                 CenterMessage(
-                    "Nothing in this account yet. Add files on real-debrid.com, " +
-                        "or paste a link above.",
+                    // An account with nothing in it and a search that matched
+                    // nothing look identical on screen and mean opposite
+                    // things, so they say different words.
+                    if (downloads.isEmpty() && torrents.isEmpty()) {
+                        "Nothing in this account yet. Add files on real-debrid.com, " +
+                            "or paste a link above."
+                    } else {
+                        "Nothing in this account matches \"$query\"."
+                    },
                 )
             }
         }
