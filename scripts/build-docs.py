@@ -213,6 +213,47 @@ def manual_story(st, version, code):
         "Recordings can be set to start early and end late, which is worth doing because "
         "broadcast schedules drift; both paddings are in Settings under Recording.", st["body"]))
 
+    s.append(Paragraph("Real-Debrid", st["h1"]))
+    s.append(Paragraph(
+        "Real-Debrid is a service you subscribe to separately. It takes a link you already hold "
+        "and returns a direct, unthrottled one, and it holds whatever you have added to your own "
+        "account. EnkTel is a client for that account: it presents your token, reads back what "
+        "the service says is yours, and plays it.", st["body"]))
+    s.append(Paragraph("Connecting it", st["h2"]))
+    s.append(Paragraph(
+        "Settings &rarr; Playlists &rarr; Real-Debrid, and paste the API token from your account "
+        "page on real-debrid.com. The screen is empty and does nothing without one.", st["body"]))
+    s.append(Paragraph("What the screen does", st["h2"]))
+    s.append(table([
+        ("Search my account", "Matches release-style filenames, so \u201cthe batman\u201d finds "
+                              "The.Batman.2022.2160p.mkv. It searches your account and nothing else."),
+        ("Play a link", "Paste a hoster link you hold; Real-Debrid turns it into a direct one."),
+        ("Add a magnet", "Paste a magnet you hold. See below."),
+        ("My downloads", "Your download history, already direct, so these play at once."),
+        ("In my account", "Files in the account. Resolved when you play, because an "
+                          "unrestricted link expires."),
+    ], st, [38 * mm, 122 * mm]))
+    s.append(Paragraph("Adding a magnet", st["h2"]))
+    s.append(Paragraph(
+        "EnkTel first asks Real-Debrid whether it already holds that torrent, because the answer "
+        "changes what to expect: a cached one is ready in seconds, and one that has to be fetched "
+        "can take minutes. It then adds it and asks which files you want.", st["body"]))
+    s.append(Paragraph(
+        "Where a torrent has several files, videos are ticked for you and samples are not — "
+        "change it before you confirm. Fetching a season pack whole pulls every episode to watch "
+        "one, which is what the picker is there to avoid.", st["body"]))
+    s.append(Paragraph(
+        "The screen then waits about two minutes and plays it. If the download is still going "
+        "when that runs out, nothing has failed: your account carries on fetching, and the title "
+        "appears under In my account when it lands.", st["note"]))
+    s.append(Paragraph("What it will not do", st["h2"]))
+    s.append(Paragraph(
+        "Nothing on this screen searches anywhere for content. Every link is one you supplied or "
+        "one already in your account — Real-Debrid publishes no endpoint that looks for titles, "
+        "and EnkTel does not go anywhere else to find them. Requests are also spaced deliberately: "
+        "the service counts refused requests toward its own rate limit, so an app that asks too "
+        "quickly gets the account blocked rather than the answer sooner.", st["body"]))
+
     s.append(Paragraph("Settings", st["h1"]))
     s.append(table([
         ("Playlists", "Add, sync, export and remove sources. Import a playlist file from the "
@@ -226,6 +267,7 @@ def manual_story(st, version, code):
                     "override."),
         ("Parental", "A PIN that gates restricted content."),
         ("Sports & Voice", "Live scores, the sport finder, and the teams you follow."),
+        ("Real-Debrid", "Your API token, and the account screen described above."),
         ("Appearance", "Theme and layout."),
         ("About", "Version, diagnostics and crash reports."),
     ], st, [34 * mm, 126 * mm]))
