@@ -231,7 +231,8 @@ def manual_story(st, version, code):
         ("Add a magnet", "Paste a magnet you hold. See below."),
         ("My downloads", "Your download history, already direct, so these play at once."),
         ("In my account", "Files in the account. Resolved when you play, because an "
-                          "unrestricted link expires."),
+                          "unrestricted link expires. A row holding several files says so "
+                          "\u2014 open it to pick an episode."),
     ], st, [38 * mm, 122 * mm]))
     s.append(Paragraph("Adding a magnet", st["h2"]))
     s.append(Paragraph(
