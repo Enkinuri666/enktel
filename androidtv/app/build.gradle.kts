@@ -130,6 +130,15 @@ android {
 
     // Two product flavors so users can install the mobile and TV builds side-by-side.
     // Shared code lives in src/main; each flavor supplies its own manifest + branding.
+    testOptions {
+        unitTests {
+            // Robolectric builds an Android environment out of the merged
+            // manifest and resources; without this it starts with neither and
+            // every test that touches a framework class fails at construction.
+            isIncludeAndroidResources = true
+        }
+    }
+
     flavorDimensions += "form"
     productFlavors {
         create("tv") {
@@ -298,6 +307,7 @@ dependencies {
     implementation(libs.documentfile)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }
 
 // Room's KSP tasks must not run at the same time as each other.
