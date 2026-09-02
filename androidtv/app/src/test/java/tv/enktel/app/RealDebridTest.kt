@@ -138,4 +138,21 @@ class RealDebridTest {
         assertFalse(line, line.startsWith("·"))
         assertTrue(line, line.startsWith("Real-Debrid"))
     }
+
+    @Test
+    fun `each hoster allowance is stated in its own unit`() {
+        // Real-Debrid reports three different units and reports the number
+        // bare, so "rapidgator.net 4" could mean four links or four bytes.
+        assertEquals("rapidgator.net 4 links left", RealDebrid.quotaLine("rapidgator.net", 4, "links"))
+        assertEquals("rapidgator.net 1 link left", RealDebrid.quotaLine("rapidgator.net", 1, "links"))
+        assertEquals("uptobox.com 30 GB left", RealDebrid.quotaLine("uptobox.com", 30, "gigabytes"))
+        assertEquals("nitro.download 4.5 GB left", RealDebrid.quotaLine("nitro.download", 4_500_000_000, "bytes"))
+    }
+
+    @Test
+    fun `an allowance in a unit we do not know still reads as a sentence`() {
+        val line = RealDebrid.quotaLine("somehost.net", 7, "quatloos")
+        assertTrue(line, line.startsWith("somehost.net"))
+        assertTrue(line, line.endsWith("left"))
+    }
 }

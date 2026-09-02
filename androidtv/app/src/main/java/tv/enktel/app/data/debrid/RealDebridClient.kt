@@ -45,6 +45,41 @@ class RealDebridClient(
         val points: Int,
     )
 
+    /** A file inside a torrent the account holds. */
+    data class TorrentFile(
+        val id: Int,
+        val path: String,
+        val bytes: Long,
+        val selected: Boolean,
+    ) {
+        /** Just the filename, which is what a picker should show. */
+        val name: String get() = path.trimStart('/').substringAfterLast('/')
+    }
+
+    /** A torrent in the account, with enough state to decide what to do next. */
+    data class Torrent(
+        val id: String,
+        val filename: String,
+        val hash: String,
+        val bytes: Long,
+        /** Real-Debrid's own word: magnet_conversion, waiting_files_selection,
+         *  downloading, downloaded, error, virus, dead… */
+        val status: String,
+        val progress: Int,
+        val files: List<TorrentFile>,
+        /** Restricted links, present once the status is `downloaded`. */
+        val links: List<String>,
+    ) {
+        val ready: Boolean get() = status == "downloaded"
+
+        /**
+         * Real-Debrid will not fetch anything until it is told which files it
+         * wants, and a torrent sitting in this state looks stalled rather than
+         * waiting.
+         */
+        val awaitingSelection: Boolean get() = status == "waiting_files_selection"
+    }
+
     /** One playable item — a completed download or an unrestricted link. */
     data class Item(
         val id: String,
@@ -88,6 +123,122 @@ class RealDebridClient(
     suspend fun downloads(limit: Int = 100): Result<List<Item>> =
         callList("$BASE/downloads?limit=${limit.coerceIn(1, 5000)}") { it.toItem() }
 
+    /**
+     * Add a magnet the viewer supplied to their account.
+     *
+     * The link comes from them, exactly as a hoster link does. Adding it does
+     * not start a download: Real-Debrid holds the torrent until it is told
+     * which files to fetch, which is what [selectFiles] is for.
+     *
+     * @return the new torrent's id
+     */
+    suspend fun addMagnet(magnetUri: String): Result<String> {
+        val body = FormBody.Builder().add("magnet", magnetUri.trim()).build()
+        return call("$BASE/torrents/addMagnet", body) { it.str("id").orEmpty() }
+    }
+
+    /** Everything the account knows about one torrent. */
+    suspend fun torrentInfo(id: String): Result<Torrent> =
+        call("$BASE/torrents/info/$id") { o ->
+            Torrent(
+                id = o.str("id").orEmpty(),
+                filename = o.str("filename").orEmpty(),
+                hash = o.str("hash").orEmpty().lowercase(),
+                bytes = o.long("bytes") ?: 0L,
+                status = o.str("status").orEmpty(),
+                progress = o.int("progress") ?: 0,
+                files = o.get("files").arr().orEmpty().mapNotNull { f ->
+                    (f as? JsonObject)?.let {
+                        TorrentFile(
+                            id = it.int("id") ?: return@let null,
+                            path = it.str("path").orEmpty(),
+                            bytes = it.long("bytes") ?: 0L,
+                            selected = (it.int("selected") ?: 0) == 1,
+                        )
+                    }
+                },
+                links = o.get("links").arr().orEmpty()
+                    .mapNotNull { (it as? JsonPrimitive)?.contentOrNull },
+            )
+        }
+
+    /**
+     * Choose which files to fetch. Pass no ids for everything.
+     *
+     * Selecting all is the right default for a film, and wrong for a season
+     * pack where it would pull twenty episodes to watch one — so the caller
+     * decides and the picker exists.
+     */
+    suspend fun selectFiles(id: String, fileIds: List<Int> = emptyList()): Result<Unit> {
+        val body = FormBody.Builder()
+            .add("files", if (fileIds.isEmpty()) "all" else fileIds.joinToString(","))
+            .build()
+        return requestUnit("$BASE/torrents/selectFiles/$id", body)
+    }
+
+    /**
+     * Does the service already hold this torrent?
+     *
+     * Worth asking before adding one. A cached torrent plays immediately; an
+     * uncached one has to be fetched first, which can take a while, and
+     * knowing which is which beforehand is the difference between waiting on
+     * purpose and wondering whether something is broken.
+     *
+     * A false here means "not cached", never "unusable" — the answer is
+     * advisory and a failure to get one is reported as not-cached rather than
+     * blocking the add.
+     */
+    suspend fun isCached(infoHash: String): Result<Boolean> =
+        request("$BASE/torrents/instantAvailability/$infoHash", null) { el ->
+            // The response is keyed by hash and the value is an object of
+            // hosters, each holding a list of file sets. Anything non-empty
+            // under the hash means at least one complete set is held.
+            val byHash = el as? JsonObject ?: return@request false
+            byHash.values.any { hoster ->
+                (hoster as? JsonObject)?.values?.any { set ->
+                    (set as? JsonArray)?.isNotEmpty() == true || set is JsonObject
+                } == true
+            }
+        }
+
+    /** Remove a torrent from the account. */
+    suspend fun deleteTorrent(id: String): Result<Unit> =
+        requestUnit("$BASE/torrents/delete/$id", null, delete = true)
+
+    /** Remove an entry from the download history. */
+    suspend fun deleteDownload(id: String): Result<Unit> =
+        requestUnit("$BASE/downloads/delete/$id", null, delete = true)
+
+    /** What is left on a hoster that limits this account. */
+    data class HostQuota(
+        val host: String,
+        val left: Long,
+        val limit: Long,
+        /** Real-Debrid's own word: links, gigabytes or bytes. */
+        val unit: String,
+        val reset: String,
+    )
+
+    /**
+     * Per-hoster allowances, for the hosters that have one.
+     *
+     * Most entries on a premium account are unlimited, and an unlimited
+     * allowance is not information — so the ones with no limit are dropped
+     * here rather than filling a row on screen with zeroes.
+     */
+    suspend fun traffic(): Result<List<HostQuota>> = request("$BASE/traffic", null) { el ->
+        (el as? JsonObject)?.mapNotNull { (host, v) ->
+            val o = v as? JsonObject ?: return@mapNotNull null
+            HostQuota(
+                host = host,
+                left = o.long("left") ?: 0L,
+                limit = o.long("limit") ?: 0L,
+                unit = o.str("type").orEmpty(),
+                reset = o.str("reset").orEmpty(),
+            )
+        }?.filter { it.limit > 0 }?.sortedBy { it.host } ?: emptyList()
+    }
+
     /** Files the viewer has added to their account. */
     suspend fun torrents(limit: Int = 100): Result<List<Item>> =
         callList("$BASE/torrents?limit=${limit.coerceIn(1, 5000)}") { o ->
@@ -114,6 +265,41 @@ class RealDebridClient(
         download = str("download").orEmpty(),
         streamable = (int("streamable") ?: 0) == 1,
     )
+
+    /**
+     * For the endpoints that answer 204 with no body.
+     *
+     * The ordinary path parses the response, and an empty string is not JSON —
+     * so selectFiles and the deletes would have failed on success, which is
+     * the most confusing shape a bug can take.
+     */
+    private suspend fun requestUnit(
+        url: String,
+        body: okhttp3.RequestBody?,
+        delete: Boolean = false,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            check(configured) { "No Real-Debrid token set. Add one in Settings." }
+            val req = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer $token")
+                .apply {
+                    when {
+                        delete -> delete()
+                        body != null -> post(body)
+                    }
+                }
+                .build()
+            http.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    val apiError = runCatching {
+                        (Lenient.parseToJsonElement(resp.body.string()) as? JsonObject)?.str("error")
+                    }.getOrNull()
+                    throw IOException(RealDebrid.describeFailure(resp.code, apiError))
+                }
+            }
+        }
+    }
 
     private suspend fun <T> call(
         url: String,

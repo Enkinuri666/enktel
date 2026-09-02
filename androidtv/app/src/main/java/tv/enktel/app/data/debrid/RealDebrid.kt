@@ -102,6 +102,31 @@ object RealDebrid {
         type.trim().equals("premium", ignoreCase = true) && (daysLeft == null || daysLeft >= 0)
 
     /**
+     * What is left on one hoster, in the unit that hoster counts in.
+     *
+     * Real-Debrid reports three different units — links, gigabytes and bytes —
+     * and reports the number bare. "rapidgator.net 4" is not a sentence, and
+     * which of the three it means changes what the viewer should do about it.
+     */
+    fun quotaLine(host: String, left: Long, unit: String): String {
+        val name = host.trim().ifEmpty { "hoster" }
+        val amount = when (unit.trim().lowercase()) {
+            "links" -> if (left == 1L) "1 link" else "$left links"
+            "gigabytes" -> "$left GB"
+            "bytes" -> gigabytes(left)
+            else -> "$left"
+        }
+        return "$name $amount left"
+    }
+
+    /** Bytes as GB to one place — the scale every debrid allowance is quoted at. */
+    private fun gigabytes(bytes: Long): String {
+        if (bytes <= 0) return "0 GB"
+        val gb = bytes.toDouble() / 1_000_000_000.0
+        return if (gb >= 10) "%.0f GB".format(gb) else "%.1f GB".format(gb)
+    }
+
+    /**
      * One line describing the account, for the Settings row.
      *
      * Says the state first and the detail second, because the state is what
