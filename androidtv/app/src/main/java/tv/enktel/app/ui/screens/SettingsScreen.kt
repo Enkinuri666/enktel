@@ -287,7 +287,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
-        RealDebridSection(graph, scope)
+        RealDebridSection(graph, scope, nav)
 
         Spacer(Modifier.height(10.dp))
         // Import accepts anything the picker will show. These files arrive as
@@ -1759,7 +1759,11 @@ private fun FilmLibrary(
  * credential that has been shared.
  */
 @Composable
-private fun RealDebridSection(graph: AppGraph, scope: kotlinx.coroutines.CoroutineScope) {
+private fun RealDebridSection(
+    graph: AppGraph,
+    scope: kotlinx.coroutines.CoroutineScope,
+    nav: NavHostController,
+) {
     val stored by graph.settings.realDebridToken.collectAsStateWithLifecycle(initialValue = "")
     var open by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
@@ -1830,6 +1834,7 @@ private fun RealDebridSection(graph: AppGraph, scope: kotlinx.coroutines.Corouti
                     busy = false
                 }
             })
+            FocusButton("📂 Browse my Real-Debrid", accent = true, onClick = { nav.navigate("debrid") })
             FocusButton("Disconnect", onClick = {
                 scope.launch {
                     graph.settings.setRealDebridToken("")
