@@ -129,6 +129,12 @@ object VoiceIntentParser {
             .replace(Regex("[.,!?;:]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
+            // People talk to a television the way they talk to a person, and
+            // the politeness is never part of the command. Stripped here so
+            // the exact-match rules below stay usable without every one of
+            // them having to spell out "please" and "can you".
+            .replace(Regex("^(?:please |hey |ok |okay |could you |can you |i want to |i'd like to )+"), "")
+            .trim()
         if (text.isBlank()) return VoiceIntent.Unknown(raw)
 
         // ---- Player control -----------------------------------------------------
@@ -137,10 +143,24 @@ object VoiceIntentParser {
                 "pause the movie", "stop it", "hold on",
             )) return VoiceIntent.Pause
 
+        // Resume is split in two, and the split is the whole point.
+        //
+        // "play" and "continue" are ordinary English words that turn up inside
+        // titles and requests — "play squid game", "continue watching the
+        // bear" — and matchesAny treats a listed word as a match anywhere in
+        // the phrase. Every "play something" command therefore resumed the
+        // previous programme instead of doing what was asked, and it did so
+        // silently: resuming looks like it worked.
+        //
+        // So those two are recognised only as the entire utterance, while the
+        // verbs nobody says by accident keep matching loosely. Nothing is
+        // called "resume the batman", but plenty is called "play something".
+        if (text.equalsAny("play", "play it", "continue", "start it")) {
+            return VoiceIntent.Resume
+        }
         if (text.matchesAny(
-                "resume", "resume playing", "resume playback", "play", "play it",
-                "continue playing", "continue", "unpause", "keep playing",
-                "start it", "start playing",
+                "resume", "resume playing", "resume playback",
+                "continue playing", "unpause", "keep playing", "start playing",
             )) return VoiceIntent.Resume
 
         if (text.matchesAny("mute", "mute it", "silence")) return VoiceIntent.Mute
@@ -532,6 +552,15 @@ object VoiceIntentParser {
 
         return VoiceIntent.Unknown(raw)
     }
+
+    /**
+     * The whole utterance is one of these, rather than merely containing one.
+     *
+     * For commands whose words also occur inside titles, "contains" is the
+     * wrong test — see the note on Resume above.
+     */
+    private fun String.equalsAny(vararg patterns: String): Boolean =
+        patterns.any { this == it }
 
     private fun String.matchesAny(vararg patterns: String): Boolean =
         patterns.any { this == it || this.startsWith("$it ") || this.endsWith(" $it") || " $it " in " $this " }

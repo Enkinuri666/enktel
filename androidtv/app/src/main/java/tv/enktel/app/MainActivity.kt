@@ -942,11 +942,20 @@ private fun MainNav(
                             spoken = "Tuning to ${hit.channel.name} for ${hit.title}.",
                         ))
                     } else {
+                        // Not every "play X game" is a fixture. The phrase
+                        // shape is identical for a team and for a title —
+                        // "play the arsenal game", "play squid game" — and no
+                        // pattern can separate them, so the live guide is
+                        // asked first and the catalogue answers when it has
+                        // nothing. Dead-ending here instead was the whole
+                        // command failing over an ambiguity the viewer had no
+                        // way to see.
                         voiceBus.answers.emit(voiceCard(
                             eyebrow = "⚽ ${intent.team}",
-                            heading = "No live match found",
-                            spoken = "I couldn't find a live ${intent.team} match on your channels right now.",
+                            heading = "No live match — searching instead",
+                            spoken = "I couldn't find a live ${intent.team} match, so I'm searching for it.",
                         ))
+                        nav.navigate("search?q=${encode(intent.team)}")
                     }
                 }
                 is tv.enktel.app.voice.VoiceIntent.RemindWhenOn -> {
