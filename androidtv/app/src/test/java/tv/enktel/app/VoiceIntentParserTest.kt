@@ -97,4 +97,45 @@ class VoiceIntentParserTest {
         assertTrue(parse("") is VoiceIntent.Unknown)
         assertTrue(parse("   ") is VoiceIntent.Unknown)
     }
+
+    // ── the tune catch-all ─────────────────────────────────────────────
+
+    @Test
+    fun `an ordinary sentence containing a tune verb is not a channel change`() {
+        // The tune rule searched the whole utterance rather than its start,
+        // so any sentence merely containing one of its verbs became a tune:
+        // "what should I watch tonight" changed to a channel called
+        // "tonight". Both of these are English, not commands, and both
+        // reached the tune rule before any discovery rule could see them.
+        assertTrue(
+            "${parse("what should i watch tonight")}",
+            parse("what should i watch tonight") !is VoiceIntent.TuneChannel,
+        )
+        assertTrue(
+            "${parse("i want to go to bed")}",
+            parse("i want to go to bed") !is VoiceIntent.TuneChannel,
+        )
+    }
+
+    @Test
+    fun `a statement of intent is not stripped like politeness`() {
+        // "please" carries nothing and can go. "I want to" carries the
+        // difference between an instruction and a remark: dropping it turned
+        // "I want to go to bed" into "go to bed", which opens with a tune
+        // verb and changed the channel to one called "bed".
+        assertTrue(parse("i want to go to bed") is VoiceIntent.Unknown)
+    }
+
+    @Test
+    fun `tuning still works when the phrase actually opens with the verb`() {
+        assertEquals(VoiceIntent.TuneChannel("bbc one"), parse("switch to bbc one"))
+        assertEquals(VoiceIntent.TuneChannel("the office"), parse("watch the office"))
+        assertEquals(VoiceIntent.TuneChannel("fox news"), parse("go to fox news"))
+    }
+
+    @Test
+    fun `search phrasings reach search`() {
+        assertEquals(VoiceIntent.Search("batman"), parse("search for the batman"))
+        assertEquals(VoiceIntent.Search("comedy"), parse("find me a comedy"))
+    }
 }

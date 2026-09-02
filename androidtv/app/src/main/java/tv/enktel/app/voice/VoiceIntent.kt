@@ -133,7 +133,13 @@ object VoiceIntentParser {
             // the politeness is never part of the command. Stripped here so
             // the exact-match rules below stay usable without every one of
             // them having to spell out "please" and "can you".
-            .replace(Regex("^(?:please |hey |ok |okay |could you |can you |i want to |i'd like to )+"), "")
+            //
+            // Only words that carry no intent. "I want to" reads like more of
+            // the same and is not: stripping it turned "I want to go to bed"
+            // into "go to bed", which then opened with a tune verb and
+            // changed the channel to one called "bed". A filler word can be
+            // dropped; a statement of intent cannot.
+            .replace(Regex("^(?:please |hey |ok |okay |could you |can you )+"), "")
             .trim()
         if (text.isBlank()) return VoiceIntent.Unknown(raw)
 
@@ -231,8 +237,20 @@ object VoiceIntentParser {
 
         // "turn to Nine HD" / "switch to bein sports" / "put on channel 42"
         // / "tune to CNN" / "go to fox news"
+        // Anchored to the start, which it was not.
+        //
+        // find() looks anywhere, so any sentence merely containing one of
+        // these verbs was read as a tune: "what should I watch tonight"
+        // tuned to a channel called "tonight", and "I want to go to bed"
+        // tuned to one called "bed". Both are ordinary English rather than
+        // commands, and both reached here before any discovery or search rule
+        // could see them.
+        //
+        // A tune instruction opens with its verb — nobody asks to change
+        // channel halfway through a sentence — so requiring that costs
+        // nothing and stops the catch-all swallowing the language around it.
         val tuneRegex = Regex(
-            "(?:turn|switch|change|tune|put|change to|go|watch) " +
+            "^(?:turn|switch|change|tune|put|change to|go|watch) " +
                 "(?:it |the channel |over )?" +
                 "(?:to |on )?(?:channel )?(.+)",
         )
