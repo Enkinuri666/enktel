@@ -260,7 +260,14 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
             }
             .let { seq ->
                 when (sort) {
-                    "rating" -> seq.sortedByDescending { it.rating }
+                    // Sorting on the panel's own number ordered a shelf of
+                    // zeroes on any lineup that does not publish ratings —
+                    // which is most of them — while a real IMDb rating sat
+                    // unused in the same row. RatingRank prefers that one and
+                    // weights it by how many votes it rests on.
+                    "rating" -> seq.sortedByDescending {
+                        tv.enktel.app.data.metadata.RatingRank.score(it.imdbRating, it.imdbVotes, it.rating)
+                    }
                     "added" -> seq.sortedByDescending { it.addedAt }
                     // Year alone left every title the panel gave no year for in
                     // one undifferentiated block in query order; ingest time
@@ -505,7 +512,10 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             .filter { s -> needle.isEmpty() || s.name.lowercase().contains(needle) }
             .let { seq ->
                 when (sort) {
-                    "rating" -> seq.sortedByDescending { it.rating }
+                    // Same reasoning as the film list above.
+                    "rating" -> seq.sortedByDescending {
+                        tv.enktel.app.data.metadata.RatingRank.score(it.imdbRating, it.imdbVotes, it.rating)
+                    }
                     "year", "added" -> seq.sortedByDescending { it.year }
                     else -> seq.sortedBy { it.name.lowercase() }
                 }

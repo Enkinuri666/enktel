@@ -160,7 +160,13 @@ private fun MovieDetailsBody(
         // replacing the other. They are computed from different audiences and
         // routinely disagree, and for a title IMDb has never heard of the
         // panel's is the only one there is.
-        if (m.imdbRating > 0) Badge("IMDb ${"%.1f".format(m.imdbRating)}", color = ImdbYellow)
+        // The vote count rides along with the rating: 9.4 from forty people
+        // and 9.4 from two million were the same badge without it, and only
+        // one of them is a recommendation. The count was already fetched and
+        // stored — it had simply never been shown.
+        tv.enktel.app.data.metadata.RatingRank.badge(m.imdbRating, m.imdbVotes)
+            .takeIf { it.isNotEmpty() }
+            ?.let { Badge(it, color = ImdbYellow) }
         if (m.rating > 0) Badge("★ ${"%.1f".format(m.rating)}")
         if (details?.genre?.isNotBlank() == true) Badge(details.genre.take(30))
         // Same fallback as the hero image: TMDB's runtime is in the row
@@ -436,7 +442,9 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 Text(s.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (s.imdbRating > 0) Badge("IMDb ${"%.1f".format(s.imdbRating)}", color = ImdbYellow)
+                    tv.enktel.app.data.metadata.RatingRank.badge(s.imdbRating, s.imdbVotes)
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { Badge(it, color = ImdbYellow) }
                     if (s.rating > 0) Badge("★ ${"%.1f".format(s.rating)}")
                     if (s.genre.isNotBlank()) Badge(s.genre.take(30))
                     Badge("${seasons.size} season${if (seasons.size == 1) "" else "s"}")
