@@ -14,6 +14,30 @@ package tv.enktel.app.data.debrid
  */
 object TorrentFiles {
 
+    /** One file in a finished torrent, with the link that plays it. */
+    data class Playable(val name: String, val link: String, val bytes: Long)
+
+    /**
+     * Pair the files Real-Debrid fetched with the links it returned.
+     *
+     * The service returns one link per *selected* file, in the order those
+     * files appear — so a season pack's links are its episodes in order, and
+     * playing `links.first()` forever means episode one forever.
+     *
+     * When the two lists do not line up, they are not paired at all. A
+     * mismatch means the assumption above does not hold, and pairing by index
+     * anyway would put the wrong episode's name on the wrong link — which is
+     * worse than no name, because it looks right.
+     */
+    fun playable(files: List<RealDebridClient.TorrentFile>, links: List<String>): List<Playable> {
+        val usable = links.filter { it.isNotBlank() }
+        val selected = files.filter { it.selected }
+        if (selected.size != usable.size) {
+            return usable.mapIndexed { i, link -> Playable("File ${i + 1}", link, 0L) }
+        }
+        return selected.mapIndexed { i, f -> Playable(f.name.ifBlank { "File ${i + 1}" }, usable[i], f.bytes) }
+    }
+
     private val VIDEO = setOf(
         "mkv", "mp4", "avi", "m4v", "mov", "ts", "m2ts", "mpg", "mpeg",
         "webm", "wmv", "flv", "divx", "ogm", "vob", "iso",

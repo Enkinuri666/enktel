@@ -88,6 +88,13 @@ class RealDebridClient(
         /** The direct URL to hand the player. */
         val download: String,
         val streamable: Boolean,
+        /**
+         * How many files this entry actually holds.
+         *
+         * A season pack is one row with twenty links behind it, and without
+         * this the row can only ever play the first of them.
+         */
+        val linkCount: Int = 1,
     )
 
     suspend fun account(): Result<Account> = call("$BASE/user") { o ->
@@ -242,17 +249,17 @@ class RealDebridClient(
     /** Files the viewer has added to their account. */
     suspend fun torrents(limit: Int = 100): Result<List<Item>> =
         callList("$BASE/torrents?limit=${limit.coerceIn(1, 5000)}") { o ->
+            val links = o.get("links").arr().orEmpty()
+                .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             Item(
                 id = o.str("id").orEmpty(),
                 filename = o.str("filename").orEmpty(),
                 bytes = o.long("bytes") ?: 0L,
                 // A torrent entry carries links to unrestrict rather than a
                 // direct URL, so the first one is kept and resolved on demand.
-                download = o.get("links").arr()
-                    ?.firstOrNull()
-                    ?.let { (it as? JsonPrimitive)?.contentOrNull }
-                    .orEmpty(),
+                download = links.firstOrNull().orEmpty(),
                 streamable = o.str("status") == "downloaded",
+                linkCount = links.size,
             )
         }
 
