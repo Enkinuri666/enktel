@@ -172,6 +172,16 @@ class AppGraph(app: Application) {
     val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
     val feed = tv.enktel.app.data.repo.EnktelFeed(http)
     val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
+
+    /**
+     * A client for the viewer's Real-Debrid account, built per call.
+     *
+     * Not a held instance: the token is a setting the viewer can change or
+     * clear at any time, and a client constructed once at startup would keep
+     * presenting the old one — including after they removed it.
+     */
+    suspend fun realDebrid(): tv.enktel.app.data.debrid.RealDebridClient =
+        tv.enktel.app.data.debrid.RealDebridClient(http, settings.realDebridTokenNow())
     val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
 
     /**

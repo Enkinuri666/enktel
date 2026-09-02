@@ -287,6 +287,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
+        RealDebridSection(graph, scope, nav)
+
+        Spacer(Modifier.height(10.dp))
         // Import accepts anything the picker will show. These files arrive as
         // .m3u, .m3u8, .dat, .txt and with no extension at all, and the name
         // says nothing about the contents — the parser is what decides, so
@@ -1739,4 +1742,107 @@ private fun FilmLibrary(
         }
     }
     if (note.isNotBlank()) Text(note, color = EnktelTextDim, fontSize = 10.sp)
+}
+
+/**
+ * The viewer's Real-Debrid account.
+ *
+ * Real-Debrid is a subscription the viewer holds. Given their token it turns a
+ * link they already have into a direct one and lists what is already in their
+ * account, which is what this row sets up and checks. There is deliberately no
+ * search: this is a client for an account, not a way to go looking for things
+ * to put in it.
+ *
+ * The token is theirs and personal, so it is never shown back in full once
+ * stored — a television is the one screen most likely to have someone else in
+ * the room, and a credential that can be read off it from the sofa is a
+ * credential that has been shared.
+ */
+@Composable
+private fun RealDebridSection(
+    graph: AppGraph,
+    scope: kotlinx.coroutines.CoroutineScope,
+    nav: NavHostController,
+) {
+    val stored by graph.settings.realDebridToken.collectAsStateWithLifecycle(initialValue = "")
+    var open by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf("") }
+    var status by remember(stored) { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    Text("REAL-DEBRID", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    FocusButton(
+        "🔗  Real-Debrid: " + if (stored.isBlank()) "Not connected" else "Connected",
+        accent = stored.isNotBlank(),
+        onClick = { open = !open },
+    )
+    if (!open) return
+
+    Text(
+        "Paste the API token from real-debrid.com/apitoken. It stays on this device and is " +
+            "only sent to Real-Debrid. Used to play links you already have and what is already " +
+            "in your account.",
+        color = EnktelTextDim, fontSize = 11.sp,
+    )
+    // Never prefilled with the stored value: see the note above.
+    tv.enktel.app.ui.components.TvTextField(
+        draft, { draft = it }, "API token", password = true,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FocusButton(if (busy) "Checking…" else "Save & check", accent = true, onClick = onClick@{
+            if (busy) return@onClick
+            busy = true
+            status = ""
+            scope.launch {
+                val savedToken = graph.settings.setRealDebridToken(draft)
+                if (savedToken.isBlank()) {
+                    // Blank back from a non-blank paste means it was not a
+                    // token. Saying so beats a silent no-op, and beats a
+                    // 401 later that reads as an account problem.
+                    status = if (draft.isBlank()) "Token cleared." else
+                        "That does not look like a Real-Debrid token."
+                    busy = false
+                    return@launch
+                }
+                draft = ""
+                status = graph.realDebrid().account().fold(
+                    onSuccess = { a ->
+                        tv.enktel.app.data.debrid.RealDebrid.accountLine(
+                            a.username, a.type, a.expiration,
+                            tv.enktel.app.data.repo.EnktelFeed.todayEpochDay(),
+                        )
+                    },
+                    onFailure = { it.message ?: "Could not reach Real-Debrid." },
+                )
+                busy = false
+            }
+        })
+        if (stored.isNotBlank()) {
+            FocusButton("Check account", onClick = onClick@{
+                if (busy) return@onClick
+                busy = true
+                scope.launch {
+                    status = graph.realDebrid().account().fold(
+                        onSuccess = { a ->
+                            tv.enktel.app.data.debrid.RealDebrid.accountLine(
+                                a.username, a.type, a.expiration,
+                                tv.enktel.app.data.repo.EnktelFeed.todayEpochDay(),
+                            )
+                        },
+                        onFailure = { it.message ?: "Could not reach Real-Debrid." },
+                    )
+                    busy = false
+                }
+            })
+            FocusButton("📂 Browse my Real-Debrid", accent = true, onClick = { nav.navigate("debrid") })
+            FocusButton("Disconnect", onClick = {
+                scope.launch {
+                    graph.settings.setRealDebridToken("")
+                    draft = ""
+                    status = "Disconnected."
+                }
+            })
+        }
+    }
+    if (status.isNotBlank()) Text(status, color = EnktelTextDim, fontSize = 11.sp)
 }

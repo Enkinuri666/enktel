@@ -160,6 +160,14 @@ class SettingsStore(private val context: Context) {
     // Instructions in Settings help text.
     private val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
 
+    // The viewer's own Real-Debrid API token, from real-debrid.com/apitoken.
+    // Blank = the integration is off and nothing calls the service.
+    //
+    // Stored rather than compiled in, and there is no default: this is a
+    // credential for one person's paid account, and a token shipped in an APK
+    // would be a published one — an APK is a zip anyone can open.
+    private val REAL_DEBRID_TOKEN = stringPreferencesKey("real_debrid_token")
+
     // v1.21.0 power-user playback controls.
     // Decoding mode: "hwplus" (default — the SoC's decoders answer first and
     // the bundled FFmpeg extension sits behind them as a fallback, Media3's
@@ -432,6 +440,30 @@ class SettingsStore(private val context: Context) {
     suspend fun setVodForceMp4(v: Boolean) = context.dataStore.edit { it[VOD_FORCE_MP4] = v }
     val tmdbApiKey: Flow<String> = context.dataStore.data.map { it[TMDB_API_KEY].orEmpty() }
     suspend fun setTmdbApiKey(v: String) = context.dataStore.edit { it[TMDB_API_KEY] = v.trim() }
+
+    val realDebridToken: Flow<String> =
+        context.dataStore.data.map { it[REAL_DEBRID_TOKEN].orEmpty() }
+
+    /** Reads the token without collecting, for the one-shot calls that need it. */
+    suspend fun realDebridTokenNow(): String =
+        context.dataStore.data.first()[REAL_DEBRID_TOKEN].orEmpty()
+
+    /**
+     * Store a token, or clear it.
+     *
+     * Normalised on the way in rather than at every call site, so a token
+     * pasted with the line breaks a browser put in it is stored as the token
+     * — and something that is not one is stored as blank instead of as a
+     * value that fails later with a misleading 401.
+     *
+     * @return what was actually stored, so the caller can say when a paste
+     *   was rejected rather than silently doing nothing.
+     */
+    suspend fun setRealDebridToken(v: String): String {
+        val clean = tv.enktel.app.data.debrid.RealDebrid.normaliseToken(v)
+        context.dataStore.edit { it[REAL_DEBRID_TOKEN] = clean }
+        return clean
+    }
     val decoderMode: Flow<String> = context.dataStore.data.map { it[DECODER_MODE] ?: "hwplus" }
     suspend fun setDecoderMode(v: String) = context.dataStore.edit { it[DECODER_MODE] = v }
     val minBufferMs: Flow<Int> = context.dataStore.data.map { it[MIN_BUFFER_MS] ?: 0 }

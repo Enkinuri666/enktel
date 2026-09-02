@@ -1110,6 +1110,7 @@ private fun MainNav(
         composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
         composable("downloads") { tv.enktel.app.ui.downloads.DownloadsScreen(graph, nav) }
+        composable("debrid") { tv.enktel.app.ui.debrid.RealDebridScreen(graph, nav) }
         composable("catchup/{ch}") { back ->
             CatchupScreen(graph, nav, channelKey = back.arguments?.getString("ch").orEmpty())
         }
