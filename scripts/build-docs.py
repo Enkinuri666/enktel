@@ -273,6 +273,17 @@ def manual_story(st, version, code):
         ("About", "Version, diagnostics and crash reports."),
     ], st, [34 * mm, 126 * mm]))
 
+    s.append(Paragraph("Renewing your line", st["h1"]))
+    s.append(Paragraph(
+        "When a line is within a fortnight of running out, the account panel says so and offers a "
+        "link to renew it. The link carries your username, which is what extends the line you "
+        "already have rather than issuing a second one \u2014 so your existing details keep working "
+        "and nothing on your devices needs changing.", st["body"]))
+    s.append(Paragraph(
+        "No prices are shown in the app. They live on the website, which is the only copy that can "
+        "be kept current \u2014 a price built into an installed app would go on being shown after it "
+        "changed. Where a device has no web browser, which is common on a television, the address "
+        "is shown instead so you can open it on a phone.", st["note"]))
     s.append(Paragraph("Buffering, and why live and on-demand differ", st["h1"]))
     s.append(Paragraph(
         "Live and on-demand get different buffers from the same profile, on purpose. A film is a "
