@@ -3,11 +3,14 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Trophy, Goal, Medal, Flag, Star } from "lucide-react";
 
-// A seasonal reskin of the hero centerpiece: the Enktel wolf-head mark at
-// the core, wrapped in a USA-hosted World Cup 2026 broadcast-graphics
-// treatment — Enktel's own red accent plus navy blue and white, echoing the
-// host nation without ever drawing a literal flag — instead of the generic
-// category-icon animation this replaces.
+// The hero centerpiece: the Enktel wolf-head mark at the core, wrapped in a
+// broadcast-graphics treatment in Enktel's own red accent plus navy blue and
+// white.
+//
+// Deliberately not tied to one tournament. This carried a World Cup 2026
+// treatment and a "2026" medallion, which is the kind of decoration that is
+// wrong the moment the event passes and then quietly stays wrong — the badge
+// now says what is true year-round.
 const ORBIT_ITEMS = [
   { Icon: Trophy, color: "#FF4757" },
   { Icon: Goal, color: "#3B82F6" },
@@ -58,7 +61,7 @@ export default function HeroWolfAnimation() {
         style={{ width: ORBIT_RADIUS * 2, height: ORBIT_RADIUS * 2, borderColor: "rgba(255,255,255,0.25)" }}
       />
 
-      {/* Orbiting World Cup 2026 icons */}
+      {/* Orbiting sport-category icons */}
       <motion.div
         className="absolute inset-0"
         animate={{ rotate: 360 }}
@@ -119,7 +122,7 @@ export default function HeroWolfAnimation() {
         />
       </motion.div>
 
-      {/* World Cup 2026 medallion badge */}
+      {/* Quality medallion badge */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -131,8 +134,8 @@ export default function HeroWolfAnimation() {
           boxShadow: "0 0 16px rgba(59,130,246,0.4)",
         }}
       >
-        <Trophy className="w-3 h-3 text-white" />
-        <span className="text-[10px] font-black text-white tracking-wide">2026</span>
+        <Star className="w-3 h-3 text-white" />
+        <span className="text-[10px] font-black text-white tracking-wide">4K</span>
       </motion.div>
     </div>
   );

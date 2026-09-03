@@ -373,7 +373,7 @@ export const editorialPosts: EditorialPost[] = [
       {
         heading: "This week's sport lap",
         paragraphs: [
-          "With the FIFA World Cup 2026 group stage in full swing, the World Cup hub on your dashboard is the fastest way to see real fixture times, live scores, and kickoff countdowns — including Croatia's group matches.",
+          "With the AFL and NRL finals series under way, the What's On widget on your dashboard is the fastest way to see real fixture times, live scores, and kickoff countdowns — including every match in the run to the grand final.",
         ],
       },
       {

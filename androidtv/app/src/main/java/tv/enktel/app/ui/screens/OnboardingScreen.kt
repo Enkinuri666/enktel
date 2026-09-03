@@ -77,6 +77,18 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
             )
             Spacer(Modifier.height(20.dp))
 
+            // For the viewer who has the app and no line yet — which is the
+            // whole population of a fresh install that did not arrive with
+            // credentials. Text rather than a button: a television frequently
+            // has no browser, and the address is short enough to type into the
+            // phone already in their hand.
+            Text(
+                "No account yet? Start a free 24-hour trial at ${tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL}",
+                color = EnktelTextDim,
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(14.dp))
+
             tv.enktel.app.ui.components.ChipRowLabel("Playlist type")
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -10,6 +10,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { StoredSubscription, loadSubscription, clearSubscription } from "@/lib/subscriptionStorage";
 import { DEVICE_GUIDES, getDeviceGuide } from "@/lib/deviceGuides";
+import RenewalPanel from "@/components/dashboard/RenewalPanel";
 
 const WELCOME_DISMISSED_KEY = "enktel_dashboard_welcome_dismissed";
 const TOUR_DISMISSED_KEY = "enktel_dashboard_tour_dismissed";
@@ -340,7 +341,10 @@ export default function DashboardPage() {
                   Renew now to avoid interruption.
                 </p>
               </div>
-              <Link href="/watch" className="shrink-0">
+              <Link
+                href={`/checkout?plan=12m&renew=${encodeURIComponent(sub.username)}`}
+                className="shrink-0"
+              >
                 <Button size="sm">Renew Now</Button>
               </Link>
             </div>
@@ -382,6 +386,10 @@ export default function DashboardPage() {
                 <CopyableField label="EPG URL (XMLTV)" value={sub.epgUrl} />
               </div>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <RenewalPanel username={sub.username} isTrial={isTrial} />
           </div>
         </motion.div>
 

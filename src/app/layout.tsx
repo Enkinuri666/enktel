@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import TopTicker from "@/components/layout/TopTicker";
+import PromoBanner from "@/components/layout/PromoBanner";
 import Footer from "@/components/layout/Footer";
 import ChatLauncher from "@/components/layout/ChatLauncher";
 import { CHANNEL_COUNT_LABEL } from "@/lib/channels";
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} bg-brand-bg text-white antialiased`}>
         <div className="fixed top-0 inset-x-0 z-50 flex flex-col">
+          <PromoBanner />
           <TopTicker />
           <Navbar />
         </div>
