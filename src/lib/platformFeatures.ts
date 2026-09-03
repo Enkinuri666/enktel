@@ -46,9 +46,9 @@ export const PLATFORM_FEATURES: PlatformFeature[] = [
     description: "The full electronic program guide — browse every channel's schedule, search, and filter by category.",
   },
   {
-    name: "World Cup 2026",
-    url: "/world-cup-2026",
-    description: "Live fixtures and results for the FIFA World Cup 2026, hosted in the USA — included in every Enktel plan at no extra cost.",
+    name: "Pricing & Plans",
+    url: "/pricing",
+    description: "Every Enktel access pass, priced in Australian dollars — 1, 3, 6 and 12 months, with a free 24-hour trial and no lock-in contract.",
   },
   {
     name: "Dashboard",
