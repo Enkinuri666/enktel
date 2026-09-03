@@ -16,8 +16,18 @@ import { LINEUP_RELAY_HOSTS } from "./relay-hosts.generated";
  * point it at any address on the internet and bill the traffic to us, and at
  * anything inside the platform's own network besides. The allowlist is the
  * whole security model.
+ *
+ * The panel's whole domain rather than one host under it. Lines are issued on
+ * per-line subdomains — `185233706813.elg-26.com` alongside `api.elg-26.com` —
+ * and `hostAllowed` matches on a dot boundary, so listing only `api.` refused
+ * every line that came back on a subdomain of its own. `elg-26.com` covers
+ * them and stays bounded to the reseller's own domain.
+ *
+ * `line.enktel.online` was here and is retired; it is not listed because a
+ * dead host in an allowlist is a claim about where traffic may go that is no
+ * longer true.
  */
-export const DEFAULT_RELAY_HOSTS = ["api.elg-26.com", "line.enktel.online"];
+export const DEFAULT_RELAY_HOSTS = ["elg-26.com"];
 
 /**
  * The allowlist: the panel hosts, plus every host the published lineup points
