@@ -29,10 +29,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.tv.material3.Text
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.repo.Subscribe
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
@@ -73,6 +75,7 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
     var trial by remember(p.id) { mutableStateOf(false) }
     var reachable by remember(p.id) { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(p.id) {
         if (p.kind != "xtream") { reachable = null; return@LaunchedEffect }
@@ -184,6 +187,46 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
                 note = if (p.lastSync <= 0) "run a sync below" else "",
                 accent = if (p.lastSync <= 0) accent else Color.White,
             )
+        }
+
+        // Renewing, when the end is close enough to matter.
+        //
+        // Silent the rest of the year: a renewal prompt shown permanently is an
+        // advertisement, and people learn to look past the row it sits in —
+        // including the next thing put there. See Subscribe.NOTICE_DAYS.
+        //
+        // No price appears here. An APK is updated rarely, so a price compiled
+        // into one goes on being advertised long after it changes; the web page
+        // is the only copy that can be corrected in an afternoon.
+        Subscribe.expiryNotice(if (daysLeft == Int.MAX_VALUE) -1 else daysLeft, expired)?.let { notice ->
+            val target = Subscribe.renewUrl(p.username)
+            // Asked before the button is offered, not after it is pressed. A
+            // sideloaded Fire TV Stick often has no browser at all, and an
+            // ACTION_VIEW at one is a no-op that looks like a broken button.
+            val canOpen = remember(target) {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, target.toUri())
+                context.packageManager.resolveActivity(intent, 0) != null
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(notice, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (canOpen) {
+                    tv.enktel.app.ui.components.FocusButton("Renew or add time ↗", accent = true, onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, target.toUri())
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    })
+                } else {
+                    // Nothing on this device can open a link, so the address is
+                    // shown for the phone already in the viewer's hand.
+                    Text(
+                        "Renew at ${Subscribe.SHORT_PRICING} on your phone.",
+                        color = EnktelTextDim, fontSize = 12.sp,
+                    )
+                }
+            }
         }
 
         // Free the session this device is holding.
