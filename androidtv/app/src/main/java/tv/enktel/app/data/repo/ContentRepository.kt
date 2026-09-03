@@ -462,8 +462,11 @@ class ContentRepository(
         }
         mapCats(liveCats, "live"); mapCats(vodCats, "vod"); mapCats(seriesCats, "series")
 
-        val live = xtream.liveStreams(p).arr().orEmpty().mapIndexedNotNull { i, e ->
-            val sid = e.long("stream_id") ?: return@mapIndexedNotNull null
+        // Mapped as each entry arrives rather than from a parsed tree: the
+        // tree for a large line is several times the payload and the payload
+        // alone can be 70 MB. See XtreamClient.mapArray.
+        val live = xtream.mapArray(p, "get_live_streams") { e, i ->
+            val sid = e.long("stream_id") ?: return@mapArray null
             val catId = e.str("category_id").orEmpty()
             Channel(
                 key = "${p.id}:$sid", profileId = p.id, streamId = sid,
@@ -482,8 +485,8 @@ class ContentRepository(
             )
         }
 
-        val movies = xtream.vodStreams(p).arr().orEmpty().mapNotNull { e ->
-            val sid = e.long("stream_id") ?: return@mapNotNull null
+        val movies = xtream.mapArray(p, "get_vod_streams") { e, _ ->
+            val sid = e.long("stream_id") ?: return@mapArray null
             Movie(
                 key = "${p.id}:$sid", profileId = p.id, streamId = sid,
                 name = tv.enktel.app.data.metadata.TitleSanitizer.clean(e.str("name") ?: "Movie $sid"),
@@ -499,8 +502,8 @@ class ContentRepository(
             )
         }
 
-        val seriesList = xtream.seriesList(p).arr().orEmpty().mapNotNull { e ->
-            val sid = e.long("series_id") ?: return@mapNotNull null
+        val seriesList = xtream.mapArray(p, "get_series") { e, _ ->
+            val sid = e.long("series_id") ?: return@mapArray null
             Series(
                 key = "${p.id}:$sid", profileId = p.id, seriesId = sid,
                 name = tv.enktel.app.data.metadata.TitleSanitizer.clean(e.str("name") ?: "Series $sid"),
