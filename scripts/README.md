@@ -220,7 +220,7 @@ panel with a line entitled to it. That is what this script does: the
 documented `player_api.php` actions, with your own credentials.
 
 ```bash
-export XTREAM_SERVER=http://line.enktel.online
+export XTREAM_SERVER=http://api.elg-26.com
 export XTREAM_USERNAME=…  XTREAM_PASSWORD=…
 npm run export:catalog -- --countries HR,GB,US,AU \
   --expect-movies 190000 --expect-series 75000

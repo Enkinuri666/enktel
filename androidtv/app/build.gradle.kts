@@ -47,13 +47,21 @@ android {
         // them in with -PenkDefaultUser / -PenkDefaultPass (or
         // ENK_DEFAULT_USER / ENK_DEFAULT_PASS); neither touches a committed
         // file.
-        // This has to be the host the reseller actually issues lines on —
-        // `STREAM_SERVER_URL` in src/lib/reseller.ts, which is also what
-        // /api/trial hands back as `server_url` and what verifyStreamCredentials
-        // authenticates against. It was line.enktel.online, which is a
-        // different machine: a subscriber typing correct credentials into the
-        // prefilled form was pointing them at a host that does not hold their
-        // line, and got the origin's HTTP 512 rather than a login failure.
+        // This has to be the host the reseller actually issues lines on. It
+        // was line.enktel.online once, which is a different machine: a
+        // subscriber typing correct credentials into the prefilled form was
+        // pointing them at a host that does not hold their line, and got the
+        // origin's HTTP 512 rather than a login failure. So the value below is
+        // checked against the panel rather than taken on trust — a
+        // `player_api.php` login on this host has to answer `auth: 1` for the
+        // current line before it ships.
+        //
+        // Verified for the Eagle 4K reseller line: this host answers
+        // `auth: 1, status: Active`, and the panel's own `server_info.url`
+        // agrees it serves the line. A CDN alias offered alongside it
+        // (vpn-esxtrapro.info) does not: that domain is parked and answers
+        // every path with a for-sale page, so it would reproduce exactly the
+        // failure described above.
         val defaultServer = (project.findProperty("enkDefaultServer") as? String)
             ?: System.getenv("ENK_DEFAULT_SERVER")
             ?: "http://api.elg-26.com"
