@@ -9,7 +9,7 @@ export default function RefundPolicyPage() {
       <section>
         <h2>1. Free Trial First</h2>
         <p>
-          We offer a free 24-hour trial via <a href="/contact">our support team</a> before you buy — we
+          We offer a free 24-hour trial you can <a href="/trial">start yourself</a> before you buy — we
           strongly recommend testing the service on your device first, as this helps avoid most refund
           requests.
         </p>

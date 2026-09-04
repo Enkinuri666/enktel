@@ -1,3 +1,13 @@
+import { PLANS } from "./pricing";
+
+/** "1-month, 3-month, 6-month and 12-month", from the plan table itself. */
+const PLAN_LENGTHS = (() => {
+  const names = PLANS.map((p) => `${p.months}-month`);
+  return names.length > 1
+    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+    : names[0];
+})();
+
 export interface FaqEntry {
   q: string;
   a: string;
@@ -26,7 +36,7 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
       },
       {
         q: "Can I try before I buy?",
-        a: "Yes — contact our support team via WhatsApp or the Contact page for a free 24-hour trial.",
+        a: "Yes — start a free 24-hour trial from the Trial page. It sets itself up: you get a playlist and login straight away, with no card and nothing to cancel. Support can still set one up by hand if you would rather ask a person.",
       },
     ],
   },
@@ -35,11 +45,14 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     faqs: [
       {
         q: "What payment methods do you accept?",
-        a: "PayPal and all major credit/debit cards. Cryptocurrency available on request.",
+        a: "PayPal, and all major credit and debit cards through PayPal — no PayPal account needed for a card payment. Cryptocurrency on request. Prices are in Australian dollars.",
       },
       {
         q: "Do monthly plans auto-renew?",
-        a: "No — every plan (monthly, 3-month, and 12-month) is a one-time payment with no automatic renewal or recurring billing. When your subscription is about to expire, simply purchase again to keep your service running without interruption.",
+        // Listed from the plan table rather than written out. This answer said
+        // "monthly, 3-month, and 12-month" after the six-month pass was added,
+        // which is a factual claim about the product that quietly went wrong.
+        a: `No — every plan (${PLAN_LENGTHS}) is a one-time payment with no automatic renewal or recurring billing. When your subscription is about to expire, simply purchase again to keep your service running without interruption.`,
       },
       {
         q: "Can I get a refund?",
