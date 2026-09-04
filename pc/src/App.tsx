@@ -13,6 +13,7 @@ import GuidePage from './pages/GuidePage';
 import SearchPage from './pages/SearchPage';
 import WatchlistPage from './pages/WatchlistPage';
 import RecordingsPage from './pages/RecordingsPage';
+import PhonePage from './pages/PhonePage';
 import SettingsPage from './pages/SettingsPage';
 import OnboardingPage from './pages/OnboardingPage';
 import { useSettings } from './stores/settings';
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/recordings" element={<RecordingsPage />} />
+            <Route path="/devices" element={<PhonePage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

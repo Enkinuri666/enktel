@@ -12,6 +12,10 @@
     "noImplicitOverride": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // Vite does the emitting. Without this, `npm run typecheck` (and the
+    // typecheck step of `npm run build`) drops a .js beside every .ts in the
+    // source tree, which then sits there untracked waiting to be committed.
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["vite/client", "node"],

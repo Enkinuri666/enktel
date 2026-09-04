@@ -193,7 +193,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                         return@FocusButton
                     }
                     shareError = LanShareController
-                        .start(ctx, ip, LanShareFiles.shareable(ctx, entries))
+                        .start(ctx, ip, LanShareFiles.shareable(ctx, entries), graph.downloads)
                         .orEmpty()
                 },
             )
@@ -206,6 +206,12 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             )
             Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
             Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Or open the EnkTel app on your PC — it finds this device on the network by " +
+                    "itself, saves straight to a folder you pick, and can pause or cancel " +
+                    "downloads from there.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
             Text(
                 "The PIN is new each time you start sending. Both devices have to be on the same " +
                     "Wi-Fi. This keeps running while you use the rest of the app — stop it " +
