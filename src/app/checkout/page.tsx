@@ -37,6 +37,9 @@ function CheckoutInner() {
   const params = useSearchParams();
   const initial = params.get("plan") ?? "3m";
   const renewFor = params.get("renew") ?? "";
+  // Asked for, not carried in the link. The panel's extend call needs the
+  // password, and a password in a URL lands in history, logs and referrers.
+  const [renewPassword, setRenewPassword] = useState("");
 
   const [planId, setPlanId] = useState(planById(initial) ? initial : "3m");
   const [email, setEmail] = useState("");
@@ -94,7 +97,7 @@ function CheckoutInner() {
           const res = await fetch("/api/checkout/capture", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId: data.orderID }),
+            body: JSON.stringify({ orderId: data.orderID, renewPassword }),
           });
           const json = (await res.json()) as CaptureResponse & { error?: string };
           if (!res.ok) {
@@ -106,7 +109,7 @@ function CheckoutInner() {
         onError: () => setError("PayPal reported an error. Nothing has been charged."),
       })
       .render("#paypal-buttons");
-  }, [sdkReady, plan, email, renewFor, result]);
+  }, [sdkReady, plan, email, renewFor, renewPassword, result]);
 
   if (result?.paid) {
     return (
@@ -167,10 +170,28 @@ function CheckoutInner() {
           {renewFor ? "Add more time" : "Choose your pass"}
         </h2>
         {renewFor && (
-          <p className="text-brand-muted text-sm mb-4">
-            Extending the line <code className="text-white">{renewFor}</code>. Your
-            existing username and password stay the same.
-          </p>
+          <div className="mb-5">
+            <p className="text-brand-muted text-sm mb-3">
+              Extending the line <code className="text-white">{renewFor}</code>. Your
+              existing username and password stay the same.
+            </p>
+            <label className="block text-brand-muted text-xs mb-1" htmlFor="renew-password">
+              Password for this line — copy it from your dashboard
+            </label>
+            <input
+              id="renew-password"
+              type="password"
+              autoComplete="off"
+              value={renewPassword}
+              onChange={(e) => setRenewPassword(e.target.value)}
+              placeholder="Line password"
+              className="w-full rounded-xl border border-brand-border bg-brand-bg px-4 py-3 text-white outline-none focus:border-brand-primary"
+            />
+            <p className="text-brand-muted text-xs mt-2">
+              The panel needs it to add time to the right line. It is sent to us over
+              HTTPS when the payment completes, and never to PayPal.
+            </p>
+          </div>
         )}
         <div className="space-y-2">
           {PLANS.map((p) => {
