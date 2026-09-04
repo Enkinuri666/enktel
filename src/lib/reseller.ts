@@ -1,51 +1,83 @@
 /**
- * Creating and extending lines on the Eagle 4K reseller panel.
+ * Creating and extending lines on the Eagle reseller panel.
  *
- * This is the half of the old `reseller.ts` that was deleted when the previous
- * Eagle panel was retired: it holds a privileged key and can create, extend
- * and read back *anyone's* line, which is exactly why it is isolated here and
- * why nothing in this file may ever be imported into a client component.
+ * Holds a privileged key that can create, extend and read back *anyone's*
+ * line, which is why it is isolated here and why nothing in this file may ever
+ * be imported into a client component.
  *
- * ## Configuration — all server-side, none of it committed
+ * ## The API, as it actually behaves
  *
- * | variable | meaning |
- * | --- | --- |
- * | `ESELLER_API_URL` | reseller API base, e.g. `http://panel.example/api` |
- * | `RESELLER_API_KEY` | the privileged key |
- * | `RESELLER_PACKAGE_TRIAL` | package id used for the 24-hour trial |
- * | `RESELLER_PACKAGE_1M` … `_12M` | package id per paid plan |
- * | `STREAM_SERVER_URL` | the host lines are issued on, handed to the buyer |
+ * Documented at `manager-eagle.com/pntv/reseller/devapi.php` (behind the panel
+ * login). Everything is a **GET** against one endpoint with query parameters,
+ * and the key travels as `api_key`:
  *
- * With none of these set [resellerConfigured] is false, and every caller is
- * expected to say so rather than pretend. A checkout that takes money and then
- * cannot provision is far worse than one that declines to start.
+ *     .../dev_api.php?action=user&type=create&package_id=109&api_key=…
+ *     .../dev_api.php?action=user&type=extend&username=…&password=…&package_id=…
+ *     .../dev_api.php?action=user&type=info&username=…&password=…
  *
- * ## Why the shapes here are conservative
+ * Two things the documentation does not say, both confirmed against the live
+ * panel and both able to break this silently:
  *
- * Reseller panels differ: some speak a REST JSON API, some a query-string one,
- * and the action names vary between builds. [createLine] therefore posts a
- * documented, ordinary shape and treats anything it does not recognise as a
- * failure with the panel's own words attached, rather than guessing that a
- * 200 meant success. A line silently not created is a customer who paid and
- * got nothing.
+ * 1. **Responses are array-wrapped.** The docs show `{"status":true,…}`; the
+ *    panel returns `[{"status":true,…}]`. Reading the documented shape gets
+ *    `undefined` for every field, which looks exactly like a refusal.
+ * 2. **Failure still comes back HTTP 200.** `status` is the only thing that
+ *    says whether it worked, so a check on `res.ok` alone would report a line
+ *    that was never created as a success — a customer who paid and got
+ *    nothing.
+ *
+ * ## Configuration
+ *
+ * | variable | default | meaning |
+ * | --- | --- | --- |
+ * | `RESELLER_API_URL` | the live endpoint | full URL of `dev_api.php` |
+ * | `RESELLER_API_KEY` | — | the privileged key; nothing works without it |
+ * | `RESELLER_PACKAGE_TRIAL` | `101` | 24-hour package |
+ * | `RESELLER_PACKAGE_1M/_3M/_6M/_12M` | `109/110/111/10` | paid packages |
+ * | `RESELLER_TEMPLATE_ID` | unset | optional; unset lets the panel choose |
+ * | `STREAM_SERVER_URL` | `https://x-api.cc` | fallback host for a line |
+ *
+ * The package ids are this reseller's own, read from `action=packages`, so
+ * they are defaults rather than secrets. Only the key must come from the
+ * environment, and it is the one thing that must never be committed.
+ *
+ * `RESELLER_TEMPLATE_ID` is deliberately unset. The panel offers EAGLE_LITE,
+ * EAGLE_ARABIC and EAGLE_FRENCH, none of which is obviously the full
+ * Australian lineup, and `template_id` is optional — so the panel's own
+ * default applies rather than a guess that could hand a paying customer a
+ * reduced channel list.
  */
 
 import { planById, TRIAL_HOURS } from "./pricing";
 
+/** Package ids read from this reseller's own panel. */
+const DEFAULT_PACKAGES: Record<string, string> = {
+  TRIAL: "101", // EAGLE_24HOURS — 0 credits
+  "1M": "109", // EAGLE_1 Month — 1 credit
+  "3M": "110", // EAGLE_3 Months — 3 credits
+  "6M": "111", // EAGLE_6 Months — 6 credits
+  "12M": "10", // EAGLE_1 Year — 12 credits
+};
+
+const DEFAULT_ENDPOINT = "http://api.elg-26.com/api/dev_api.php";
+
 export function resellerConfigured(): boolean {
-  return Boolean(process.env.RESELLER_API_URL && process.env.RESELLER_API_KEY);
+  return Boolean(process.env.RESELLER_API_KEY);
 }
 
-/** The host a buyer is told to enter. Also what the apps prefill. */
+function endpoint(): string {
+  return process.env.RESELLER_API_URL || DEFAULT_ENDPOINT;
+}
+
+/** The host a buyer is told to enter, when the panel does not name one. */
 export function streamServerUrl(): string {
-  return process.env.STREAM_SERVER_URL || "http://api.elg-26.com";
+  return process.env.STREAM_SERVER_URL || "https://x-api.cc";
 }
 
 /** Package id for a plan, or for the trial when [planId] is omitted. */
 export function packageIdFor(planId?: string): string | undefined {
-  if (!planId) return process.env.RESELLER_PACKAGE_TRIAL;
-  const key = `RESELLER_PACKAGE_${planId.toUpperCase()}`;
-  return process.env[key];
+  const slot = planId ? planId.toUpperCase() : "TRIAL";
+  return process.env[`RESELLER_PACKAGE_${slot}`] || DEFAULT_PACKAGES[slot];
 }
 
 export interface ProvisionedLine {
@@ -76,19 +108,86 @@ function buildEPG(server: string, u: string, p: string): string {
   return `${server.replace(/\/$/, "")}/xmltv.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`;
 }
 
+/** One panel reply, unwrapped. Exported for tests. */
+export interface PanelReply {
+  status?: boolean | string;
+  message?: string;
+  username?: string;
+  password?: string;
+  url?: string;
+  exp_date?: string | number;
+  [k: string]: unknown;
+}
+
+/**
+ * Unwrap whatever the panel sent.
+ *
+ * It answers with a single-element array where the docs promise an object, so
+ * both are accepted — and anything else becomes null rather than a partial
+ * object that would read as a refusal further down.
+ */
+export function unwrapReply(payload: unknown): PanelReply | null {
+  if (Array.isArray(payload)) {
+    const first = payload[0];
+    return first && typeof first === "object" ? (first as PanelReply) : null;
+  }
+  if (payload && typeof payload === "object") return payload as PanelReply;
+  return null;
+}
+
+/**
+ * Did it work?
+ *
+ * `status` arrives as a real boolean today, but panels of this family are
+ * careless about JSON types and `"true"` costs nothing to accept. Anything
+ * else — false, absent, `"0"` — is a failure.
+ */
+export function replySucceeded(reply: PanelReply | null): boolean {
+  return reply?.status === true || reply?.status === "true";
+}
+
+/** Build a request URL. Exported so the parameter shape can be tested. */
+export function apiUrl(params: Record<string, string | undefined>): string {
+  const url = new URL(endpoint());
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") url.searchParams.set(k, v);
+  }
+  url.searchParams.set("api_key", process.env.RESELLER_API_KEY ?? "");
+  return url.toString();
+}
+
+async function callPanel(
+  params: Record<string, string | undefined>
+): Promise<{ reply: PanelReply | null; error?: string }> {
+  try {
+    const res = await fetch(apiUrl(params), {
+      method: "GET",
+      signal: AbortSignal.timeout(25000),
+    });
+    const payload = await res.json().catch(() => null);
+    const reply = unwrapReply(payload);
+    if (!res.ok) {
+      return { reply, error: reply?.message || `panel returned HTTP ${res.status}` };
+    }
+    return { reply };
+  } catch (err) {
+    return {
+      reply: null,
+      error: err instanceof Error ? err.message : "could not reach the panel",
+    };
+  }
+}
+
 /**
  * Create a line.
  *
- * [planId] omitted means the trial package and [TRIAL_HOURS] of access;
- * otherwise the plan's months are used.
+ * [planId] omitted means the trial package.
  */
 export async function createLine(
   planId?: string,
   note?: string
 ): Promise<ProvisionResult> {
-  const base = process.env.RESELLER_API_URL;
-  const key = process.env.RESELLER_API_KEY;
-  if (!base || !key) {
+  if (!resellerConfigured()) {
     return {
       ok: false,
       unconfigured: true,
@@ -107,87 +206,84 @@ export async function createLine(
     };
   }
 
+  const { reply, error } = await callPanel({
+    action: "user",
+    type: "create",
+    package_id: pkg,
+    template_id: process.env.RESELLER_TEMPLATE_ID,
+    note: note?.slice(0, 200),
+  });
+
+  if (error) return { ok: false, error: `Could not create the line: ${error}` };
+
+  // A 200 that says status:false is a refusal — out of credits, bad package,
+  // key revoked. Treating it as success is how a paying customer ends up with
+  // a confirmation page and no line.
+  if (!replySucceeded(reply)) {
+    return {
+      ok: false,
+      error: reply?.message
+        ? `Could not create the line: ${reply.message}`
+        : "The panel refused the request. Support has been notified.",
+    };
+  }
+  if (!reply?.username || !reply?.password) {
+    return {
+      ok: false,
+      error: "The panel reported success but returned no login. Support has been notified.",
+    };
+  }
+
+  // The panel names the host for this line; ours is only the fallback. It
+  // knows which server the line was issued on and we are guessing.
+  const server = reply.url || streamServerUrl();
   const months = planId ? (planById(planId)?.months ?? 1) : 0;
-
-  let payload: unknown;
-  try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/line`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        package_id: pkg,
-        // Trials are counted in hours, paid plans in months. Sending both and
-        // letting the panel pick would be ambiguous, so exactly one is set.
-        ...(months > 0 ? { months } : { hours: TRIAL_HOURS }),
-        note: note?.slice(0, 200) ?? "",
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-    payload = await res.json().catch(() => null);
-    if (!res.ok) {
-      const msg =
-        (payload as { message?: string; error?: string } | null)?.message ??
-        (payload as { error?: string } | null)?.error ??
-        `panel returned HTTP ${res.status}`;
-      return { ok: false, error: `Could not create the line: ${msg}` };
-    }
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Could not reach the panel",
-    };
-  }
-
-  const data = payload as {
-    username?: string;
-    password?: string;
-    exp_date?: string | number;
-    expires_at?: string;
-  } | null;
-
-  // A 200 with no credentials in it is not a success. Panels do answer this
-  // way on quota or permission problems, and treating it as one is how a
-  // paying customer ends up with a confirmation page and no line.
-  if (!data?.username || !data?.password) {
-    return {
-      ok: false,
-      error: "The panel accepted the request but returned no login. Support has been notified.",
-    };
-  }
-
-  const server = streamServerUrl();
-  const expiresAt =
-    typeof data.exp_date === "number"
-      ? new Date(data.exp_date * 1000).toISOString()
-      : data.expires_at ??
-        (typeof data.exp_date === "string" && /^\d+$/.test(data.exp_date)
-          ? new Date(Number(data.exp_date) * 1000).toISOString()
-          : new Date(
-              Date.now() + (months > 0 ? months * 30 : TRIAL_HOURS / 24) * 86400000
-            ).toISOString());
 
   return {
     ok: true,
-    username: data.username,
-    password: data.password,
+    username: reply.username,
+    password: reply.password,
     serverUrl: server,
-    m3uUrl: buildM3U(server, data.username, data.password),
-    epgUrl: buildEPG(server, data.username, data.password),
-    expiresAt,
+    m3uUrl: buildM3U(server, reply.username, reply.password),
+    epgUrl: buildEPG(server, reply.username, reply.password),
+    expiresAt: expiryFrom(reply.exp_date, months),
   };
 }
 
-/** Extend an existing line — the renewal and upgrade path. */
+/**
+ * When the line runs out.
+ *
+ * The panel's own date wins. The computed fallback is deliberately rough —
+ * thirty-day months — because it is only ever shown, never used to decide
+ * whether access has ended; the panel decides that.
+ */
+export function expiryFrom(expDate: unknown, months: number): string {
+  if (typeof expDate === "number" && expDate > 0) {
+    return new Date(expDate * 1000).toISOString();
+  }
+  if (typeof expDate === "string" && expDate.trim() !== "") {
+    if (/^\d+$/.test(expDate)) return new Date(Number(expDate) * 1000).toISOString();
+    const parsed = Date.parse(expDate);
+    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
+  }
+  const days = months > 0 ? months * 30 : TRIAL_HOURS / 24;
+  return new Date(Date.now() + days * 86400000).toISOString();
+}
+
+/**
+ * Extend an existing line.
+ *
+ * Takes the password as well as the username because the panel does: there is
+ * no documented call that goes from a username alone to an extension, which is
+ * why the renewal flow has to collect both rather than carrying just the name
+ * in a link.
+ */
 export async function extendLine(
   username: string,
+  password: string,
   planId: string
 ): Promise<{ ok: true; expiresAt?: string } | ProvisionFailure> {
-  const base = process.env.RESELLER_API_URL;
-  const key = process.env.RESELLER_API_KEY;
-  if (!base || !key) {
+  if (!resellerConfigured()) {
     return {
       ok: false,
       unconfigured: true,
@@ -199,21 +295,44 @@ export async function extendLine(
   if (!pkg) {
     return { ok: false, unconfigured: true, error: "That plan has no package configured yet." };
   }
-  try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/line/${encodeURIComponent(username)}/extend`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ package_id: pkg, months: planById(planId)?.months ?? 1 }),
-      signal: AbortSignal.timeout(25000),
-    });
-    const json = (await res.json().catch(() => null)) as
-      | { expires_at?: string; message?: string }
-      | null;
-    if (!res.ok) {
-      return { ok: false, error: json?.message ?? `panel returned HTTP ${res.status}` };
-    }
-    return { ok: true, expiresAt: json?.expires_at };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not reach the panel" };
+  if (!username || !password) {
+    return {
+      ok: false,
+      error: "Renewing needs both the username and password from your dashboard.",
+    };
   }
+
+  const { reply, error } = await callPanel({
+    action: "user",
+    type: "extend",
+    username,
+    password,
+    package_id: pkg,
+  });
+
+  if (error) return { ok: false, error: `Could not extend the line: ${error}` };
+  if (!replySucceeded(reply)) {
+    return {
+      ok: false,
+      error: reply?.message
+        ? `Could not extend the line: ${reply.message}`
+        : "The panel refused the renewal. Support has been notified.",
+    };
+  }
+  return { ok: true, expiresAt: reply?.exp_date ? expiryFrom(reply.exp_date, 0) : undefined };
+}
+
+/** Read a line back — used to confirm an extension actually landed. */
+export async function lineInfo(
+  username: string,
+  password: string
+): Promise<PanelReply | null> {
+  if (!resellerConfigured()) return null;
+  const { reply } = await callPanel({
+    action: "user",
+    type: "info",
+    username,
+    password,
+  });
+  return replySucceeded(reply) ? reply : null;
 }

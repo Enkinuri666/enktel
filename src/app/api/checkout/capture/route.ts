@@ -20,9 +20,16 @@ export async function POST(req: NextRequest) {
   }
 
   let orderId = "";
+  // Renewing needs the line's password as well as its username, because the
+  // panel's extend call does. It arrives here, over HTTPS to our own server,
+  // rather than in the PayPal reference or a query string: PayPal has no
+  // business holding a customer's stream password, and a URL ends up in
+  // browser history, logs and referrers.
+  let renewPassword = "";
   try {
-    const body = (await req.json()) as { orderId?: string };
+    const body = (await req.json()) as { orderId?: string; renewPassword?: string };
     orderId = (body.orderId ?? "").trim();
+    renewPassword = (body.renewPassword ?? "").trim();
   } catch {
     return NextResponse.json({ error: "Send a JSON body." }, { status: 400 });
   }
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = ref.r
-    ? await extendLine(ref.r, plan.id)
+    ? await extendLine(ref.r, renewPassword, plan.id)
     : await createLine(plan.id, `${plan.name} · ${ref.e ?? capture.payerEmail ?? ""}`);
 
   if (!result.ok) {
