@@ -43,6 +43,9 @@ import tv.enktel.app.ui.components.CenterMessage
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import tv.enktel.app.data.download.DownloadLocation
+import tv.enktel.app.data.share.LanShare
+import tv.enktel.app.data.share.LanShareFiles
+import tv.enktel.app.data.share.LanShareServer
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.SectionTitle
@@ -151,6 +154,81 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             },
             color = EnktelTextDim, fontSize = 12.sp,
         )
+        Spacer(Modifier.height(12.dp))
+
+        // Sending to a PC.
+        //
+        // The whole feature is: the phone runs a small web server, the viewer
+        // types its address into a browser on their computer, and the file
+        // comes across the house network. Nothing to install on the PC, no
+        // account, and the file never leaves the building.
+        val netKind by tv.enktel.app.data.net.NetworkClass.kind.collectAsStateWithLifecycle()
+        var sharing by remember { mutableStateOf<LanShareServer.Started?>(null) }
+        var shareError by remember { mutableStateOf("") }
+        val server = remember { LanShareServer() }
+
+        // Stopping when the screen goes away is not tidiness — it is the
+        // difference between a server that exists for the minutes it is needed
+        // and one left listening on the network until the app is killed.
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            onDispose { server.stop() }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FocusButton(
+                text = if (sharing != null) "■ Stop sending" else "📤 Send to PC",
+                accent = sharing == null,
+                onClick = {
+                    if (sharing != null) {
+                        server.stop()
+                        sharing = null
+                        shareError = ""
+                        return@FocusButton
+                    }
+                    val blocked = LanShare.blockedReason(netKind)
+                    if (blocked != null) { shareError = blocked; return@FocusButton }
+                    val ip = LanShareFiles.localAddress()
+                    if (ip == null) {
+                        shareError = "Could not find this device's address on the network."
+                        return@FocusButton
+                    }
+                    val files = LanShareFiles.shareable(ctx, entries)
+                    if (files.isEmpty()) {
+                        shareError = "Nothing finished downloading yet, so there is nothing to send."
+                        return@FocusButton
+                    }
+                    val started = server.start(ip, files)
+                    if (started == null) {
+                        shareError = "Could not open the sharing port. Another app may be using it."
+                    } else {
+                        sharing = started
+                        shareError = ""
+                    }
+                },
+            )
+        }
+        sharing?.let { live ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "On your PC, open a browser and go to:",
+                color = EnktelTextDim, fontSize = 12.sp,
+            )
+            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "The PIN is new each time you start sending. Both devices have to be on the same " +
+                    "Wi-Fi. Sending stops when you leave this screen.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        }
+        if (shareError.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(shareError, color = EnktelTextDim, fontSize = 12.sp)
+        }
+
         Spacer(Modifier.height(14.dp))
 
         if (entries.isEmpty()) {
