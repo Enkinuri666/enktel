@@ -12,6 +12,11 @@ const routes = [
   "/latest-releases",
   "/coming-soon",
   "/pricing",
+  // The free trial is a conversion page and belongs in search. /checkout is
+  // deliberately absent: it is a step inside a purchase, and a search result
+  // that drops someone into it with no plan chosen is a dead end wearing a
+  // landing page's clothes. robots.ts disallows it for the same reason.
+  "/trial",
   "/faqs",
   "/setup-guides",
   "/contact",

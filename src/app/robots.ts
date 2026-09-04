@@ -6,7 +6,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/dashboard"],
+      // /checkout joins these: it is a step inside a purchase, not a page
+      // anyone should arrive at from a search result, and indexing it puts
+      // people into the middle of a flow with nothing selected.
+      disallow: ["/api/", "/dashboard", "/checkout"],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   };
