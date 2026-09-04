@@ -1,6 +1,6 @@
 [package]
 name = "enktel-pc"
-version = "1.0.0"
+version = "1.67.0"
 description = "EnkTel IPTV desktop client — Tauri backend."
 authors = ["EnkTel IPTV"]
 edition = "2021"

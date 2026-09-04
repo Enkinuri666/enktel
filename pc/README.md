@@ -21,6 +21,20 @@ Chosen for the "lightweight yet feature-packed and super responsive" brief:
 - **Zustand** — tiny state atom.
 - **React Query** — server-state cache for the Xtream / EPG requests.
 
+## Versioning
+
+This app carries the **same version number as the Android apps**, and is bumped
+with them. It sat at 1.0.0 through several Android releases, which meant an
+installer and an APK that talk to each other over the network gave completely
+different answers to "what version are you on?" — no use at all when someone
+reports that pairing failed.
+
+Three files have to move together, all set by `npm install --package-lock-only`
+and hand-edits: `package.json` (and its lockfile), `src-tauri/Cargo.toml`, and
+`src-tauri/tauri.conf.json`. The last is the one that reaches a user — it names
+the installer, fills in Add/Remove Programs, and is what the built-in updater
+compares — so it is the one that must never be forgotten.
+
 ## My devices — the desktop end of "Send to PC"
 
 The one part of this app that is finished and tested rather than targeted, because
