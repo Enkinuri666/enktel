@@ -40,7 +40,11 @@ class LanShareServer {
     }
 
     private var socket: ServerSocket? = null
-    private val pool = Executors.newFixedThreadPool(4)
+
+    // Created per run and shut down with it. A pool held for the object's life
+    // keeps four threads parked for as long as the app is open, having served
+    // one transfer weeks ago.
+    private var pool: java.util.concurrent.ExecutorService? = null
     private val files = ConcurrentHashMap<String, Shared>()
 
     @Volatile private var pin: String = ""
@@ -69,31 +73,44 @@ class LanShareServer {
         wrongPins.set(0)
         lockedOut = false
 
-        val s = try {
-            ServerSocket().apply {
-                reuseAddress = true
-                bind(InetSocketAddress(port), 16)
-            }
-        } catch (_: Throwable) {
-            return null
-        }
+        // The preferred port first, then whatever the OS will give us. Without
+        // the fallback, anything else already on 8787 — another copy of this
+        // app, an unrelated dev server — turned the whole feature into "could
+        // not open the sharing port", when any other port would have done.
+        val s = bind(port) ?: bind(0) ?: return null
         socket = s
+        pool = Executors.newFixedThreadPool(4)
+        val actualPort = s.localPort
         thread(name = "lan-share-accept", isDaemon = true) {
             while (!s.isClosed) {
                 val client = try { s.accept() } catch (_: Throwable) { break }
                 try {
-                    pool.execute { handle(client) }
+                    // Null once stopped, and a rejection means the same thing:
+                    // either way the connection is closed rather than left open
+                    // against a server that is going away.
+                    pool?.execute { handle(client) } ?: runCatching { client.close() }
                 } catch (_: Throwable) {
                     runCatching { client.close() }
                 }
             }
         }
-        return Started(ip, port, pin)
+        return Started(ip, actualPort, pin)
+    }
+
+    private fun bind(port: Int): ServerSocket? = try {
+        ServerSocket().apply {
+            reuseAddress = true
+            bind(InetSocketAddress(port), 16)
+        }
+    } catch (_: Throwable) {
+        null
     }
 
     fun stop() {
         runCatching { socket?.close() }
         socket = null
+        runCatching { pool?.shutdownNow() }
+        pool = null
         files.clear()
         // Cleared so a stopped server cannot be talked to by a request that
         // was already in flight.

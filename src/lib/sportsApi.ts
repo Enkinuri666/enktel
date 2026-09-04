@@ -18,7 +18,13 @@ interface LeagueConfig {
 // Enktel channel that actually exists in src/lib/channels.ts so the
 // "find it on" claim is consistent with the rest of the site.
 const LEAGUES: LeagueConfig[] = [
-  { id: "4429", sport: "Football", emoji: "🏆", channel: "Sky Sports Main Event", isPPV: false, competition: "FIFA World Cup" },
+  // Australian first, because the audience is. Both verified against
+  // TheSportsDB rather than assumed: 4456 and 4416 return finals fixtures this
+  // week, where the World Cup league that used to head this list (4429)
+  // returns nothing at all now the tournament is over — a dead row at the top
+  // of the football section.
+  { id: "4456", sport: "Australian Football", emoji: "🏉", channel: "FOX Sports 504 (+1)", isPPV: false, competition: "AFL" },
+  { id: "4416", sport: "Rugby", emoji: "🏉", channel: "Fox Sports 503 (+1)", isPPV: false, competition: "NRL" },
   { id: "4629", sport: "Football", emoji: "⚽", channel: "Arena Sport 1", isPPV: false, competition: "HNL" },
   { id: "4328", sport: "Football", emoji: "🏆", channel: "Sky Sports Football", isPPV: false, competition: "Premier League" },
   { id: "4480", sport: "Football", emoji: "🏆", channel: "TNT Sports 1", isPPV: false, competition: "Champions League" },

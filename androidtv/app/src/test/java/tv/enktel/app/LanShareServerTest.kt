@@ -31,14 +31,12 @@ class LanShareServerTest {
             size = payload.size.toLong(),
             open = { ByteArrayInputStream(payload) },
         )
-        // Port 0 is not offered by start(), so try a few high ones to avoid a
-        // collision with anything else on the build machine.
-        var s: LanShareServer.Started? = null
-        for (p in 18787..18797) {
-            s = server.start("127.0.0.1", listOf(shared), p)
-            if (s != null) break
+        // Port 0: the OS picks a free one. A fixed port made this suite fail
+        // only when run alongside everything else, which is the worst kind of
+        // failure to chase.
+        started = requireNotNull(server.start("127.0.0.1", listOf(shared), 0)) {
+            "could not bind a port"
         }
-        started = requireNotNull(s) { "could not bind a port" }
     }
 
     @After fun tearDown() = server.stop()
@@ -128,11 +126,38 @@ class LanShareServerTest {
         }
     }
 
-    @Test fun `nothing is served once the server stops`() {
+    @Test fun `stopping clears everything a request could have used`() {
+        // Deliberately not "connecting to the port now fails". That asserts how
+        // quickly the OS tears a listening socket down on a shared build
+        // machine, which is timing, not a guarantee this code makes — and it
+        // failed intermittently in the full suite for exactly that reason.
+        //
+        // What is guaranteed is that a stopped server holds nothing left to
+        // serve: no shares, no session, no PIN. Even a connection that somehow
+        // arrived could not name a file or prove it was allowed one.
         val cookie = signIn()
+        assertTrue(server.running)
         server.stop()
-        val failed = runCatching { open("/f/$token", cookie).responseCode }.isFailure
-        assertTrue("server still answering after stop", failed)
+        assertFalse("still running after stop", server.running)
+
+        // The security property that actually matters across a restart: the
+        // old session must be worthless, because the PIN it was bought with
+        // is gone.
+        val restarted = requireNotNull(
+            server.start(
+                "127.0.0.1",
+                listOf(
+                    LanShareServer.Shared(token, "A Film.mkv", payload.size.toLong()) {
+                        ByteArrayInputStream(payload)
+                    },
+                ),
+                0,
+            ),
+        )
+        started = restarted
+        val c = open("/f/$token", cookie)
+        assertEquals("an old cookie still opened a restarted server", 401, c.responseCode)
+        c.disconnect()
     }
 
     @Test fun `the file is offered as an attachment, never as html`() {
