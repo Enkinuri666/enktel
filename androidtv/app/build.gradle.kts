@@ -56,15 +56,20 @@ android {
         // `player_api.php` login on this host has to answer `auth: 1` for the
         // current line before it ships.
         //
-        // Verified for the Eagle 4K reseller line: this host answers
-        // `auth: 1, status: Active`, and the panel's own `server_info.url`
-        // agrees it serves the line. A CDN alias offered alongside it
-        // (vpn-esxtrapro.info) does not: that domain is parked and answers
-        // every path with a for-sale page, so it would reproduce exactly the
-        // failure described above.
+        // x-api.cc is the reseller's stated Xtream default, and the watch
+        // apps in enkinuri666/enki already preset it, so the two agree.
+        //
+        // It is NOT verified from here, and that is worth writing down rather
+        // than implying otherwise: from this build environment x-api.cc
+        // answers "Hello world" at the root and 404 at /player_api.php, while
+        // api.elg-26.com — which authenticated this same line yesterday — now
+        // answers 513, and both enktel.online backups answer 512. Four hosts
+        // failing at once from one datacenter IP looks more like that IP being
+        // filtered than like four outages, which is a thing panels do; a
+        // subscriber's residential connection is the test that settles it.
         val defaultServer = (project.findProperty("enkDefaultServer") as? String)
             ?: System.getenv("ENK_DEFAULT_SERVER")
-            ?: "http://api.elg-26.com"
+            ?: "https://x-api.cc"
         val defaultUser = (project.findProperty("enkDefaultUser") as? String)
             ?: System.getenv("ENK_DEFAULT_USER")
             ?: ""

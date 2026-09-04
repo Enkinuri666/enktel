@@ -23,11 +23,20 @@ import { LINEUP_RELAY_HOSTS } from "./relay-hosts.generated";
  * every line that came back on a subdomain of its own. `elg-26.com` covers
  * them and stays bounded to the reseller's own domain.
  *
- * `line.enktel.online` was here and is retired; it is not listed because a
- * dead host in an allowlist is a claim about where traffic may go that is no
- * longer true.
+ * `x-api.cc` is the new Xtream default and `enktel.online` covers the two
+ * named backups, `line.` and `vpn.`. The latter was removed once as retired
+ * and is back because the reseller now lists it as a fallback — worth saying
+ * plainly rather than quietly re-adding, since the earlier instruction was the
+ * opposite.
+ *
+ * One caveat on what this can fix. The relay runs on Vercel, so it reaches a
+ * panel from a datacenter address. Where a panel refuses those — which is a
+ * plausible reading of all four of these hosts failing at once from one build
+ * IP while working from a home connection — routing through the relay makes
+ * the block worse, not better. It is the answer to a geo-block, not to a
+ * datacenter-range block.
  */
-export const DEFAULT_RELAY_HOSTS = ["elg-26.com"];
+export const DEFAULT_RELAY_HOSTS = ["x-api.cc", "elg-26.com", "enktel.online"];
 
 /**
  * The allowlist: the panel hosts, plus every host the published lineup points
