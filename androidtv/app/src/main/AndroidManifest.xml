@@ -51,5 +51,21 @@
             android:name=".dvr.RecordingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Holds the process up while the parallel downloader works. Without
+             it, leaving the app lets Android freeze the process and the
+             download stops. -->
+        <service
+            android:name=".data.download.DownloadKeepAlive"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Holds the LAN file server up while it is sharing. Same reason: the
+             transfer is to another machine and takes minutes, which is longer
+             than the viewer will sit on one screen. -->
+        <service
+            android:name=".data.share.LanShareService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

@@ -502,6 +502,7 @@ class DownloadHub(
                     dao.updateResumeState(id, "", 100, bytes, bytes)
                     dao.markDone(id, path)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    syncKeepAlive()
                     clearRate(id)
                     refreshTotals()
                 }
@@ -510,6 +511,7 @@ class DownloadHub(
                 scope.launch {
                     dao.markFailed(id, msg)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    syncKeepAlive()
                     clearRate(id)
                 }
             },
@@ -518,12 +520,41 @@ class DownloadHub(
                     val pct = if (total > 0) ((downloaded * 100.0) / total).toInt().coerceIn(0, 100) else 0
                     dao.markPaused(id, state, pct, downloaded, total)
                     synchronized(jobsLock) { parallelJobs.remove(id) }
+                    syncKeepAlive()
                     clearRate(id)
                     refreshTotals()
                 }
             },
         )
         synchronized(jobsLock) { parallelJobs[id] = handle }
+        syncKeepAlive()
+        }
+    }
+
+    /**
+     * Hold the process up exactly while the parallel engine has work.
+     *
+     * The system engine needs none of this — the OS runs it. The parallel one
+     * is coroutines in this process, and without a foreground service Android
+     * is free to freeze or kill that process the moment the app is not on
+     * screen, which presents as downloads failing whenever the viewer switches
+     * apps. Picking a download folder forces this engine, so the viewers most
+     * exposed are exactly the ones who followed the advice to put downloads
+     * somewhere they can reach.
+     *
+     * Driven off [parallelJobs] rather than a separate counter: that map is
+     * already the truth about what is running, and a second count would be one
+     * more thing that can disagree with it.
+     */
+    private fun syncKeepAlive() {
+        val n = synchronized(jobsLock) { parallelJobs.size }
+        if (n > 0) {
+            DownloadKeepAlive.start(
+                app,
+                if (n == 1) "1 download in progress" else "$n downloads in progress",
+            )
+        } else {
+            DownloadKeepAlive.stop(app)
         }
     }
 
@@ -554,6 +585,9 @@ class DownloadHub(
             if (sysId != null) dm.remove(sysId)
             val parHandle = synchronized(jobsLock) { parallelJobs.remove(entryId) }
             parHandle?.cancel?.invoke()
+            // Cancelling the last one has to release the process too, or the
+            // notification outlives the work it describes.
+            syncKeepAlive()
             val entry = dao.byId(entryId) ?: return@launch
             runCatching {
                 if (entry.filePath.startsWith("content://")) {

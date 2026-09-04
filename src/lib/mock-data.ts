@@ -59,7 +59,7 @@ export const mockTestimonials: Testimonial[] = [
     location: "London, UK 🇬🇧",
     avatar: "IT",
     rating: 5,
-    text: "Watched the entire Croatian World Cup 2022 campaign on Enktel from my flat in London. Crystal clear 4K, zero buffering. Absolutely brilliant service!",
+    text: "Watched every game of the footy finals on Enktel from my place on the Gold Coast. Crystal clear 4K, zero buffering. Absolutely brilliant service!",
     plan: "Pro",
   },
   {

@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 import tv.enktel.app.data.download.DownloadLocation
 import tv.enktel.app.data.share.LanShare
 import tv.enktel.app.data.share.LanShareFiles
-import tv.enktel.app.data.share.LanShareServer
+import tv.enktel.app.data.share.LanShareController
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.SectionTitle
@@ -163,16 +163,14 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
         // comes across the house network. Nothing to install on the PC, no
         // account, and the file never leaves the building.
         val netKind by tv.enktel.app.data.net.NetworkClass.kind.collectAsStateWithLifecycle()
-        var sharing by remember { mutableStateOf<LanShareServer.Started?>(null) }
+        // Owned by a foreground service, not by this screen. A film is several
+        // gigabytes over house Wi-Fi — the viewer starts the transfer and then
+        // goes to look at something else, and it has to keep running. Anything
+        // that only works while you stare at it is not a feature. The ongoing
+        // notification is what keeps "something is listening" visible for as
+        // long as it is true.
+        val sharing by LanShareController.current.collectAsStateWithLifecycle()
         var shareError by remember { mutableStateOf("") }
-        val server = remember { LanShareServer() }
-
-        // Stopping when the screen goes away is not tidiness — it is the
-        // difference between a server that exists for the minutes it is needed
-        // and one left listening on the network until the app is killed.
-        androidx.compose.runtime.DisposableEffect(Unit) {
-            onDispose { server.stop() }
-        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -183,8 +181,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 accent = sharing == null,
                 onClick = {
                     if (sharing != null) {
-                        server.stop()
-                        sharing = null
+                        LanShareController.stop(ctx)
                         shareError = ""
                         return@FocusButton
                     }
@@ -195,18 +192,9 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                         shareError = "Could not find this device's address on the network."
                         return@FocusButton
                     }
-                    val files = LanShareFiles.shareable(ctx, entries)
-                    if (files.isEmpty()) {
-                        shareError = "Nothing finished downloading yet, so there is nothing to send."
-                        return@FocusButton
-                    }
-                    val started = server.start(ip, files)
-                    if (started == null) {
-                        shareError = "Could not open the sharing port. Another app may be using it."
-                    } else {
-                        sharing = started
-                        shareError = ""
-                    }
+                    shareError = LanShareController
+                        .start(ctx, ip, LanShareFiles.shareable(ctx, entries))
+                        .orEmpty()
                 },
             )
         }
@@ -220,7 +208,8 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
                 "The PIN is new each time you start sending. Both devices have to be on the same " +
-                    "Wi-Fi. Sending stops when you leave this screen.",
+                    "Wi-Fi. This keeps running while you use the rest of the app — stop it " +
+                    "here, or from the notification, when you are done.",
                 color = EnktelTextDim, fontSize = 11.sp,
             )
         }
