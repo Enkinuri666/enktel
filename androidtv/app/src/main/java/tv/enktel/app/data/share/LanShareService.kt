@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -29,6 +30,17 @@ import tv.enktel.app.data.download.DownloadHub
  */
 class LanShareService : Service() {
 
+    /**
+     * Kept for as long as sharing runs, and no longer.
+     *
+     * Wi-Fi filters out packets that are not addressed to this device, which
+     * includes the subnet broadcast the PC client uses to find us. This lock
+     * turns that filtering off; holding it costs battery, which is why it
+     * belongs to the service that already stops when the viewer stops sharing
+     * rather than to the app.
+     */
+    private var multicastLock: WifiManager.MulticastLock? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -36,6 +48,7 @@ class LanShareService : Service() {
             shutDown()
             return START_NOT_STICKY
         }
+        acquireMulticastLock()
         val started = LanShareController.current.value
         startForeground(
             NOTIF_ID,
@@ -54,7 +67,24 @@ class LanShareService : Service() {
         super.onDestroy()
     }
 
+    private fun acquireMulticastLock() {
+        if (multicastLock != null) return
+        // Best effort throughout: a device without Wi-Fi hardware, or one that
+        // refuses the lock, still shares perfectly well over its address — the
+        // viewer just has to type it rather than being found.
+        runCatching {
+            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            wifi?.createMulticastLock("enktel-share")?.apply {
+                setReferenceCounted(false)
+                acquire()
+                multicastLock = this
+            }
+        }
+    }
+
     private fun shutDown() {
+        runCatching { multicastLock?.takeIf { it.isHeld }?.release() }
+        multicastLock = null
         LanShareController.serverStopped()
         if (Build.VERSION.SDK_INT >= 24) {
             @Suppress("DEPRECATION")
@@ -93,14 +123,45 @@ object LanShareController {
     private val server = LanShareServer()
     private val _current = MutableStateFlow<LanShareServer.Started?>(null)
 
+    /**
+     * The queue mirror handed to the server, alive only while sharing is.
+     *
+     * Created per run and closed with it: it holds a database subscription,
+     * and one left running after the viewer stopped sharing is a coroutine
+     * collecting rows for a server nobody can reach.
+     */
+    private var remote: DownloadRemote? = null
+
     /** Null when nothing is being shared. */
     val current: StateFlow<LanShareServer.Started?> = _current.asStateFlow()
 
-    /** Start sharing [files]. Returns an error for the screen, or null on success. */
-    fun start(ctx: Context, ip: String, files: List<LanShareServer.Shared>): String? {
+    /**
+     * Start sharing [files]. Returns an error for the screen, or null on success.
+     *
+     * [hub] is optional so a caller with nothing to control — a test, or a
+     * future screen that only wants to hand over one file — can leave the
+     * remote-control routes switched off rather than passing a stub.
+     */
+    fun start(
+        ctx: Context,
+        ip: String,
+        files: List<LanShareServer.Shared>,
+        hub: DownloadHub? = null,
+    ): String? {
         if (files.isEmpty()) return "Nothing finished downloading yet, so there is nothing to send."
-        val started = server.start(ip, files)
-            ?: return "Could not open the sharing port. Another app may be using it."
+        val mirror = hub?.let { DownloadRemote(it) }
+        val started = server.start(
+            ip = ip,
+            shared = files,
+            remote = mirror,
+            deviceName = deviceName(),
+            appVersion = tv.enktel.app.BuildConfig.VERSION_NAME,
+        )
+        if (started == null) {
+            mirror?.close()
+            return "Could not open the sharing port. Another app may be using it."
+        }
+        remote = mirror
         _current.value = started
         val i = Intent(ctx, LanShareService::class.java)
         runCatching {
@@ -109,11 +170,26 @@ object LanShareController {
             // No foreground service means no protection from being killed, and
             // a server that dies mid-transfer without saying so is worse than
             // one that never started.
-            server.stop()
-            _current.value = null
+            serverStopped()
             return "Could not keep sharing running in the background."
         }
         return null
+    }
+
+    /**
+     * What the PC client shows in its device list.
+     *
+     * `Build.MODEL` alone is "SM-G991B" on half the phones in the house, so
+     * the manufacturer goes in front unless the model already says it.
+     */
+    private fun deviceName(): String {
+        val model = Build.MODEL.orEmpty().trim()
+        val make = Build.MANUFACTURER.orEmpty().trim().replaceFirstChar { it.uppercase() }
+        return when {
+            model.isBlank() -> make.ifBlank { "EnkTel device" }
+            make.isBlank() || model.startsWith(make, ignoreCase = true) -> model
+            else -> "$make $model"
+        }
     }
 
     fun stop(ctx: Context) {
@@ -128,6 +204,8 @@ object LanShareController {
     /** Called by the service as it goes down. */
     internal fun serverStopped() {
         server.stop()
+        remote?.close()
+        remote = null
         _current.value = null
     }
 }

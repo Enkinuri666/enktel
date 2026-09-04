@@ -34,18 +34,18 @@
  * | `RESELLER_API_KEY` | — | the privileged key; nothing works without it |
  * | `RESELLER_PACKAGE_TRIAL` | `101` | 24-hour package |
  * | `RESELLER_PACKAGE_1M/_3M/_6M/_12M` | `109/110/111/10` | paid packages |
- * | `RESELLER_TEMPLATE_ID` | unset | optional; unset lets the panel choose |
+ * | `RESELLER_TEMPLATE_ID` | `1028` | channel template a new line is built on |
  * | `STREAM_SERVER_URL` | `https://x-api.cc` | fallback host for a line |
  *
  * The package ids are this reseller's own, read from `action=packages`, so
  * they are defaults rather than secrets. Only the key must come from the
  * environment, and it is the one thing that must never be committed.
  *
- * `RESELLER_TEMPLATE_ID` is deliberately unset. The panel offers EAGLE_LITE,
- * EAGLE_ARABIC and EAGLE_FRENCH, none of which is obviously the full
- * Australian lineup, and `template_id` is optional — so the panel's own
- * default applies rather than a guess that could hand a paying customer a
- * reduced channel list.
+ * `RESELLER_TEMPLATE_ID` is 1028 — EAGLE_LITE — on the account holder's
+ * instruction. It was left unset until they named one, because the panel also
+ * offers EAGLE_ARABIC (1029) and EAGLE_FRENCH (1030) and picking wrong hands a
+ * paying customer the wrong channel list. It is still env-overridable, so
+ * changing lineup is a Vercel setting rather than a deploy.
  */
 
 import { planById, TRIAL_HOURS } from "./pricing";
@@ -60,6 +60,14 @@ const DEFAULT_PACKAGES: Record<string, string> = {
 };
 
 const DEFAULT_ENDPOINT = "http://api.elg-26.com/api/dev_api.php";
+
+/** EAGLE_LITE. See the note at the top of this file. */
+const DEFAULT_TEMPLATE_ID = "1028";
+
+/** Which channel template a new line is built on. */
+export function templateId(): string {
+  return process.env.RESELLER_TEMPLATE_ID || DEFAULT_TEMPLATE_ID;
+}
 
 export function resellerConfigured(): boolean {
   return Boolean(process.env.RESELLER_API_KEY);
@@ -210,7 +218,7 @@ export async function createLine(
     action: "user",
     type: "create",
     package_id: pkg,
-    template_id: process.env.RESELLER_TEMPLATE_ID,
+    template_id: templateId(),
     note: note?.slice(0, 200),
   });
 

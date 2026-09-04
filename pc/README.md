@@ -21,6 +21,42 @@ Chosen for the "lightweight yet feature-packed and super responsive" brief:
 - **Zustand** — tiny state atom.
 - **React Query** — server-state cache for the Xtream / EPG requests.
 
+## My devices — the desktop end of "Send to PC"
+
+The one part of this app that is finished and tested rather than targeted, because
+it is the half of a shipped Android feature that had no desktop half.
+
+The mobile and TV apps can open a small HTTP server on the house network and show
+a PIN (Downloads → **Send to PC**). A browser is enough to fetch a file from it.
+This app does three things a browser cannot:
+
+| | browser | EnkTel on the PC |
+| --- | --- | --- |
+| finding the device | read the IP off the TV, type it | UDP broadcast, pick from a list |
+| saving | prompts per file | one folder, `Get all`, unattended |
+| interrupted transfer | starts the film again | resumes from the byte it reached |
+| the device's queue | — | pause / resume / retry / cancel |
+
+Where it lives:
+
+- `src-tauri/src/link.rs` — discovery, pairing, the HTTP calls, and the resuming
+  save. Everything that touches the network or the disk, with its tests.
+- `src/lib/link.ts` — the `invoke` wrappers and the formatting helpers.
+- `src/pages/PhonePage.tsx` — the screen.
+
+The Android end is `data/share/LanShareApi.kt` (the wire format), `LanShareServer.kt`
+(the routes) and `DownloadRemote.kt` (what the remote control is allowed to do).
+`LanShareApi.VERSION` and `link.rs`'s `PROTOCOL_VERSION` must agree — the two ends
+ship separately, so a mismatched pair says so rather than misbehaving.
+
+**Security, in short.** Pairing needs the PIN shown on the device; ten wrong ones
+and it stops answering until sharing is restarted. Files are addressed by opaque
+token, never by path. The token from pairing dies with the share and is never
+written to disk. Names arriving from the network are sanitised *here* as well as
+on the phone before they are joined to a path — `safe_name` and `destination` in
+`link.rs`, both tested against traversal, NTFS streams and the DOS device names.
+The discovery datagram carries a device name and a port and nothing else.
+
 ## Elite features (targeted)
 
 - Multi-monitor + popout floating players.
@@ -49,6 +85,7 @@ pc/
 │   ├── App.tsx         · Router + shell
 │   ├── theme.ts        · EnkTel colours + Tailwind vars
 │   ├── pages/          · Home / LiveTV / Movies / Series / Sports / Guide / Settings
+│   │                     plus PhonePage — "My devices" (Send to PC)
 │   ├── components/     · Player, ChannelList, EPGRow, PosterCard, MicButton, …
 │   ├── lib/            · API client, utils, hooks
 │   └── stores/         · Zustand stores

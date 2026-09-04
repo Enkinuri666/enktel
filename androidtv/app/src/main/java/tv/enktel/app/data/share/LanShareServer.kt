@@ -2,6 +2,8 @@ package tv.enktel.app.data.share
 
 import java.io.BufferedOutputStream
 import java.io.InputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -41,6 +43,20 @@ class LanShareServer {
 
     private var socket: ServerSocket? = null
 
+    /**
+     * The "who's there" responder, when the OS let us have its port.
+     *
+     * Optional on purpose: everything works without it, the viewer just has to
+     * read the address off the phone and type it. Failing to bind a discovery
+     * port must never be the reason a transfer cannot happen.
+     */
+    private var discovery: DatagramSocket? = null
+
+    /** The download queue a paired client may drive. Null disables those routes. */
+    @Volatile private var remote: LanShareApi.Remote? = null
+    @Volatile private var deviceName: String = "EnkTel"
+    @Volatile private var appVersion: String = ""
+
     // Created per run and shut down with it. A pool held for the object's life
     // keeps four threads parked for as long as the app is open, having served
     // one transfer weeks ago.
@@ -63,11 +79,27 @@ class LanShareServer {
 
     val running: Boolean get() = socket?.isClosed == false
 
-    /** Bind and begin serving [shared]. Returns null when the port is taken. */
-    fun start(ip: String, shared: List<Shared>, port: Int = LanShare.DEFAULT_PORT): Started? {
+    /**
+     * Bind and begin serving [shared]. Returns null when no port could be had.
+     *
+     * [remote] is what a paired EnkTel client on the PC is allowed to do to the
+     * download queue; passing null leaves the API read-only, which is what a
+     * browser gets anyway.
+     */
+    fun start(
+        ip: String,
+        shared: List<Shared>,
+        port: Int = LanShare.DEFAULT_PORT,
+        remote: LanShareApi.Remote? = null,
+        deviceName: String = "EnkTel",
+        appVersion: String = "",
+    ): Started? {
         stop()
         files.clear()
         shared.forEach { files[it.token] = it }
+        this.remote = remote
+        this.deviceName = deviceName.ifBlank { "EnkTel" }
+        this.appVersion = appVersion
         pin = LanShare.newPin()
         session = LanShare.newToken()
         wrongPins.set(0)
@@ -94,7 +126,48 @@ class LanShareServer {
                 }
             }
         }
+        startDiscovery(actualPort)
         return Started(ip, actualPort, pin)
+    }
+
+    /**
+     * Answer LAN broadcasts asking whether an EnkTel device is sharing.
+     *
+     * Saves reading an IP address off a television across the room and typing
+     * it into a PC, which is the single most annoying step of the browser
+     * flow. It gives away a device name and a port number and nothing else —
+     * see [LanShareApi.announceJson].
+     */
+    private fun startDiscovery(httpPort: Int) {
+        val sock = try {
+            DatagramSocket(null).apply {
+                reuseAddress = true
+                bind(InetSocketAddress(LanShareApi.DISCOVERY_PORT))
+                broadcast = true
+            }
+        } catch (_: Throwable) {
+            // Port taken, or a platform that will not give it to us. The HTTP
+            // server is already up and is the part that matters.
+            return
+        }
+        discovery = sock
+        thread(name = "lan-share-discovery", isDaemon = true) {
+            val buf = ByteArray(256)
+            while (!sock.isClosed) {
+                val packet = DatagramPacket(buf, buf.size)
+                try {
+                    sock.receive(packet)
+                } catch (_: Throwable) {
+                    break
+                }
+                val text = String(packet.data, packet.offset, packet.length).trim()
+                if (text != LanShareApi.PROBE) continue
+                val reply = LanShareApi.announceJson(deviceName, httpPort).toByteArray()
+                runCatching {
+                    sock.send(DatagramPacket(reply, reply.size, packet.address, packet.port))
+                }
+            }
+        }
     }
 
     private fun bind(port: Int): ServerSocket? = try {
@@ -109,9 +182,12 @@ class LanShareServer {
     fun stop() {
         runCatching { socket?.close() }
         socket = null
+        runCatching { discovery?.close() }
+        discovery = null
         runCatching { pool?.shutdownNow() }
         pool = null
         files.clear()
+        remote = null
         // Cleared so a stopped server cannot be talked to by a request that
         // was already in flight.
         pin = ""
@@ -144,38 +220,105 @@ class LanShareServer {
             val path = target.substringBefore('?')
             val query = target.substringAfter('?', "")
 
+            val wantsJson = path.startsWith("/api/")
+
             if (lockedOut) {
-                send(out, 429, "Too Many Requests", page("Too many wrong PINs. Restart sending on the phone to get a new one."))
+                val message = "Too many wrong PINs. Restart sending on the phone to get a new one."
+                if (wantsJson) sendJson(out, 429, "Too Many Requests", LanShareApi.errorJson(message))
+                else send(out, 429, "Too Many Requests", page(message))
                 return
             }
 
-            // The PIN arrives once, as a form post; after that a session
-            // cookie carries it so it is not sitting in every URL.
-            if (method == "POST" && path == "/") {
+            // The PIN arrives once and is exchanged for something longer: a
+            // cookie for a browser, a bearer token for the PC client. Either
+            // way it is not sitting in every subsequent URL.
+            if (method == "POST" && (path == "/" || path == "/api/pair")) {
                 val length = headers["content-length"]?.toIntOrNull() ?: 0
                 val body = readBody(input, length)
-                val supplied = formValue(body, "pin")
+                val supplied = formValue(body, "pin").ifEmpty { jsonValue(body, "pin") }
                 if (LanShare.pinMatches(supplied, pin)) {
-                    sendRedirect(out, "/", session)
+                    if (path == "/api/pair") {
+                        sendJson(
+                            out, 200, "OK",
+                            LanShareApi.pairedJson(session, deviceName, appVersion),
+                        )
+                    } else {
+                        sendRedirect(out, "/", session)
+                    }
                 } else {
                     if (wrongPins.incrementAndGet() >= MAX_WRONG_PINS) lockedOut = true
-                    send(out, 401, "Unauthorized", loginPage("That PIN was not right."))
+                    if (path == "/api/pair") {
+                        sendJson(out, 401, "Unauthorized", LanShareApi.errorJson("That PIN was not right."))
+                    } else {
+                        send(out, 401, "Unauthorized", loginPage("That PIN was not right."))
+                    }
                 }
                 return
             }
 
-            val authorised = headers["cookie"].orEmpty().contains("$COOKIE=$session") && session.isNotEmpty()
-            if (!authorised) {
-                send(out, 401, "Unauthorized", loginPage(null))
+            if (!authorised(headers)) {
+                if (wantsJson) sendJson(out, 401, "Unauthorized", LanShareApi.errorJson("Pair first."))
+                else send(out, 401, "Unauthorized", loginPage(null))
                 return
             }
 
             when {
                 path == "/" -> send(out, 200, "OK", listPage())
                 path.startsWith("/f/") -> serveFile(out, path.removePrefix("/f/"), headers, query)
+                path == "/api/files" -> sendJson(out, 200, "OK", LanShareApi.filesJson(files.values.toList()))
+                path == "/api/downloads" -> serveDownloads(out)
+                path == "/api/downloads/act" && method == "POST" -> {
+                    val length = headers["content-length"]?.toIntOrNull() ?: 0
+                    serveAct(out, readBody(input, length))
+                }
+                wantsJson -> sendJson(out, 404, "Not Found", LanShareApi.errorJson("No such route."))
                 else -> send(out, 404, "Not Found", page("No such thing here."))
             }
         }
+    }
+
+    /**
+     * Is this request carrying the session it was given at pairing?
+     *
+     * A browser sends it as a cookie, the PC client as a bearer token. The
+     * bearer comparison is constant-time for the same reason the PIN's is —
+     * it is a secret compared on every single request, including the hundreds
+     * a resumed multi-gigabyte transfer makes.
+     */
+    private fun authorised(headers: Map<String, String>): Boolean {
+        if (session.isEmpty()) return false
+        val bearer = headers["authorization"].orEmpty().trim()
+        if (bearer.startsWith("Bearer ", ignoreCase = true)) {
+            if (LanShare.pinMatches(bearer.substring(7).trim(), session)) return true
+        }
+        return headers["cookie"].orEmpty().contains("$COOKIE=$session")
+    }
+
+    private fun serveDownloads(out: BufferedOutputStream) {
+        val r = remote
+        if (r == null) {
+            sendJson(out, 200, "OK", LanShareApi.jobsJson(emptyList()))
+            return
+        }
+        val jobs = runCatching { r.jobs() }.getOrDefault(emptyList())
+        sendJson(out, 200, "OK", LanShareApi.jobsJson(jobs))
+    }
+
+    private fun serveAct(out: BufferedOutputStream, body: String) {
+        val r = remote
+        if (r == null) {
+            sendJson(out, 503, "Service Unavailable", LanShareApi.errorJson("This device cannot be controlled remotely."))
+            return
+        }
+        val id = formValue(body, "id").ifEmpty { jsonValue(body, "id") }
+        val actionText = formValue(body, "action").ifEmpty { jsonValue(body, "action") }
+        val action = LanShareApi.Action.parse(actionText)
+        if (id.isBlank() || action == null) {
+            sendJson(out, 400, "Bad Request", LanShareApi.errorJson("Send an id and one of pause, resume, retry, cancel."))
+            return
+        }
+        val applied = runCatching { r.act(id, action) }.getOrDefault(false)
+        sendJson(out, if (applied) 200 else 404, if (applied) "OK" else "Not Found", LanShareApi.actedJson(applied))
     }
 
     private fun serveFile(
@@ -284,6 +427,61 @@ class LanShareServer {
             ?.substringAfter('=', "")
             ?.let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }
             .orEmpty()
+
+    /**
+     * Pull one string field out of a flat JSON body.
+     *
+     * The PC client posts JSON; a browser form posts form encoding. Rather
+     * than make the client pretend to be a form, both are read — and this is
+     * the smaller half, because the only bodies that reach it are two objects
+     * with two short string fields each. It is not a JSON parser and must not
+     * be used as one.
+     */
+    private fun jsonValue(body: String, key: String): String {
+        val needle = "\"$key\""
+        var i = body.indexOf(needle)
+        if (i < 0) return ""
+        i = body.indexOf(':', i + needle.length)
+        if (i < 0) return ""
+        i++
+        while (i < body.length && body[i].isWhitespace()) i++
+        if (i >= body.length || body[i] != '"') return ""
+        i++
+        val sb = StringBuilder()
+        while (i < body.length) {
+            val c = body[i]
+            when {
+                c == '"' -> return sb.toString()
+                c == '\\' && i + 1 < body.length -> {
+                    i++
+                    when (val e = body[i]) {
+                        'n' -> sb.append('\n')
+                        'r' -> sb.append('\r')
+                        't' -> sb.append('\t')
+                        'u' -> {
+                            if (i + 4 >= body.length) return ""
+                            val hex = body.substring(i + 1, i + 5)
+                            val code = hex.toIntOrNull(16) ?: return ""
+                            sb.append(code.toChar())
+                            i += 4
+                        }
+                        else -> sb.append(e)
+                    }
+                }
+                else -> sb.append(c)
+            }
+            i++
+        }
+        // Unterminated string — a truncated body, not a value.
+        return ""
+    }
+
+    private fun sendJson(out: BufferedOutputStream, code: Int, reason: String, json: String) {
+        val body = json.toByteArray()
+        sendHead(out, code, reason, listOf("Content-Type: application/json; charset=utf-8"), body.size.toLong())
+        out.write(body)
+        out.flush()
+    }
 
     private fun sendHead(
         out: BufferedOutputStream,

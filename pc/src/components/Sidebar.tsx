@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   Home, Tv, Film, Popcorn, Trophy, CalendarDays,
-  Search, Bookmark, Radio, Settings,
+  Search, Bookmark, Radio, Settings, Smartphone,
 } from 'lucide-react';
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/watchlist', icon: Bookmark, label: 'Watchlist' },
   { to: '/recordings', icon: Radio, label: 'Recordings' },
+  { to: '/devices', icon: Smartphone, label: 'My devices' },
 ];
 
 /**

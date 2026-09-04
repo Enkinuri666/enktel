@@ -298,6 +298,21 @@ def manual_story(st, version, code):
         "connection drops. Sending needs Wi-Fi \u2014 on mobile data the app will not open a server, "
         "because there the local network is your carrier's.", st["note"]))
 
+    s.append(Paragraph("Using the EnkTel app on your PC instead", st["h2"]))
+    s.append(Paragraph(
+        "A browser is enough, but the EnkTel desktop app does the same job with less typing. Open "
+        "My devices and it looks for phones and TV boxes that are sharing, so there is no address "
+        "to read off a television screen. Pick the device, type the PIN once, and it lists what is "
+        "ready to copy across. Choose a folder and Get all takes every finished download into it, "
+        "one after another, without asking again per file.", st["body"]))
+    s.append(Paragraph(
+        "The same screen shows what that device is still downloading and lets you pause, resume, "
+        "retry or cancel any of it from the PC \u2014 the download itself carries on running on the "
+        "phone, so it keeps going when you close the laptop. A transfer that is interrupted picks "
+        "up from the byte it reached rather than starting the film again. Cancelling a download "
+        "removes it from that device and deletes what it had already fetched, which is why the app "
+        "asks first; nothing already saved on the PC is touched.", st["note"]))
+
     s.append(Paragraph("Renewing your line", st["h1"]))
     s.append(Paragraph(
         "When a line is within a fortnight of running out, the account panel says so and offers a "
