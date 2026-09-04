@@ -1,4 +1,5 @@
 "use client";
+import { CHANNEL_COUNT_LABEL, VOD_COUNT_LABEL } from "@/lib/catalogSize";
 import { motion } from "framer-motion";
 import { Trophy, Film, Tv } from "lucide-react";
 
@@ -59,7 +60,7 @@ const TABLES: { icon: typeof Trophy; title: string; blurb: string; themHead: str
       {
         label: "Movie library",
         them: "Fragmented. Search Netflix, then Amazon, then Stan to find one film.",
-        us: "One massive unified library. Tens of thousands of films, one search box.",
+        us: `One massive unified library. ${VOD_COUNT_LABEL} films, one search box.`,
       },
       {
         label: "New releases",
@@ -86,7 +87,7 @@ const TABLES: { icon: typeof Trophy; title: string; blurb: string; themHead: str
     blurb: "Where the traditional set-top box stops making sense.",
     themHead: "Foxtel Platinum",
     rows: [
-      { label: "Channel count", them: "Around 140 channels.", us: "10,000+ channels." },
+      { label: "Channel count", them: "Around 140 channels.", us: `${CHANNEL_COUNT_LABEL} channels.` },
       {
         label: "International content",
         them: "Very limited — a few news channels.",

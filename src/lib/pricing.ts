@@ -1,3 +1,4 @@
+import { CHANNEL_COUNT_LABEL } from "@/lib/catalogSize";
 /**
  * The subscription plans, and the one place their numbers live.
  *
@@ -47,7 +48,7 @@ export interface Plan {
  * four times and drifting.
  */
 export const INCLUDED_IN_EVERY_PLAN: string[] = [
-  "Instant access to 10,000+ live global channels",
+  `Instant access to ${CHANNEL_COUNT_LABEL} live global channels`,
   "All live sports — AFL, NRL, EPL, NFL, NBA",
   "Full PPV event access — UFC, boxing, WWE",
   "Complete video-on-demand movie & TV library",
