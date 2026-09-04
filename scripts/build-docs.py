@@ -273,6 +273,31 @@ def manual_story(st, version, code):
         ("About", "Version, diagnostics and crash reports."),
     ], st, [34 * mm, 126 * mm]))
 
+    s.append(Paragraph("Downloads", st["h1"]))
+    s.append(Paragraph(
+        "Saved films and episodes play offline. Where they are kept is worth setting once: by "
+        "default they go to a folder Android keeps private to the app, which means uninstalling "
+        "clears them and no file manager can open it. Settings \u2192 Recording \u2192 Pick download "
+        "folder puts them somewhere ordinary instead \u2014 one that survives uninstalling and can be "
+        "read from a PC over USB.", st["body"]))
+    s.append(Paragraph(
+        "Each finished download has a folder button. Where you have picked a folder it opens it; "
+        "where you have not, it explains why nothing can and offers to set one. Changing the "
+        "folder affects future downloads \u2014 files already saved stay where they are.", st["note"]))
+
+    s.append(Paragraph("Sending a download to a PC", st["h2"]))
+    s.append(Paragraph(
+        "Tap Send to PC on the Downloads screen. The app shows an address and a PIN; type the "
+        "address into a browser on a computer on the same Wi-Fi, enter the PIN, and pick a title "
+        "to save it. There is nothing to install on the computer, no account, and the file does "
+        "not leave your home network.", st["body"]))
+    s.append(Paragraph(
+        "The PIN is new every time you start, and ten wrong attempts stop the server until you "
+        "start it again. It keeps running while you use the rest of the app; stop it from the "
+        "Downloads screen or from its notification. Large files resume by themselves if the "
+        "connection drops. Sending needs Wi-Fi \u2014 on mobile data the app will not open a server, "
+        "because there the local network is your carrier's.", st["note"]))
+
     s.append(Paragraph("Renewing your line", st["h1"]))
     s.append(Paragraph(
         "When a line is within a fortnight of running out, the account panel says so and offers a "
