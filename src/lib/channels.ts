@@ -718,10 +718,15 @@ export function getChannelById(id: string): Channel | undefined {
 // Real Eagle 4K Premium catalog size (the underlying panel this site resells),
 // not the length of the curated sample list above, which only exists for the
 // EPG/browse UI demo.
-export const CHANNEL_COUNT = 35000;
-export const CHANNEL_COUNT_LABEL = "35,000+";
-export const VOD_COUNT_LABEL = "200,000+";
-export const SERIES_COUNT_LABEL = "35,000+";
+// Moved to catalogSize.ts so pricing copy and page metadata can quote these
+// without importing the catalogue itself. Re-exported here because plenty of
+// callers already import them from this module.
+export {
+  CHANNEL_COUNT,
+  CHANNEL_COUNT_LABEL,
+  VOD_COUNT_LABEL,
+  SERIES_COUNT_LABEL,
+} from "./catalogSize";
 
 export const channelCategories = [
   "All",
