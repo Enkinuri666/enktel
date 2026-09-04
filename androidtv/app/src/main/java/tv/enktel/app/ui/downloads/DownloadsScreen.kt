@@ -40,6 +40,12 @@ import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.DownloadEntry
 import tv.enktel.app.data.download.humanBytes
 import tv.enktel.app.ui.components.CenterMessage
+import androidx.core.net.toUri
+import kotlinx.coroutines.launch
+import tv.enktel.app.data.download.DownloadLocation
+import tv.enktel.app.data.share.LanShare
+import tv.enktel.app.data.share.LanShareFiles
+import tv.enktel.app.data.share.LanShareServer
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.SectionTitle
@@ -67,6 +73,57 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
 
     var confirmDelete by remember { mutableStateOf<DownloadEntry?>(null) }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Set when the folder button lands on a file the system will not let
+    // anything open — which is every download made before a folder was picked.
+    var sealedNotice by remember { mutableStateOf<DownloadLocation.Reveal.Sealed?>(null) }
+
+    // The same picker Settings uses. Offered here as well because this is
+    // where the viewer actually discovers the problem: they wanted the file
+    // and could not have it.
+    val folderPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            runCatching { ctx.contentResolver.takePersistableUriPermission(uri, flags) }
+            scope.launch { graph.settings.setDownloadFolderUri(uri.toString()) }
+            sealedNotice = null
+        }
+    }
+
+    /** Open the folder holding a finished download, or say why that is impossible. */
+    fun reveal(entry: DownloadEntry) {
+        when (val r = DownloadLocation.reveal(entry.filePath, android.os.Build.VERSION.SDK_INT)) {
+            is DownloadLocation.Reveal.Sealed -> sealedNotice = r
+            is DownloadLocation.Reveal.Folder -> {
+                // ACTION_VIEW on a tree URI is honoured by some file managers
+                // and ignored by others, so the picker — which every device
+                // has, and which opens *at* the folder — is the fallback
+                // rather than a dead button.
+                val view = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                    .setDataAndType(r.treeUri.toUri(), android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                    .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (ctx.packageManager.resolveActivity(view, 0) != null) {
+                    runCatching { ctx.startActivity(view) }
+                } else {
+                    runCatching { folderPicker.launch(r.treeUri.toUri()) }
+                }
+            }
+            is DownloadLocation.Reveal.Path -> {
+                sealedNotice = DownloadLocation.Reveal.Sealed(
+                    r.path,
+                    "This file is at the path below. Open it with your file manager.",
+                )
+            }
+            DownloadLocation.Reveal.NotYet -> Unit
+        }
+    }
+
     // Page padding is the overscan safe zone on TV, not taste: this screen
     // was insetting 20 dp against a band a cropping panel eats at 58 dp,
     // which put the first and last rows off the visible picture.
@@ -82,10 +139,96 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
         Spacer(Modifier.height(4.dp))
+        // Two different truths, and the difference matters: one of these
+        // folders survives uninstall and can be read from a PC, and the other
+        // cannot be opened by anything at all.
+        val dlFolder by graph.settings.downloadFolderUri.collectAsStateWithLifecycle(initialValue = "")
         Text(
-            "Saved movies and episodes play offline. Files live in the app's private storage — uninstalling clears them.",
+            if (dlFolder.isBlank()) {
+                "Saved movies and episodes play offline. Files live in the app's private storage — " +
+                    "uninstalling clears them, and Android does not let file managers open that folder. " +
+                    "Pick a download folder to keep them somewhere you can reach."
+            } else {
+                "Saved movies and episodes play offline. Files go to the folder you picked, so they " +
+                    "survive uninstalling and can be opened here or copied from a PC."
+            },
             color = EnktelTextDim, fontSize = 12.sp,
         )
+        Spacer(Modifier.height(12.dp))
+
+        // Sending to a PC.
+        //
+        // The whole feature is: the phone runs a small web server, the viewer
+        // types its address into a browser on their computer, and the file
+        // comes across the house network. Nothing to install on the PC, no
+        // account, and the file never leaves the building.
+        val netKind by tv.enktel.app.data.net.NetworkClass.kind.collectAsStateWithLifecycle()
+        var sharing by remember { mutableStateOf<LanShareServer.Started?>(null) }
+        var shareError by remember { mutableStateOf("") }
+        val server = remember { LanShareServer() }
+
+        // Stopping when the screen goes away is not tidiness — it is the
+        // difference between a server that exists for the minutes it is needed
+        // and one left listening on the network until the app is killed.
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            onDispose { server.stop() }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FocusButton(
+                text = if (sharing != null) "■ Stop sending" else "📤 Send to PC",
+                accent = sharing == null,
+                onClick = {
+                    if (sharing != null) {
+                        server.stop()
+                        sharing = null
+                        shareError = ""
+                        return@FocusButton
+                    }
+                    val blocked = LanShare.blockedReason(netKind)
+                    if (blocked != null) { shareError = blocked; return@FocusButton }
+                    val ip = LanShareFiles.localAddress()
+                    if (ip == null) {
+                        shareError = "Could not find this device's address on the network."
+                        return@FocusButton
+                    }
+                    val files = LanShareFiles.shareable(ctx, entries)
+                    if (files.isEmpty()) {
+                        shareError = "Nothing finished downloading yet, so there is nothing to send."
+                        return@FocusButton
+                    }
+                    val started = server.start(ip, files)
+                    if (started == null) {
+                        shareError = "Could not open the sharing port. Another app may be using it."
+                    } else {
+                        sharing = started
+                        shareError = ""
+                    }
+                },
+            )
+        }
+        sharing?.let { live ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "On your PC, open a browser and go to:",
+                color = EnktelTextDim, fontSize = 12.sp,
+            )
+            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "The PIN is new each time you start sending. Both devices have to be on the same " +
+                    "Wi-Fi. Sending stops when you leave this screen.",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
+        }
+        if (shareError.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(shareError, color = EnktelTextDim, fontSize = 12.sp)
+        }
+
         Spacer(Modifier.height(14.dp))
 
         if (entries.isEmpty()) {
@@ -122,6 +265,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                         entry,
                         onPlay = playAction(entry, nav),
                         onDelete = { confirmDelete = entry },
+                        onReveal = { reveal(entry) },
                     )
                 }
             }
@@ -143,6 +287,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                             entry,
                             onPlay = playAction(entry, nav),
                             onDelete = { confirmDelete = entry },
+                            onReveal = { reveal(entry) },
                         )
                     }
                 }
@@ -160,6 +305,20 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 confirmDelete = null
             },
             onDismiss = { confirmDelete = null },
+        )
+    }
+
+    // Reuses the confirm dialog because the shape is the same — a sentence and
+    // a decision. The decision here is whether to fix it for every future
+    // download, which is the only thing that actually can be fixed: the file
+    // already on disk stays where Android put it.
+    sealedNotice?.let { notice ->
+        tv.enktel.app.ui.components.ConfirmDialog(
+            title = "Where this file lives",
+            message = "${notice.because}\n\n${notice.path}",
+            confirmLabel = "Pick a folder",
+            onConfirm = { runCatching { folderPicker.launch(null) } },
+            onDismiss = { sealedNotice = null },
         )
     }
 }
@@ -198,6 +357,8 @@ private fun DownloadRow(
     onDelete: () -> Unit,
     onPause: (() -> Unit)? = null,
     onResume: (() -> Unit)? = null,
+    /** Where this file ended up. Null while it is still being written. */
+    onReveal: (() -> Unit)? = null,
     /** Live transfer rate, bytes/sec. 0 when not moving. */
     speedBps: Long = 0L,
 ) {
@@ -301,6 +462,18 @@ private fun DownloadRow(
                         FocusButton(text = "↻", accent = true, onClick = it)
                         Spacer(Modifier.height(6.dp))
                     }
+            }
+            // Only on a finished row: there is no folder to show until the
+            // file exists, and offering one mid-download would point at a
+            // partial file.
+            if (entry.status == "DONE" && onReveal != null) {
+                FocusButton(
+                    text = DownloadLocation.buttonLabel(
+                        DownloadLocation.reveal(entry.filePath, android.os.Build.VERSION.SDK_INT),
+                    ),
+                    onClick = onReveal,
+                )
+                Spacer(Modifier.height(6.dp))
             }
             FocusButton(text = "✕", onClick = onDelete)
         }
