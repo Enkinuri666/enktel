@@ -39,6 +39,9 @@ finished downloads off your phone over your own Wi-Fi:
 
   https://github.com/Enkinuri666/enktel/releases/latest
 
+Windows will warn that it does not recognise the publisher. Choose "More info",
+then "Run anyway". That warning is about our certificate, not about the file.
+
 
 THE ILLUSTRATED GUIDE
 
