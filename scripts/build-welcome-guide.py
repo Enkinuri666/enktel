@@ -223,6 +223,18 @@ class Callout(Flowable):
         self.para.drawOn(c, 7 * mm, 4.5)
 
 
+def link(url: str) -> str:
+    """
+    A clickable URL.
+
+    No zero-width spaces to help it wrap: Helvetica has no glyph for U+200B,
+    so reportlab drew a notdef box at every one and the address came out
+    peppered with tofu. ParagraphStyle splits long words by itself, which is
+    enough and leaves the text something a reader could retype.
+    """
+    return f'<link href="{url}" color="#1B6AE5">{url}</link>'
+
+
 def numbered_steps(items: list[str], st: dict, width: float) -> Table:
     """Steps as a two-column table so the numerals stay in a tidy gutter."""
     rows = []
@@ -387,6 +399,31 @@ class SectionMark(Flowable):
 
 TAGLINE = "Stream Beyond Limits"
 
+# ── where to get it ─────────────────────────────────────────────────────
+# Built from the version the script already read, so a rebuilt guide points
+# at the release it was built alongside instead of at whatever was current
+# when someone last edited this file.
+#
+# RELEASES is the durable one: an asset URL contains the version and dies at
+# the next release, whereas /releases/latest is right forever. Both are given
+# — the direct link for someone with the PDF open, the page for someone who
+# printed it six months ago.
+
+REPO = "https://github.com/Enkinuri666/enktel"
+RELEASES = f"{REPO}/releases/latest"
+
+
+def asset(name: str, version: str) -> str:
+    return f"{REPO}/releases/download/v{version}/{name}"
+
+
+def tv_apk(version: str) -> str:
+    return asset(f"enktel-tv-{version}.apk", version)
+
+
+def mobile_apk(version: str) -> str:
+    return asset(f"enktel-mobile-{version}.apk", version)
+
 INTRO = (
     "Your subscription is one login that works on everything you own. There is no "
     "app store to search and no account to create — the username and password on "
@@ -448,7 +485,7 @@ SECTIONS = [
              "with no signal at all — and the ability to hand those downloads to your PC.",
         steps=[
             "On the phone, allow installing apps from your browser when Android asks.",
-            "Open the APK link from your welcome email and install it.",
+            "Open <b>{MOBILE_APK}</b> in the phone's browser and install it.",
             "Open EnkTel and enter your <b>username</b> and <b>password</b>. "
             "The server address is prefilled.",
             "Give it a moment on first run while the channel list and guide load.",
@@ -475,7 +512,11 @@ SECTIONS = [
         steps=[
             "On a Fire TV, install <b>Downloader</b> from the Amazon appstore. On other "
             "Android TV boxes, use whichever sideloading tool you already have.",
-            "Enter the APK link from your welcome email.",
+            "Enter <b>{RELEASES}</b> \u2014 short enough to type on a remote, and it "
+            "always points at the current build.",
+            "On the page that opens, choose the file whose name contains "
+            "<b>-tv-</b>. The <b>-mobile-</b> one is for phones and will look wrong "
+            "on a television.",
             "Install, then open EnkTel from your apps row.",
             "Sign in with the same <b>username</b> and <b>password</b>. One subscription "
             "covers every device.",
@@ -499,7 +540,8 @@ SECTIONS = [
              "moves finished downloads off your phone and onto your computer over your "
              "own Wi-Fi, with nothing going near the internet.",
         steps=[
-            "Run the installer from your welcome email. Windows will warn about an "
+            "Download the installer from <b>{RELEASES}</b> and run it. Windows will "
+            "warn about an "
             "unrecognised app: choose <b>More info</b>, then <b>Run anyway</b>.",
             "Open EnkTel and sign in with the same <b>username</b> and <b>password</b>.",
             "For Send to PC: on the phone open <b>Downloads</b> and press "
@@ -625,7 +667,8 @@ def build(out_path: Path, shots_dir: Path) -> Path:
     story.append(Spacer(1, 14))
     story.append(Paragraph("What you need", st["h2"]))
     story.append(spec_table([
-        ("Your details", "Username, password and server address — on your welcome email."),
+        ("Your details", "Username and password — on your welcome email."),
+        ("Every download", f'<link href="{RELEASES}" color="#1B6AE5">{RELEASES}</link>'),
         ("Web player", "Any modern browser. Nothing to install."),
         ("Phone / tablet", "Android 6.0 or newer."),
         ("TV / Fire Stick", "Fire TV, Fire Stick, or any Android TV box."),
@@ -643,7 +686,15 @@ def build(out_path: Path, shots_dir: Path) -> Path:
         story.append(Rule())
         story.append(Spacer(1, 4))
         story.append(Paragraph("Setting it up", st["h2"]))
-        story.append(numbered_steps(sec["steps"], st, W))
+        # The link placeholders are filled here rather than at module level,
+        # because the version is only known once the build file has been read.
+        steps = [
+            step.replace("{MOBILE_APK}", link(mobile_apk(version)))
+                .replace("{TV_APK}", link(tv_apk(version)))
+                .replace("{RELEASES}", link(RELEASES))
+            for step in sec["steps"]
+        ]
+        story.append(numbered_steps(steps, st, W))
         story.append(Spacer(1, 8))
         story.append(Callout(sec["callout"], st["note"]))
         story.append(Spacer(1, 14))

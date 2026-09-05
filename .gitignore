@@ -49,3 +49,7 @@ enktel-release.jks
 # Gradle wrapper distribution cache (wrapper jar/properties/scripts ARE committed)
 androidtv/.gradle/wrapper/dists/
 androidtv/.kotlin/
+
+# Python bytecode from the docs scripts.
+__pycache__/
+*.pyc
