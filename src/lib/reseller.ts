@@ -377,6 +377,56 @@ export async function extendLine(
   return { ok: true, expiresAt: reply?.exp_date ? expiryFrom(reply.exp_date, 0) : undefined };
 }
 
+/**
+ * Delete a line.
+ *
+ * Not reachable from anything a customer touches, and deliberately not part of
+ * any purchase or renewal flow: the only caller is the admin route, behind its
+ * own key. A line that a customer has paid for should lapse, not vanish — this
+ * exists for the lines *we* create and then do not want, which in practice
+ * means test lines spent proving the panel works.
+ *
+ * The password is optional because an operator cleaning up will often have the
+ * username and nothing else; the panel is given whichever identifiers it was
+ * handed. It is passed through when known because `extend` and `info` both
+ * want the pair, and a delete that also matches on password cannot take out
+ * the wrong line on a username collision.
+ *
+ * `type=delete` is the verb this was written against; the reseller docs sit
+ * behind the panel login and list only create, extend and info. A wrong verb
+ * fails the same way any other refusal does — `status:false` and a message —
+ * so the panel's own words are returned rather than a generic error, which is
+ * what makes it a one-round fix rather than a guessing game.
+ */
+export async function deleteLine(
+  username: string,
+  password?: string
+): Promise<{ ok: true } | ProvisionFailure> {
+  if (!resellerConfigured()) {
+    return { ok: false, unconfigured: true, error: "No reseller key is configured." };
+  }
+  const u = username.trim();
+  if (!u) return { ok: false, error: "A username is required." };
+
+  const { reply, error } = await callPanel({
+    action: "user",
+    type: "delete",
+    username: u,
+    password: password?.trim() || undefined,
+  });
+
+  if (error) return { ok: false, error: `Could not delete the line: ${error}` };
+  if (!replySucceeded(reply)) {
+    return {
+      ok: false,
+      error: reply?.message
+        ? `The panel refused the deletion: ${reply.message}`
+        : "The panel refused the deletion and said nothing about why.",
+    };
+  }
+  return { ok: true };
+}
+
 /** Read a line back — used to confirm an extension actually landed. */
 export async function lineInfo(
   username: string,
