@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Check, Copy, ShieldCheck } from "lucide-react";
+import { Check, Copy, MessageCircle, ShieldCheck } from "lucide-react";
 import {
   PLANS,
   planById,
@@ -31,6 +31,37 @@ declare global {
       Buttons: (opts: Record<string, unknown>) => { render: (sel: string) => void };
     };
   }
+}
+
+/**
+ * The number the rest of the site already uses for support.
+ *
+ * Same variable as ChatLauncher and the contact page rather than a second
+ * copy: a number that changes in one of three places and not the others sends
+ * paying customers to a dead chat.
+ */
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "";
+
+/**
+ * A WhatsApp deep link with the order already written out.
+ *
+ * The plan and price go in the message because the alternative is a customer
+ * opening a chat that says "hi" and two round trips to establish what they
+ * wanted. Their email is included when they gave one, since that is what the
+ * line gets set up against.
+ */
+function whatsappOrderUrl(
+  planName: string,
+  price: string,
+  renewFor: string,
+  email: string,
+): string {
+  const lines = renewFor
+    ? [`Hi! I'd like to renew my EnkTel line.`, ``, `Username: ${renewFor}`, `Plan: ${planName} (${price})`]
+    : [`Hi! I'd like to subscribe to EnkTel.`, ``, `Plan: ${planName} (${price})`];
+  if (email.trim()) lines.push(`Email: ${email.trim()}`);
+  lines.push(``, `Please send payment details and set my line up. Thanks!`);
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
 function CheckoutInner() {
@@ -169,7 +200,7 @@ function CheckoutInner() {
         <h2 className="text-white font-bold text-lg mb-4">
           {renewFor ? "Add more time" : "Choose your pass"}
         </h2>
-        {renewFor && (
+        {renewFor && clientId ? (
           <div className="mb-5">
             <p className="text-brand-muted text-sm mb-3">
               Extending the line <code className="text-white">{renewFor}</code>. Your
@@ -192,7 +223,16 @@ function CheckoutInner() {
               HTTPS when the payment completes, and never to PayPal.
             </p>
           </div>
-        )}
+        ) : renewFor ? (
+          // Ordering through WhatsApp, where a human extends the line. Asking
+          // for the line password here would be asking for a credential that
+          // nothing then uses — and training customers to type passwords into
+          // a form before a chat is exactly the habit to avoid.
+          <p className="mb-5 text-brand-muted text-sm">
+            Extending the line <code className="text-white">{renewFor}</code>. Your
+            existing username and password stay the same — we do not need them here.
+          </p>
+        ) : null}
         <div className="space-y-2">
           {PLANS.map((p) => {
             const saving = savingPercent(p);
@@ -262,19 +302,41 @@ function CheckoutInner() {
 
         {clientId === "" && (
           <div className="text-sm">
-            <p className="text-brand-secondary font-semibold mb-2">
-              Card &amp; PayPal checkout is not switched on yet.
+            <p className="text-white font-semibold mb-2">
+              Order on WhatsApp
             </p>
             <p className="text-brand-muted">
-              Message us and we will send a payment link and activate your line by
-              hand — usually within a few minutes.
+              Send us the plan you want and we will reply with payment details and
+              set your line up — usually within a few minutes. Your details arrive
+              filled in, so there is nothing to type.
             </p>
-            <Link
-              href="/contact"
-              className="mt-4 block rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary px-4 py-3 text-center font-bold text-white"
-            >
-              Contact us to order
-            </Link>
+            {WHATSAPP_NUMBER ? (
+              <a
+                href={whatsappOrderUrl(plan.name, formatPrice(plan.price), renewFor, email)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-center font-bold text-black hover:bg-[#1FBE59] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {renewFor ? "Renew on WhatsApp" : "Order on WhatsApp"}
+              </a>
+            ) : (
+              // Never a dead button: without a number the link would open
+              // wa.me/ and fail, so the contact page stands in.
+              <Link
+                href="/contact"
+                className="mt-4 block rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary px-4 py-3 text-center font-bold text-white"
+              >
+                Contact us to order
+              </Link>
+            )}
+            <p className="mt-3 text-xs text-brand-muted">
+              Prefer email? Use{" "}
+              <Link href="/contact" className="text-brand-primary hover:underline">
+                the contact page
+              </Link>{" "}
+              instead.
+            </p>
           </div>
         )}
 
