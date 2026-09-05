@@ -23,6 +23,18 @@ WEB_PLAYER = "https://watch.enktel.tv"
 SITE = "https://enktel.tv"
 SUPPORT = f"{SITE}/contact"
 
+#: Where a renewal starts. Deliberately the site rather than a wa.me link: the
+#: WhatsApp number lives in NEXT_PUBLIC_WHATSAPP_NUMBER and is not in this
+#: repository, and a number printed into a PDF that has already been emailed
+#: cannot be changed. This page reads that variable, and keeps working
+#: unchanged if card payments are switched back on.
+CHECKOUT = f"{SITE}/checkout"
+
+
+def renew_url(username: str = "{{USERNAME}}") -> str:
+    """The renewal link, carrying the username so the chat opens knowing it."""
+    return f"{CHECKOUT}?renew={username}"
+
 #: The host a new line is set up against. Matches DEFAULT_SERVER in the app's
 #: build file and STREAM_SERVER_URL on the site.
 DEFAULT_SERVER = "https://x-api.cc"

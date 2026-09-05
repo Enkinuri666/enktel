@@ -33,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from enktel_links import (  # noqa: E402
     DEFAULT_SERVER, RELEASES, SITE, SUPPORT, WEB_PLAYER,
-    app_version, mobile_apk, tv_apk, welcome_guide,
+    app_version, mobile_apk, renew_url, tv_apk, welcome_guide,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -98,6 +98,7 @@ def device_row(title: str, blurb: str, href: str, cta: str, last=False) -> str:
 
 def build_html(version: str) -> str:
     guide = welcome_guide(version)
+    renew = renew_url()
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -225,6 +226,30 @@ def build_html(version: str) -> str:
       </table>
     </td></tr>
 
+    <!-- Renewing.
+
+         Here rather than in a separate email nearer the date, because this is
+         the message people keep. It is also the only place the answer to "do I
+         lose my setup?" can be given before they have started worrying about
+         it. -->
+    <tr><td style="padding:22px 30px 0 30px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             bgcolor="{WASH}" style="background-color:{WASH};border-radius:8px;">
+        <tr><td style="padding:18px 20px;">
+          <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
+                    font-weight:bold;color:{BODY_TEXT};">When it is time to renew</p>
+          <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                    line-height:19px;color:{MUTED};">
+            Your plan runs until <b>{{{{EXPIRES}}}}</b>. Renewing is a message rather
+            than a form: the link below opens a chat with your username already in
+            it, we take payment there and extend the line you are already using.
+            Nothing to reinstall, and no settings to enter again.
+          </p>
+          {button(renew, "Renew my subscription")}
+        </td></tr>
+      </table>
+    </td></tr>
+
     <!-- Footer -->
     <tr><td style="padding:26px 30px 30px 30px;">
       <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
@@ -309,8 +334,18 @@ to the six things that usually go wrong:
   {welcome_guide(version)}
 
 
-Stuck? Reply to this email, or use {SUPPORT} - tell us your username and which
-device you are on, never your password.
+WHEN IT IS TIME TO RENEW
+
+Your plan runs until {{{{EXPIRES}}}}. Renewing is a message rather than a form:
+the link below opens a chat with your username already in it, we take payment
+there and extend the line you are already using. Nothing to reinstall, and no
+settings to enter again.
+
+  {renew_url()}
+
+
+Stuck? Reply to this email, or use {SUPPORT}
+Tell us your username and which device you are on, never your password.
 
 EnkTel IPTV - {SITE}
 App version {version}

@@ -51,8 +51,18 @@ to the six things that usually go wrong:
   https://github.com/Enkinuri666/enktel/releases/download/v1.67.0/enktel_welcome_guide.pdf
 
 
-Stuck? Reply to this email, or use https://enktel.tv/contact - tell us your username and which
-device you are on, never your password.
+WHEN IT IS TIME TO RENEW
+
+Your plan runs until {{EXPIRES}}. Renewing is a message rather than a form:
+the link below opens a chat with your username already in it, we take payment
+there and extend the line you are already using. Nothing to reinstall, and no
+settings to enter again.
+
+  https://enktel.tv/checkout?renew={{USERNAME}}
+
+
+Stuck? Reply to this email, or use https://enktel.tv/contact
+Tell us your username and which device you are on, never your password.
 
 EnkTel IPTV - https://enktel.tv
 App version 1.67.0
