@@ -144,6 +144,19 @@ android {
     // Two product flavors so users can install the mobile and TV builds side-by-side.
     // Shared code lives in src/main; each flavor supplies its own manifest + branding.
     testOptions {
+        unitTests.all {
+            // ScreenshotCapture writes PNGs instead of asserting, and costs
+            // real time doing it. It is a tool, not a check, so the ordinary
+            // task skips it and `-Penktel.shots=1` opts in.
+            if (project.findProperty("enktel.shots") != "1") {
+                it.exclude("**/ScreenshotCaptureTest*")
+            }
+            it.systemProperty(
+                "enktel.shots.dir",
+                project.findProperty("enktel.shots.dir")?.toString()
+                    ?: layout.buildDirectory.dir("shots").get().asFile.absolutePath,
+            )
+        }
         unitTests {
             // Robolectric builds an Android environment out of the merged
             // manifest and resources; without this it starts with neither and
@@ -321,6 +334,13 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    // Renders real Compose screens to a bitmap under Robolectric's native
+    // graphics mode, which is the only way to photograph this UI without a
+    // device — see ScreenshotCapture.
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // Room's KSP tasks must not run at the same time as each other.
