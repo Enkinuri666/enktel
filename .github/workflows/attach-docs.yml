@@ -1,0 +1,81 @@
+name: Attach docs to a release
+
+# Puts the PDFs in `docs/` onto a release that already exists.
+#
+# Separate from publish-release.yml on purpose. That workflow creates a
+# release, which means a tag, which means a version bump and an eight-minute
+# APK build. The guide and the manuals change on their own schedule — a
+# corrected screenshot or a reworded step is not a new build of the app — and
+# there was no way to put an updated PDF in front of subscribers without
+# inventing a version number for an APK that had not changed.
+#
+# Uploads with --clobber, so running it again replaces the file rather than
+# failing on a name that is already there. That is the point: the guide is
+# expected to be revised in place.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach to, e.g. v1.67.0'
+        type: string
+        required: true
+      docs:
+        description: 'Which PDFs to attach'
+        type: choice
+        default: 'welcome guide only'
+        options:
+          - 'welcome guide only'
+          - 'all docs PDFs'
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          WHICH: ${{ inputs.docs }}
+        run: |
+          set -euo pipefail
+
+          # Checked before uploading, because `gh release upload` against a
+          # missing tag fails with "release not found", which reads as though
+          # the file were the problem.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::No release tagged $TAG. Create it with publish-release.yml first, or check the tag." >&2
+            exit 1
+          fi
+
+          if [ "$WHICH" = "all docs PDFs" ]; then
+            mapfile -t FILES < <(find docs -maxdepth 1 -name '*.pdf' | sort)
+          else
+            FILES=(docs/enktel_welcome_guide.pdf)
+          fi
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::error::No PDFs found under docs/." >&2
+            exit 1
+          fi
+
+          for f in "${FILES[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is not in the repository at this commit." >&2
+              exit 1
+            fi
+            echo "attaching $f ($(du -h "$f" | cut -f1))"
+          done
+
+          # --clobber so a revised guide replaces the old one instead of the
+          # upload failing on a duplicate asset name.
+          gh release upload "$TAG" "${FILES[@]}" \
+            --repo "$GITHUB_REPOSITORY" --clobber
+
+          echo "Done: $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)"
