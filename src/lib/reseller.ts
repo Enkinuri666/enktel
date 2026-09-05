@@ -108,6 +108,51 @@ export interface ProvisionFailure {
 
 export type ProvisionResult = ({ ok: true } & ProvisionedLine) | ProvisionFailure;
 
+/**
+ * The panel's address for a line, reduced to what a player actually wants.
+ *
+ * `dev_api.php` answers with the whole m3u_plus link — scheme, host, port,
+ * `/get.php`, and the credentials in the query — not the bare host that the
+ * field name suggests. Passed through untouched it was returned as
+ * `serverUrl`, so a new subscriber was shown a 140-character URL where a
+ * server address belongs, and {@link buildM3U} and {@link buildEPG} then
+ * appended their own path to it and produced `…&output=ts/get.php?…`: a link
+ * no panel serves. The Android app survived it only because
+ * `PlaylistRepository.normalizeServer` strips exactly that shape; VLC or
+ * TiviMate, handed the same string, does not.
+ */
+function serverOrigin(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+
+  let candidate = trimmed;
+  if (!/^https?:\/\//i.test(candidate)) {
+    // The same rule the app applies, deliberately: a bare host carrying a
+    // non-standard port is plain HTTP in this ecosystem, a bare hostname is
+    // HTTPS. The two are shown the same string and should not disagree
+    // about it.
+    const host = candidate.split("/")[0];
+    const port = host.includes(":") ? Number(host.split(":").pop()) : NaN;
+    candidate = Number.isFinite(port) && port !== 443 ? `http://${candidate}` : `https://${candidate}`;
+  }
+
+  try {
+    const u = new URL(candidate);
+    // `URL` blanks the port when it is the scheme's default, so :80 on an
+    // http:// panel would be quoted back without it. Kept: the Host header
+    // then differs, and enough panels in this ecosystem vhost on the port
+    // that dropping it is not ours to decide.
+    const stated = /^[^/]*\/\/[^/@]*:(\d+)/.exec(candidate)?.[1];
+    const port = u.port || stated || "";
+    return port ? `${u.protocol}//${u.hostname}:${port}` : `${u.protocol}//${u.hostname}`;
+  } catch {
+    // An unparseable shape we have not seen before. Strip the path by hand
+    // rather than return nothing: something a player can use beats a blank
+    // field on a confirmation page.
+    return trimmed.replace(/\/(get|xmltv|player_api|panel_api)\.php.*$/i, "").replace(/\/+$/, "");
+  }
+}
+
 function buildM3U(server: string, u: string, p: string): string {
   return `${server.replace(/\/$/, "")}/get.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&type=m3u_plus&output=ts`;
 }
@@ -243,8 +288,10 @@ export async function createLine(
   }
 
   // The panel names the host for this line; ours is only the fallback. It
-  // knows which server the line was issued on and we are guessing.
-  const server = reply.url || streamServerUrl();
+  // knows which server the line was issued on and we are guessing. What it
+  // names it with is a full playlist URL, so it is reduced to an origin
+  // before anything is built on top of it — see serverOrigin.
+  const server = serverOrigin(reply.url || streamServerUrl());
   const months = planId ? (planById(planId)?.months ?? 1) : 0;
 
   return {
