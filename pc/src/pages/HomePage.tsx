@@ -31,7 +31,11 @@ export default function HomePage() {
       <section className="relative h-[62vh] min-h-[420px] overflow-hidden">
         <div className="absolute inset-0" style={{ background: heroBg }} />
         <div className="absolute inset-0 bg-hero-fade" />
-        <div className="absolute inset-0 flex flex-col justify-end p-10">
+        {/* pb-28, not p-10: the quick-access rail below deliberately pulls
+            itself up over the hero with -mt-16, and at that point it was
+            landing on top of these buttons. The clearance belongs here,
+            where the buttons are, rather than as a magic number there. */}
+        <div className="absolute inset-0 flex flex-col justify-end p-10 pb-28">
           <span className="text-[11px] font-black tracking-widest text-brand mb-2">▶ FEATURED</span>
           <h1 className="text-5xl font-black leading-tight mb-3 max-w-2xl">
             {hero?.name ?? 'Welcome to EnkTel IPTV'}
