@@ -109,6 +109,24 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign == 'true' }}
         uses: microsoft/setup-msbuild@v3
 
+      # NOTE: this path expects an exportable .pfx, and you almost certainly
+      # cannot buy one any more.
+      #
+      # Since 1 June 2023 the CA/Browser Forum requires the private key of a
+      # publicly-trusted code-signing certificate to sit on FIPS 140-2 Level 2
+      # hardware, so CAs issue a USB token or a cloud-HSM signing account
+      # rather than a file. This step predates that and only still works for a
+      # certificate issued before it.
+      #
+      # Signing today means picking one of:
+      #   - Azure Trusted Signing (~$10/mo, azure/trusted-signing-action) —
+      #     cheapest, and made for hosted runners;
+      #   - SSL.com eSigner or DigiCert KeyLocker — cloud HSM over an API;
+      #   - a physical token, which a hosted runner cannot reach at all and so
+      #     needs a self-hosted runner or signing by hand after the build.
+      #
+      # Left in place because it still serves an older certificate, but do not
+      # assume setting WINDOWS_PFX_BASE64 is all that a new purchase needs.
       - name: Decode signing certificate (release only)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign == 'true' }}
         run: |

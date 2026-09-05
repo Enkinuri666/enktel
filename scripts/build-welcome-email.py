@@ -200,7 +200,10 @@ def build_html(version: str) -> str:
         {device_row(
             "Windows PC",
             "A desktop player, and the other half of Send to PC — it pulls finished "
-            "downloads off your phone over your own Wi-Fi.",
+            "downloads off your phone over your own Wi-Fi.<br><br>"
+            "Windows will warn that it does not recognise the publisher. Choose "
+            "<b>More info</b>, then <b>Run anyway</b>. That warning is about our "
+            "certificate, not about the file.",
             RELEASES, "Get the installer", last=True)}
       </table>
     </td></tr>
@@ -293,6 +296,9 @@ Windows PC - a desktop player, and the other half of Send to PC, which pulls
 finished downloads off your phone over your own Wi-Fi:
 
   {RELEASES}
+
+Windows will warn that it does not recognise the publisher. Choose "More info",
+then "Run anyway". That warning is about our certificate, not about the file.
 
 
 THE ILLUSTRATED GUIDE
