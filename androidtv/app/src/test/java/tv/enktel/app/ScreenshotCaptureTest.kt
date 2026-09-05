@@ -29,13 +29,13 @@ import java.io.File
  * graphics mode rasterises for real, so these are the shipped composables, the
  * shipped theme and the shipped strings, drawn by the same Skia the phone uses.
  *
- * `@Ignore` by design: it writes files rather than asserting anything, takes
- * far longer than the rest of the suite, and exists to be run deliberately —
+ * It writes files rather than asserting anything, so `build.gradle.kts`
+ * excludes it from the ordinary test task and `-Penktel.shots=1` opts in:
  *
- *     ./gradlew :app:testMobileDebugUnitTest --tests '*ScreenshotCaptureTest' \
- *         -Denktel.screenshots=1
+ *     ./gradlew :app:testMobileDebugUnitTest -Penktel.shots=1 \
+ *         -Penktel.shots.dir=/somewhere --tests '*ScreenshotCaptureTest'
  *
- * Point [OUT_DIR] wherever the guide is being built.
+ * Run it once per flavour; see docs/SCREENSHOTS.md.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
