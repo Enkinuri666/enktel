@@ -1,0 +1,55 @@
+Your EnkTel subscription is live
+
+One login works on everything you own - TV, phone, tablet, computer and
+browser. There is no account to create. The details below are all you need.
+
+  Username:       {{USERNAME}}
+  Password:       {{PASSWORD}}
+  Server address: {{SERVER}}
+  Plan:           {{PLAN}}, runs until {{EXPIRES}}
+
+Keep this email. Nobody at EnkTel will ever ask you for your password.
+
+
+START HERE
+
+The web player needs nothing installed, so it is the quickest way to check
+everything works. If it plays here, your subscription is fine - anything else
+is that device's setup.
+
+  https://watch.enktel.tv
+
+
+ON YOUR OTHER DEVICES
+
+Phone & tablet - the full app, including downloads you can watch with no
+signal at all:
+
+  https://github.com/Enkinuri666/enktel/releases/download/v1.67.0/enktel-mobile-1.67.0.apk
+
+TV, Fire Stick & Android TV - the same app, laid out for a remote. On a Fire
+TV install "Downloader" from the Amazon appstore first, then enter the address
+below and pick the file whose name contains -tv- (the -mobile- one is for
+phones and will look wrong on a television):
+
+  https://github.com/Enkinuri666/enktel/releases/latest
+
+Windows PC - a desktop player, and the other half of Send to PC, which pulls
+finished downloads off your phone over your own Wi-Fi:
+
+  https://github.com/Enkinuri666/enktel/releases/latest
+
+
+THE ILLUSTRATED GUIDE
+
+Every screen of every app, with the setup steps for each one and the answers
+to the six things that usually go wrong:
+
+  https://github.com/Enkinuri666/enktel/releases/download/v1.67.0/enktel_welcome_guide.pdf
+
+
+Stuck? Reply to this email, or use https://enktel.tv/contact - tell us your username and which
+device you are on, never your password.
+
+EnkTel IPTV - https://enktel.tv
+App version 1.67.0

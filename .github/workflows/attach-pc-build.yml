@@ -1,0 +1,83 @@
+name: Attach the Windows installer to a release
+
+# Puts the desktop installers onto a release beside the APKs.
+#
+# They were only ever CI artifacts: ninety-day expiry, and reachable only by
+# someone signed in with access to this repository. So the welcome email and
+# the guide both said "get the installer from the releases page" while the
+# releases page had no installer on it. This closes that.
+#
+# It does not build anything. build-pc.yml already produced these on the push
+# to main; rebuilding would risk shipping a binary that differs from the one
+# CI actually checked, for no gain.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach to, e.g. v1.67.0'
+        type: string
+        required: true
+      run_id:
+        description: 'build-pc.yml run to take the installers from. Blank = latest success on main.'
+        type: string
+        required: false
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Resolve and attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::No release tagged $TAG." >&2
+            exit 1
+          fi
+
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list --workflow build-pc.yml --branch main \
+              --status success --limit 1 --json databaseId -q '.[0].databaseId')
+            if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+              echo "::error::No successful build-pc.yml run on main to take installers from." >&2
+              exit 1
+            fi
+            echo "Using the latest successful build-pc run: $RUN_ID"
+          fi
+
+          # Named so a failure here says which artifact is missing rather than
+          # leaving an empty directory and a confusing upload error later.
+          mkdir -p pc-assets
+          for name in enktel-pc-nsis enktel-pc-msi; do
+            if ! gh run download "$RUN_ID" --name "$name" --dir pc-assets; then
+              echo "::error::Run $RUN_ID has no artifact called $name. Artifacts expire after 90 days — re-run build-pc.yml if this one is old." >&2
+              exit 1
+            fi
+          done
+
+          mapfile -t FILES < <(find pc-assets -type f \( -name '*.exe' -o -name '*.msi' \) | sort)
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::error::The artifacts contained no .exe or .msi." >&2
+            exit 1
+          fi
+          for f in "${FILES[@]}"; do
+            echo "attaching $(basename "$f") ($(du -h "$f" | cut -f1))"
+          done
+
+          gh release upload "$TAG" "${FILES[@]}" --clobber
+
+          # Said plainly on the release itself, because an unsigned installer
+          # trips SmartScreen and a subscriber who was not warned assumes the
+          # download is broken rather than merely unsigned.
+          echo "::notice::Attached. These installers are unsigned unless build-pc.yml was dispatched with sign=true — Windows will show a SmartScreen warning."
+          echo "Done: $(gh release view "$TAG" --json url -q .url)"
