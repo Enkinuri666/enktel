@@ -150,6 +150,7 @@ android {
             // task skips it and `-Penktel.shots=1` opts in.
             if (project.findProperty("enktel.shots") != "1") {
                 it.exclude("**/ScreenshotCaptureTest*")
+                it.exclude("**/SportsHubScreenshotTest*")
             }
             it.systemProperty(
                 "enktel.shots.dir",

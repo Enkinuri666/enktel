@@ -49,6 +49,7 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -135,6 +137,60 @@ fun FocusButton(
             style = EnktelType.label,
             maxLines = 1,
         )
+    }
+}
+
+/**
+ * A [FocusButton] whose face is a drawn icon rather than a character.
+ *
+ * The Sports Hub used emoji for its controls — 🔎 ↻ ★ 📊 🔔 ● — which is the
+ * same mistake the nav rail made and fixed. An emoji is a glyph from whichever
+ * font the device happens to ship: it cannot take the focused content colour,
+ * so it stays the same shade whether the button is focused or not; it is
+ * baseline-aligned rather than optically centred, so a row of them sits
+ * crooked; and it is a different drawing on a Fire Stick, a Samsung phone and
+ * a Pixel. A vector tracks the content colour, centres, and is one drawing
+ * everywhere.
+ *
+ * [label] is optional: with one this is a labelled button, without one it is a
+ * square. The icon is never the only thing describing the action —
+ * [contentDescription] carries it for a screen reader, and unlabelled buttons
+ * are the ones whose meaning is already carried by position.
+ */
+@Composable
+fun FocusIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    accent: Boolean = false,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.tapClick(onClick),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (accent) EnktelBlue.copy(alpha = 0.25f) else EnktelSurfaceHigh,
+            focusedContainerColor = EnktelBlue,
+            focusedContentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Row(
+            // Tighter horizontally than FocusButton's 18.dp when there is no
+            // label: an icon needs the same optical margin all round, and
+            // 18.dp on a 18.dp glyph makes a lozenge rather than a button.
+            Modifier.padding(
+                horizontal = if (label == null) 11.dp else 14.dp,
+                vertical = 10.dp,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(18.dp))
+            if (label != null) Text(label, style = EnktelType.label, maxLines = 1)
+        }
     }
 }
 

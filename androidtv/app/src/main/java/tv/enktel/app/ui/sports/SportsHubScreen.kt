@@ -41,6 +41,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.DirectionsBike
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Sports
+import androidx.compose.material.icons.rounded.SportsBaseball
+import androidx.compose.material.icons.rounded.SportsBasketball
+import androidx.compose.material.icons.rounded.SportsCricket
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.SportsFootball
+import androidx.compose.material.icons.rounded.SportsGolf
+import androidx.compose.material.icons.rounded.SportsHandball
+import androidx.compose.material.icons.rounded.SportsHockey
+import androidx.compose.material.icons.rounded.SportsMma
+import androidx.compose.material.icons.rounded.SportsMotorsports
+import androidx.compose.material.icons.rounded.SportsRugby
+import androidx.compose.material.icons.rounded.SportsSoccer
+import androidx.compose.material.icons.rounded.SportsTennis
+import androidx.compose.material.icons.rounded.SportsVolleyball
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.HistoryToggleOff
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Scoreboard
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.TravelExplore
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.tv.material3.Icon
+import tv.enktel.app.ui.components.FocusIconButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -109,7 +146,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
     var sportFilter by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableIntStateOf(0) }
-    /** True while ↻ is pulling the guide, so it can't be pressed twice. */
+    /** True while the refresh control is pulling the guide, so it can't be pressed twice. */
     var refreshing by remember { mutableStateOf(false) }
     var teamFilterOn by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
@@ -198,6 +235,10 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
     val padHoriz = if (isMobile) 16.dp else 48.dp
 
+    // Drives every elapsed time and countdown on the screen. See
+    // rememberNowTicker: read once at composition, they stopped moving.
+    val now = rememberNowTicker()
+
     LazyColumn(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(EnktelSurface.copy(0.4f), EnktelSurface.copy(0.0f)))
@@ -207,29 +248,32 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     ) {
         item {
             GlassCard(padHoriz = padHoriz) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Sports Hub", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Badge("● ${live.size} LIVE", EnktelLive)
-                            Badge("${upcoming.size} UPCOMING", EnktelBlue)
-                            Badge("${finished.size} REPLAYS", EnktelOk)
-                        }
-                    }
-                    // Smart Channel Finder: the "it kicks off in two minutes and
-                    // I can't find the channel" escape hatch.
-                    FocusButton("🔎 On now", accent = true, onClick = { nav.navigate("sportsFinder") })
-                    Spacer(Modifier.width(6.dp))
+                // Actions beside the title on a television, under it on a
+                // phone.
+                //
+                // One Row held the title, three badges and up to three
+                // buttons. On a 411dp handset the buttons alone want ~230dp,
+                // which left the title column too narrow for "Sports Hub" and
+                // its counts: the badge row clipped mid-word, and on the
+                // narrowest devices the refresh control was pushed off the
+                // edge entirely — the one button you press when the hub looks
+                // wrong.
+                val actions: @Composable () -> Unit = {
+                    // Smart Channel Finder: the "it kicks off in two minutes
+                    // and I can't find the channel" escape hatch.
+                    FocusIconButton(
+                        Icons.Rounded.TravelExplore, "Find the channel showing a match",
+                        label = "On now", accent = true,
+                        onClick = { nav.navigate("sportsFinder") },
+                    )
                     if (followed.isNotEmpty()) {
-                        FocusButton(
-                            if (teamFilterOn) "★ mine" else "★",
+                        FocusIconButton(
+                            Icons.Rounded.Star,
+                            if (teamFilterOn) "Show every match" else "Show only my teams",
+                            label = if (teamFilterOn) "My teams" else null,
                             accent = teamFilterOn,
                             onClick = { teamFilterOn = !teamFilterOn },
                         )
-                        Spacer(Modifier.width(6.dp))
                     }
                     // Refresh the sources, not just the query.
                     //
@@ -239,10 +283,11 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     // dead. The guide is the thing that goes stale, so pull it
                     // first and then rescan; the score and schedule feeds are
                     // already live calls and re-run off the same tick.
-                    FocusButton(
-                        if (refreshing) "…" else "↻",
+                    FocusIconButton(
+                        Icons.Rounded.Refresh,
+                        if (refreshing) "Refreshing the guide" else "Refresh the guide",
                         onClick = {
-                            if (refreshing) return@FocusButton
+                            if (refreshing) return@FocusIconButton
                             scope.launch {
                                 refreshing = true
                                 try { graph.epg.refresh(p) } catch (_: Throwable) { /* rescan anyway */ }
@@ -251,6 +296,28 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             }
                         },
                     )
+                }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Sports Hub", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                            Row(
+                                Modifier.padding(top = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Badge("${live.size} LIVE", EnktelLive)
+                                Badge("${upcoming.size} UPCOMING", EnktelBlue)
+                                Badge("${finished.size} REPLAYS", EnktelOk)
+                            }
+                        }
+                        if (!isMobile) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { actions() }
+                        }
+                    }
+                    if (isMobile) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions() }
+                    }
                 }
             }
         }
@@ -362,7 +429,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (scoresEnabled && liveScores.isNotEmpty()) {
-            item { SectionHeader("⚡ LIVE SCORES", EnktelOk, padHoriz) }
+            item { SectionHeader(Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz, count = liveScores.size) }
             item {
                 LazyRow(
                     modifier = Modifier.tvRailFocus(),
@@ -404,7 +471,13 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // where do I tune in" even for fixtures the playlist doesn't carry, and
         // each row opens the Match Centre where the broadcaster list lives.
         if (matchCenterEnabled && todaysFixtures.isNotEmpty()) {
-            item { SectionHeader("📡 OFFICIAL SCHEDULE — TODAY", EnktelBlue, padHoriz) }
+            item {
+                SectionHeader(
+                    Icons.Rounded.Podcasts, "ON TODAY", EnktelBlue, padHoriz,
+                    count = todaysFixtures.size,
+                    subtitle = "Published schedule",
+                )
+            }
             item {
                 LazyRow(
                     modifier = Modifier.tvRailFocus(),
@@ -454,7 +527,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         }
         // Published highlight packages for fixtures that have already finished.
         if (matchCenterEnabled && highlightClips.isNotEmpty()) {
-            item { SectionHeader("🎞 HIGHLIGHTS — LATEST PACKAGES", EnktelOk, padHoriz) }
+            item { SectionHeader(Icons.Rounded.Movie, "HIGHLIGHTS", EnktelOk, padHoriz, subtitle = "Latest packages") }
             item {
                 LazyRow(
                     modifier = Modifier.tvRailFocus(),
@@ -471,11 +544,11 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (live.isNotEmpty()) {
-            item { SectionHeader("🔴 LIVE NOW", EnktelLive, padHoriz) }
+            item { SectionHeader(Icons.Rounded.FiberManualRecord, "LIVE NOW", EnktelLive, padHoriz, count = live.size) }
             items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
                 val matchedScore = try { if (scoresEnabled) graph.scores.matchByTitle(ev.title, liveScores) else null } catch (_: Throwable) { null }
                 LiveEventCard(
-                    ev, score = matchedScore, padHoriz = padHoriz,
+                    ev, score = matchedScore, padHoriz = padHoriz, now = now,
                     onTap = {
                         toaster.info("Tuning to ${ev.channel.name}")
                         nav.navigate("live?ch=${ev.channel.key}")
@@ -490,10 +563,10 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (upcoming.isNotEmpty()) {
-            item { SectionHeader("📅 UPCOMING", EnktelBlue, padHoriz) }
+            item { SectionHeader(Icons.Rounded.CalendarMonth, "UPCOMING", EnktelBlue, padHoriz, count = upcoming.size) }
             items(upcoming, key = { "U-${it.channel.key}-${it.program.id}" }) { ev ->
                 UpcomingEventCard(
-                    ev, padHoriz = padHoriz,
+                    ev, padHoriz = padHoriz, now = now,
                     onSchedule = {
                         scope.launch {
                             try {
@@ -521,12 +594,17 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // Split "finished" into fresh Highlights (last 6h — likely still trending) and
         // older Replays (>6h ago). Same tap behaviour: pull from catch-up if the channel
         // supports it.
-        val nowMs = System.currentTimeMillis()
         val highlightWindow = 6 * 60 * 60_000L
-        val highlights = finished.filter { nowMs - it.endMs <= highlightWindow }
-        val olderReplays = finished.filter { nowMs - it.endMs > highlightWindow }
+        val highlights = finished.filter { now - it.endMs <= highlightWindow }
+        val olderReplays = finished.filter { now - it.endMs > highlightWindow }
         if (highlights.isNotEmpty()) {
-            item { SectionHeader("⏪ CATCH-UP — FINISHED IN THE LAST 6 HOURS", EnktelOk, padHoriz) }
+            item {
+                SectionHeader(
+                    Icons.Rounded.HistoryToggleOff, "CATCH-UP", EnktelOk, padHoriz,
+                    count = highlights.size,
+                    subtitle = "Finished in the last 6 hours",
+                )
+            }
             items(highlights, key = { "H-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
@@ -535,7 +613,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (olderReplays.isNotEmpty()) {
-            item { SectionHeader("📼 REPLAYS", EnktelBlue, padHoriz) }
+            item { SectionHeader(Icons.Rounded.Replay, "REPLAYS", EnktelBlue, padHoriz, count = olderReplays.size) }
             items(olderReplays, key = { "F-${it.channel.key}-${it.program.id}" }) { ev ->
                 FinishedEventCard(
                     ev, padHoriz = padHoriz,
@@ -544,6 +622,37 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
     }
+}
+
+/**
+ * A clock that moves.
+ *
+ * Every card here derived its timings from one `System.currentTimeMillis()`
+ * read at composition, so the live progress bar, the "37m in" caption and the
+ * "in 2h 14m" countdown were all photographs of the moment the rail was drawn.
+ * On a television left on the Sports Hub — which is exactly what happens while
+ * waiting for a kick-off — the bar sat still through an entire half, and the
+ * countdown to a match that had already started still said it was upcoming.
+ *
+ * One ticker for the whole screen rather than one per card: forty cards each
+ * holding their own coroutine to observe the same clock is forty wake-ups a
+ * minute to compute the same number.
+ *
+ * The period is a compromise. A second would move the bar smoothly and
+ * recompose every visible card sixty times a minute for a bar that advances
+ * less than a pixel; thirty seconds is under half a minute of staleness on a
+ * caption whose smallest unit is the minute.
+ */
+@Composable
+private fun rememberNowTicker(periodMs: Long = 30_000L): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(periodMs) {
+        while (true) {
+            kotlinx.coroutines.delay(periodMs)
+            now = System.currentTimeMillis()
+        }
+    }
+    return now
 }
 
 @Composable
@@ -558,15 +667,51 @@ private fun GlassCard(padHoriz: androidx.compose.ui.unit.Dp, content: @Composabl
     ) { content() }
 }
 
+/**
+ * A rail heading: stripe, icon, title, and an optional count.
+ *
+ * This and the cards below it are `internal` rather than `private` so
+ * `SportsHubScreenshotTest` can draw them with fabricated fixtures. The screen
+ * itself needs a profile, an EPG scan and three network feeds before it will
+ * render anything, which is not a thing a Robolectric test can stand up — and
+ * a card nobody has looked at is how a stretched logo and an invisible play
+ * marker survived this long.
+ *
+ * The titles used to carry their own emoji — "⏪ CATCH-UP — FINISHED IN THE
+ * LAST 6 HOURS" — which put a full sentence in 13sp black caps and wrapped it
+ * on a phone. The icon says the same thing in a fixed 15dp, tinted to match
+ * the stripe, so the words can go back to being a label; what the six hours
+ * meant now lives in [subtitle], at a weight a heading should not be using.
+ */
 @Composable
-private fun SectionHeader(text: String, color: Color, padHoriz: androidx.compose.ui.unit.Dp) {
+internal fun SectionHeader(
+    icon: ImageVector,
+    text: String,
+    color: Color,
+    padHoriz: androidx.compose.ui.unit.Dp,
+    count: Int? = null,
+    subtitle: String? = null,
+) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = padHoriz, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(start = padHoriz, end = padHoriz, top = 14.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(4.dp, 20.dp).background(color, RoundedCornerShape(4.dp)))
         Spacer(Modifier.width(10.dp))
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(7.dp))
         Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        if (count != null) {
+            Spacer(Modifier.width(8.dp))
+            Text("$count", color = color.copy(alpha = 0.65f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+        if (subtitle != null) {
+            Spacer(Modifier.width(10.dp))
+            Text(
+                subtitle, color = EnktelTextDim, fontSize = 11.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -627,14 +772,15 @@ private fun Modifier.sportsCardFocus(
 private fun noGrowScale() = ClickableSurfaceDefaults.scale(focusedScale = 1f)
 
 @Composable
-private fun LiveEventCard(
+internal fun LiveEventCard(
     ev: SportsEvent,
     score: tv.enktel.app.data.repo.LiveScore?,
     padHoriz: androidx.compose.ui.unit.Dp,
+    /** From the screen's ticker, so the bar and the caption keep moving. */
+    now: Long,
     onTap: () -> Unit,
     onStats: (() -> Unit)? = null,
 ) {
-    val now = System.currentTimeMillis()
     val frac = ((now - ev.startMs).toFloat() / (ev.endMs - ev.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
     var cardFocused by remember { mutableStateOf(false) }
     Surface(
@@ -647,7 +793,7 @@ private fun LiveEventCard(
         // Was EnktelLive.copy(0.14f) — a 14 % red wash over the near-black
         // background, which rendered as muddy maroon on a phone and made a row
         // of live fixtures look like a row of error states. Live-ness is now
-        // carried by the accent stripe and the ● LIVE badge, against the same
+        // carried by the accent stripe and the LIVE badge, against the same
         // neutral elevated surface every other card in the app uses, so the
         // red reads as signal instead of tinting the whole panel.
         colors = ClickableSurfaceDefaults.colors(
@@ -671,18 +817,21 @@ private fun LiveEventCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Badge("● LIVE", EnktelLive)
-                        Badge(ev.sport, EnktelBlue)
+                        Badge("LIVE", EnktelLive)
+                        SportBadge(ev.sport)
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(ev.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(ev.channel.name, color = EnktelTextDim, fontSize = 11.sp)
                 }
                 if (onStats != null) {
-                    FocusButton("📊", onClick = onStats)
+                    FocusIconButton(Icons.Rounded.Insights, "Match statistics", onClick = onStats)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("▶", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    Icons.Rounded.PlayArrow, contentDescription = null,
+                    tint = Color.White, modifier = Modifier.size(26.dp),
+                )
             }
             if (score != null) {
                 Spacer(Modifier.height(6.dp))
@@ -703,14 +852,16 @@ private fun LiveEventCard(
 }
 
 @Composable
-private fun UpcomingEventCard(
+internal fun UpcomingEventCard(
     ev: SportsEvent,
     padHoriz: androidx.compose.ui.unit.Dp,
+    /** From the screen's ticker, so the countdown actually counts down. */
+    now: Long,
     onSchedule: () -> Unit,
     onRemind: () -> Unit,
     onOpen: () -> Unit,
 ) {
-    val inMs = ev.startMs - System.currentTimeMillis()
+    val inMs = ev.startMs - now
     val eta = when {
         inMs < 60 * 60_000L -> "in ${(inMs / 60_000L).coerceAtLeast(0)}m"
         inMs < 24 * 3600_000L -> "in ${inMs / 3600_000L}h ${inMs / 60_000L % 60}m"
@@ -736,7 +887,7 @@ private fun UpcomingEventCard(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Badge(ev.sport, EnktelBlue)
+                    SportBadge(ev.sport)
                     Badge(eta, EnktelBlue)
                 }
                 Spacer(Modifier.height(3.dp))
@@ -747,16 +898,19 @@ private fun UpcomingEventCard(
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                FocusButton("🔔", onClick = onRemind)
+                FocusIconButton(Icons.Rounded.NotificationsActive, "Remind me before kick-off", onClick = onRemind)
                 Spacer(Modifier.height(4.dp))
-                FocusButton("●", onClick = onSchedule)
+                // Was a bare "●", which is a dot. Nothing on the card said it
+                // meant "record this", and a dot beside a bell reads as a
+                // second, unexplained notification setting.
+                FocusIconButton(Icons.Rounded.FiberManualRecord, "Record this match", onClick = onSchedule)
             }
         }
     }
 }
 
 @Composable
-private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.unit.Dp, onReplay: () -> Unit) {
+internal fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.unit.Dp, onReplay: () -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var cardFocused by remember { mutableStateOf(false) }
     Surface(
@@ -779,7 +933,7 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
             Column(Modifier.weight(1f)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Badge("FT", EnktelOk)
-                    Badge(ev.sport, EnktelTextDim)
+                    SportBadge(ev.sport, EnktelTextDim)
                     if (ev.channel.hasArchive) Badge("CATCH-UP", EnktelOk)
                 }
                 Spacer(Modifier.height(3.dp))
@@ -792,29 +946,46 @@ private fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.uni
                 // Highlights link-out — YouTube search intent using the event
                 // title + "highlights". Free, keyless, and opens the native
                 // YouTube app on TV / phones when available.
-                FocusButton("🎬 Highlights", onClick = {
+                FocusIconButton(Icons.Rounded.Movie, "Search YouTube for highlights", label = "Highlights", onClick = {
                     val query = "${ev.title} highlights"
                     val webUri = ("https://www.youtube.com/results?search_query=" + java.net.URLEncoder.encode(query, "UTF-8")).toUri()
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, webUri)
                     runCatching { ctx.startActivity(intent) }
                 })
             }
-            Text(
-                if (ev.channel.hasArchive) "⏪" else "—",
-                color = if (ev.channel.hasArchive) EnktelOk else EnktelTextDim,
-                fontSize = 22.sp, fontWeight = FontWeight.Bold,
-            )
+            // An em-dash where a control belongs is not an answer. A channel
+            // with no archive says so in words instead, because "why is this
+            // card here if I cannot play it" was the actual question.
+            if (ev.channel.hasArchive) {
+                Icon(
+                    Icons.Rounded.Replay, contentDescription = "Play from the start",
+                    tint = EnktelOk, modifier = Modifier.size(24.dp),
+                )
+            } else {
+                Text(
+                    "No archive", color = EnktelTextDim, fontSize = 10.sp,
+                    modifier = Modifier.widthIn(max = 52.dp),
+                )
+            }
         }
     }
 }
 
-/** Small team crest. Silently absent when the API has no badge for a side. */
+/**
+ * Small team crest. Silently absent when the API has no badge for a side.
+ *
+ * `ContentScale.Fit`, because crests are not square. The default is
+ * [ContentScale.Fit] for `AsyncImage` only when a painter reports its size the
+ * way Compose expects; stated here so a tall club badge is letterboxed into
+ * the 18dp box rather than squashed to fit it.
+ */
 @Composable
 private fun TeamCrest(url: String) {
     if (url.isBlank()) return
     coil3.compose.AsyncImage(
         model = url,
         contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = Modifier.size(18.dp).padding(end = 5.dp),
     )
 }
@@ -826,7 +997,7 @@ private fun TeamCrest(url: String) {
  * the live ones are findable at a glance rather than uniform with the rest.
  */
 @Composable
-private fun LiveScoreChip(
+internal fun LiveScoreChip(
     score: tv.enktel.app.data.repo.LiveScore,
     onTap: () -> Unit,
     onStats: (() -> Unit)? = null,
@@ -854,13 +1025,34 @@ private fun LiveScoreChip(
             label = "livePulseAlpha",
         )
 
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onTap,
+        modifier = Modifier
+            .onFocusChanged { focused = it.isFocused }
+            .sportsCardFocus(focused, accent)
+            .tapClick(onTap),
+        scale = noGrowScale(),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = EnktelSurface.copy(0.7f),
+            focusedContainerColor = accent.copy(0.28f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(0.5f)),
+                shape = RoundedCornerShape(24.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(24.dp),
+            ),
+        ),
+    ) {
     Row(
-        Modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(EnktelSurface.copy(0.7f))
-            .border(1.dp, accent.copy(0.5f), RoundedCornerShape(24.dp))
-            .tapClick(onTap)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -892,8 +1084,15 @@ private fun LiveScoreChip(
         )
         if (score.minute.isNotBlank()) {
             Spacer(Modifier.width(10.dp))
+            if (score.notStarted) {
+                Icon(
+                    Icons.Rounded.Schedule, contentDescription = "Kicks off at",
+                    tint = accent, modifier = Modifier.size(12.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+            }
             Text(
-                if (score.notStarted) "⏱ ${score.minute}" else score.minute,
+                score.minute,
                 color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold,
             )
         } else if (score.finished) {
@@ -902,8 +1101,9 @@ private fun LiveScoreChip(
         }
         if (onStats != null) {
             Spacer(Modifier.width(10.dp))
-            FocusButton("📊", onClick = onStats)
+            FocusIconButton(Icons.Rounded.Insights, "Match statistics", onClick = onStats)
         }
+    }
     }
 }
 
@@ -913,7 +1113,7 @@ private fun LiveScoreChip(
  * Centre alongside the broadcaster list.
  */
 @Composable
-private fun FixtureChip(
+internal fun FixtureChip(
     fixture: tv.enktel.app.data.repo.LiveScore,
     /** Officially published broadcasters, best first. May be empty. */
     broadcasters: List<String> = emptyList(),
@@ -921,18 +1121,37 @@ private fun FixtureChip(
     tuneTo: tv.enktel.app.data.db.Channel? = null,
     onTap: () -> Unit,
 ) {
-    Column(
-        Modifier
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onTap,
+        modifier = Modifier
             .widthIn(min = 150.dp, max = 230.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(EnktelSurfaceHigh.copy(0.5f))
-            .border(1.dp, EnktelBlue.copy(0.3f), RoundedCornerShape(12.dp))
-            .tapClick(onTap)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .onFocusChanged { focused = it.isFocused }
+            .sportsCardFocus(focused, EnktelBlue)
+            .tapClick(onTap),
+        scale = noGrowScale(),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = EnktelSurfaceHigh.copy(0.5f),
+            focusedContainerColor = EnktelBlue.copy(0.32f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.dp, EnktelBlue.copy(0.3f)),
+                shape = RoundedCornerShape(12.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        ),
     ) {
+    Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (fixture.minute.isNotBlank()) Badge(fixture.minute, EnktelBlue)
-            if (fixture.sport.isNotBlank()) Badge(fixture.sport, EnktelTextDim)
+            if (fixture.sport.isNotBlank()) SportBadge(fixture.sport, EnktelTextDim, compact = true)
         }
         Spacer(Modifier.height(6.dp))
         Text(
@@ -952,41 +1171,85 @@ private fun FixtureChip(
         // left finding it as an exercise.
         if (broadcasters.isNotEmpty()) {
             Spacer(Modifier.height(7.dp))
-            Text(
-                "📡 ${broadcasters.take(2).joinToString(" · ")}",
-                color = EnktelTextDim, fontSize = 10.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(
+                    Icons.Rounded.Podcasts, contentDescription = "Broadcast on",
+                    tint = EnktelTextDim,
+                    modifier = Modifier.size(11.dp).padding(top = 2.dp),
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    broadcasters.take(2).joinToString(" · "),
+                    color = EnktelTextDim, fontSize = 10.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (tuneTo != null) {
             Spacer(Modifier.height(6.dp))
-            Text(
-                "▶ ${tuneTo.name}",
-                color = EnktelOk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Rounded.PlayArrow, contentDescription = null,
+                    tint = EnktelOk, modifier = Modifier.size(13.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    tuneTo.name,
+                    color = EnktelOk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
         } else if (broadcasters.isNotEmpty()) {
             // Said plainly rather than left blank. A broadcaster your line does
             // not carry is a real answer — it stops the search before it starts.
             Spacer(Modifier.height(6.dp))
             Text(
                 "Not matched on your playlist",
-                color = EnktelTextDim, fontSize = 10.sp, maxLines = 1,
+                color = EnktelTextDim, fontSize = 10.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
     }
+    }
 }
 
-/** A published highlights package: thumbnail, fixture, and a play affordance. */
+/**
+ * A published highlights package: thumbnail, fixture, and a play affordance.
+ *
+ * Two things were wrong with the old one. It was a `Column` with `tapClick`,
+ * so on a television it could not be focused and the whole rail was
+ * unreachable by remote — see [FixtureChip]. And the play marker was a white
+ * "▶" drawn straight onto the thumbnail: highlight stills are bright, mostly
+ * of a floodlit pitch, and a white glyph on a white background is not a
+ * marker. It now sits in a filled disc over a scrim that also rescues the
+ * title from whatever the image is doing behind it.
+ */
 @Composable
-private fun HighlightCard(clip: tv.enktel.app.data.repo.HighlightClip, onPlay: () -> Unit) {
-    Column(
-        Modifier
+internal fun HighlightCard(clip: tv.enktel.app.data.repo.HighlightClip, onPlay: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onPlay,
+        modifier = Modifier
             .width(220.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(EnktelSurface.copy(0.6f))
+            .onFocusChanged { focused = it.isFocused }
+            .sportsCardFocus(focused, EnktelOk)
             .tapClick(onPlay),
+        scale = noGrowScale(),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = EnktelSurface.copy(0.6f),
+            focusedContainerColor = EnktelOk.copy(0.26f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        ),
     ) {
+    Column {
         Box(
             Modifier.fillMaxWidth().height(124.dp).background(EnktelSurfaceHigh),
             contentAlignment = Alignment.Center,
@@ -994,21 +1257,137 @@ private fun HighlightCard(clip: tv.enktel.app.data.repo.HighlightClip, onPlay: (
             if (clip.thumb.isNotBlank()) {
                 AsyncImage(
                     model = clip.thumb, contentDescription = clip.title,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            Text("▶", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
+            // Bottom-weighted scrim. Enough to seat the play disc and keep the
+            // sport badge legible; not so much that it dims the still.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.55f to Color.Black.copy(alpha = 0.15f),
+                        1f to Color.Black.copy(alpha = 0.65f),
+                    ),
+                ),
+            )
+            // percent = 50 rather than half the size in dp: the radius scale
+            // is 4/8/12/16/24, and a circle is a pill, not a sixth radius.
+            // DesignTokensTest enforces exactly this.
+            val disc = RoundedCornerShape(percent = 50)
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(disc)
+                    .background(Color.Black.copy(alpha = if (focused) 0.30f else 0.55f))
+                    .border(
+                        1.5.dp,
+                        if (focused) EnktelOk else Color.White.copy(alpha = 0.85f),
+                        disc,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.PlayArrow, contentDescription = null,
+                    tint = if (focused) EnktelOk else Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            if (clip.sport.isNotBlank()) {
+                Box(Modifier.align(Alignment.BottomStart).padding(8.dp)) {
+                    Badge(clip.sport, EnktelOk)
+                }
+            }
         }
         Column(Modifier.padding(10.dp)) {
             Text(
                 clip.title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
-            val sub = listOf(clip.league, clip.sport).filter { it.isNotBlank() }.joinToString(" · ")
-            if (sub.isNotBlank()) {
-                Text(sub, color = EnktelTextDim, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // The sport moved onto the thumbnail, so this is the league alone
+            // rather than "Premier League · Soccer" saying it twice.
+            if (clip.league.isNotBlank()) {
+                Text(
+                    clip.league, color = EnktelTextDim, fontSize = 11.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
+        }
+    }
+    }
+}
+
+/**
+ * The icon for a sport tag.
+ *
+ * Paired with [sportsDbName] deliberately: both map the same internal tags,
+ * and a sport that gains a tag needs a row in each. A tag with no icon of its
+ * own gets the generic whistle rather than nothing — a badge that sometimes
+ * has a picture and sometimes does not is worse than one that always does.
+ */
+private fun sportIcon(sport: String): ImageVector = when (sport) {
+    "Football" -> Icons.Rounded.SportsSoccer
+    "American Football" -> Icons.Rounded.SportsFootball
+    "Basketball" -> Icons.Rounded.SportsBasketball
+    "Baseball" -> Icons.Rounded.SportsBaseball
+    "Hockey" -> Icons.Rounded.SportsHockey
+    "MMA/Boxing", "Combat" -> Icons.Rounded.SportsMma
+    "Tennis" -> Icons.Rounded.SportsTennis
+    "Cricket" -> Icons.Rounded.SportsCricket
+    "Motor Racing" -> Icons.Rounded.SportsMotorsports
+    "Cycling" -> Icons.Rounded.DirectionsBike
+    "Golf" -> Icons.Rounded.SportsGolf
+    "Rugby" -> Icons.Rounded.SportsRugby
+    "Volleyball" -> Icons.Rounded.SportsVolleyball
+    "Handball" -> Icons.Rounded.SportsHandball
+    "Esports" -> Icons.Rounded.SportsEsports
+    "Athletics", "Olympics" -> Icons.Rounded.EmojiEvents
+    else -> Icons.Rounded.Sports
+}
+
+/**
+ * A [Badge] with the sport's icon in front of its name.
+ *
+ * Sport is the one field on these cards that is scanned rather than read —
+ * someone looking for the football is not reading forty titles, they are
+ * looking for the football. A word in 9sp caps has to be read; a shape does
+ * not, which is what makes a rail of mixed sports sortable at a glance.
+ */
+@Composable
+internal fun SportBadge(
+    sport: String,
+    color: Color = EnktelBlue,
+    /**
+     * Drop the word and keep the shape.
+     *
+     * For the schedule chips, which are 150dp at their narrowest and already
+     * carrying a kick-off time on the same line: "BASKETBALL" spelled out
+     * there truncated to "BASKE…", which is neither the word nor a shape. The
+     * icon alone still answers "which sport", and [contentDescription] keeps
+     * the name for anyone who cannot see it.
+     */
+    compact: Boolean = false,
+) {
+    Row(
+        Modifier
+            .background(color.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+            .padding(horizontal = if (compact) 5.dp else 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            sportIcon(sport),
+            contentDescription = if (compact) sport else null,
+            tint = color,
+            modifier = Modifier.size(11.dp),
+        )
+        if (!compact) {
+            Text(
+                sport.uppercase(), color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -1038,14 +1417,31 @@ private fun sportsDbName(sport: String): String = when (sport) {
     else -> ""
 }
 
+/**
+ * A channel's logo in a fixed square, or its initials when it has none.
+ *
+ * The image used to fill the box edge to edge with no content scale, so a wide
+ * broadcaster logo — which is most of them — was drawn stretched to a square.
+ * Fitted and inset instead: the logo keeps its proportions, and the 5dp of
+ * padding stops a light logo from touching the tile's rounded corner, which
+ * read as a rendering fault.
+ */
 @Composable
-private fun ChannelLogo(url: String, fallback: String) {
+internal fun ChannelLogo(url: String, fallback: String) {
     Box(
         Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNotBlank()) AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize())
-        else Text(fallback.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        if (url.isNotBlank()) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(5.dp),
+            )
+        } else {
+            Text(fallback.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
     }
 }
 
