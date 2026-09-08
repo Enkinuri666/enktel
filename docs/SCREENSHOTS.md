@@ -46,6 +46,27 @@ Android one — get it wrong and Robolectric refuses to parse it.
 The test is **excluded from the ordinary test task**; it writes files instead of
 asserting anything. `-Penktel.shots=1` opts in.
 
+### The Sports Hub — `SportsHubScreenshotTest`
+
+The hub will not render from a seeded database the way the other screens do: it
+wants a profile, a finished EPG scan and three TheSportsDB feeds before it draws
+a single card. So this one composes the cards directly against fixed fixtures —
+same components, same theme, invented matches — and is gated on the same
+`-Penktel.shots=1`:
+
+```bash
+./gradlew :app:testMobileDebugUnitTest -Penktel.shots=1 "-Penktel.shots.dir=$D" \
+    --tests '*SportsHubScreenshotTest'
+```
+
+The timestamps in it are constants rather than `System.currentTimeMillis()`.
+The cards render an elapsed time and a countdown, so a live clock would make
+every capture differ from the last one for no reason.
+
+It exists because the faults it found were only ever visible by looking:
+a channel logo stretched to a square, a white play marker on a white still,
+"BASKETBALL" truncated to "BASKE…" in a 150dp chip.
+
 ## PC and web — `pc/`, `web/`
 
 Both are Playwright against a local dev server. Neither talks to the internet,
