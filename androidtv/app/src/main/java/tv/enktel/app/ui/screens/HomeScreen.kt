@@ -221,7 +221,30 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        // The hub-tile row that used to sit here has gone.
+        // Four categories and a search, above Continue Watching.
+        //
+        // See CategoryTiles for why this is back after the eleven-pill row was
+        // removed: the rail is six entries now rather than fourteen, so this
+        // is no longer a second copy of the menu — and every IPTV app these
+        // subscribers came from opens on exactly this.
+        item {
+            val mobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+            CategoryTiles(
+                padHoriz = if (mobile) 16.dp else 48.dp,
+                compact = mobile,
+                expiry = tv.enktel.app.data.repo.Subscribe.expiryNotice(
+                    daysLeft = if (p.expiresAt > 0) {
+                        ((p.expiresAt - System.currentTimeMillis()) / 86_400_000L).toInt()
+                    } else {
+                        -1
+                    },
+                    expired = p.expiresAt in 1..System.currentTimeMillis(),
+                ),
+                onSelect = { route -> nav.navigate(route) { launchSingleTop = true } },
+            )
+        }
+
+        // The eleven-pill hub row that used to sit here is still gone.
         //
         // It was eleven pill cards — Live TV, TV Guide, Movies, Series, Sports,
         // Watchlist, Downloads, Recordings, Catch-Up, Search, Settings — and

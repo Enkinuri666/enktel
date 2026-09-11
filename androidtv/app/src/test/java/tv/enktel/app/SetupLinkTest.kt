@@ -134,6 +134,44 @@ class SetupLinkTest {
     }
 
     @Test
+    fun `a username and password alone fall back to the build's own server`() {
+        // What a reseller actually hands out: two words. The old form covered
+        // this by prefilling the server field; a single paste box has no field
+        // to prefill, so without the fallback this customer cannot get in.
+        val s = SetupLink.parse(
+            "", typedUser = "bob", typedPass = "hunter2", defaultServer = "https://x-api.cc",
+        ) as Setup.Xtream
+        assertEquals("https://x-api.cc", s.server)
+        assertEquals("bob", s.username)
+        assertEquals("hunter2", s.password)
+    }
+
+    @Test
+    fun `labelled credentials with no host use the default too`() {
+        val s = SetupLink.parse(
+            "Username: bob\nPassword: hunter2", defaultServer = "https://x-api.cc",
+        ) as Setup.Xtream
+        assertEquals("https://x-api.cc", s.server)
+    }
+
+    @Test
+    fun `a pasted host still beats the default`() {
+        val s = SetupLink.parse(
+            "Server: http://other.tv:8080\nUsername: bob\nPassword: hunter2",
+            defaultServer = "https://x-api.cc",
+        ) as Setup.Xtream
+        assertEquals("http://other.tv:8080", s.server)
+    }
+
+    @Test
+    fun `no default server means credentials alone are not enough`() {
+        // A build that ships without a default host must not invent one: it
+        // would send someone to a login failure against a stranger's panel.
+        val s = SetupLink.parse("", typedUser = "bob", typedPass = "hunter2", defaultServer = "")
+        assertTrue("expected Unrecognised, got $s", s is Setup.Unrecognised)
+    }
+
+    @Test
     fun `nothing usable says what to do rather than what failed`() {
         val s = SetupLink.parse("please help") as Setup.Unrecognised
         assertTrue(s.reason, s.reason.contains("Paste"))
@@ -145,6 +183,13 @@ class SetupLinkTest {
     fun `empty input asks for the link`() {
         assertTrue(SetupLink.parse("") is Setup.Unrecognised)
         assertTrue(SetupLink.parse("   \n  ") is Setup.Unrecognised)
+    }
+
+    @Test
+    fun `a username with no password is not enough for the default host`() {
+        // Half a login against an assumed host is a guess on top of a guess.
+        val s = SetupLink.parse("", typedUser = "bob", defaultServer = "https://x-api.cc")
+        assertTrue("expected Unrecognised, got $s", s is Setup.Unrecognised)
     }
 
     @Test
