@@ -1,6 +1,10 @@
 package tv.enktel.app
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
@@ -181,6 +185,45 @@ class ScreenshotCaptureTest {
             tv.enktel.app.ui.downloads.DownloadsScreen(g, nav)
         }
         capture("downloads")
+    }
+
+    /** The branded category row that opens Home. See CategoryTiles. */
+    @Test
+    @Config(qualifiers = PHONE)
+    fun categoryTiles() {
+        themed {
+            androidx.compose.foundation.layout.Box(
+                androidx.compose.ui.Modifier
+                    .fillMaxWidth()
+                    .background(tv.enktel.app.ui.theme.EnktelBg)
+                    .padding(vertical = 20.dp),
+            ) {
+                tv.enktel.app.ui.screens.CategoryTiles(
+                    padHoriz = 16.dp, compact = true,
+                    expiry = "This line expires in 12 days.", onSelect = {},
+                )
+            }
+        }
+        capture("category-tiles")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun categoryTilesOnTelevision() {
+        themed {
+            androidx.compose.foundation.layout.Box(
+                androidx.compose.ui.Modifier
+                    .fillMaxWidth()
+                    .background(tv.enktel.app.ui.theme.EnktelBg)
+                    .padding(vertical = 28.dp),
+            ) {
+                tv.enktel.app.ui.screens.CategoryTiles(
+                    padHoriz = 48.dp, compact = false,
+                    expiry = "This line expires in 12 days.", onSelect = {},
+                )
+            }
+        }
+        capture("category-tiles-bigscreen")
     }
 
     /** The other half of the short menu. See MoreScreen. */

@@ -96,7 +96,25 @@ object SetupLink {
      * someone has filled the fields in, that is a more recent statement of
      * intent than whatever the pasted link happens to contain.
      */
-    fun parse(raw: String, typedUser: String = "", typedPass: String = ""): Setup {
+    fun parse(
+        raw: String,
+        typedUser: String = "",
+        typedPass: String = "",
+        /**
+         * The host to assume when the paste names none.
+         *
+         * A reseller very often hands out a username and a password and
+         * nothing else, because their customers are all on one panel. The old
+         * form served that case by prefilling the server field; a single paste
+         * box has no field to prefill, so the default has to live here or that
+         * customer cannot get in at all.
+         *
+         * Blank disables the fallback, which is what a build with no default
+         * server wants — inventing a host for someone whose provider we do not
+         * know sends them to a login failure against a stranger's panel.
+         */
+        defaultServer: String = DefaultLine.server,
+    ): Setup {
         val text = raw.trim()
         if (text.isBlank() && typedUser.isBlank()) {
             return Setup.Unrecognised("Paste the link or details your provider sent you.")
@@ -141,6 +159,14 @@ object SetupLink {
             } else {
                 Setup.NeedsCredentials(server)
             }
+        }
+
+        // Credentials but no host. Our own subscribers are all on one panel and
+        // are frequently given exactly this — so rather than refusing, assume
+        // the build's own server. It is still validated before anything is
+        // saved, so a wrong guess fails the same way a wrong password does.
+        if (user.isNotBlank() && pass.isNotBlank() && defaultServer.isNotBlank()) {
+            return Setup.Xtream(PlaylistRepository.normalizeServer(defaultServer), user, pass)
         }
 
         // No address anywhere. Said in terms of what to do next rather than
