@@ -1115,6 +1115,15 @@ private fun MainNav(
             )
         }
         composable("settings") { SettingsScreen(graph, nav) }
+        // The other half of the short menu. Registered unconditionally: the
+        // rail only offers it in simple mode, but a route that exists in one
+        // mode and 404s in the other is how a back-stack entry survives a
+        // settings change and lands nowhere.
+        composable("more") {
+            tv.enktel.app.ui.screens.MoreScreen(
+                onSelect = { route -> nav.navigate(route) { launchSingleTop = true } },
+            )
+        }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
@@ -1299,7 +1308,12 @@ private fun MainNav(
         if (immersive) {
             navHost(androidx.compose.foundation.layout.PaddingValues(0.dp))
         } else {
+            // The rail's contents follow the "simple menu" preference, which
+            // defaults on. See SettingsStore.simpleMenu and navItemsFor.
+            val simpleMenu by graph.settings.simpleMenu
+                .collectAsStateWithLifecycle(initialValue = true)
             tv.enktel.app.ui.components.TvNavShell(
+                items = tv.enktel.app.ui.components.navItemsFor(simpleMenu),
                 currentRoute = currentRoute,
                 // A TV remote can't tap a floating window, and letting the dock
                 // compete for D-pad focus with the grid behind it makes both

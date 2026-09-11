@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Download
@@ -140,7 +141,7 @@ private const val FOCUS_HANDOFF_FRAMES = 12
  * distance, and they inherit `contentColor`, so the whole row (icon, label and
  * stripe) now moves together between the dim, selected and focused states.
  */
-private val DEFAULT_ITEMS = listOf(
+val FULL_ITEMS = listOf(
     TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
     TvNavItem("guide", "TV Guide", Icons.Rounded.CalendarMonth, "guide"),
@@ -157,6 +158,58 @@ private val DEFAULT_ITEMS = listOf(
     TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
 )
 
+/**
+ * The short menu, and the default.
+ *
+ * Fourteen destinations is not a menu — it is a list of every screen that
+ * exists, in the order they were built. The feedback was that the app is hard
+ * to navigate, and a viewer looking for tonight's football had to read past
+ * Coming Soon, Watchlist, My Lists, Downloads, Recordings and Catch-Up to find
+ * out that Sports was the fourth one up.
+ *
+ * These six are the ones people open: the four content types, the thing that
+ * finds a specific title, and the way out. Search is high because a viewer who
+ * knows what they want should not be browsing for it — the single most common
+ * complaint after "hard to set up" was "hard to find anything".
+ *
+ * Everything else lives behind [MORE_ITEM], which is a destination rather than
+ * a deletion. Nothing is unreachable, no route is removed, and every deep link
+ * still resolves; the difference is only what the rail offers first.
+ */
+val SIMPLE_ITEMS = listOf(
+    TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
+    TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
+    TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
+    TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
+    TvNavItem("sports", "Sports", Icons.Rounded.SportsSoccer, "sports"),
+    TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
+)
+
+/** Where the other eight went. Appended to [SIMPLE_ITEMS] by [navItemsFor]. */
+val MORE_ITEM = TvNavItem("more", "More", Icons.Rounded.Apps, "more")
+
+/**
+ * The rail's contents for a given preference.
+ *
+ * One function rather than two lists read at the call site, so "what is in the
+ * simple menu" has a single answer and the More screen can render exactly the
+ * items the rail left out — see [hiddenInSimpleMenu].
+ */
+fun navItemsFor(simple: Boolean): List<TvNavItem> =
+    if (simple) SIMPLE_ITEMS + MORE_ITEM else FULL_ITEMS
+
+/**
+ * What the short menu leaves out, in the order the More screen shows it.
+ *
+ * Derived by subtraction rather than typed out again: a destination added to
+ * [FULL_ITEMS] and forgotten here would be one nobody could reach in the mode
+ * that is on by default.
+ */
+fun hiddenInSimpleMenu(): List<TvNavItem> {
+    val shown = SIMPLE_ITEMS.map { it.id }.toSet()
+    return FULL_ITEMS.filterNot { it.id in shown }
+}
+
 @Composable
 fun TvNavShell(
     currentRoute: String?,
@@ -171,7 +224,7 @@ fun TvNavShell(
      */
     nowPlayingLabel: String? = null,
     onNowPlaying: () -> Unit = {},
-    items: List<TvNavItem> = DEFAULT_ITEMS,
+    items: List<TvNavItem> = FULL_ITEMS,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }

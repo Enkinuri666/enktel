@@ -221,6 +221,27 @@ class SettingsStore(private val context: Context) {
     private val TRIAL_USED = booleanPreferencesKey("trial_used")
     private val TRIAL_EXPIRES_AT = longPreferencesKey("trial_expires_at")
 
+    /**
+     * Show the short menu.
+     *
+     * The rail carried fourteen destinations — Home, Live TV, TV Guide,
+     * Movies, Series, Sports, Coming Soon, Watchlist, My Lists, Downloads,
+     * Recordings, Catch-Up, Search, Settings — and the feedback was that the
+     * app is hard to navigate. Fourteen is not a menu, it is a list of every
+     * screen that exists, and nine of them are things a viewer reaches for
+     * occasionally at most.
+     *
+     * Simple keeps the six people actually open and puts the rest behind
+     * "More", which is a destination rather than a deletion: nothing becomes
+     * unreachable, and every deep link still resolves.
+     *
+     * Defaults to **on**, including for existing installs. That is deliberate
+     * and it is the whole point — a setting defaulted off is a setting for
+     * people who already know their way around, and they are not the ones who
+     * said the app was hard to use. It is one switch in Settings to undo.
+     */
+    private val SIMPLE_MENU = booleanPreferencesKey("simple_menu")
+
     // v1.22.0 download-manager overhaul.
     //   downloadEngine: "auto" (parallel when the source + target permit,
     //                   else falls back to system), "parallel" (force the
@@ -496,6 +517,9 @@ class SettingsStore(private val context: Context) {
     suspend fun setLiveRebufferMs(v: Int) = context.dataStore.edit { it[LIVE_REBUFFER_MS] = v.coerceIn(500, 8_000) }
     val allocatorSizeKb: Flow<Int> = context.dataStore.data.map { it[ALLOCATOR_SIZE_KB] ?: 0 }
     suspend fun setAllocatorSizeKb(v: Int) = context.dataStore.edit { it[ALLOCATOR_SIZE_KB] = v.coerceIn(0, 4096) }
+    val simpleMenu: Flow<Boolean> = context.dataStore.data.map { it[SIMPLE_MENU] ?: true }
+    suspend fun setSimpleMenu(v: Boolean) = context.dataStore.edit { it[SIMPLE_MENU] = v }
+
     val trialUsed: Flow<Boolean> = context.dataStore.data.map { it[TRIAL_USED] ?: false }
     suspend fun setTrialUsed(v: Boolean) = context.dataStore.edit { it[TRIAL_USED] = v }
     suspend fun trialUsedNow(): Boolean = trialUsed.first()
