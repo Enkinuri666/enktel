@@ -63,6 +63,14 @@ The timestamps in it are constants rather than `System.currentTimeMillis()`.
 The cards render an elapsed time and a countdown, so a live clock would make
 every capture differ from the last one for no reason.
 
+`ScreenshotCaptureTest` writes more shots than the guide uses — both flavours
+of every screen, and some the guide has no room for. Only what
+`build-welcome-guide.py` actually reads is kept under `docs/screenshots/`;
+delete the rest after a capture run rather than committing a directory whose
+contents nothing explains. Screens with no flavour branching produce
+byte-identical `-mobile` and `-tv` files, and keeping both is how a reader
+comes to believe there are two of something.
+
 It exists because the faults it found were only ever visible by looking:
 a channel logo stretched to a square, a white play marker on a white still,
 "BASKETBALL" truncated to "BASKE…" in a 150dp chip.

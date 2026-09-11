@@ -486,19 +486,26 @@ SECTIONS = [
         steps=[
             "On the phone, allow installing apps from your browser when Android asks.",
             "Open <b>{MOBILE_APK}</b> in the phone's browser and install it.",
-            "Open EnkTel and enter your <b>username</b> and <b>password</b>. "
-            "The server address is prefilled.",
+            "Open EnkTel and paste the <b>setup link</b> from your welcome email into "
+            "the one box it shows you. Nothing else to fill in.",
             "Give it a moment on first run while the channel list and guide load.",
         ],
         callout="Downloads keep running when you leave the screen or switch apps — the "
                 "app holds a foreground service so Android cannot quietly stop them.",
         shots=[
-            ("android/onboarding-mobile.png", "Sign in", "The same two fields as the web player. "
-             "Xtream Codes is the default; M3U and Stalker are on the same screen if your "
-             "line needs one."),
+            ("android/onboarding-mobile.png", "Setting up", "One box. Paste the setup link "
+             "from your welcome email \u2014 or the whole email, labels and all \u2014 and the "
+             "app reads your username, password and server out of it. A username and "
+             "password on their own work too."),
+            ("android/category-tiles-mobile.png", "Home", "What you land on. Live TV, Movies, "
+             "Series and Sports, plus a search that looks in all of them \u2014 and how long "
+             "your line has left, without going looking for it."),
             ("android/downloads-mobile.png", "Downloads", "Films and episodes saved to the device. "
              "Each one shows progress, speed and where it was saved; the folder button "
              "opens it, and <b>Send to PC</b> hands the finished ones to your computer."),
+            ("android/more-mobile.png", "More", "The menu keeps six things on it. Everything "
+             "else \u2014 the TV guide, your watchlist, recordings, catch-up \u2014 is in here, "
+             "each one saying what it is for."),
         ],
     ),
     dict(
@@ -518,15 +525,19 @@ SECTIONS = [
             "<b>-tv-</b>. The <b>-mobile-</b> one is for phones and will look wrong "
             "on a television.",
             "Install, then open EnkTel from your apps row.",
-            "Sign in with the same <b>username</b> and <b>password</b>. One subscription "
+            "Paste the same <b>setup link</b> from your welcome email. One subscription "
             "covers every device.",
         ],
         callout="Use the <b>tv</b> APK on a television and the <b>mobile</b> APK on a "
                 "phone. They are the same app with different layouts, and installing the "
                 "wrong one is the single most common setup mistake.",
         shots=[
-            ("android/onboarding-bigscreen-tv.png", "Sign in on TV", "The same screen, sized for a "
-             "room rather than a hand."),
+            ("android/onboarding-bigscreen-tv.png", "Setting up on TV", "The same one box, sized "
+             "for a room rather than a hand \u2014 which matters most here, because this is the "
+             "screen you would otherwise be typing into with a remote."),
+            ("android/category-tiles-bigscreen-tv.png", "Home on TV", "The same four categories, "
+             "as tiles big enough to pick out from the sofa. The one under the focus ring "
+             "lifts and lights up in its own colour."),
             ("android/downloads-bigscreen-tv.png", "Downloads on TV", "Saved films and episodes, "
              "navigable entirely with a remote."),
         ],
