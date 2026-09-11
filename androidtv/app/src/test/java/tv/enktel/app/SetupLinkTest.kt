@@ -28,6 +28,20 @@ class SetupLinkTest {
     }
 
     @Test
+    fun `the setup link the welcome email composes is accepted verbatim`() {
+        // scripts/build-welcome-email.py builds this out of {{SERVER}},
+        // {{USERNAME}} and {{PASSWORD}}. If this ever stops parsing, first run
+        // stops being a paste for every subscriber we onboard — so the exact
+        // string the email produces is pinned here rather than a lookalike.
+        val s = SetupLink.parse(
+            "https://x-api.cc/get.php?username=enktel_demo&password=8fj3kd92&type=m3u_plus&output=ts",
+        ) as Setup.Xtream
+        assertEquals("https://x-api.cc", s.server)
+        assertEquals("enktel_demo", s.username)
+        assertEquals("8fj3kd92", s.password)
+    }
+
+    @Test
     fun `a player_api link carries the same credentials`() {
         val s = SetupLink.parse("http://host.tv:8080/player_api.php?username=u1&password=p1") as Setup.Xtream
         assertEquals("http://host.tv:8080", s.server)
