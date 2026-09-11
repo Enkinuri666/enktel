@@ -242,6 +242,22 @@ class SettingsStore(private val context: Context) {
      */
     private val SIMPLE_MENU = booleanPreferencesKey("simple_menu")
 
+    /**
+     * Has this device been told the menu got shorter?
+     *
+     * [SIMPLE_MENU] defaults on for *existing* installs too, which is the
+     * point — they are the ones who said the app was hard to navigate. But a
+     * menu that silently loses eight entries between one launch and the next
+     * is its own bad experience, however much better the short one is: someone
+     * who knew Downloads was tenth in the rail opens the app and finds it
+     * gone, with nothing anywhere saying where it went.
+     *
+     * So it is said once, and only to them. Onboarding marks this seen on its
+     * way out, so a fresh install — which has no menu to miss and is being
+     * shown quite enough already — never gets it.
+     */
+    private val SIMPLE_MENU_NOTICE_SEEN = booleanPreferencesKey("simple_menu_notice_seen")
+
     // v1.22.0 download-manager overhaul.
     //   downloadEngine: "auto" (parallel when the source + target permit,
     //                   else falls back to system), "parallel" (force the
@@ -519,6 +535,11 @@ class SettingsStore(private val context: Context) {
     suspend fun setAllocatorSizeKb(v: Int) = context.dataStore.edit { it[ALLOCATOR_SIZE_KB] = v.coerceIn(0, 4096) }
     val simpleMenu: Flow<Boolean> = context.dataStore.data.map { it[SIMPLE_MENU] ?: true }
     suspend fun setSimpleMenu(v: Boolean) = context.dataStore.edit { it[SIMPLE_MENU] = v }
+
+    val simpleMenuNoticeSeen: Flow<Boolean> =
+        context.dataStore.data.map { it[SIMPLE_MENU_NOTICE_SEEN] ?: false }
+    suspend fun setSimpleMenuNoticeSeen(v: Boolean) =
+        context.dataStore.edit { it[SIMPLE_MENU_NOTICE_SEEN] = v }
 
     val trialUsed: Flow<Boolean> = context.dataStore.data.map { it[TRIAL_USED] ?: false }
     suspend fun setTrialUsed(v: Boolean) = context.dataStore.edit { it[TRIAL_USED] = v }
