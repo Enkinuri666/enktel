@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1062,7 +1063,18 @@ private fun MainNav(
                 else Modifier.focusRequester(contentFocus).focusGroup()
             ),
     ) {
-        composable("onboarding") { OnboardingScreen(graph, onDone = { nav.navigate("home") { popUpTo(0) } }) }
+        composable("onboarding") {
+            val scope = rememberCoroutineScope()
+            OnboardingScreen(
+                graph,
+                onDone = {
+                    // A first run has no old menu to be surprised by, and is
+                    // already being shown a tour. See simpleMenuNoticeSeen.
+                    scope.launch { graph.settings.setSimpleMenuNoticeSeen(true) }
+                    nav.navigate("home") { popUpTo(0) }
+                },
+            )
+        }
         composable("home") {
             val kidsMode by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
             if (kidsMode) tv.enktel.app.ui.screens.KidsModeScreen(graph, nav) else HomeScreen(graph, nav)
@@ -1115,6 +1127,15 @@ private fun MainNav(
             )
         }
         composable("settings") { SettingsScreen(graph, nav) }
+        // The other half of the short menu. Registered unconditionally: the
+        // rail only offers it in simple mode, but a route that exists in one
+        // mode and 404s in the other is how a back-stack entry survives a
+        // settings change and lands nowhere.
+        composable("more") {
+            tv.enktel.app.ui.screens.MoreScreen(
+                onSelect = { route -> nav.navigate(route) { launchSingleTop = true } },
+            )
+        }
         composable("manageCategories") { tv.enktel.app.ui.screens.ManageCategoriesScreen(graph, nav) }
         composable("speedTest") { tv.enktel.app.ui.screens.SpeedTestScreen(graph, nav) }
         composable("recordings") { RecordingsScreen(graph, nav) }
@@ -1299,7 +1320,25 @@ private fun MainNav(
         if (immersive) {
             navHost(androidx.compose.foundation.layout.PaddingValues(0.dp))
         } else {
+            // The rail's contents follow the "simple menu" preference, which
+            // defaults on. See SettingsStore.simpleMenu and navItemsFor.
+            val simpleMenu by graph.settings.simpleMenu
+                .collectAsStateWithLifecycle(initialValue = true)
+
+            // Told once, to the people who had the long menu yesterday. See
+            // SettingsStore.simpleMenuNoticeSeen for why it is not shown to a
+            // fresh install.
+            val menuNoticeSeen by graph.settings.simpleMenuNoticeSeen
+                .collectAsStateWithLifecycle(initialValue = true)
+            val toaster = tv.enktel.app.ui.components.LocalToaster.current
+            LaunchedEffect(simpleMenu, menuNoticeSeen) {
+                if (simpleMenu && !menuNoticeSeen) {
+                    toaster.info("The menu is shorter now — everything else is under More.")
+                    graph.settings.setSimpleMenuNoticeSeen(true)
+                }
+            }
             tv.enktel.app.ui.components.TvNavShell(
+                items = tv.enktel.app.ui.components.navItemsFor(simpleMenu),
                 currentRoute = currentRoute,
                 // A TV remote can't tap a floating window, and letting the dock
                 // compete for D-pad focus with the grid behind it makes both

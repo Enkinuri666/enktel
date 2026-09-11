@@ -183,6 +183,21 @@ class ScreenshotCaptureTest {
         capture("downloads")
     }
 
+    /** The other half of the short menu. See MoreScreen. */
+    @Test
+    @Config(qualifiers = PHONE)
+    fun more() {
+        themed { tv.enktel.app.ui.screens.MoreScreen(onSelect = {}) }
+        capture("more")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun moreOnTelevision() {
+        themed { tv.enktel.app.ui.screens.MoreScreen(onSelect = {}) }
+        capture("more-bigscreen")
+    }
+
     @Test
     @Config(qualifiers = TV)
     fun onboardingOnTelevision() {

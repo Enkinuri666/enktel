@@ -112,6 +112,29 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         // them under Playlists where you have to know to look.
         AccountBanner(graph, profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull())
 
+        // The menu switch, above the quick actions.
+        //
+        // High on the page because it is the one setting that changes what
+        // every other screen looks like, and because someone hunting for a
+        // destination the short menu hid will come here first. Phrased as what
+        // it does rather than as a mode name: "Simple menu: ON" tells nobody
+        // what they get.
+        val simpleMenu by graph.settings.simpleMenu.collectAsStateWithLifecycle(initialValue = true)
+        FocusButton(
+            if (simpleMenu) "Menu: Simple — show all destinations" else "Menu: Full — show fewer destinations",
+            accent = !simpleMenu,
+            onClick = { scope.launch { graph.settings.setSimpleMenu(!simpleMenu) } },
+        )
+        Text(
+            if (simpleMenu) {
+                "The menu shows Home, Live TV, Movies, Series, Sports and Search, with the rest " +
+                    "under More. Nothing is hidden — this only changes what is offered first."
+            } else {
+                "The menu shows all fourteen destinations."
+            },
+            color = EnktelTextDim, fontSize = 11.sp,
+        )
+
         // Quick-actions stay visible in every category — they're the tools
         // people open Settings to reach.
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

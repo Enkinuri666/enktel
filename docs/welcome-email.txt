@@ -8,14 +8,23 @@ browser. There is no account to create. The details below are all you need.
   Server address: {{SERVER}}
   Plan:           {{PLAN}}, runs until {{EXPIRES}}
 
-Keep this email. Nobody at EnkTel will ever ask you for your password.
+Setup link - paste this into the app and you are done:
+
+  {{SERVER}}/get.php?username={{USERNAME}}&password={{PASSWORD}}&type=m3u_plus&output=ts
+
+It also works in VLC and most other players, if you would rather use one of
+those. Keep this email. Nobody at EnkTel will ever ask you for your password.
 
 
 START HERE
 
-The web player needs nothing installed, so it is the quickest way to check
-everything works. If it plays here, your subscription is fine - anything else
-is that device's setup.
+Install the app, open it, and paste the setup link above into the one box it
+shows you. There is nothing else to fill in - it reads your username and
+password out of the link.
+
+Or try the web player first: it needs nothing installed, so it is the quickest
+way to check everything works. If it plays there, your subscription is fine -
+anything else is that device's setup.
 
   https://watch.enktel.tv
 
