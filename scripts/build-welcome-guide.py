@@ -503,6 +503,10 @@ SECTIONS = [
             ("android/downloads-mobile.png", "Downloads", "Films and episodes saved to the device. "
              "Each one shows progress, speed and where it was saved; the folder button "
              "opens it, and <b>Send to PC</b> hands the finished ones to your computer."),
+            ("android/search-mobile.png", "Search", "One box for all of it. Type a team, a "
+             "film, a channel name or its number and the results come back in rows \u2014 "
+             "channels, sport, films, box sets and the guide \u2014 with a live match "
+             "showing which channel it is on and whether it has started."),
             ("android/more-mobile.png", "More", "The menu keeps six things on it. Everything "
              "else \u2014 the TV guide, your watchlist, recordings, catch-up \u2014 is in here, "
              "each one saying what it is for."),
@@ -538,6 +542,9 @@ SECTIONS = [
             ("android/category-tiles-bigscreen-tv.png", "Home on TV", "The same four categories, "
              "as tiles big enough to pick out from the sofa. The one under the focus ring "
              "lifts and lights up in its own colour."),
+            ("android/search-bigscreen-tv.png", "Search on TV", "The same one box. A team "
+             "name finds the match, says which channel has it and whether it is on now \u2014 "
+             "rather than leaving you to scroll the guide looking for it."),
             ("android/downloads-bigscreen-tv.png", "Downloads on TV", "Saved films and episodes, "
              "navigable entirely with a remote."),
         ],

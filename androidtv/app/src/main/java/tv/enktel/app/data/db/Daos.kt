@@ -334,8 +334,15 @@ interface EpgDao {
     suspend fun horizonMs(profileId: Long): Long?
 
     /** Global title search — used by the unified master-search screen so
-     *  users can find an upcoming program by name across every channel. */
-    @Query("SELECT * FROM epg WHERE profileId = :profileId AND endMs > :now AND (title LIKE '%' || :q || '%' OR desc LIKE '%' || :q || '%') ORDER BY startMs LIMIT 40")
+     *  users can find an upcoming program by name across every channel.
+     *
+     *  120 rather than 40 since search grew a Sport rail. The two rails are
+     *  cut from this one result set — a hit on a sports channel is a fixture,
+     *  the rest is the guide — and at 40 a query like "football" spent the
+     *  whole budget on the earliest few channels, so the Sport rail came back
+     *  thin while the row the viewer wanted sat just past the limit. The
+     *  screen still shows a bounded number of each. */
+    @Query("SELECT * FROM epg WHERE profileId = :profileId AND endMs > :now AND (title LIKE '%' || :q || '%' OR desc LIKE '%' || :q || '%') ORDER BY startMs LIMIT 120")
     suspend fun searchUpcoming(profileId: Long, q: String, now: Long): List<EpgProgram>
 }
 

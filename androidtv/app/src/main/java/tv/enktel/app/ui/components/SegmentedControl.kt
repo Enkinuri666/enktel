@@ -2,6 +2,8 @@ package tv.enktel.app.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -58,6 +60,13 @@ fun SegmentedControl(
             .height(38.dp)
             .clip(RoundedCornerShape(percent = 50))
             .background(Color.White.copy(alpha = 0.05f))
+            // Scrollable, because the track is as wide as its segments and a
+            // phone is not. Search grew a sixth segment and the last two —
+            // Series and Guide — ran off a 411 dp screen with no way to reach
+            // them: a mode switch you cannot see is worse than one that isn't
+            // there. Costs nothing when everything fits, and on a remote the
+            // focus search brings the off-screen segment into view itself.
+            .horizontalScroll(rememberScrollState())
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,

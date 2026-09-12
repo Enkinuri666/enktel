@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +39,14 @@ import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.data.repo.ChannelFilters
+import tv.enktel.app.data.repo.SportsRepository
 import tv.enktel.app.ui.components.SectionTitle
+import tv.enktel.app.ui.components.rememberScreenShape
 import tv.enktel.app.ui.components.Segment
 import tv.enktel.app.ui.components.SegmentedControl
 import tv.enktel.app.ui.components.TvTextField
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -105,33 +108,65 @@ fun SearchScreen(
         else ChannelFilters.apply(allChannels, query = query, hidden = hidden).take(60)
     }
 
+    // Sport, cut from the guide hits rather than searched separately.
+    //
+    // A fixture *is* an EPG programme on a sports channel, so the rows are
+    // already here — asking SportsRepository.load() would mean a multi-day
+    // window over up to 400 channels on every keystroke to learn something
+    // this list already knows. It also means the two rails cannot disagree:
+    // whatever is a fixture leaves the Guide rail, so nothing appears twice.
+    val sportHits = remember(epg, allChannels) {
+        SportsRepository.searchHits(epg, allChannels)
+    }
+    val guideOnly = remember(epg, sportHits) {
+        // Every folded feed, not just the row that survived the fold — the
+        // duplicate that lost is still the same fixture, and leaving it here
+        // showed the match a second time under "In the Guide".
+        val claimed = sportHits.flatMapTo(HashSet()) { hit -> hit.feeds.map { it.program.id } }
+        epg.filterNot { it.id in claimed }
+    }
+
     // Scope switch. "All" stays the default — a search that silently excluded
-    // three of the four content types would be worse than no scoping at all.
+    // four of the five content types would be worse than no scoping at all.
     var scope0 by remember { mutableStateOf("all") }
-    val segments = remember(channels, movies, series, epg) {
+    val segments = remember(channels, movies, series, guideOnly, sportHits) {
         listOf(
-            Segment("all", "All", channels.size + movies.size + series.size + epg.size),
+            Segment("all", "All", channels.size + sportHits.size + movies.size + series.size + guideOnly.size),
             Segment("live", "Live TV", channels.size),
+            Segment("sport", "Sport", sportHits.size),
             Segment("movies", "Movies", movies.size),
             Segment("series", "Series", series.size),
-            Segment("guide", "Guide", epg.size),
+            Segment("guide", "Guide", guideOnly.size),
         )
     }
     fun show(id: String) = scope0 == "all" || scope0 == id
 
+    // The search box was 520 dp wide inside a 48 dp gutter — 616 dp of
+    // demand on a 411 dp handset, so the field that the whole screen exists
+    // for ran off the right edge. ScreenShape knows what the viewport is;
+    // 48 dp is a television's overscan margin, not a phone's.
+    val shape = rememberScreenShape()
+
     LazyColumn(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 28.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = shape.padV),
     ) {
         item {
-            Column(Modifier.padding(horizontal = 48.dp)) {
+            Column(Modifier.padding(horizontal = shape.padH)) {
                 SectionTitle("Search")
                 Spacer(Modifier.height(12.dp))
                 TvTextField(
                     query, { query = it },
-                    "Title, cast, director, genre, channel name or number…",
-                    Modifier.width(520.dp),
+                    // Shorter on a phone: the long prompt wrapped to three
+                    // lines and pushed the field itself below the fold.
+                    if (shape.narrow) "Channel, match, film or show…"
+                    else "Title, cast, director, genre, channel name or number…",
+                    // widthIn first: it narrows the incoming constraint, and
+                    // fillMaxWidth then takes whatever is left. The other way
+                    // round, fillMaxWidth wins and the box runs the full width
+                    // of a television.
+                    Modifier.widthIn(max = 520.dp).fillMaxWidth(),
                 )
                 if (query.length >= 2) {
                     Spacer(Modifier.height(12.dp))
@@ -141,7 +176,7 @@ fun SearchScreen(
         }
         if (query.isBlank() && history.isNotEmpty()) {
             item {
-                Column(Modifier.padding(horizontal = 48.dp)) {
+                Column(Modifier.padding(horizontal = shape.padH)) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         ChipRowLabel("Recent searches")
                         Spacer(Modifier.weight(1f))
@@ -158,7 +193,7 @@ fun SearchScreen(
         }
         if (query.length >= 2 && channels.isEmpty() && movies.isEmpty() && series.isEmpty() && epg.isEmpty()) {
             item {
-                Column(Modifier.padding(horizontal = 48.dp, vertical = 24.dp)) {
+                Column(Modifier.padding(horizontal = shape.padH, vertical = 24.dp)) {
                     Text("No matches for \"$query\"", color = androidx.compose.ui.graphics.Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text("Try a shorter query, an actor's name, or a genre.", color = EnktelTextDim, fontSize = 12.sp)
@@ -180,13 +215,41 @@ fun SearchScreen(
                 }
             }
         }
-        // Master-search EPG rail: upcoming programs matching the query
-        // across every channel, sorted by earliest start.  Tap to open the
-        // guide anchored on that program's channel + time.
-        if (epg.isNotEmpty() && show("guide")) {
+        // Sport. Above the guide because someone typing a team name wants the
+        // match, and above Movies because a fixture is the thing with a
+        // kick-off time — it is the only result on the screen that stops being
+        // available if they read past it.
+        if (sportHits.isNotEmpty() && show("sport")) {
             item {
-                val epgWithChan = remember(epg, channels) {
-                    epg.map { p -> p to channels.firstOrNull { it.epgId == p.epgId } }
+                val fmt = remember { java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault()) }
+                ContentRail("Sport", sportHits, accent = EnktelLive,
+                    key = { "${it.event.program.id}" }) { hit ->
+                    val ev = hit.event
+                    // What a fixture row has to answer, in order: is it on
+                    // now, what sport, which channel, and is it somewhere
+                    // else too.
+                    val when0 = when (ev.phase) {
+                        "LIVE" -> "● LIVE"
+                        "FINISHED" -> "Ended"
+                        else -> fmt.format(java.util.Date(ev.startMs))
+                    }
+                    val also = if (hit.alsoOn > 0) "+${hit.alsoOn} more" else null
+                    PosterCard(
+                        ev.title, ev.channel.logo, wide = true,
+                        subtitle = listOfNotNull(when0, ev.sport, ev.channel.name, also)
+                            .joinToString(" · "),
+                        onClick = { nav.navigate("live?ch=${ev.channel.key}") },
+                    )
+                }
+            }
+        }
+        // Master-search EPG rail: everything else the guide matched, sorted by
+        // earliest start. Tap to open the channel it is on. Fixtures have
+        // already been taken out above, so a match never shows up twice.
+        if (guideOnly.isNotEmpty() && show("guide")) {
+            item {
+                val epgWithChan = remember(guideOnly, channels) {
+                    guideOnly.map { p -> p to channels.firstOrNull { it.epgId == p.epgId } }
                 }
                 val fmt = remember { java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault()) }
                 ContentRail("In the Guide", epgWithChan, accent = EnktelPurple,

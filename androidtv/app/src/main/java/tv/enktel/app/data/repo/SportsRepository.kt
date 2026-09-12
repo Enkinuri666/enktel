@@ -37,6 +37,28 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
      *  otherwise pull a ten-day EPG window for every sports-ish channel. */
     private val CHANNEL_SCAN_CAP = 400
 
+    /** One fixture found by a search, with the duplicate feeds folded in. */
+    data class SportsSearchHit(
+        /**
+         * Every feed carrying this fixture, best-classified first.
+         *
+         * A panel routinely lists one match on Main Event, on the league
+         * channel, and again in SD — three rows for one thing to watch, which
+         * reads as a fault in the search rather than as a choice of feeds.
+         *
+         * The whole list rather than just the winner, because the caller needs
+         * to know which programmes were claimed: the search screen takes the
+         * fixtures out of its guide rail, and folding a feed away without
+         * saying so put it straight back there under a different heading.
+         */
+        val feeds: List<SportsEvent>,
+    ) {
+        val event: SportsEvent get() = feeds.first()
+
+        /** How many *other* channels carry the same fixture at the same time. */
+        val alsoOn: Int get() = feeds.size - 1
+    }
+
     /**
      * How much of the playlist the last [load] actually covered.
      *
@@ -58,103 +80,8 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     var lastScan: ScanCoverage = ScanCoverage()
         private set
 
-    /** Broad tokens on the channel category/name that always count as sports. Expanded from
-     *  the v1.5.0 list to catch more regional broadcasters and the common Xtream naming
-     *  patterns ("SPORT | US: NBA", "DE | Sky Sport", "UK ⚽ Premier League HD", etc). */
-    private val SPORTS_CATEGORY_TOKENS = listOf(
-        "sport", "sports", "espn", "sky sports", "sky sport", "bein", "dazn", "fubo", "tsn",
-        "nbc sport", "eurosport", "premier", "nfl", "nba", "mlb", "nhl", "ufc", "fifa",
-        "uefa", "champions", "bt sport", "tnt sport", "canal+ sport", "movistar",
-        "starz sport", "ppv", "fight", "boxing", "wrestling", "wwe", "aew", "motogp",
-        "f1", "formula 1", "cricket", "willow", "rugby", "golf channel", "tennis channel",
-        "olympics", "paramount+", "peacock sport", "flosport", "bally sport", "bein sport",
-        "match tv", "setanta", "eleven sports", "viasat sport",
-    )
-
-    /** Sport tag → keywords that identify a programme title as belonging to that sport.
-     *  Order matters: earlier tags win on multi-match. */
-    private val SPORT_TAGS: List<Pair<String, List<String>>> = listOf(
-        "Football" to listOf(
-            "football", "soccer", "premier league", "uefa", "fifa", "champions league",
-            "la liga", "bundesliga", "serie a", "ligue 1", "mls", "world cup", "europa",
-            "efl", "carabao", "fa cup", "conference league", "copa", "eredivisie",
-            "primeira liga", "brasileirão", "liga mx", "concacaf",
-        ),
-        "American Football" to listOf(
-            "nfl", "monday night football", "sunday night football", "college football",
-            "super bowl", "ncaaf", "college gameday",
-        ),
-        "Basketball" to listOf(
-            "nba", "basketball", "wnba", "ncaa basketball", "euroleague", "eurocup", "cba",
-            "march madness", "final four",
-        ),
-        "Baseball" to listOf(
-            "mlb", "baseball", "world series", "npb", "ncaa baseball", "little league",
-        ),
-        "Hockey" to listOf(
-            "nhl", "hockey", "ice hockey", "iihf", "khl", "stanley cup", "shl",
-        ),
-        "MMA/Boxing" to listOf(
-            "ufc", "mma", "boxing", "wba", "wbo", "wbc", "prizefight", "bellator", "one fc",
-            "one championship", "usyk", "fury", "canelo", "haney",
-        ),
-        "Tennis" to listOf(
-            "atp", "wta", "tennis", "wimbledon", "us open", "roland garros",
-            "australian open", "davis cup",
-        ),
-        "Cricket" to listOf(
-            "cricket", "ipl", "test match", "t20", "odi", "big bash", "the hundred",
-            "county championship",
-        ),
-        "Motor Racing" to listOf(
-            "formula 1", " f1 ", "motogp", "indycar", "nascar", "wrc", "le mans",
-            "formula e", "supercars", "grand prix",
-        ),
-        "Cycling" to listOf(
-            "tour de france", "giro", "vuelta", "cycling", "uci",
-        ),
-        "Golf" to listOf(
-            "pga", "lpga", "masters tournament", " open championship", " golf ",
-            "ryder cup", "the open",
-        ),
-        "Rugby" to listOf(
-            "rugby", "six nations", "premiership rugby", "nrl", "super rugby",
-            "world cup rugby", "united rugby",
-        ),
-        "Wrestling" to listOf(
-            "wwe", "aew", "wrestling ", "nxt", "smackdown", "raw", "dynamite", "collision",
-        ),
-        "Combat" to listOf(
-            "kickboxing", "muay thai", "one championship", "bellator", "glory",
-        ),
-        "Darts" to listOf("pdc", " darts ", "world darts", "premier league darts"),
-        "Snooker" to listOf("snooker", "world snooker"),
-        "Handball" to listOf("handball", "ehl"),
-        "Volleyball" to listOf("volleyball", "cev"),
-        "Athletics" to listOf("athletics", "diamond league", "world athletics", "olympic"),
-        // Singular stems on purpose: these are substring matches, so "esport"
-        // catches both "ESPORT" and "ESPORTS" while "esports" catches only the
-        // plural. A screenshot of "ARENA ESPORT HD" on Sky Sports Arena landing
-        // in the Other bucket is what caught this — the same trap applies to
-        // any tag whose keyword was written plural-only.
-        "Esports" to listOf("esport", "e-sport", "esl", "cs:go", "cs2", "league of legends", "valorant", "dota"),
-    )
-
-    /** "Arsenal vs Chelsea", "Lakers v Celtics", "Ajax - PSV". Requires words on
-     *  both sides so a stray "v" or dash in a film title doesn't match. */
-    private val FIXTURE_PATTERN = Regex(
-        """\b[\p{L}\d.']{2,}\b\s+(?:vs?\.?|@|-|–)\s+\b[\p{L}\d.']{2,}\b""",
-        RegexOption.IGNORE_CASE,
-    )
-
     /** How many alternative feeds of one fixture the Channel Finder offers. */
     private val FEEDS_PER_FIXTURE = 4
-
-    private val GENERIC_KEYWORDS = listOf(
-        "match", "highlights", "vs ", "vs.", "v.", "playoff", "quarter-final",
-        "semi-final", "final", "tournament", "cup", "league", "grand prix", "derby",
-        "classico", "showcase", "matchweek", "gameweek", "postgame", "pregame", "live from",
-    )
 
     /**
      * Load sports events grouped by phase, applying [filter] if not blank.
@@ -247,29 +174,6 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         }
         if (channelSport != null && GENERIC_KEYWORDS.any { it in text }) return channelSport
         return null
-    }
-
-    /** Detect the sport from the channel's own name/category — e.g. "Sky Sports Football HD"
-     *  or "US: NBA TV" — so we can classify events that only carry team names. */
-    private fun sportFromChannel(ch: Channel): String? {
-        val text = (ch.name + " " + ch.categoryName).lowercase()
-        for ((sport, keywords) in SPORT_TAGS) {
-            if (keywords.any { it in text }) return sport
-        }
-        return null
-    }
-
-    /** A channel is "clearly sports" if its category/name matches a strong sports token,
-     *  so we can safely surface all of its programmes under "Other". */
-    private fun channelIsClearlySports(ch: Channel): Boolean {
-        val text = (ch.name + " " + ch.categoryName).lowercase()
-        val strong = listOf(
-            "sport", "sports", "espn", "sky sport", "bein", "dazn", "eurosport", "tnt sport",
-            "bt sport", "canal+ sport", "fubo", "nba tv", "nfl network", "mlb network",
-            "nhl network", "ufc", "fight", "ppv", "boxing", "wwe", "aew", "cricket", "rugby",
-            "motorsport", "motogp", "f1 tv",
-        )
-        return strong.any { it in text }
     }
 
     // ---- Smart Channel Finder ---------------------------------------------
@@ -371,6 +275,144 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
             .toList()
     }
 
+    /** All distinct sport names present across the loaded event set, sorted for stable UI. */
+    fun sportsInSet(events: Map<String, List<SportsEvent>>): List<String> {
+        val counts = events.values.flatten().groupingBy { it.sport }.eachCount()
+        // Most-populated sports first, alphabetical as a tiebreak; keep "Other" at the end.
+        return counts.entries
+            .sortedWith(compareBy({ it.key == "Other" }, { -it.value }, { it.key }))
+            .map { it.key }
+    }
+
+    /**
+     * How this app decides something is sport, and which sport.
+     *
+     * In a companion rather than on the instance because none of it needs
+     * one: it reads a programme and a channel and answers. [searchHits] is
+     * the entry point the search screen uses, and putting it here is what
+     * makes it testable — building a SportsRepository means building a
+     * ContentRepository, which means a Context and a Room database, for
+     * logic that touches neither.
+     */
+    companion object {
+    /** Broad tokens on the channel category/name that always count as sports. Expanded from
+     *  the v1.5.0 list to catch more regional broadcasters and the common Xtream naming
+     *  patterns ("SPORT | US: NBA", "DE | Sky Sport", "UK ⚽ Premier League HD", etc). */
+    private val SPORTS_CATEGORY_TOKENS = listOf(
+        "sport", "sports", "espn", "sky sports", "sky sport", "bein", "dazn", "fubo", "tsn",
+        "nbc sport", "eurosport", "premier", "nfl", "nba", "mlb", "nhl", "ufc", "fifa",
+        "uefa", "champions", "bt sport", "tnt sport", "canal+ sport", "movistar",
+        "starz sport", "ppv", "fight", "boxing", "wrestling", "wwe", "aew", "motogp",
+        "f1", "formula 1", "cricket", "willow", "rugby", "golf channel", "tennis channel",
+        "olympics", "paramount+", "peacock sport", "flosport", "bally sport", "bein sport",
+        "match tv", "setanta", "eleven sports", "viasat sport",
+    )
+
+    /** Sport tag → keywords that identify a programme title as belonging to that sport.
+     *  Order matters: earlier tags win on multi-match. */
+    private val SPORT_TAGS: List<Pair<String, List<String>>> = listOf(
+        "Football" to listOf(
+            "football", "soccer", "premier league", "uefa", "fifa", "champions league",
+            "la liga", "bundesliga", "serie a", "ligue 1", "mls", "world cup", "europa",
+            "efl", "carabao", "fa cup", "conference league", "copa", "eredivisie",
+            "primeira liga", "brasileirão", "liga mx", "concacaf",
+        ),
+        "American Football" to listOf(
+            "nfl", "monday night football", "sunday night football", "college football",
+            "super bowl", "ncaaf", "college gameday",
+        ),
+        "Basketball" to listOf(
+            "nba", "basketball", "wnba", "ncaa basketball", "euroleague", "eurocup", "cba",
+            "march madness", "final four",
+        ),
+        "Baseball" to listOf(
+            "mlb", "baseball", "world series", "npb", "ncaa baseball", "little league",
+        ),
+        "Hockey" to listOf(
+            "nhl", "hockey", "ice hockey", "iihf", "khl", "stanley cup", "shl",
+        ),
+        "MMA/Boxing" to listOf(
+            "ufc", "mma", "boxing", "wba", "wbo", "wbc", "prizefight", "bellator", "one fc",
+            "one championship", "usyk", "fury", "canelo", "haney",
+        ),
+        "Tennis" to listOf(
+            "atp", "wta", "tennis", "wimbledon", "us open", "roland garros",
+            "australian open", "davis cup",
+        ),
+        "Cricket" to listOf(
+            "cricket", "ipl", "test match", "t20", "odi", "big bash", "the hundred",
+            "county championship",
+        ),
+        "Motor Racing" to listOf(
+            "formula 1", " f1 ", "motogp", "indycar", "nascar", "wrc", "le mans",
+            "formula e", "supercars", "grand prix",
+        ),
+        "Cycling" to listOf(
+            "tour de france", "giro", "vuelta", "cycling", "uci",
+        ),
+        "Golf" to listOf(
+            "pga", "lpga", "masters tournament", " open championship", " golf ",
+            "ryder cup", "the open",
+        ),
+        "Rugby" to listOf(
+            "rugby", "six nations", "premiership rugby", "nrl", "super rugby",
+            "world cup rugby", "united rugby",
+        ),
+        "Wrestling" to listOf(
+            "wwe", "aew", "wrestling ", "nxt", "smackdown", "raw", "dynamite", "collision",
+        ),
+        "Combat" to listOf(
+            "kickboxing", "muay thai", "one championship", "bellator", "glory",
+        ),
+        "Darts" to listOf("pdc", " darts ", "world darts", "premier league darts"),
+        "Snooker" to listOf("snooker", "world snooker"),
+        "Handball" to listOf("handball", "ehl"),
+        "Volleyball" to listOf("volleyball", "cev"),
+        "Athletics" to listOf("athletics", "diamond league", "world athletics", "olympic"),
+        // Singular stems on purpose: these are substring matches, so "esport"
+        // catches both "ESPORT" and "ESPORTS" while "esports" catches only the
+        // plural. A screenshot of "ARENA ESPORT HD" on Sky Sports Arena landing
+        // in the Other bucket is what caught this — the same trap applies to
+        // any tag whose keyword was written plural-only.
+        "Esports" to listOf("esport", "e-sport", "esl", "cs:go", "cs2", "league of legends", "valorant", "dota"),
+    )
+
+    /** "Arsenal vs Chelsea", "Lakers v Celtics", "Ajax - PSV". Requires words on
+     *  both sides so a stray "v" or dash in a film title doesn't match. */
+    private val FIXTURE_PATTERN = Regex(
+        """\b[\p{L}\d.']{2,}\b\s+(?:vs?\.?|@|-|–)\s+\b[\p{L}\d.']{2,}\b""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val GENERIC_KEYWORDS = listOf(
+        "match", "highlights", "vs ", "vs.", "v.", "playoff", "quarter-final",
+        "semi-final", "final", "tournament", "cup", "league", "grand prix", "derby",
+        "classico", "showcase", "matchweek", "gameweek", "postgame", "pregame", "live from",
+    )
+
+    /** Detect the sport from the channel's own name/category — e.g. "Sky Sports Football HD"
+     *  or "US: NBA TV" — so we can classify events that only carry team names. */
+    private fun sportFromChannel(ch: Channel): String? {
+        val text = (ch.name + " " + ch.categoryName).lowercase()
+        for ((sport, keywords) in SPORT_TAGS) {
+            if (keywords.any { it in text }) return sport
+        }
+        return null
+    }
+
+    /** A channel is "clearly sports" if its category/name matches a strong sports token,
+     *  so we can safely surface all of its programmes under "Other". */
+    private fun channelIsClearlySports(ch: Channel): Boolean {
+        val text = (ch.name + " " + ch.categoryName).lowercase()
+        val strong = listOf(
+            "sport", "sports", "espn", "sky sport", "bein", "dazn", "eurosport", "tnt sport",
+            "bt sport", "canal+ sport", "fubo", "nba tv", "nfl network", "mlb network",
+            "nhl network", "ufc", "fight", "ppv", "boxing", "wwe", "aew", "cricket", "rugby",
+            "motorsport", "motogp", "f1 tv",
+        )
+        return strong.any { it in text }
+    }
+
     /**
      * Scores a currently-airing programme as a live fixture.
      * @return sport tag to confidence, or null when this isn't sport at all.
@@ -404,13 +446,95 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     private fun looksLikeFixture(title: String): Boolean =
         FIXTURE_PATTERN.containsMatchIn(title)
 
-    /** All distinct sport names present across the loaded event set, sorted for stable UI. */
-    fun sportsInSet(events: Map<String, List<SportsEvent>>): List<String> {
-        val counts = events.values.flatten().groupingBy { it.sport }.eachCount()
-        // Most-populated sports first, alphabetical as a tiebreak; keep "Other" at the end.
-        return counts.entries
-            .sortedWith(compareBy({ it.key == "Other" }, { -it.value }, { it.key }))
-            .map { it.key }
+    // ---- Unified search ----------------------------------------------------
+
+    /**
+     * Which of these programmes are sport, and what sport.
+     *
+     * Pure on purpose. The search screen already holds the EPG rows its query
+     * matched and the channel list they belong to, so this costs one pass over
+     * lists the caller has in hand. [load] cannot serve search: it pulls a
+     * multi-day EPG window for up to 400 channels, which is the right price
+     * for opening the Sports Hub and quite the wrong one for a keystroke.
+     *
+     * The floor for counting as sport is [scoreAsSport]'s — a named league or
+     * competition, an "A v B" fixture title on a channel we already believe
+     * in, or simply being on a channel that exists to show sport. Everything
+     * here has already matched the viewer's query, so the last of those is not
+     * the guess it would be during a blind scan.
+     */
+    fun searchHits(
+        programmes: List<EpgProgram>,
+        channels: List<Channel>,
+        now: Long = System.currentTimeMillis(),
+        limit: Int = 40,
+    ): List<SportsSearchHit> {
+        if (programmes.isEmpty() || channels.isEmpty()) return emptyList()
+        val byEpgId = channels.asSequence()
+            .filter { it.epgId.isNotBlank() }
+            .associateBy { it.epgId }
+
+        data class Scored(val event: SportsEvent, val confidence: Int)
+
+        val scored = programmes.mapNotNull { prog ->
+            val ch = byEpgId[prog.epgId] ?: return@mapNotNull null
+            val (sport, confidence) = scoreAsSport(prog, ch) ?: return@mapNotNull null
+            val phase = when {
+                prog.endMs <= now -> "FINISHED"
+                prog.startMs <= now -> "LIVE"
+                else -> "UPCOMING"
+            }
+            Scored(SportsEvent(prog, ch, sport, phase), confidence)
+        }
+        if (scored.isEmpty()) return emptyList()
+
+        // Same title at roughly the same time is the same fixture, however
+        // many feeds carry it.
+        //
+        // Walked in order rather than bucketed by `startMs / 60_000`, which is
+        // what this did first: two feeds 40 seconds apart across a minute
+        // boundary land in different buckets and the match appears twice,
+        // which is precisely the case the tolerance exists for.
+        val groups = ArrayList<MutableList<Scored>>()
+        scored
+            .sortedWith(compareBy({ it.event.title.trim().lowercase() }, { it.event.startMs }))
+            .forEach { row ->
+                val open = groups.lastOrNull()?.last()
+                val sameFixture = open != null &&
+                    open.event.title.trim().equals(row.event.title.trim(), ignoreCase = true) &&
+                    row.event.startMs - open.event.startMs <= DUPLICATE_FEED_SLACK_MS
+                if (sameFixture) groups.last() += row else groups += mutableListOf(row)
+            }
+
+        // On now first, then what is coming, then what has been. Within a
+        // phase: the classification we are surest of, then by kick-off.
+        val phaseRank = mapOf("LIVE" to 0, "UPCOMING" to 1, "FINISHED" to 2)
+        return groups
+            .map { feeds ->
+                val ranked = feeds.sortedByDescending { it.confidence }
+                SportsSearchHit(ranked.map { it.event }) to ranked.first().confidence
+            }
+            .sortedWith(
+                compareBy(
+                    { phaseRank[it.first.event.phase] ?: 3 },
+                    { -it.second },
+                    { it.first.event.startMs },
+                ),
+            )
+            .take(limit)
+            .map { it.first }
+    }
+
+    /**
+     * How far apart two feeds' start times may be and still be one fixture.
+     *
+     * Panels publish the same kick-off a few seconds apart across their own
+     * duplicates. Two minutes is comfortably more than that drift and
+     * comfortably less than any real gap between two different programmes
+     * with the same title on the same channel.
+     */
+    private const val DUPLICATE_FEED_SLACK_MS = 120_000L
+
     }
 
     private fun emptyPhases(): Map<String, List<SportsEvent>> =
