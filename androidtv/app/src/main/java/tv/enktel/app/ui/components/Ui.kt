@@ -701,11 +701,19 @@ fun <T> ContentRailIndexed(
     // target per rail and steps between them vertically. focusRestorer() then
     // returns to the card you were last on when you come back up, instead of
     // snapping to the start of the row.
+    // 48 dp was hard-coded here and in the row below, which is a television's
+    // overscan margin and a third of a 411 dp handset. Every rail in the app
+    // sat that far in on a phone while the screen headings above them moved to
+    // a phone gutter, so the two stopped lining up. ScreenShape knows which
+    // viewport this is; on the ten-foot build it still answers with the
+    // overscan-safe figure, so nothing changes on a television.
+    val gutter = rememberScreenShape().padH
+
     Column(modifier.fillMaxWidth().focusGroup()) {
         // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 48.dp, end = 48.dp, bottom = 6.dp, top = 4.dp),
+            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 6.dp, top = 4.dp),
         ) {
             Box(
                 Modifier
@@ -737,7 +745,7 @@ fun <T> ContentRailIndexed(
             // lifts 6 dp and casts an 18 dp shadow, and a LazyRow clips to its
             // own bounds — without headroom the glow is sliced off flat along
             // the rail edge, which looks worse than having no shadow at all.
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = gutter, vertical = 14.dp),
             // 14 dp was tight once cards gained a cast shadow; neighbouring
             // shadows overlapped and the row read as one mass rather than
             // separate cards.

@@ -14,6 +14,7 @@ import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.DownloadEntry
+import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.ui.theme.EnktelTheme
 import org.junit.Rule
@@ -78,6 +79,24 @@ class ScreenshotCaptureTest {
         println("SHOT $name ${img.width}x${img.height} -> ${f.absolutePath}")
     }
 
+    /**
+     * Let a debounced screen finish before photographing it.
+     *
+     * Search waits 300 ms before it touches the guide, so a capture on the
+     * first frame photographs the channel rail alone and reports "Sport (0)" —
+     * a picture of the feature not working. One big `advanceTimeBy` is not
+     * enough on its own: whether the effect's coroutine has been scheduled by
+     * the time the clock jumps is a race, and it lost about half the time.
+     * Stepping the clock and idling between steps gives it somewhere to be
+     * resumed.
+     */
+    private fun settle(steps: Int = 20, stepMs: Long = 100) {
+        repeat(steps) {
+            rule.mainClock.advanceTimeBy(stepMs)
+            rule.waitForIdle()
+        }
+    }
+
     private fun themed(content: @Composable () -> Unit) {
         rule.setContent { EnktelTheme { Box { content() } } }
     }
@@ -122,6 +141,58 @@ class ScreenshotCaptureTest {
                     sortIdx = i,
                 )
             },
+        )
+    }
+
+    /**
+     * Sports channels with a fixture on each, so the Sport rail has something
+     * to draw. The channel names matter: the classifier reads them, so
+     * "Sky Sports Football HD" is what makes "Ajax - PSV" land under Football
+     * with no league named in the title.
+     */
+    private fun seedSport(g: AppGraph, profileId: Long): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        val hour = 3_600_000L
+        val channels = listOf(
+            Triple("UK | Sky Sports Main Event", "sky.main", "UK | SPORTS"),
+            Triple("UK | Sky Sports Premier League", "sky.pl", "UK | SPORTS"),
+            Triple("UK | TNT Sports 1 HD", "tnt.1", "UK | SPORTS"),
+            Triple("US | ESPN HD", "espn", "US | SPORTS"),
+        )
+        g.db.contentDao().upsertChannels(
+            channels.mapIndexed { i, (name, epgId, cat) ->
+                Channel(
+                    key = "$profileId:${2000 + i}", profileId = profileId,
+                    streamId = (2000 + i).toLong(), name = name, num = 500 + i,
+                    categoryId = "9", categoryName = cat, epgId = epgId, sortIdx = 100 + i,
+                )
+            },
+        )
+        g.db.epgDao().insertAll(
+            listOf(
+                // The same fixture on two feeds — the rail folds them into one
+                // row and says so, which is the behaviour worth photographing.
+                EpgProgram(
+                    profileId = profileId, epgId = "sky.main",
+                    startMs = now - hour, endMs = now + hour,
+                    title = "Premier League: Arsenal v Chelsea",
+                ),
+                EpgProgram(
+                    profileId = profileId, epgId = "sky.pl",
+                    startMs = now - hour, endMs = now + hour,
+                    title = "Premier League: Arsenal v Chelsea",
+                ),
+                EpgProgram(
+                    profileId = profileId, epgId = "tnt.1",
+                    startMs = now + 2 * hour, endMs = now + 4 * hour,
+                    title = "Premier League: Liverpool v Everton",
+                ),
+                EpgProgram(
+                    profileId = profileId, epgId = "espn",
+                    startMs = now + 5 * hour, endMs = now + 8 * hour,
+                    title = "Premier League Review",
+                ),
+            ),
         )
     }
 
@@ -227,6 +298,42 @@ class ScreenshotCaptureTest {
     }
 
     /** The other half of the short menu. See MoreScreen. */
+    @Test
+    @Config(qualifiers = PHONE)
+    fun search() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.screens.SearchScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+                initialQuery = "premier league",
+            )
+        }
+        settle()
+        capture("search")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun searchOnTelevision() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.screens.SearchScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+                initialQuery = "premier league",
+            )
+        }
+        settle()
+        capture("search-bigscreen")
+    }
+
     @Test
     @Config(qualifiers = PHONE)
     fun more() {
