@@ -86,26 +86,21 @@ class PlaylistRepository(
             return addXtream(DefaultLine.NAME, DefaultLine.server, DefaultLine.username, DefaultLine.password)
         }
 
-        // Otherwise fall back to the free-to-air playlist. A public build had
-        // no credentials to seed with and so used to drop the viewer on the
-        // login form with nothing to watch — but a few thousand of the
-        // channels collected here need no account at all, and an install that
-        // opens on live TV is a different product from one that opens on a
-        // password field. The paid line is still one tap away in Settings.
-        if (DefaultLine.hasFreePlaylist) {
-            // The free playlist is live channels only, so seeding it alone
-            // opened the app on live TV and an empty Movies tab. The film
-            // library rides along on the same profile rather than as a second
-            // one, because a viewer switching profiles to find the films is a
-            // worse answer than both being in the place they already are.
-            return addM3u(
-                DefaultLine.FREE_NAME,
-                DefaultLine.freePlaylistUrl,
-                DefaultLine.freePlaylistEpg,
-                vodUrl = if (DefaultLine.hasFreeVod) DefaultLine.freeVodUrl else "",
-            )
-        }
-
+        // No free-to-air fallback any more.
+        //
+        // A build with no line used to seed DefaultLine.freePlaylistUrl, so
+        // the app opened on a few thousand public channels rather than on a
+        // sign-in form. The reasoning was that an install which opens on live
+        // TV is a different product from one that opens on a password field,
+        // and that is true — but it is the wrong product for this one. Every
+        // person installing this has just bought a subscription; the first
+        // thing they see should be where to put it, not somebody else's
+        // channels that they then have to work out how to replace.
+        //
+        // The free-tier fields on DefaultLine are left in place and are now
+        // read by nothing. They stay because the playlist itself is still
+        // built and still valid, and offering it deliberately from Settings
+        // is a smaller change than reinstating this was.
         return null
     }
 

@@ -166,15 +166,18 @@ def build_html(version: str) -> str:
           </table>
           <!-- The one-paste line.
                Composed from the three fields above rather than being a fourth
-               merge field, so it cannot disagree with them. The app's setup
-               box reads the credentials straight out of it, which is what
-               makes first run a paste and nothing else — see SetupLink. -->
+               merge field, so it cannot disagree with them. Our own apps no
+               longer need it — they ask for the username and password and
+               know the server — but it is what a third-party player wants,
+               and the apps still accept it if someone pastes it anyway; see
+               SetupLink. -->
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                  style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:{BODY_TEXT};
                         border-top:1px solid {HAIRLINE};margin-top:12px;">
             <tr>
               <td style="padding:12px 0 4px 0;color:{MUTED};font-size:13px;">
-                Setup link &mdash; paste this into the app and you are done
+                Setup link &mdash; for VLC and other players, and for anyone
+                setting up somewhere that asks for a link
               </td>
             </tr>
             <tr>
@@ -198,9 +201,8 @@ def build_html(version: str) -> str:
                  color:{BODY_TEXT};">Start here</h2>
       <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
                 line-height:19px;color:{MUTED};">
-        Install the app, open it, and paste the setup link above into the one box
-        it shows you. There is nothing else to fill in &mdash; it reads your
-        username and password out of the link.<br><br>
+        Install the app, open it, and type the <b>username</b> and <b>password</b>
+        above. The server is already set, so there is nothing else to fill in.<br><br>
         Or try the web player first: it needs nothing installed, so it is the
         quickest way to check everything works. If it plays there, your
         subscription is fine &mdash; anything else is that device's setup.
@@ -314,19 +316,19 @@ browser. There is no account to create. The details below are all you need.
   Server address: {{{{SERVER}}}}
   Plan:           {{{{PLAN}}}}, runs until {{{{EXPIRES}}}}
 
-Setup link - paste this into the app and you are done:
+Setup link - for VLC and other players, and anywhere that asks for a link:
 
   {{{{SERVER}}}}/get.php?username={{{{USERNAME}}}}&password={{{{PASSWORD}}}}&type=m3u_plus&output=ts
 
-It also works in VLC and most other players, if you would rather use one of
-those. Keep this email. Nobody at EnkTel will ever ask you for your password.
+The EnkTel apps do not need it - they ask for the username and password and
+already know the server. Keep this email. Nobody at EnkTel will ever ask you
+for your password.
 
 
 START HERE
 
-Install the app, open it, and paste the setup link above into the one box it
-shows you. There is nothing else to fill in - it reads your username and
-password out of the link.
+Install the app, open it, and type the username and password above. The
+server is already set, so there is nothing else to fill in.
 
 Or try the web player first: it needs nothing installed, so it is the quickest
 way to check everything works. If it plays there, your subscription is fine -

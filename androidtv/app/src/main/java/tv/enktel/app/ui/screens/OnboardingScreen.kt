@@ -31,6 +31,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.R
+import tv.enktel.app.data.repo.DefaultLine
 import tv.enktel.app.data.repo.SetupLink
 import tv.enktel.app.data.repo.SetupLink.Setup
 import tv.enktel.app.ui.components.AuthBackdrop
@@ -40,41 +41,35 @@ import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
- * First run: one box, then watch.
+ * First run: sign in.
  *
- * ## What this replaced, and why
+ * ## Two rewrites, and why this is the shape it settled on
  *
- * The old form asked six questions in order: Xtream Codes or M3U Playlist; a
- * playlist name; a server URL "(http://host:port)"; a username; a password;
- * and an optional film-library M3U with a two-line explanation of how it
- * differs from the other M3U field. The very first decision was a protocol
- * question, and the user research was unambiguous — people could not get set
- * up, and this screen is where they stopped.
+ * It began as six questions — Xtream Codes or M3U Playlist, a playlist name,
+ * a server URL "(http://host:port)", a username, a password, and a
+ * film-library M3U — with a protocol question first. People could not get
+ * past it.
  *
- * None of those are questions a subscriber can answer. What they have is
- * whatever their provider sent them, and that message already contains the
- * answers: our own welcome email carries a server, a username, a password and
- * an M3U link whose query string holds the login. So this asks for that, and
- * works the rest out — see [SetupLink].
+ * Then it was one paste box and nothing else, which fixed that but overshot:
+ * the two things an EnkTel subscriber is actually handed are a username and a
+ * password, and the screen made them paste something to discover that fields
+ * for those existed. A box labelled "paste your link" is not where someone
+ * holding two words looks.
  *
- * The two credential fields still exist, but only appear when the paste turned
- * out not to carry them. Most people never see them.
+ * So: the two fields, in front, on a branded screen — with the server already
+ * known, because it is the same panel for every subscriber. Someone whose
+ * provider sent a link instead opens the one extra line and pastes it there;
+ * [SetupLink] reads the credentials, the host, or both out of whatever lands.
  *
- * ## What moved rather than went
- *
- * The film-library M3U is now in Settings, where a second playlist belongs. It
- * was on the first screen of a first run, above the Connect button, and it is
- * an advanced option that almost nobody has — the subscriber who needs it can
- * find it, and everyone else no longer has to decide whether they need it
- * before they have seen a channel.
+ * The film-library M3U lives in Settings, where a second playlist belongs.
  */
 @Composable
 fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
-    var pasted by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    /** Set once a paste has been read and found to need a login. */
-    var askForLogin by remember { mutableStateOf(false) }
+    var pasted by remember { mutableStateOf("") }
+    /** The link/server row, opened by anyone not on the default panel. */
+    var showLink by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var progress by remember { mutableStateOf("") }
@@ -86,13 +81,18 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
         val setup = SetupLink.parse(pasted, username, password)
         when (setup) {
             is Setup.Unrecognised -> {
-                error = setup.reason
+                // With the fields in front, the common failure is an empty
+                // one rather than an unreadable paste — so say that, and only
+                // fall back to the parser's wording when something was
+                // actually typed.
+                error = if (username.isBlank() || password.isBlank()) {
+                    "Enter the username and password your provider sent you."
+                } else {
+                    setup.reason
+                }
                 return
             }
             is Setup.NeedsCredentials -> {
-                // Not an error, and not phrased as one: the address arrived,
-                // the login did not. Ask for exactly the two things missing.
-                askForLogin = true
                 error = "Almost there — now your username and password."
                 return
             }
@@ -100,20 +100,18 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
         }
         val name = SetupLink.suggestedName(setup)
         busy = true
-        progress = "Connecting…"
+        progress = "Signing in…"
         scope.launch {
+            // The two refusals returned above, so only these two remain.
             val result = when (setup) {
                 is Setup.Xtream -> graph.playlists.addXtream(name, setup.server, setup.username, setup.password)
                 is Setup.M3u -> graph.playlists.addM3u(name, setup.url, "", "")
-                // Both handled above; the compiler does not know that.
-                else -> return@launch
+                is Setup.NeedsCredentials, is Setup.Unrecognised -> return@launch
             }
             result.fold(
                 onSuccess = { profile ->
-                    // Said out loud, because importing a large playlist takes
-                    // long enough that a silent button reads as a hang — and
-                    // the previous screen said nothing at all between the tap
-                    // and the home screen.
+                    // Said out loud: importing a large playlist takes long
+                    // enough that a silent button reads as a hang.
                     progress = "Loading your channels…"
                     runCatching { graph.content.refreshAll(profile) }
                         .onFailure {
@@ -130,10 +128,6 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                     busy = false
                     progress = ""
                     error = friendly(it.message)
-                    // A refused login is the case where the two fields help,
-                    // so offer them rather than leaving someone re-pasting the
-                    // same line hoping for a different answer.
-                    askForLogin = true
                 },
             )
         }
@@ -142,10 +136,8 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     AuthBackdrop {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
-                // widthIn, not width. A fixed 560dp column on a 411dp handset
-                // overflows by 149dp, and the first casualty is the paste box:
-                // it ran off both edges, which on the one screen that has to
-                // work reads as a broken app rather than a wide layout.
+                // widthIn, not width: a fixed 560dp column on a 411dp handset
+                // overflows by 149dp, and the first casualty is the fields.
                 Modifier
                     .widthIn(max = 560.dp)
                     .fillMaxWidth()
@@ -161,28 +153,49 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 Spacer(Modifier.height(22.dp))
 
                 Text(
-                    "Paste the link your provider sent you",
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
+                    "Sign in to EnkTel",
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "It's in your welcome email. You can paste the whole message — " +
-                        "we'll find the parts we need.",
+                    "Use the username and password from your welcome email.",
                     color = EnktelTextDim,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(20.dp))
 
-                TvTextField(pasted, { pasted = it }, "Paste your link or details here")
+                TvTextField(username, { username = it }, "Username")
+                Spacer(Modifier.height(12.dp))
+                TvTextField(password, { password = it }, "Password", password = true)
 
-                if (askForLogin) {
-                    Spacer(Modifier.height(14.dp))
-                    TvTextField(username, { username = it }, "Username")
-                    Spacer(Modifier.height(10.dp))
-                    TvTextField(password, { password = it }, "Password", password = true)
+                Spacer(Modifier.height(14.dp))
+                if (!showLink) {
+                    // Stated rather than hidden: someone whose provider is not
+                    // ours needs to know the app has assumed one, and this is
+                    // the only place that assumption is visible.
+                    Text(
+                        "Connecting to ${DefaultLine.server.removePrefix("https://").removePrefix("http://")}",
+                        color = EnktelTextDim,
+                        fontSize = 11.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FocusButton(
+                        "Different provider, or a setup link",
+                        onClick = { showLink = true },
+                    )
+                } else {
+                    TvTextField(pasted, { pasted = it }, "Server address, or paste your setup link")
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "A link from your provider works here too — it carries the server, " +
+                            "and often the login as well.",
+                        color = EnktelTextDim,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                    )
                 }
 
                 if (error.isNotBlank()) {
@@ -196,18 +209,17 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
 
                 Spacer(Modifier.height(18.dp))
                 FocusButton(
-                    if (busy) "Working…" else "Start watching",
+                    if (busy) "Working…" else "Sign in",
                     accent = true,
                     onClick = { connect() },
                 )
 
                 Spacer(Modifier.height(22.dp))
                 Row(horizontalArrangement = Arrangement.Center) {
-                    // For the viewer who has the app and no line yet — the
-                    // whole population of a fresh install that did not arrive
-                    // with credentials. Text rather than a button: a
-                    // television frequently has no browser, and the address is
-                    // short enough to type into the phone already in hand.
+                    // For the viewer who has the app and no line yet. Text
+                    // rather than a button: a television frequently has no
+                    // browser, and the address is short enough to type into
+                    // the phone already in hand.
                     Text(
                         "No account yet? Start a free 24-hour trial at " +
                             tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL,
@@ -230,10 +242,11 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
 /**
  * Turn a failure into something worth reading.
  *
- * The old screen printed `it.message` straight out, so a subscriber whose
- * password had a typo was shown "Panel rejected the credentials" and, on a bad
- * day, a `java.net.UnknownHostException`. Neither says what to do next, and
- * the second one is not English.
+ * `it.message` used to go straight to the screen, so a mistyped password read
+ * "Panel rejected the credentials" and a bad address could produce a
+ * `java.net.UnknownHostException`. Neither says what to do next, and the
+ * second one is not English. Kept in step with the desktop's `friendlyError`
+ * in `pc/src/lib/setupLink.ts`.
  */
 private fun friendly(message: String?): String {
     val m = message.orEmpty()
