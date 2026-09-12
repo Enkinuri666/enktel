@@ -35,7 +35,23 @@ import java.util.concurrent.TimeUnit
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AppGraph(app: Application) {
-    val db = AppDatabase.build(app)
+    // ── what is built when ────────────────────────────────────────────
+    //
+    // This class was eighteen eager `val`s, so `Application.onCreate` built
+    // the database handle, every repository, the download hub and the
+    // playback session before the first frame could be drawn — on the main
+    // thread, on a Fire TV Stick, whether or not the viewer was ever going to
+    // open a film. DownloadHub was the worst of them: its `defaultRoot`
+    // calls `getExternalFilesDir(...).mkdirs()`, which is disk I/O, at
+    // construction.
+    //
+    // Everything below that is not needed to reach a first frame is `by lazy`
+    // now. `settings`, `http`, `diagHttp` and `appScope` stay eager because
+    // `init` uses them directly; the rest are built the first time a screen
+    // asks. AppGraphLazinessTest pins the split, because the failure mode of
+    // getting it wrong is invisible — nothing breaks, start-up just gets
+    // slower again one `val` at a time.
+    val db by lazy { AppDatabase.build(app) }
     val settings = SettingsStore(app)
     // Volatile so the health interceptor can read the latest without a Flow
     // subscription — updated whenever the setting flow emits (see below).
@@ -156,22 +172,22 @@ class AppGraph(app: Application) {
         .apply { interceptors().removeAll { it is tv.enktel.app.data.net.StreamHealthInterceptor } }
         .build()
 
-    val xtream = XtreamClient(http)
-    val playlists = PlaylistRepository(db.profileDao(), settings, xtream, db.contentDao())
+    val xtream by lazy { XtreamClient(http) }
+    val playlists by lazy { PlaylistRepository(db.profileDao(), settings, xtream, db.contentDao()) }
     // settings passed so a sync also folds in whatever playlist files the
     // viewer imported — they attach to a profile rather than replacing it.
-    val content = ContentRepository(app, db, xtream, http, settings)
+    val content by lazy { ContentRepository(app, db, xtream, http, settings) }
     // settings passed so the "EPG timezone offset" chips in Settings actually
     // move the guide — before this they were written and read by nothing.
-    val epg = EpgRepository(db, xtream, http, settings)
-    val sports = SportsRepository(content, epg)
-    val watchlist = WatchlistRepository(db.watchlistDao())
-    val recommendations = RecommendationsRepository(content)
+    val epg by lazy { EpgRepository(db, xtream, http, settings) }
+    val sports by lazy { SportsRepository(content, epg) }
+    val watchlist by lazy { WatchlistRepository(db.watchlistDao()) }
+    val recommendations by lazy { RecommendationsRepository(content) }
     @Volatile private var sportsDbKeySnapshot: String = ScoresRepository.FREE_KEY
-    val scores = ScoresRepository(http) { sportsDbKeySnapshot }
-    val trailers = tv.enktel.app.data.repo.TrailerRepository(http, settings)
-    val feed = tv.enktel.app.data.repo.EnktelFeed(http)
-    val downloads = DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http)
+    val scores by lazy { ScoresRepository(http) { sportsDbKeySnapshot } }
+    val trailers by lazy { tv.enktel.app.data.repo.TrailerRepository(http, settings) }
+    val feed by lazy { tv.enktel.app.data.repo.EnktelFeed(http) }
+    val downloads by lazy { DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http) }
 
     /**
      * A client for the viewer's Real-Debrid account, built per call.
@@ -182,19 +198,32 @@ class AppGraph(app: Application) {
      */
     suspend fun realDebrid(): tv.enktel.app.data.debrid.RealDebridClient =
         tv.enktel.app.data.debrid.RealDebridClient(http, settings.realDebridTokenNow())
-    val discord = tv.enktel.app.data.net.DiscordAnnouncer(http, settings)
+    val discord by lazy { tv.enktel.app.data.net.DiscordAnnouncer(http, settings) }
 
     /**
      * Owns the ExoPlayer instance for the whole process, so playback survives
      * navigation and can keep running in the docked mini window while the user
      * browses the rest of the app. See [tv.enktel.app.player.PlaybackSession].
      */
-    val playback = tv.enktel.app.player.PlaybackSession(
-        app, http, settings,
-        kotlinx.coroutines.CoroutineScope(
-            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
-        ),
-    )
+    /**
+     * Built on first use, which is always a composable.
+     *
+     * Its scope is `Dispatchers.Main.immediate` and the engine it later builds
+     * wants a Looper, so the first touch has to be on the main thread. Every
+     * call site is one — the player screens and the guide's inline preview —
+     * and there is nothing in `init` or in any background worker that reaches
+     * for it. Worth stating, because a future caller touching this from a
+     * coroutine on IO would not fail here but several frames later, inside
+     * ExoPlayer.
+     */
+    val playback by lazy {
+        tv.enktel.app.player.PlaybackSession(
+            app, http, settings,
+            kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
+            ),
+        )
+    }
 
     /**
      * Lives as long as the process. For work that must outlive the composable
@@ -379,19 +408,48 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
         // Each is isolated and its failure named in the log. If one of these is
         // ever the reason a device misbehaves, `adb logcat -s EnktelApp` says
         // which — and the app still starts.
-        startupStep("thermal guard") { tv.enktel.app.data.net.ThermalGuard.install(this) }
-        startupStep("network class") { tv.enktel.app.data.net.NetworkClass.install(this) }
-        // Hands the monitor an application Context. It doesn't sample until the
-        // System Monitor screen asks it to — see SystemMonitor.start().
-        startupStep("system monitor") { tv.enktel.app.data.net.SystemMonitor.install(this) }
-        startupStep("epg schedule") { tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this) }
-        startupStep("dvr channel") {
-            if (Build.VERSION.SDK_INT >= 26) {
-                val nm = getSystemService(NotificationManager::class.java)
-                nm.createNotificationChannel(
-                    NotificationChannel(DVR_CHANNEL, "DVR Recordings", NotificationManager.IMPORTANCE_LOW)
-                )
+        //
+        // And each now runs once the main thread has gone idle, which is after
+        // the first frame. They were called inline here, so five platform
+        // hookups — one of them a WorkManager enqueue, which opens its own
+        // database — sat between `onCreate` and anything being drawn. Nothing
+        // in the list is needed to draw a screen: the thermal guard and the
+        // network classifier are consulted during playback, the system monitor
+        // does not sample until its screen asks, the EPG schedule is a
+        // once-a-day job, and the notification channel is needed the first
+        // time a recording starts.
+        //
+        // An idle handler rather than a background thread: these are the same
+        // calls on the same thread as before, just later, so nothing that was
+        // relying on being on the main thread stops doing so. Returning false
+        // takes it off the queue, so this runs once.
+        android.os.Looper.myQueue().addIdleHandler {
+            startupStep("thermal guard") { tv.enktel.app.data.net.ThermalGuard.install(this) }
+            startupStep("network class") { tv.enktel.app.data.net.NetworkClass.install(this) }
+            // Hands the monitor an application Context. It doesn't sample until
+            // the System Monitor screen asks it to — see SystemMonitor.start().
+            startupStep("system monitor") { tv.enktel.app.data.net.SystemMonitor.install(this) }
+            startupStep("epg schedule") { tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this) }
+            // Built here rather than left to the Downloads screen.
+            //
+            // DownloadHub's constructor is not just allocation: it reconciles
+            // downloads the last process was killed mid-way through, and it
+            // starts watching for unmetered Wi-Fi so a "wait for Wi-Fi" queue
+            // resumes on its own. Making it `by lazy` moved both of those to
+            // "whenever the viewer next opens Downloads", which for a queue
+            // waiting on Wi-Fi is indistinguishable from the feature not
+            // working. It is still off the first-frame path — it just happens
+            // a few hundred milliseconds later instead of never.
+            startupStep("downloads") { graph.downloads }
+            startupStep("dvr channel") {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    val nm = getSystemService(NotificationManager::class.java)
+                    nm.createNotificationChannel(
+                        NotificationChannel(DVR_CHANNEL, "DVR Recordings", NotificationManager.IMPORTANCE_LOW)
+                    )
+                }
             }
+            false
         }
     }
 
