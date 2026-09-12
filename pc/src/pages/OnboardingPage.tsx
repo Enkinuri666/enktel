@@ -2,40 +2,84 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings, type Profile } from '@/stores/settings';
 import { xtreamLogin } from '@/lib/xtream';
+import { parseSetup, suggestedName, friendlyError } from '@/lib/setupLink';
 
+/**
+ * The host to assume when someone pastes a login and no address.
+ *
+ * A reseller hands out a username and a password because all their customers
+ * are on one panel. The old form covered that by leaving the server field for
+ * the user to fill; a single paste box has nowhere to put it, so it lives
+ * here. `VITE_DEFAULT_SERVER` overrides it at build time, matching the phone's
+ * `ENK_DEFAULT_SERVER`.
+ */
+const DEFAULT_SERVER = import.meta.env.VITE_DEFAULT_SERVER ?? 'https://x-api.cc';
+
+/**
+ * First run on the desktop: one box, then watch.
+ *
+ * This asked for Xtream-vs-M3U, a playlist name, a server URL
+ * "(http://host:port)", a username and a password — five questions, the first
+ * of which is a protocol question. The phone stopped asking any of that at
+ * 1.69.0, and leaving the desktop as it was would have meant one subscriber
+ * being walked through two different setups for the same account.
+ *
+ * `parseSetup` is a port of the phone's parser and `check-setup-link.mjs` runs
+ * the phone's own test cases against it, so the two cannot drift into
+ * accepting different things.
+ */
 export default function OnboardingPage() {
   const nav = useNavigate();
   const setProfile = useSettings((s) => s.setProfile);
-  const [mode, setMode] = useState<'xtream' | 'm3u'>('xtream');
-  const [form, setForm] = useState({
-    name: 'My playlist', server: '', username: '', password: '', m3uUrl: '', epgUrl: '',
-  });
+  const [pasted, setPasted] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  /** Shown only once a paste has turned out not to carry a login. */
+  const [askForLogin, setAskForLogin] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    !testing && ((mode === 'xtream' && form.server && form.username && form.password) ||
-    (mode === 'm3u' && form.m3uUrl));
-
   const submit = async () => {
+    if (testing) return;
     setError(null);
-    if (mode === 'xtream') {
-      // Pre-flight the Xtream credentials — surfaces "wrong password" /
-      // "server not reachable" up-front so the user isn't dropped into an
-      // empty Home screen with no explanation.
+
+    const setup = parseSetup(pasted, username, password, DEFAULT_SERVER);
+    if (setup.kind === 'unrecognised') {
+      setError(setup.reason);
+      return;
+    }
+    if (setup.kind === 'needsCredentials') {
+      // Not a failure and not phrased as one: the address arrived, the login
+      // did not. Ask for exactly the two things missing.
+      setAskForLogin(true);
+      setError('Almost there — now your username and password.');
+      return;
+    }
+
+    const name = suggestedName(setup);
+
+    if (setup.kind === 'xtream') {
+      // Pre-flight the credentials — surfaces "wrong password" / "server not
+      // reachable" up front rather than dropping someone onto an empty Home
+      // screen with no explanation.
       setTesting(true);
       const r = await xtreamLogin({
-        server: form.server, username: form.username, password: form.password,
+        server: setup.server, username: setup.username, password: setup.password,
       });
       setTesting(false);
       if (!r.ok) {
-        setError(r.error);
+        // Was `r.error` verbatim, which is how a mistyped password came out as
+        // "Panel rejected the credentials" and a bad host as a raw network
+        // error. Neither says what to do next.
+        setError(friendlyError(r.error));
+        setAskForLogin(true);
         return;
       }
     }
-    const profile: Profile = mode === 'xtream'
-      ? { kind: 'xtream', name: form.name, server: form.server, username: form.username, password: form.password }
-      : { kind: 'm3u', name: form.name, m3uUrl: form.m3uUrl, epgUrl: form.epgUrl };
+
+    const profile: Profile = setup.kind === 'xtream'
+      ? { kind: 'xtream', name, server: setup.server, username: setup.username, password: setup.password }
+      : { kind: 'm3u', name, m3uUrl: setup.url, epgUrl: '' };
     setProfile(profile);
     nav('/');
   };
@@ -47,25 +91,31 @@ export default function OnboardingPage() {
           <div className="h-2 w-2 rounded-full bg-live" />
           <span className="text-xs font-black tracking-widest text-textDim">ENKTEL IPTV</span>
         </div>
-        <h1 className="text-2xl font-black mb-6">Connect your playlist</h1>
-
-        <div className="mb-4 flex gap-2">
-          <button className="chip" data-selected={mode === 'xtream'} onClick={() => setMode('xtream')}>Xtream Codes</button>
-          <button className="chip" data-selected={mode === 'm3u'} onClick={() => setMode('m3u')}>M3U playlist</button>
-        </div>
+        <h1 className="text-2xl font-black mb-1">Paste the link your provider sent you</h1>
+        <p className="text-sm text-textDim mb-6">
+          It's in your welcome email. You can paste the whole message — we'll find the
+          parts we need.
+        </p>
 
         <div className="space-y-3">
-          <Field label="Playlist name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-          {mode === 'xtream' ? (
+          <label className="block">
+            <span className="text-[10px] font-black tracking-widest text-textDim">
+              PASTE YOUR LINK OR DETAILS HERE
+            </span>
+            <textarea
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              rows={3}
+              spellCheck={false}
+              autoFocus
+              className="mt-1 w-full resize-y bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand font-mono"
+            />
+          </label>
+
+          {askForLogin && (
             <>
-              <Field label="Server URL (http://host:port)" value={form.server} onChange={(v) => setForm({ ...form, server: v })} />
-              <Field label="Username" value={form.username} onChange={(v) => setForm({ ...form, username: v })} />
-              <Field label="Password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} type="password" />
-            </>
-          ) : (
-            <>
-              <Field label="M3U URL" value={form.m3uUrl} onChange={(v) => setForm({ ...form, m3uUrl: v })} />
-              <Field label="EPG / XMLTV URL (optional)" value={form.epgUrl} onChange={(v) => setForm({ ...form, epgUrl: v })} />
+              <Field label="Username" value={username} onChange={setUsername} />
+              <Field label="Password" value={password} onChange={setPassword} type="password" />
             </>
           )}
         </div>
@@ -77,11 +127,15 @@ export default function OnboardingPage() {
         )}
         <button
           onClick={submit}
-          disabled={!canSubmit}
+          disabled={testing}
           className="mt-6 w-full rounded-md bg-brand text-white font-bold py-2.5 disabled:opacity-40 hover:bg-brand-deep transition"
         >
-          {testing ? 'Testing connection…' : 'Connect & Import'}
+          {testing ? 'Connecting…' : 'Start watching'}
         </button>
+
+        <p className="mt-5 text-center text-xs text-textDim">
+          Your details stay on this computer.
+        </p>
       </div>
     </div>
   );

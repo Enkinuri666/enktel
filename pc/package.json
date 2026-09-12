@@ -3,7 +3,7 @@
   "version": "1.67.0",
   "private": true,
   "type": "module",
-  "description": "EnkTel IPTV for Windows — Tauri + React desktop client.",
+  "description": "EnkTel IPTV for Windows \u2014 Tauri + React desktop client.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,7 +12,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "typecheck": "tsc -b --pretty",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "check:setup-link": "node scripts/check-setup-link.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.51.15",

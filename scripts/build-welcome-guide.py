@@ -554,7 +554,7 @@ SECTIONS = [
             "Download the installer from <b>{RELEASES}</b> and run it. Windows will "
             "warn about an "
             "unrecognised app: choose <b>More info</b>, then <b>Run anyway</b>.",
-            "Open EnkTel and sign in with the same <b>username</b> and <b>password</b>.",
+            "Open EnkTel and paste the same <b>setup link</b> from your welcome email.",
             "For Send to PC: on the phone open <b>Downloads</b> and press "
             "<b>Send to PC</b>. It shows an address and a six-digit PIN.",
             "On the PC open <b>My devices</b>. It finds the phone by itself — pick it, "
@@ -564,8 +564,9 @@ SECTIONS = [
                 "than starting the film again, and the PIN is new every time sharing "
                 "starts.",
         shots=[
-            ("pc/pc-onboarding.png", "Sign in", "Server, username and password — the same "
-             "details as every other device."),
+            ("pc/pc-onboarding.png", "Setting up", "The same one box as the phone and the "
+             "television. Paste the setup link from your welcome email; there is nothing "
+             "else to fill in."),
             ("pc/pc-home.png", "Home", "A featured title, quick links, and themed rows "
              "built from your own library."),
             ("pc/pc-live.png", "Live TV", "The full channel list with categories down "
