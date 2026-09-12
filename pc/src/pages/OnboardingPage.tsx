@@ -5,24 +5,32 @@ import { xtreamLogin } from '@/lib/xtream';
 import { parseSetup, suggestedName, friendlyError } from '@/lib/setupLink';
 
 /**
- * The host to assume when someone pastes a login and no address.
+ * The host to assume when someone gives a login and no address.
  *
  * A reseller hands out a username and a password because all their customers
  * are on one panel. The old form covered that by leaving the server field for
- * the user to fill; a single paste box has nowhere to put it, so it lives
- * here. `VITE_DEFAULT_SERVER` overrides it at build time, matching the phone's
- * `ENK_DEFAULT_SERVER`.
+ * the user to fill, which meant every subscriber typing the same address; it
+ * lives here instead. `VITE_DEFAULT_SERVER` overrides it at build time,
+ * matching the phone's `ENK_DEFAULT_SERVER`.
  */
 const DEFAULT_SERVER = import.meta.env.VITE_DEFAULT_SERVER ?? 'https://x-api.cc';
 
 /**
- * First run on the desktop: one box, then watch.
+ * First run on the desktop: sign in.
  *
  * This asked for Xtream-vs-M3U, a playlist name, a server URL
  * "(http://host:port)", a username and a password — five questions, the first
- * of which is a protocol question. The phone stopped asking any of that at
- * 1.69.0, and leaving the desktop as it was would have meant one subscriber
- * being walked through two different setups for the same account.
+ * of which is a protocol question. It became a single paste box, which was too
+ * far the other way: the two things an EnkTel subscriber is handed are a
+ * username and a password, and a box labelled "paste your link" is not where
+ * someone holding two words looks.
+ *
+ * So the same shape as the phone's `OnboardingScreen`: the two fields in
+ * front, the server already known because it is one panel for every
+ * subscriber, and one extra line for anyone on a different provider or
+ * holding a link. Deliberately identical — the two apps are handed the same
+ * welcome email by the same person, and one of them asking different
+ * questions reads as the other being broken.
  *
  * `parseSetup` is a port of the phone's parser and `check-setup-link.mjs` runs
  * the phone's own test cases against it, so the two cannot drift into
@@ -34,8 +42,8 @@ export default function OnboardingPage() {
   const [pasted, setPasted] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  /** Shown only once a paste has turned out not to carry a login. */
-  const [askForLogin, setAskForLogin] = useState(false);
+  /** The link/server row, opened by anyone not on the default panel. */
+  const [showLink, setShowLink] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,13 +53,16 @@ export default function OnboardingPage() {
 
     const setup = parseSetup(pasted, username, password, DEFAULT_SERVER);
     if (setup.kind === 'unrecognised') {
-      setError(setup.reason);
+      // With the fields in front, the common failure is an empty one rather
+      // than an unreadable paste.
+      setError(
+        !username.trim() || !password.trim()
+          ? 'Enter the username and password your provider sent you.'
+          : setup.reason,
+      );
       return;
     }
     if (setup.kind === 'needsCredentials') {
-      // Not a failure and not phrased as one: the address arrived, the login
-      // did not. Ask for exactly the two things missing.
-      setAskForLogin(true);
       setError('Almost there — now your username and password.');
       return;
     }
@@ -72,7 +83,6 @@ export default function OnboardingPage() {
         // "Panel rejected the credentials" and a bad host as a raw network
         // error. Neither says what to do next.
         setError(friendlyError(r.error));
-        setAskForLogin(true);
         return;
       }
     }
@@ -91,32 +101,46 @@ export default function OnboardingPage() {
           <div className="h-2 w-2 rounded-full bg-live" />
           <span className="text-xs font-black tracking-widest text-textDim">ENKTEL IPTV</span>
         </div>
-        <h1 className="text-2xl font-black mb-1">Paste the link your provider sent you</h1>
+        <h1 className="text-2xl font-black mb-1">Sign in to EnkTel</h1>
         <p className="text-sm text-textDim mb-6">
-          It's in your welcome email. You can paste the whole message — we'll find the
-          parts we need.
+          Use the username and password from your welcome email.
         </p>
 
         <div className="space-y-3">
-          <label className="block">
-            <span className="text-[10px] font-black tracking-widest text-textDim">
-              PASTE YOUR LINK OR DETAILS HERE
-            </span>
-            <textarea
-              value={pasted}
-              onChange={(e) => setPasted(e.target.value)}
-              rows={3}
-              spellCheck={false}
-              autoFocus
-              className="mt-1 w-full resize-y bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand font-mono"
-            />
-          </label>
+          <Field label="Username" value={username} onChange={setUsername} autoFocus />
+          <Field label="Password" value={password} onChange={setPassword} type="password" />
 
-          {askForLogin && (
-            <>
-              <Field label="Username" value={username} onChange={setUsername} />
-              <Field label="Password" value={password} onChange={setPassword} type="password" />
-            </>
+          {!showLink ? (
+            <div className="pt-1">
+              {/* Stated rather than hidden: someone whose provider is not ours
+                  needs to know the app has assumed one. */}
+              <p className="text-xs text-textDim mb-2">
+                Connecting to {DEFAULT_SERVER.replace(/^https?:\/\//, '')}
+              </p>
+              <button
+                onClick={() => setShowLink(true)}
+                className="text-xs font-bold text-brand hover:underline"
+              >
+                Different provider, or a setup link
+              </button>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="text-[10px] font-black tracking-widest text-textDim">
+                SERVER ADDRESS, OR PASTE YOUR SETUP LINK
+              </span>
+              <textarea
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                rows={3}
+                spellCheck={false}
+                className="mt-1 w-full resize-y bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand font-mono"
+              />
+              <span className="mt-1 block text-xs text-textDim">
+                A link from your provider works here too — it carries the server, and
+                often the login as well.
+              </span>
+            </label>
           )}
         </div>
 
@@ -130,7 +154,7 @@ export default function OnboardingPage() {
           disabled={testing}
           className="mt-6 w-full rounded-md bg-brand text-white font-bold py-2.5 disabled:opacity-40 hover:bg-brand-deep transition"
         >
-          {testing ? 'Connecting…' : 'Start watching'}
+          {testing ? 'Signing in…' : 'Sign in'}
         </button>
 
         <p className="mt-5 text-center text-xs text-textDim">
@@ -141,14 +165,15 @@ export default function OnboardingPage() {
   );
 }
 
-function Field({ label, value, onChange, type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string;
+function Field({ label, value, onChange, type = 'text', autoFocus = false }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; autoFocus?: boolean;
 }) {
   return (
     <label className="block">
       <span className="text-[10px] font-black tracking-widest text-textDim">{label.toUpperCase()}</span>
       <input
         type={type}
+        autoFocus={autoFocus}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 w-full bg-white/5 rounded-md px-3 py-2 text-sm outline-none border border-white/10 focus:border-brand"

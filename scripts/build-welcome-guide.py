@@ -486,17 +486,17 @@ SECTIONS = [
         steps=[
             "On the phone, allow installing apps from your browser when Android asks.",
             "Open <b>{MOBILE_APK}</b> in the phone's browser and install it.",
-            "Open EnkTel and paste the <b>setup link</b> from your welcome email into "
-            "the one box it shows you. Nothing else to fill in.",
+            "Open EnkTel and enter the <b>username</b> and <b>password</b> from your "
+            "welcome email. The server is already set.",
             "Give it a moment on first run while the channel list and guide load.",
         ],
         callout="Downloads keep running when you leave the screen or switch apps — the "
                 "app holds a foreground service so Android cannot quietly stop them.",
         shots=[
-            ("android/onboarding-mobile.png", "Setting up", "One box. Paste the setup link "
-             "from your welcome email \u2014 or the whole email, labels and all \u2014 and the "
-             "app reads your username, password and server out of it. A username and "
-             "password on their own work too."),
+            ("android/onboarding-mobile.png", "Signing in", "Two fields, and the server is "
+             "already set. On a different provider, or holding a setup link instead? "
+             "Open the extra line and paste it \u2014 the app reads the server and the "
+             "login out of it."),
             ("android/category-tiles-mobile.png", "Home", "What you land on. Live TV, Movies, "
              "Series and Sports, plus a search that looks in all of them \u2014 and how long "
              "your line has left, without going looking for it."),
@@ -525,16 +525,16 @@ SECTIONS = [
             "<b>-tv-</b>. The <b>-mobile-</b> one is for phones and will look wrong "
             "on a television.",
             "Install, then open EnkTel from your apps row.",
-            "Paste the same <b>setup link</b> from your welcome email. One subscription "
+            "Sign in with the same <b>username</b> and <b>password</b>. One subscription "
             "covers every device.",
         ],
         callout="Use the <b>tv</b> APK on a television and the <b>mobile</b> APK on a "
                 "phone. They are the same app with different layouts, and installing the "
                 "wrong one is the single most common setup mistake.",
         shots=[
-            ("android/onboarding-bigscreen-tv.png", "Setting up on TV", "The same one box, sized "
-             "for a room rather than a hand \u2014 which matters most here, because this is the "
-             "screen you would otherwise be typing into with a remote."),
+            ("android/onboarding-bigscreen-tv.png", "Signing in on TV", "The same two fields, sized "
+             "for a room rather than a hand. Two short words on a remote beats a "
+             "hundred-character link."),
             ("android/category-tiles-bigscreen-tv.png", "Home on TV", "The same four categories, "
              "as tiles big enough to pick out from the sofa. The one under the focus ring "
              "lifts and lights up in its own colour."),
@@ -554,7 +554,8 @@ SECTIONS = [
             "Download the installer from <b>{RELEASES}</b> and run it. Windows will "
             "warn about an "
             "unrecognised app: choose <b>More info</b>, then <b>Run anyway</b>.",
-            "Open EnkTel and paste the same <b>setup link</b> from your welcome email.",
+            "Open EnkTel and enter the same <b>username</b> and <b>password</b> "
+            "from your welcome email. The server is already set here too.",
             "For Send to PC: on the phone open <b>Downloads</b> and press "
             "<b>Send to PC</b>. It shows an address and a six-digit PIN.",
             "On the PC open <b>My devices</b>. It finds the phone by itself — pick it, "
@@ -564,9 +565,9 @@ SECTIONS = [
                 "than starting the film again, and the PIN is new every time sharing "
                 "starts.",
         shots=[
-            ("pc/pc-onboarding.png", "Setting up", "The same one box as the phone and the "
-             "television. Paste the setup link from your welcome email; there is nothing "
-             "else to fill in."),
+            ("pc/pc-onboarding.png", "Signing in", "The same two fields as the phone and "
+             "the television \u2014 deliberately, because one subscriber should not be "
+             "walked through two different setups for the same account."),
             ("pc/pc-home.png", "Home", "A featured title, quick links, and themed rows "
              "built from your own library."),
             ("pc/pc-live.png", "Live TV", "The full channel list with categories down "
