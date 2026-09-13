@@ -489,6 +489,9 @@ SECTIONS = [
             "Open EnkTel and enter the <b>username</b> and <b>password</b> from your "
             "welcome email. The server is already set.",
             "Give it a moment on first run while the channel list and guide load.",
+            "Prefer the app in <b>Srpskohrvatski</b>? Open <b>Settings</b> and pick it "
+            "at the top. A phone already set to Hrvatski, Srpski, Bosanski or "
+            "Crnogorski gets it without asking.",
         ],
         callout="Downloads keep running when you leave the screen or switch apps — the "
                 "app holds a foreground service so Android cannot quietly stop them.",
@@ -507,6 +510,10 @@ SECTIONS = [
              "film, a channel name or its number and the results come back in rows \u2014 "
              "channels, sport, films, box sets and the guide \u2014 with a live match "
              "showing which channel it is on and whether it has started."),
+            ("android/settings-language-mobile.png", "Language", "English or Srpskohrvatski, "
+             "at the top of Settings where it can be found without reading the English first. "
+             "Channel, film and programme names come from the provider and stay as they are \u2014 "
+             "the setting says so rather than leaving it to be discovered."),
             ("android/more-mobile.png", "More", "The menu keeps six things on it. Everything "
              "else \u2014 the TV guide, your watchlist, recordings, catch-up \u2014 is in here, "
              "each one saying what it is for."),
@@ -545,6 +552,9 @@ SECTIONS = [
             ("android/search-bigscreen-tv.png", "Search on TV", "The same one box. A team "
              "name finds the match, says which channel has it and whether it is on now \u2014 "
              "rather than leaving you to scroll the guide looking for it."),
+            ("android/more-sh-bigscreen-tv.png", "In Srpskohrvatski", "The whole menu, in the "
+             "other language. Set it once in Settings and it applies everywhere \u2014 the "
+             "television does not need its own language changed."),
             ("android/downloads-bigscreen-tv.png", "Downloads on TV", "Saved films and episodes, "
              "navigable entirely with a remote."),
         ],

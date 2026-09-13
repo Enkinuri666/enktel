@@ -40,6 +40,7 @@ import tv.enktel.app.ui.components.GlassChip
 import tv.enktel.app.ui.components.PosterCard
 import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.data.repo.SportsRepository
+import tv.enktel.app.i18n.LocalStrings
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.rememberScreenShape
 import tv.enktel.app.ui.components.Segment
@@ -66,6 +67,7 @@ fun SearchScreen(
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
+    val t = LocalStrings.current
 
     var query by remember { mutableStateOf(initialQuery) }
 
@@ -129,14 +131,14 @@ fun SearchScreen(
     // Scope switch. "All" stays the default — a search that silently excluded
     // four of the five content types would be worse than no scoping at all.
     var scope0 by remember { mutableStateOf("all") }
-    val segments = remember(channels, movies, series, guideOnly, sportHits) {
+    val segments = remember(channels, movies, series, guideOnly, sportHits, t) {
         listOf(
-            Segment("all", "All", channels.size + sportHits.size + movies.size + series.size + guideOnly.size),
-            Segment("live", "Live TV", channels.size),
-            Segment("sport", "Sport", sportHits.size),
-            Segment("movies", "Movies", movies.size),
-            Segment("series", "Series", series.size),
-            Segment("guide", "Guide", guideOnly.size),
+            Segment("all", t.scopeAll, channels.size + sportHits.size + movies.size + series.size + guideOnly.size),
+            Segment("live", t.navLive, channels.size),
+            Segment("sport", t.railSport, sportHits.size),
+            Segment("movies", t.navMovies, movies.size),
+            Segment("series", t.navSeries, series.size),
+            Segment("guide", t.scopeGuide, guideOnly.size),
         )
     }
     fun show(id: String) = scope0 == "all" || scope0 == id
@@ -154,14 +156,13 @@ fun SearchScreen(
     ) {
         item {
             Column(Modifier.padding(horizontal = shape.padH)) {
-                SectionTitle("Search")
+                SectionTitle(t.searchTitle)
                 Spacer(Modifier.height(12.dp))
                 TvTextField(
                     query, { query = it },
                     // Shorter on a phone: the long prompt wrapped to three
                     // lines and pushed the field itself below the fold.
-                    if (shape.narrow) "Channel, match, film or show…"
-                    else "Title, cast, director, genre, channel name or number…",
+                    if (shape.narrow) t.searchHintShort else t.searchHint,
                     // widthIn first: it narrows the incoming constraint, and
                     // fillMaxWidth then takes whatever is left. The other way
                     // round, fillMaxWidth wins and the box runs the full width
@@ -178,9 +179,9 @@ fun SearchScreen(
             item {
                 Column(Modifier.padding(horizontal = shape.padH)) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        ChipRowLabel("Recent searches")
+                        ChipRowLabel(t.recentSearches)
                         Spacer(Modifier.weight(1f))
-                        FocusButton("Clear", onClick = { scope.launch { graph.db.searchDao().clear() } })
+                        FocusButton(t.clear, onClick = { scope.launch { graph.db.searchDao().clear() } })
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -194,9 +195,9 @@ fun SearchScreen(
         if (query.length >= 2 && channels.isEmpty() && movies.isEmpty() && series.isEmpty() && epg.isEmpty()) {
             item {
                 Column(Modifier.padding(horizontal = shape.padH, vertical = 24.dp)) {
-                    Text("No matches for \"$query\"", color = androidx.compose.ui.graphics.Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(t.noMatchesFor.format(query), color = androidx.compose.ui.graphics.Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
-                    Text("Try a shorter query, an actor's name, or a genre.", color = EnktelTextDim, fontSize = 12.sp)
+                    Text(t.noMatchesHelp, color = EnktelTextDim, fontSize = 12.sp)
                 }
             }
         }
@@ -209,7 +210,7 @@ fun SearchScreen(
         }
         if (channels.isNotEmpty() && show("live")) {
             item {
-                ContentRail("Channels", channels, accent = EnktelBlue, key = { it.key }) { ch ->
+                ContentRail(t.railChannels, channels, accent = EnktelBlue, key = { it.key }) { ch ->
                     PosterCard(ch.name, ch.logo, wide = true, subtitle = ch.categoryName,
                         onClick = { nav.navigate("live?ch=${ch.key}") })
                 }
@@ -221,22 +222,22 @@ fun SearchScreen(
         // available if they read past it.
         if (sportHits.isNotEmpty() && show("sport")) {
             item {
-                val fmt = remember { java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault()) }
-                ContentRail("Sport", sportHits, accent = EnktelLive,
+                val fmt = remember(t) { java.text.SimpleDateFormat(t.dayTimeFormat, t.locale) }
+                ContentRail(t.railSport, sportHits, accent = EnktelLive,
                     key = { "${it.event.program.id}" }) { hit ->
                     val ev = hit.event
                     // What a fixture row has to answer, in order: is it on
                     // now, what sport, which channel, and is it somewhere
                     // else too.
                     val when0 = when (ev.phase) {
-                        "LIVE" -> "● LIVE"
-                        "FINISHED" -> "Ended"
+                        "LIVE" -> "● ${t.live}"
+                        "FINISHED" -> t.ended
                         else -> fmt.format(java.util.Date(ev.startMs))
                     }
-                    val also = if (hit.alsoOn > 0) "+${hit.alsoOn} more" else null
+                    val also = if (hit.alsoOn > 0) t.alsoOnMore.format(hit.alsoOn) else null
                     PosterCard(
                         ev.title, ev.channel.logo, wide = true,
-                        subtitle = listOfNotNull(when0, ev.sport, ev.channel.name, also)
+                        subtitle = listOfNotNull(when0, t.sport(ev.sport), ev.channel.name, also)
                             .joinToString(" · "),
                         onClick = { nav.navigate("live?ch=${ev.channel.key}") },
                     )
@@ -251,8 +252,8 @@ fun SearchScreen(
                 val epgWithChan = remember(guideOnly, channels) {
                     guideOnly.map { p -> p to channels.firstOrNull { it.epgId == p.epgId } }
                 }
-                val fmt = remember { java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault()) }
-                ContentRail("In the Guide", epgWithChan, accent = EnktelPurple,
+                val fmt = remember(t) { java.text.SimpleDateFormat(t.dayTimeFormat, t.locale) }
+                ContentRail(t.railInGuide, epgWithChan, accent = EnktelPurple,
                     key = { "${it.first.id}" }) { (prog, ch) ->
                     val time = fmt.format(java.util.Date(prog.startMs))
                     PosterCard(
@@ -268,7 +269,7 @@ fun SearchScreen(
         }
         if (movies.isNotEmpty() && show("movies")) {
             item {
-                ContentRail("Movies", movies, accent = EnktelOk, key = { it.key }) { m ->
+                ContentRail(t.navMovies, movies, accent = EnktelOk, key = { it.key }) { m ->
                     PosterCard(
                         m.name, m.poster,
                         subtitle = if (m.year > 0) "${m.year}" else m.genre.take(20),
@@ -279,7 +280,7 @@ fun SearchScreen(
         }
         if (series.isNotEmpty() && show("series")) {
             item {
-                ContentRail("Series", series, accent = EnktelPurple, key = { it.key }) { s ->
+                ContentRail(t.navSeries, series, accent = EnktelPurple, key = { it.key }) { s ->
                     PosterCard(s.name, s.poster, subtitle = if (s.year > 0) "${s.year}" else "",
                         onClick = { nav.navigate("seriesDetails/${s.key}") })
                 }

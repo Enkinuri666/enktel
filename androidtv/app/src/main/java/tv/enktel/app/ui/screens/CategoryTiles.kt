@@ -84,7 +84,8 @@ import tv.enktel.app.ui.theme.EnktelPurple
  * is the entire point of a tile over a menu row.
  */
 private data class HomeCategory(
-    val label: String,
+    /** Which of [tv.enktel.app.i18n.Strings]' nav labels this tile carries. */
+    val navId: String,
     val icon: ImageVector,
     val route: String,
     val from: @Composable () -> Color,
@@ -92,11 +93,11 @@ private data class HomeCategory(
 )
 
 private val HOME_TILES = listOf(
-    HomeCategory("Live TV", Icons.Rounded.LiveTv, "channels", { EnktelBlue }, { EnktelBlueDeep }),
-    HomeCategory("Movies", Icons.Rounded.Movie, "movies", { EnktelPurple }, { EnktelBlueDeep }),
-    HomeCategory("Series", Icons.Rounded.Theaters, "series", { EnktelOk }, { EnktelBlueDeep }),
-    HomeCategory("Sports", Icons.Rounded.SportsSoccer, "sports", { EnktelLive }, { EnktelPurple }),
-    HomeCategory("Search", Icons.Rounded.Search, "search", { EnktelBlueDeep }, { EnktelBlue }),
+    HomeCategory("live", Icons.Rounded.LiveTv, "channels", { EnktelBlue }, { EnktelBlueDeep }),
+    HomeCategory("movies", Icons.Rounded.Movie, "movies", { EnktelPurple }, { EnktelBlueDeep }),
+    HomeCategory("series", Icons.Rounded.Theaters, "series", { EnktelOk }, { EnktelBlueDeep }),
+    HomeCategory("sports", Icons.Rounded.SportsSoccer, "sports", { EnktelLive }, { EnktelPurple }),
+    HomeCategory("search", Icons.Rounded.Search, "search", { EnktelBlueDeep }, { EnktelBlue }),
 )
 
 /**
@@ -132,7 +133,7 @@ fun CategoryTiles(
             contentPadding = PaddingValues(horizontal = padHoriz),
             horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
-            items(HOME_TILES, key = { it.label }) { c ->
+            items(HOME_TILES, key = { it.navId }) { c ->
                 CategoryTile(c, compact = compact, onClick = { onSelect(c.route) })
             }
         }
@@ -227,7 +228,7 @@ private fun CategoryTile(c: HomeCategory, compact: Boolean, onClick: () -> Unit)
                     .size(if (compact) 28.dp else 40.dp),
             )
             Text(
-                c.label,
+                tv.enktel.app.i18n.LocalStrings.current.navLabel(c.navId).orEmpty(),
                 color = Color.White,
                 fontSize = if (compact) 13.sp else 17.sp,
                 fontWeight = FontWeight.Black,

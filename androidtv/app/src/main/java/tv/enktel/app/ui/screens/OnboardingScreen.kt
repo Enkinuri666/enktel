@@ -34,6 +34,8 @@ import tv.enktel.app.R
 import tv.enktel.app.data.repo.DefaultLine
 import tv.enktel.app.data.repo.SetupLink
 import tv.enktel.app.data.repo.SetupLink.Setup
+import tv.enktel.app.i18n.LocalStrings
+import tv.enktel.app.i18n.Strings
 import tv.enktel.app.ui.components.AuthBackdrop
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.TvTextField
@@ -74,6 +76,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
     var error by remember { mutableStateOf("") }
     var progress by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val t = LocalStrings.current
 
     fun connect() {
         if (busy) return
@@ -86,21 +89,24 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 // fall back to the parser's wording when something was
                 // actually typed.
                 error = if (username.isBlank() || password.isBlank()) {
-                    "Enter the username and password your provider sent you."
+                    t.errNeedCredentials
                 } else {
+                    // The parser's own wording, which is English only: it
+                    // names the shape of what was pasted, and there is no
+                    // sentence to translate until it does.
                     setup.reason
                 }
                 return
             }
             is Setup.NeedsCredentials -> {
-                error = "Almost there — now your username and password."
+                error = t.errAlmostThere
                 return
             }
             else -> Unit
         }
         val name = SetupLink.suggestedName(setup)
         busy = true
-        progress = "Signing in…"
+        progress = t.signingIn
         scope.launch {
             // The two refusals returned above, so only these two remain.
             val result = when (setup) {
@@ -112,12 +118,12 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 onSuccess = { profile ->
                     // Said out loud: importing a large playlist takes long
                     // enough that a silent button reads as a hang.
-                    progress = "Loading your channels…"
+                    progress = t.loadingChannels
                     runCatching { graph.content.refreshAll(profile) }
                         .onFailure {
-                            error = "Signed in, but the channel list did not load: ${it.message}"
+                            error = t.errSignedInNoChannels.format(it.message)
                         }
-                    progress = "Loading the TV guide…"
+                    progress = t.loadingGuide
                     runCatching { graph.epg.refresh(profile) }
                     graph.playlists.markSynced(profile)
                     busy = false
@@ -127,7 +133,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 onFailure = {
                     busy = false
                     progress = ""
-                    error = friendly(it.message)
+                    error = friendly(it.message, t)
                 },
             )
         }
@@ -153,23 +159,23 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 Spacer(Modifier.height(22.dp))
 
                 Text(
-                    "Sign in to EnkTel",
+                    t.signInTitle,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Use the username and password from your welcome email.",
+                    t.signInLede,
                     color = EnktelTextDim,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
 
-                TvTextField(username, { username = it }, "Username")
+                TvTextField(username, { username = it }, t.username)
                 Spacer(Modifier.height(12.dp))
-                TvTextField(password, { password = it }, "Password", password = true)
+                TvTextField(password, { password = it }, t.password, password = true)
 
                 Spacer(Modifier.height(14.dp))
                 if (!showLink) {
@@ -177,21 +183,22 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                     // ours needs to know the app has assumed one, and this is
                     // the only place that assumption is visible.
                     Text(
-                        "Connecting to ${DefaultLine.server.removePrefix("https://").removePrefix("http://")}",
+                        t.connectingTo.format(
+                            DefaultLine.server.removePrefix("https://").removePrefix("http://"),
+                        ),
                         color = EnktelTextDim,
                         fontSize = 11.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     FocusButton(
-                        "Different provider, or a setup link",
+                        t.differentProvider,
                         onClick = { showLink = true },
                     )
                 } else {
-                    TvTextField(pasted, { pasted = it }, "Server address, or paste your setup link")
+                    TvTextField(pasted, { pasted = it }, t.serverOrLink)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "A link from your provider works here too — it carries the server, " +
-                            "and often the login as well.",
+                        t.serverOrLinkHelp,
                         color = EnktelTextDim,
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
@@ -209,7 +216,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
 
                 Spacer(Modifier.height(18.dp))
                 FocusButton(
-                    if (busy) "Working…" else "Sign in",
+                    if (busy) t.working else t.signIn,
                     accent = true,
                     onClick = { connect() },
                 )
@@ -221,8 +228,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                     // browser, and the address is short enough to type into
                     // the phone already in hand.
                     Text(
-                        "No account yet? Start a free 24-hour trial at " +
-                            tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL,
+                        t.noAccountYet.format(tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL),
                         color = EnktelTextDim,
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center,
@@ -230,7 +236,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Your details stay on this device.",
+                    t.detailsStayOnDevice,
                     color = EnktelTextDim,
                     fontSize = 12.sp,
                 )
@@ -248,18 +254,18 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
  * second one is not English. Kept in step with the desktop's `friendlyError`
  * in `pc/src/lib/setupLink.ts`.
  */
-private fun friendly(message: String?): String {
+internal fun friendly(message: String?, t: Strings): String {
     val m = message.orEmpty()
     return when {
-        m.contains("rejected the credentials", true) ->
-            "That username or password wasn't accepted. Check them for a stray space, then try again."
-        m.contains("UnknownHost", true) || m.contains("Unable to resolve host", true) ->
-            "Couldn't reach that address. Check your internet, and check the address for a typo."
-        m.contains("timeout", true) || m.contains("timed out", true) ->
-            "The provider didn't answer in time. It may be busy — try again in a minute."
+        m.contains("rejected the credentials", true) -> t.errRejected
+        m.contains("UnknownHost", true) || m.contains("Unable to resolve host", true) -> t.errUnknownHost
+        m.contains("timeout", true) || m.contains("timed out", true) -> t.errTimeout
         m.contains("CertPath", true) || m.contains("SSL", true) || m.contains("trust anchor", true) ->
-            "That server's security certificate couldn't be checked. Try http:// instead of https://."
-        m.isBlank() -> "Couldn't connect. Check the link and try again."
+            t.errCertificate
+        m.isBlank() -> t.errGeneric
+        // Matched nothing: this is an exception's own text, which is English
+        // whatever the app is set to. Better an untranslated sentence that
+        // names the fault than a translated one that guesses at it.
         else -> m
     }
 }

@@ -33,8 +33,10 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import tv.enktel.app.i18n.LocalStrings
 import tv.enktel.app.ui.components.TvNavItem
 import tv.enktel.app.ui.components.hiddenInSimpleMenu
+import tv.enktel.app.ui.components.localLabel
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.theme.EnktelBg
@@ -59,6 +61,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
 @Composable
 fun MoreScreen(onSelect: (String) -> Unit) {
     val items = remember { hiddenInSimpleMenu() }
+    val t = LocalStrings.current
     // 48dp is a television's overscan gutter. On a 411dp handset it eats a
     // quarter of the width, so the tiles came out narrow enough to wrap their
     // own one-line descriptions.
@@ -69,10 +72,10 @@ fun MoreScreen(onSelect: (String) -> Unit) {
     // grey tiles on whatever happens to be behind is not a design.
     Column(Modifier.fillMaxSize().background(EnktelBg)) {
         Column(Modifier.padding(start = gutter, top = 28.dp, end = gutter, bottom = 4.dp)) {
-            Text("More", fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(t.navMore, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Everything else the app can do.",
+                t.moreSubtitle,
                 color = EnktelTextDim,
                 fontSize = 13.sp,
             )
@@ -85,7 +88,7 @@ fun MoreScreen(onSelect: (String) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(items, key = { it.id }) { item ->
-                MoreTile(item, blurb = blurbFor(item.id), onClick = { onSelect(item.route) })
+                MoreTile(item, blurb = t.moreBlurb(item.id).orEmpty(), onClick = { onSelect(item.route) })
             }
         }
     }
@@ -122,7 +125,7 @@ private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Column {
-                Text(item.label, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(item.localLabel(), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     blurb,
@@ -135,21 +138,9 @@ private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
     }
 }
 
-/**
- * One line saying what a destination is actually for.
- *
- * Keyed by id rather than carried on [TvNavItem], because the rail has no room
- * to show these and a field that only one of two call sites reads invites the
- * other to start showing it.
+/*
+ * The one-line descriptions used to live here as `blurbFor(id)`. They moved to
+ * tv.enktel.app.i18n.Strings.moreBlurb when the app gained a second language —
+ * two copies of the same sentence, one translated and one not, is how a screen
+ * ends up half in each.
  */
-private fun blurbFor(id: String): String = when (id) {
-    "guide" -> "What's on now and next, channel by channel"
-    "comingSoon" -> "Films and series arriving soon"
-    "watchlist" -> "Titles you saved to watch later"
-    "lists" -> "Playlists you built yourself"
-    "downloads" -> "Saved to this device — watch with no internet"
-    "recordings" -> "Shows you set the app to record"
-    "catchup" -> "Replay something that has already aired"
-    "settings" -> "Playback, account, diagnostics"
-    else -> ""
-}

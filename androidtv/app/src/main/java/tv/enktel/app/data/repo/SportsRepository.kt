@@ -446,6 +446,19 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     private fun looksLikeFixture(title: String): Boolean =
         FIXTURE_PATTERN.containsMatchIn(title)
 
+    /**
+     * Every sport tag this classifier can produce, including the catch-all.
+     *
+     * Public because these reach the screen: the Sport rail prints the tag
+     * beside the fixture. They are English keys, not display text — the
+     * catalogue in `tv.enktel.app.i18n` turns them into words, and `StringsTest`
+     * walks this list so a sport added here cannot stay untranslated.
+     */
+    val SPORT_NAMES: List<String> get() = SPORT_TAGS.map { it.first } + OTHER_SPORT
+
+    /** Where a programme on a sports channel goes when no league is named. */
+    const val OTHER_SPORT = "Other"
+
     // ---- Unified search ----------------------------------------------------
 
     /**

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
@@ -104,7 +105,8 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Modifier.fillMaxSize().padding(horizontal = hPad, vertical = vPad),
         verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {
-        SectionTitle("Settings")
+        val t = tv.enktel.app.i18n.LocalStrings.current
+        SectionTitle(t.settingsTitle)
         if (status.isNotBlank()) Text(status, color = EnktelOk, fontSize = 13.sp)
 
         // Above the category tabs on purpose. Expiry and the connection cap are
@@ -121,32 +123,45 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         // what they get.
         val simpleMenu by graph.settings.simpleMenu.collectAsStateWithLifecycle(initialValue = true)
         FocusButton(
-            if (simpleMenu) "Menu: Simple — show all destinations" else "Menu: Full — show fewer destinations",
+            if (simpleMenu) t.menuSimple else t.menuFull,
             accent = !simpleMenu,
             onClick = { scope.launch { graph.settings.setSimpleMenu(!simpleMenu) } },
         )
         Text(
-            if (simpleMenu) {
-                "The menu shows Home, Live TV, Movies, Series, Sports and Search, with the rest " +
-                    "under More. Nothing is hidden — this only changes what is offered first."
-            } else {
-                "The menu shows all fourteen destinations."
-            },
+            if (simpleMenu) t.menuSimpleHelp else t.menuFullHelp,
             color = EnktelTextDim, fontSize = 11.sp,
         )
 
+        // Language, right beside the menu switch.
+        //
+        // Both answer the same question — "why does this app not look like I
+        // expect" — and both change every other screen, so filing either one
+        // inside a category would mean finding it before you can read the
+        // page it is meant to make readable. A subscriber who cannot read the
+        // English cannot navigate to an Appearance tab to fix that, which is
+        // the whole argument for putting this above the fold.
+        LanguagePicker(graph, scope)
+
         // Quick-actions stay visible in every category — they're the tools
         // people open Settings to reach.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusButton("🩺  Run connection diagnostics", accent = true,
+        // Scrollable, because three buttons of this length have never fitted a
+        // 411 dp phone: the row was clipped at "📈 System" and "Manage
+        // categories" could not be reached at all. Pre-existing, but
+        // translating the labels makes them longer, so shipping the language
+        // switch without this would be shipping the bug twice.
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FocusButton(t.runDiagnostics, accent = true,
                 onClick = { nav.navigate("speedTest") })
-            FocusButton("📈  System monitor",
+            FocusButton(t.systemMonitor,
                 onClick = { nav.navigate("systemMonitor") })
-            FocusButton("🗂  Manage categories",
+            FocusButton(t.manageCategories,
                 onClick = { nav.navigate("manageCategories") })
         }
         Text(
-            "Diagnostics tests your network, the panel's URL shapes, your connection cap and the HTTP/TLS path — locally, no browser needed.",
+            t.diagnosticsHelp,
             color = EnktelTextDim, fontSize = 11.sp, maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
@@ -1868,4 +1883,48 @@ private fun RealDebridSection(
         }
     }
     if (status.isNotBlank()) Text(status, color = EnktelTextDim, fontSize = 11.sp)
+}
+
+/**
+ * Which language the app draws itself in.
+ *
+ * Three choices rather than two, and "Follow this device" is the default: a
+ * phone already set to Hrvatski should not need anyone to find this screen,
+ * and most of the people this setting exists for are exactly the ones least
+ * likely to go looking for it. Choosing a language explicitly pins it, so a
+ * household sharing a television set to English can still watch in
+ * Srpskohrvatski without changing the television.
+ *
+ * The note underneath is not filler. Channel names, film titles and the TV
+ * guide all arrive from the provider and cannot be translated by anything in
+ * this app; without saying so, switching the language and finding half the
+ * screen unchanged reads as the setting being broken. It also admits that the
+ * deeper screens are still English rather than letting that be discovered.
+ */
+@Composable
+private fun LanguagePicker(graph: AppGraph, scope: kotlinx.coroutines.CoroutineScope) {
+    val t = tv.enktel.app.i18n.LocalStrings.current
+    val setting by graph.settings.language
+        .collectAsStateWithLifecycle(initialValue = tv.enktel.app.i18n.Lang.SYSTEM)
+
+    Text(t.language, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Each option is written in its own language, never translated. A
+        // picker that renders "Serbo-Croatian" while the app is in English,
+        // and "Engleski" once you have switched, is unreadable precisely to
+        // the person who picked the wrong one and wants back.
+        GlassChip(
+            t.languageFollowDevice,
+            selected = setting == tv.enktel.app.i18n.Lang.SYSTEM,
+            onClick = { scope.launch { graph.settings.setLanguage(tv.enktel.app.i18n.Lang.SYSTEM) } },
+        )
+        tv.enktel.app.i18n.AllStrings.forEach { lang ->
+            GlassChip(
+                lang.endonym,
+                selected = setting == lang.id,
+                onClick = { scope.launch { graph.settings.setLanguage(lang.id) } },
+            )
+        }
+    }
+    Text(t.languageNote, color = EnktelTextDim, fontSize = 11.sp)
 }

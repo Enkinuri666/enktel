@@ -101,6 +101,11 @@ class ScreenshotCaptureTest {
         rule.setContent { EnktelTheme { Box { content() } } }
     }
 
+    /** The same screen, drawn in a chosen language. See `Strings`. */
+    private fun themed(lang: String, content: @Composable () -> Unit) {
+        rule.setContent { EnktelTheme(lang = lang) { Box { content() } } }
+    }
+
     // ── the graph, with just enough in it to draw ──────────────────────
 
     private fun graph(): AppGraph =
@@ -332,6 +337,67 @@ class ScreenshotCaptureTest {
         }
         settle()
         capture("search-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun signInSerboCroatian() {
+        val g = graph()
+        themed(tv.enktel.app.i18n.Lang.SH) {
+            tv.enktel.app.ui.screens.OnboardingScreen(g) {}
+        }
+        capture("onboarding-sh")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun moreSerboCroatian() {
+        themed(tv.enktel.app.i18n.Lang.SH) {
+            tv.enktel.app.ui.screens.MoreScreen(onSelect = {})
+        }
+        capture("more-sh")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun moreSerboCroatianOnTelevision() {
+        themed(tv.enktel.app.i18n.Lang.SH) {
+            tv.enktel.app.ui.screens.MoreScreen(onSelect = {})
+        }
+        capture("more-sh-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun searchSerboCroatian() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed(tv.enktel.app.i18n.Lang.SH) {
+            tv.enktel.app.ui.screens.SearchScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+                initialQuery = "premier league",
+            )
+        }
+        settle()
+        capture("search-sh")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun settingsLanguage() {
+        val g = graph()
+        seedProfile(g)
+        themed {
+            tv.enktel.app.ui.screens.SettingsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("settings-language")
     }
 
     @Test

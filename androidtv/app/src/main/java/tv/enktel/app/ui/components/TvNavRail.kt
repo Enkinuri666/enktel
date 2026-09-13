@@ -94,10 +94,31 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  */
 data class TvNavItem(
     val id: String,
+    /**
+     * The English label, and the identity of this entry in the tests.
+     *
+     * Not what gets drawn — [localLabel] is. Kept as a plain field rather than
+     * moved wholesale into the string catalogue because a menu whose entries
+     * have no name until a CompositionLocal is in scope cannot be asserted
+     * about outside a composition, and `NavMenuTest` is the thing that stops a
+     * destination going missing from both menus at once.
+     */
     val label: String,
     val icon: ImageVector,
     val route: String,
 )
+
+/**
+ * The label to draw, in whatever language the app is set to.
+ *
+ * Falls back to the English [TvNavItem.label] rather than showing an id or a
+ * blank: a destination added to the menu and forgotten in the catalogue should
+ * still be reachable and still say something. `StringsTest` fails in that
+ * case, so the fallback is a safety net rather than a plan.
+ */
+@Composable
+fun TvNavItem.localLabel(): String =
+    tv.enktel.app.i18n.LocalStrings.current.navLabel(id) ?: label
 
 /** Icon column only. See the comment at the `width` animation for the arithmetic. */
 private val RAIL_COLLAPSED = 72.dp
@@ -552,7 +573,7 @@ private fun NavRailItem(
             if (showLabel) {
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    item.label,
+                    item.localLabel(),
                     fontSize = 13.sp,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,

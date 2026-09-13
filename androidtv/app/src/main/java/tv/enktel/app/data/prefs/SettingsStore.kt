@@ -258,6 +258,18 @@ class SettingsStore(private val context: Context) {
      */
     private val SIMPLE_MENU_NOTICE_SEEN = booleanPreferencesKey("simple_menu_notice_seen")
 
+    /**
+     * Which language the app's own text is drawn in: "system", "en" or "sh".
+     *
+     * Defaults to "system", which reads the device's locale list — a phone set
+     * to Hrvatski, Srpski, Bosanski or Crnogorski gets Srpskohrvatski without
+     * anyone finding this setting, and everyone else gets English. Storing the
+     * *setting* rather than the resolved language is what makes that work: a
+     * device that changes its own locale later follows, and an explicit choice
+     * here overrides it for good. See tv.enktel.app.i18n.Lang.resolve.
+     */
+    private val LANGUAGE = stringPreferencesKey("language")
+
     // v1.22.0 download-manager overhaul.
     //   downloadEngine: "auto" (parallel when the source + target permit,
     //                   else falls back to system), "parallel" (force the
@@ -533,6 +545,9 @@ class SettingsStore(private val context: Context) {
     suspend fun setLiveRebufferMs(v: Int) = context.dataStore.edit { it[LIVE_REBUFFER_MS] = v.coerceIn(500, 8_000) }
     val allocatorSizeKb: Flow<Int> = context.dataStore.data.map { it[ALLOCATOR_SIZE_KB] ?: 0 }
     suspend fun setAllocatorSizeKb(v: Int) = context.dataStore.edit { it[ALLOCATOR_SIZE_KB] = v.coerceIn(0, 4096) }
+    val language: Flow<String> = context.dataStore.data.map { it[LANGUAGE] ?: "system" }
+    suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
+
     val simpleMenu: Flow<Boolean> = context.dataStore.data.map { it[SIMPLE_MENU] ?: true }
     suspend fun setSimpleMenu(v: Boolean) = context.dataStore.edit { it[SIMPLE_MENU] = v }
 
