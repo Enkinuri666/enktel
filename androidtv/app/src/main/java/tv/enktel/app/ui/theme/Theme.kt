@@ -396,6 +396,15 @@ fun EnktelTheme(
     themeId: String = "enktel_neon",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
+    /**
+     * The resolved language id — "en" or "sh", never "system".
+     *
+     * Provided here rather than read from settings at each call site so that
+     * changing it redraws the tree in place: no activity recreation, so the
+     * viewer keeps their scroll position and whatever they were half way
+     * through typing. See tv.enktel.app.i18n.Strings.
+     */
+    lang: String = tv.enktel.app.i18n.Lang.EN,
     content: @Composable () -> Unit,
 ) {
     val palette = paletteFor(themeId)
@@ -405,6 +414,7 @@ fun EnktelTheme(
         LocalPalette provides palette,
         LocalOverlayOpacity provides overlayOpacity.coerceIn(0.6f, 1f),
         LocalDensity provides scaledDensity,
+        tv.enktel.app.i18n.LocalStrings provides tv.enktel.app.i18n.stringsFor(lang),
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(

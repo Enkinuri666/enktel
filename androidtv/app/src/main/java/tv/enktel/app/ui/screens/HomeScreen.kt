@@ -239,6 +239,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                         -1
                     },
                     expired = p.expiresAt in 1..System.currentTimeMillis(),
+                    t = tv.enktel.app.i18n.LocalStrings.current,
                 ),
                 onSelect = { route -> nav.navigate(route) { launchSingleTop = true } },
             )

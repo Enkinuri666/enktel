@@ -1,5 +1,7 @@
 package tv.enktel.app.data.repo
 
+import tv.enktel.app.i18n.EnglishStrings
+import tv.enktel.app.i18n.Strings
 import java.net.URLEncoder
 
 /**
@@ -67,12 +69,24 @@ object Subscribe {
      * is an advertisement; shown in the last fortnight it is a reminder, and
      * the difference is whether people read it.
      */
-    fun expiryNotice(daysLeft: Int, expired: Boolean): String? = when {
-        expired -> "This line has expired. Renew to start watching again."
+    fun expiryNotice(
+        daysLeft: Int,
+        expired: Boolean,
+        /**
+         * Defaulted to English so the existing callers and `SubscribeTest`
+         * read unchanged; the two screens that show this pass the language the
+         * app is actually in. The day count goes through [Strings.days]
+         * because Serbo-Croatian agrees three ways — 1 dan, 2–4 dana, 5+
+         * dana — and "ističe za 21 dana" is the sentence that gives away a
+         * translation done by substitution.
+         */
+        t: Strings = EnglishStrings,
+    ): String? = when {
+        expired -> t.lineExpired
         daysLeft < 0 -> null
-        daysLeft == 0 -> "This line expires today. Renew to avoid losing access."
-        daysLeft == 1 -> "This line expires tomorrow."
-        daysLeft <= NOTICE_DAYS -> "This line expires in $daysLeft days."
+        daysLeft == 0 -> t.lineExpiresToday
+        daysLeft == 1 -> t.lineExpiresTomorrow
+        daysLeft <= NOTICE_DAYS -> t.lineExpiresIn.format(t.days(daysLeft))
         else -> null
     }
 

@@ -72,10 +72,28 @@ class MainActivity : ComponentActivity() {
             val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_neon")
             val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
             val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
+            // "system" is the default and is resolved here rather than stored,
+            // so a device that changes its own locale later follows along.
+            // LocalConfiguration is read inside the composition so a locale
+            // change while the app is open recomposes with the new answer.
+            val langSetting by graph.settings.language.collectAsStateWithLifecycle(initialValue = tv.enktel.app.i18n.Lang.SYSTEM)
+            val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+            val lang = remember(langSetting, cfg) {
+                // ConfigurationCompat, not Configuration.getLocales(): that is
+                // API 24 and minSdk here is 23, so the direct call is a crash
+                // on Marshmallow. Lint caught it; nothing else would have,
+                // because every device this gets tested on is newer.
+                val locales = androidx.core.os.ConfigurationCompat.getLocales(cfg)
+                tv.enktel.app.i18n.Lang.resolve(
+                    langSetting,
+                    (0 until locales.size()).mapNotNull { locales.get(it)?.toLanguageTag() },
+                )
+            }
             EnktelTheme(
                 themeId = themeId,
                 overlayOpacity = opacityPct / 100f,
                 textScalePct = textPct,
+                lang = lang,
             ) {
                 val voiceBus = remember { tv.enktel.app.voice.VoiceCommandBus() }
                 val wakeWordEnabled by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)

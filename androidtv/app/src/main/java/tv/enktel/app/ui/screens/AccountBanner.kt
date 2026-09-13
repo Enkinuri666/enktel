@@ -198,7 +198,11 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
         // No price appears here. An APK is updated rarely, so a price compiled
         // into one goes on being advertised long after it changes; the web page
         // is the only copy that can be corrected in an afternoon.
-        Subscribe.expiryNotice(if (daysLeft == Int.MAX_VALUE) -1 else daysLeft, expired)?.let { notice ->
+        Subscribe.expiryNotice(
+            if (daysLeft == Int.MAX_VALUE) -1 else daysLeft,
+            expired,
+            tv.enktel.app.i18n.LocalStrings.current,
+        )?.let { notice ->
             val target = Subscribe.renewUrl(p.username)
             // Asked before the button is offered, not after it is pressed. A
             // sideloaded Fire TV Stick often has no browser at all, and an
