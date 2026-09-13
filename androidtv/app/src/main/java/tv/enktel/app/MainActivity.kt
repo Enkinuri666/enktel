@@ -79,10 +79,14 @@ class MainActivity : ComponentActivity() {
             val langSetting by graph.settings.language.collectAsStateWithLifecycle(initialValue = tv.enktel.app.i18n.Lang.SYSTEM)
             val cfg = androidx.compose.ui.platform.LocalConfiguration.current
             val lang = remember(langSetting, cfg) {
-                val locales = cfg.locales
+                // ConfigurationCompat, not Configuration.getLocales(): that is
+                // API 24 and minSdk here is 23, so the direct call is a crash
+                // on Marshmallow. Lint caught it; nothing else would have,
+                // because every device this gets tested on is newer.
+                val locales = androidx.core.os.ConfigurationCompat.getLocales(cfg)
                 tv.enktel.app.i18n.Lang.resolve(
                     langSetting,
-                    (0 until locales.size()).map { locales.get(it).toLanguageTag() },
+                    (0 until locales.size()).mapNotNull { locales.get(it)?.toLanguageTag() },
                 )
             }
             EnktelTheme(
