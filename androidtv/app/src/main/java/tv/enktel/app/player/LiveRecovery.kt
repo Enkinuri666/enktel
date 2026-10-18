@@ -187,6 +187,109 @@ object LiveRecovery {
         else -> Action.FAIL
     }
 
+    // ---- where a recovered stream resumes ---------------------------------
+
+    /**
+     * Where playback should pick up after a recovery.
+     *
+     * ### The bug this exists to fix
+     *
+     * Recovery did `seekToDefaultPosition()` before re-preparing, for live and
+     * VOD alike. On live that is right and is the whole point — the default
+     * position *is* the live edge. On a film the default position is zero, so
+     * a title that hiccuped forty minutes in came back at the opening titles.
+     * The hiccup itself was usually a second long; the recovery threw away the
+     * forty minutes.
+     *
+     * The same number was wrong a second way. Walking the candidate chain
+     * re-entered playback at `candidateStartMs`, the position the *stream*
+     * started at — a resume point, or zero — rather than where the viewer had
+     * got to since.
+     *
+     * @return [RESUME_AT_EDGE] for live, meaning seek to the default position;
+     *   otherwise the millisecond offset to resume at.
+     */
+    fun resumePositionMs(live: Boolean, currentPositionMs: Long): Long = when {
+        live -> RESUME_AT_EDGE
+        // A position that is not yet known reads as 0 from the player, and
+        // "resume at 0" and "we never got anywhere" are the same request.
+        currentPositionMs <= 0L -> 0L
+        // Back off a touch. The last second before a stall is usually the
+        // second that was arriving when the connection died, and resuming
+        // exactly there can land inside the same damaged region; it also puts
+        // the viewer a beat before what they last saw rather than a beat
+        // after, which is the side to err on.
+        else -> (currentPositionMs - RESUME_REWIND_MS).coerceAtLeast(0L)
+    }
+
+    /** [resumePositionMs]'s answer for live: re-join at the edge. */
+    const val RESUME_AT_EDGE = -1L
+
+    /** How far before the stall a recovered film restarts. */
+    const val RESUME_REWIND_MS = 1_500L
+
+    // ---- the frozen picture ------------------------------------------------
+
+    /**
+     * How long a stream may sit in BUFFERING before it is treated as dead.
+     *
+     * Live had a watchdog and VOD had none, so the way a film failed was: the
+     * panel stops sending, the socket stays open, ExoPlayer waits, and nothing
+     * anywhere times out until OkHttp's 180-second read timeout. Three minutes
+     * of a frozen frame with a spinner over it, and the app convinced it is
+     * merely buffering.
+     *
+     * VOD waits longer than live before acting — a film has a deep buffer and
+     * a long stall may still be a slow refill rather than a dead socket, and
+     * re-preparing costs a visible stutter. Live has seconds of cushion by
+     * construction, so a stall there is already a failure.
+     */
+    fun stallThresholdMs(live: Boolean): Long = if (live) LIVE_STALL_MS else VOD_STALL_MS
+
+    const val LIVE_STALL_MS = 25_000L
+    const val VOD_STALL_MS = 40_000L
+
+    /**
+     * Retry a failed load patiently, because a file is not going anywhere.
+     *
+     * VOD got Media3's default — three attempts, backing off to five seconds —
+     * and then surfaced a player error. These are the same overloaded panels
+     * that serve the live channels, and a single 502 in the middle of a film
+     * ended it. Nothing about a file justifies giving up that quickly: the
+     * bytes are still there, the range request can be re-issued, and the
+     * player has a deep buffer to spend while it waits.
+     *
+     * So: more attempts, and a backoff that is allowed to be slow. The
+     * opposite of [LiveLoadErrorPolicy] in both directions, for the opposite
+     * reason — live cannot afford to wait, VOD can afford nothing else.
+     *
+     * Delegates the retryable-or-not decision to the default, same as live, so
+     * an unparseable response still fails immediately.
+     */
+    class VodLoadErrorPolicy : DefaultLoadErrorHandlingPolicy() {
+
+        override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+            val base = super.getRetryDelayMsFor(loadErrorInfo)
+            if (base == C.TIME_UNSET) return C.TIME_UNSET
+            return vodRetryDelayMs(loadErrorInfo.errorCount)
+        }
+
+        override fun getMinimumLoadableRetryCount(dataType: Int): Int = VOD_MIN_RETRY_COUNT
+    }
+
+    /** Attempts before a VOD load becomes a player error. Default is three. */
+    const val VOD_MIN_RETRY_COUNT = 5
+
+    /** The longest a VOD retry waits. */
+    const val VOD_MAX_RETRY_DELAY_MS = 4_000L
+
+    /** Growth per attempt: 1s, 2s, 3s, 4s, 4s. */
+    const val VOD_RETRY_STEP_MS = 1_000L
+
+    /** Delay before VOD retry number [errorCount] (1-based). */
+    fun vodRetryDelayMs(errorCount: Int): Long =
+        (errorCount.coerceAtLeast(1) * VOD_RETRY_STEP_MS).coerceAtMost(VOD_MAX_RETRY_DELAY_MS)
+
     /**
      * Retry a failed load quickly and often, because live cannot wait.
      *

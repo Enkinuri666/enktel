@@ -84,10 +84,26 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     // phone sideways and 18 dp top and bottom is still 10 % of the height,
     // spent before a single row of settings is drawn, on the orientation with
     // the least room. See ScreenShape.
-    val isMobile = BuildConfig.FLAVOR == "mobile"
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
     val hPad = shape.padH
     val vPad = shape.padV
+
+    /**
+     * Two panes, or one scrolling page.
+     *
+     * This was `!shape.narrow`, which asks only about width — and the screen
+     * that could least afford the two-pane layout passed the test. Turn a
+     * phone sideways and the width goes up past 600 while the height collapses
+     * to about 411 dp, so a landscape phone got the 236 dp side list *and* the
+     * fixed header, and the header alone is taller than that. The settings
+     * pane under it was measured into nothing and the page looked empty below
+     * the quick-action buttons.
+     *
+     * Height is the axis that decides this, so both are asked. A television at
+     * 960×540 and a tablet either way round keep two panes; a phone, held
+     * either way, gets the chip rail and one scroll.
+     */
+    val twoPane = !shape.narrow && !shape.short
     // One category at a time.
     //
     // Settings was a single 780-line Column inside a verticalScroll: every
@@ -101,8 +117,29 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     // category split rather than inside whichever section comes first.
     val pinHash by graph.settings.parentalPinHash.collectAsStateWithLifecycle(initialValue = "")
 
+    // One scroll, for the whole page, on every screen.
+    //
+    // It used to be two: a fixed header — account, menu switch, language,
+    // diagnostics, six blocks of it — and a settings pane that scrolled
+    // underneath. The header is around 430 dp, so what it left behind was
+    // whatever the screen had spare. On a 540 dp television that is 110 dp of
+    // scrolling settings, which is two rows at a time. On a phone in portrait
+    // it is a squeezed strip. On a phone in landscape it is nothing at all:
+    // the pane measured to zero height and the page below the buttons was
+    // simply blank, which is the bug reported.
+    //
+    // Nothing was gained by pinning the header either — it is not a toolbar,
+    // it is six settings that happen to come first. So the page moves as one
+    // and the side list comes with it. This also removes the awkward part of
+    // the old arrangement: a Column with verticalScroll inside another one is
+    // measured with an infinite height, so the two could never both exist.
+    val pageScroll = rememberScrollState()
+
     Column(
-        Modifier.fillMaxSize().padding(horizontal = hPad, vertical = vPad),
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(pageScroll)
+            .padding(horizontal = hPad, vertical = vPad),
         verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {
         val t = tv.enktel.app.i18n.LocalStrings.current
@@ -179,17 +216,16 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         // Narrow portrait keeps the rail: there is no room for two panes on a
         // phone held upright, and a full-width list would push the actual
         // settings off the bottom.
-        val twoPane = !shape.narrow
-
         Row(
-            Modifier.fillMaxSize(),
+            // fillMaxWidth, never fillMaxSize: inside a scrolling column the
+            // available height is unbounded, and asking for all of infinity
+            // throws rather than filling anything.
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(if (twoPane) 18.dp else 0.dp),
         ) {
             if (twoPane) {
                 Column(
-                    Modifier
-                        .width(236.dp)
-                        .verticalScroll(rememberScrollState()),
+                    Modifier.width(236.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     SETTINGS_CATEGORIES.forEach { c ->
@@ -203,7 +239,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
 
             Column(
-                Modifier.weight(1f).fillMaxHeight(),
+                Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (!twoPane) {
@@ -218,7 +254,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 }
 
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
         if (category == "Playlists") {

@@ -59,6 +59,16 @@ class ScreenshotCaptureTest {
          */
         const val PHONE = "w411dp-h891dp-xhdpi"
         const val TV = "w960dp-h540dp-land-television-xhdpi-notouch"
+
+        /**
+         * A phone on its side. 891x411 is the PHONE qualifier rotated.
+         *
+         * The shape that exposed the Settings bug: wide enough that
+         * `shape.narrow` said "roomy", short enough that the fixed header ate
+         * the whole window and the settings under it were measured into
+         * nothing.
+         */
+        const val PHONE_LAND = "w891dp-h411dp-land-xhdpi"
     }
 
     private val outDir: File by lazy {
@@ -398,6 +408,36 @@ class ScreenshotCaptureTest {
         }
         settle()
         capture("settings-language")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE_LAND)
+    fun settingsLandscapePhone() {
+        val g = graph()
+        seedProfile(g)
+        themed {
+            tv.enktel.app.ui.screens.SettingsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("settings-landscape")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun settingsOnTelevision() {
+        val g = graph()
+        seedProfile(g)
+        themed {
+            tv.enktel.app.ui.screens.SettingsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("settings-bigscreen")
     }
 
     @Test

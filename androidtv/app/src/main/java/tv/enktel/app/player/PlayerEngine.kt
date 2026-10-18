@@ -239,19 +239,62 @@ class PlayerEngine(
      * Backed off, because a panel that just hung up on us is often busy, and a
      * tight reconnect loop is how a client gets its IP throttled.
      */
-    private fun reconnectLive() {
+    /**
+     * Where a fresh candidate should start.
+     *
+     * Was `candidateStartMs` at both call sites — the position the *stream*
+     * began at, which is a resume point or zero. Walking the fallback chain
+     * half an hour into a film therefore restarted it half an hour earlier,
+     * so the recovery was more disruptive than the fault it was recovering
+     * from. Live is unaffected: its answer is still "the edge", expressed as
+     * a start position of zero.
+     */
+    private fun resumeStartMs(): Long {
+        val at = LiveRecovery.resumePositionMs(
+            isLiveStream,
+            runCatching { player.currentPosition }.getOrDefault(0L),
+        )
+        return when {
+            at == LiveRecovery.RESUME_AT_EDGE -> 0L
+            at > 0L -> at
+            // Nothing has played yet, so there is no "where the viewer is".
+            // Honour the start position the caller asked for, which on a
+            // resumed film is the whole point of the call.
+            else -> candidateStartMs
+        }
+    }
+
+    private fun reconnectStream() {
         if (liveReconnects >= MAX_LIVE_RECONNECTS) {
-            error.value = "The stream keeps dropping — the panel may be overloaded or the line in use elsewhere"
+            error.value = if (isLiveStream) {
+                "The stream keeps dropping — the panel may be overloaded or the line in use elsewhere"
+            } else {
+                "This title keeps stopping — the panel may be overloaded. Try again, or pick another source."
+            }
             reconnecting.value = false
             return
         }
         liveReconnects++
         reconnecting.value = true
         playingSinceMs = 0L
+        // Read the position now, on the player's own thread, while the player
+        // still has one: the postDelayed below runs up to sixteen seconds
+        // later and `prepare()` on a failed player can reset it.
+        val resumeAt = LiveRecovery.resumePositionMs(
+            isLiveStream,
+            runCatching { player.currentPosition }.getOrDefault(0L),
+        )
         val delayMs = (1000L shl minOf(liveReconnects - 1, 4)).coerceAtMost(16_000L)
         playerHandler.postDelayed({
             try {
-                player.seekToDefaultPosition()
+                // Live re-joins at the edge. A film does not: the default
+                // position of a file is zero, and seeking there is how a
+                // forty-minute-in stall used to restart the opening titles.
+                if (resumeAt == LiveRecovery.RESUME_AT_EDGE) {
+                    player.seekToDefaultPosition()
+                } else if (resumeAt > 0L) {
+                    player.seekTo(resumeAt)
+                }
                 player.prepare()
                 player.play()
             } catch (_: Throwable) { /* player torn down mid-wait */ }
@@ -275,7 +318,13 @@ class PlayerEngine(
                 val regained = now != previous &&
                     now != tv.enktel.app.data.net.NetworkClass.Kind.UNKNOWN
                 previous = now
-                if (!regained || !isLiveStream) return@collect
+                // Not live-only. A film loses its socket to a Wi-Fi handover
+                // exactly as a channel does, and had nothing watching for the
+                // network coming back — it sat buffering until something else
+                // happened to it. The reconnect itself now keeps a film's
+                // position, so doing this for VOD is no longer the
+                // back-to-the-titles cure it would once have been.
+                if (!regained) return@collect
                 // Hop to the player's own thread before reading its state.
                 // ExoPlayer throws on cross-thread access, and the catch that
                 // used to wrap this swallowed the throw — so the check always
@@ -286,7 +335,7 @@ class PlayerEngine(
                     // A fresh network is a fresh chance, so don't let a budget
                     // spent on the old one prevent using it.
                     liveReconnects = 0
-                    reconnectLive()
+                    reconnectStream()
                 }
             }
         }
@@ -298,18 +347,35 @@ class PlayerEngine(
      * than erroring. The app-wide read timeout is 180 s, which is three minutes
      * of frozen picture before anything happens.
      */
+    /**
+     * One pending stall check, not one per buffering event.
+     *
+     * Held so the previous one can be cancelled. Every STATE_BUFFERING posts a
+     * check, and on live that was rare enough not to matter; VOD buffers every
+     * time the viewer seeks, so scrubbing through a film used to leave a
+     * callback per scrub sitting on the handler for the next forty seconds.
+     * None of them could fire wrongly — each re-reads the clock — but a queue
+     * of them is still a queue, and a Runnable that outlives a release() is
+     * the shape of a leak.
+     */
+    private val stallCheck = Runnable {
+        val since = bufferingSinceMs
+        if (since != 0L &&
+            System.currentTimeMillis() - since >= LiveRecovery.stallThresholdMs(isLiveStream) &&
+            player.playbackState == Player.STATE_BUFFERING
+        ) {
+            bufferingSinceMs = 0L
+            reconnectStream()
+        }
+    }
+
     private fun scheduleStallCheck() {
-        if (!isLiveStream) return
-        playerHandler.postDelayed({
-            val since = bufferingSinceMs
-            if (since != 0L &&
-                System.currentTimeMillis() - since >= LIVE_STALL_MS &&
-                player.playbackState == Player.STATE_BUFFERING
-            ) {
-                bufferingSinceMs = 0L
-                reconnectLive()
-            }
-        }, LIVE_STALL_MS + 500)
+        // VOD used to be excluded here, which is why a film whose panel
+        // stopped sending froze until OkHttp's 180-second read timeout: the
+        // socket stays open, ExoPlayer stays in BUFFERING, and nothing else
+        // in this class was watching. See LiveRecovery.stallThresholdMs.
+        playerHandler.removeCallbacks(stallCheck)
+        playerHandler.postDelayed(stallCheck, LiveRecovery.stallThresholdMs(isLiveStream) + 500)
     }
     /** MIME type to pin on the next MediaItem, bypassing ExoPlayer's own
      *  container auto-detection. Empty = let ExoPlayer figure it out. Set
@@ -667,7 +733,13 @@ class PlayerEngine(
             // the retry lands after the player has already fallen out of the
             // window and the recovery becomes a visible reconnect. See
             // LiveRecovery for the whole chain.
-            if (live) setLoadErrorHandlingPolicy(LiveRecovery.LiveLoadErrorPolicy())
+            // Both, and deliberately opposite: live retries fast because a
+            // segment it waits for rolls off the window, VOD retries slowly
+            // and more often because the bytes are not going anywhere and the
+            // default three-strikes schedule ended films on one bad response.
+            setLoadErrorHandlingPolicy(
+                if (live) LiveRecovery.LiveLoadErrorPolicy() else LiveRecovery.VodLoadErrorPolicy(),
+            )
         }
 
         // "Change the frame rate even if the switch is not seamless."
@@ -677,11 +749,16 @@ class PlayerEngine(
         // platform's Surface.CHANGE_FRAME_RATE_* values, and "always" is one of
         // those rather than one of Media3's.
         //
-        // Guarded rather than referenced bare because the constant arrived in
-        // API 30 with Surface.setFrameRate itself. Below that the mechanism does
-        // not exist at all and the value is moot, so the seamless default stands
-        // and RefreshRateMatcher's preferredDisplayModeId path does the work.
-        val frameRateStrategy = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        // Guarded on API 31, not 30. The comment here used to say the
+        // constant arrived with Surface.setFrameRate in API 30; it did not —
+        // setFrameRate came in 30, CHANGE_FRAME_RATE_ALWAYS and the overload
+        // that takes it came in 31. An `int` constant is inlined by the
+        // compiler, so the off-by-one never threw, which is exactly why it
+        // survived: on API 30 the app asked for a strategy the platform had
+        // no way to honour and quietly got the default. Below 31 the seamless
+        // default stands and RefreshRateMatcher's preferredDisplayModeId path
+        // does the work.
+        val frameRateStrategy = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             android.view.Surface.CHANGE_FRAME_RATE_ALWAYS
         } else {
             C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
@@ -814,7 +891,7 @@ class PlayerEngine(
                     // how long a genuinely dead channel takes to report.
                     triedFallback.value = true
                     retries = 0
-                    playInternal(hlsRetry, candidateLive, candidateStartMs, candidateSubUrl)
+                    playInternal(hlsRetry, candidateLive, resumeStartMs(), candidateSubUrl)
                 } else if (action == LiveRecovery.Action.RETRY_IN_PLACE && lastUrl != null) {
                     // Re-join at the live edge. On live this is the correct
                     // recovery rather than a hopeful one, so falling behind the
@@ -822,7 +899,11 @@ class PlayerEngine(
                     // that drops one segment an hour eventually runs out of
                     // attempts and is declared dead mid-programme.
                     if (!LiveRecovery.isFree(isLiveStream, err.errorCode)) retries++
-                    player.seekToDefaultPosition()
+                    // Live re-joins the edge; VOD stays where the viewer is.
+                    // `prepare()` keeps the current position by itself, so the
+                    // only thing that threw a film back to zero was the
+                    // unconditional seek that used to be here.
+                    if (isLiveStream) player.seekToDefaultPosition()
                     player.prepare()
                     player.play()
                 } else if (action == LiveRecovery.Action.NEXT_CANDIDATE) {
@@ -833,7 +914,7 @@ class PlayerEngine(
                     triedFallback.value = true
                     val next = candidateQueue.removeAt(0)
                     retries = 0
-                    playInternal(next, candidateLive, candidateStartMs, candidateSubUrl)
+                    playInternal(next, candidateLive, resumeStartMs(), candidateSubUrl)
                 } else if (lastUrl?.startsWith("rtmp://", ignoreCase = true) == true) {
                     // RTMP was dropped from the build — see the comment on the
                     // absent media3-datasource-rtmp dependency. Named here
@@ -888,7 +969,7 @@ class PlayerEngine(
                         // no listener callback anywhere in this class. So
                         // nothing reconnected and the picture just stopped,
                         // with the app convinced everything went fine.
-                        if (isLiveStream) reconnectLive()
+                        if (isLiveStream) reconnectStream()
                     }
                     else -> Unit
                 }
@@ -1559,10 +1640,13 @@ class PlayerEngine(
     }
 
     private companion object {
-        /** Reconnect attempts before a live feed is declared dead. */
+        /** Reconnect attempts before a stream is declared dead. */
         const val MAX_LIVE_RECONNECTS = 8
-        /** Buffering longer than this on live means the feed has stalled. */
-        const val LIVE_STALL_MS = 25_000L
+
+        // How long a stall is tolerated now lives in LiveRecovery, which has
+        // an answer for VOD as well — this class had only the live one, which
+        // is why a frozen film waited on a 180-second HTTP read timeout.
+
         /** Play cleanly for this long and the reconnect budget is restored. */
         const val GOOD_RUN_MS = 120_000L
 

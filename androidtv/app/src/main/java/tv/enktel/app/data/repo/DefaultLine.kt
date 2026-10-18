@@ -54,45 +54,10 @@ object DefaultLine {
     val canSeed: Boolean
         get() = server.isNotBlank() && username.isNotBlank() && password.isNotBlank()
 
-    /**
-     * The free-to-air playlist a build with no line falls back to.
-     *
-     * These are the public streams the scraper collects and liveness-checks —
-     * whole URLs that belong to their broadcasters and carry nothing private,
-     * so they play with no account at all. That is the difference between them
-     * and the panel catalogs: a panel's stream URL *contains* the line's
-     * username and password, so there is no version of it that plays without a
-     * login. Anything a viewer can watch before signing in comes from here.
-     */
-    val freePlaylistUrl: String get() = BuildConfig.FREE_PLAYLIST_URL
-
-    /** Optional guide for [freePlaylistUrl]; blank means use the playlist's own. */
-    val freePlaylistEpg: String get() = BuildConfig.FREE_PLAYLIST_EPG
-
-    /** Display name for the seeded free-to-air profile. */
-    const val FREE_NAME = "EnkTel Free-to-Air"
-
-    /** Is there a free playlist to fall back to when [canSeed] is false? */
-    val hasFreePlaylist: Boolean
-        get() = freePlaylistUrl.startsWith("http")
-
-    /**
-     * The on-demand half of the free tier.
-     *
-     * [freePlaylistUrl] carries live channels, so a viewer with no line got
-     * live TV and an empty Movies tab. This is the catalogue
-     * `scripts/scrape-vod.mjs` collects: public-domain and openly-licensed
-     * films, documentaries and series, every one of which carries both a
-     * redistribution licence and membership of a curated archive collection.
-     *
-     * Published from this project rather than linked from the archive
-     * directly, for the same reason the lineup is — a viewer's network has to
-     * reach one host we control, not whichever host a generated file happened
-     * to name.
-     */
-    val freeVodUrl: String get() = BuildConfig.FREE_VOD_URL
-
-    /** Is there a free film library to seed alongside the channels? */
-    val hasFreeVod: Boolean
-        get() = freeVodUrl.startsWith("http")
+    // The free-tier accessors stood here: freePlaylistUrl, freePlaylistEpg,
+    // FREE_NAME, hasFreePlaylist, freeVodUrl, hasFreeVod. Every one was read
+    // by exactly nothing after seedDefaultProfile stopped seeding a playlist,
+    // and a getter onto a BuildConfig field that no longer exists is not
+    // neutral — it is six pieces of apparatus implying a free tier the app
+    // does not have.
 }

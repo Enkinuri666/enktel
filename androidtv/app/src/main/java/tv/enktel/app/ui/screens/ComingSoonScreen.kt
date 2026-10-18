@@ -101,7 +101,10 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
     // running their own second-timer is forty recompositions a second on a
     // device that has better things to do; a single tick that every card reads
     // is one.
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    // mutableLongStateOf, not mutableStateOf: a boxed Long allocates on every
+    // one of these ticks, which is once a second for as long as the screen is
+    // open.
+    var nowMs by remember { androidx.compose.runtime.mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(titles) {
         while (true) {
             nowMs = System.currentTimeMillis()

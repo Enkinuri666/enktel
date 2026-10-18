@@ -80,58 +80,15 @@ android {
         buildConfigField("String", "DEFAULT_USERNAME", "\"$defaultUser\"")
         buildConfigField("String", "DEFAULT_PASSWORD", "\"$defaultPass\"")
 
-        // The playlist a build with no baked-in line falls back to, so a fresh
-        // install has something to watch before it has an account. These are
-        // the free-to-air streams the scraper collects and verifies — complete,
-        // public URLs that carry no credentials and need no login, unlike a
-        // panel catalog, where the credentials *are* the stream URL.
-        //
-        // Points at the generated lineup rather than the full scrape: 2,923
-        // channels already grouped by country and genre with 97.5% logo and
-        // 98.7% EPG coverage is a storefront, where 11,175 ungrouped ones are
-        // a dump.
-        //
-        // Served from our own origin rather than raw.githubusercontent.com. A
-        // device reported `Failed to connect to raw.githubusercontent.com` on
-        // the guide, which follows a redirect to GitHub Pages — and the
-        // playlist came from GitHub too, so both pieces of runtime data
-        // depended on GitHub being reachable from the viewer's network. On a
-        // mobile network that is not a safe assumption, and no amount of
-        // retrying in the app fixes it.
-        val freePlaylist = (project.findProperty("enkFreePlaylistUrl") as? String)
-            ?: System.getenv("ENK_FREE_PLAYLIST_URL")
-            ?: "https://enktel.tv/playlists/enktel-lineup.m3u"
-        // The playlist's own x-tvg-url was inherited from whichever source
-        // header the scraper happened to read — a free-tier worker on
-        // onrender.com that nobody here chose and that answers nothing. This
-        // is the guide the project already knows: scripts/lib/sources.mjs
-        // declares it for the Brisbane feed, and it is what a tv_grab points
-        // at in practice.
-        //
-        // /api/guide fetches the upstream server-side and streams it back, so
-        // the viewer only ever talks to our origin and one upstream fetch
-        // serves every device. ENKTEL_GUIDE_UPSTREAM repoints it without a
-        // redeploy.
-        //
-        // It still covers the AU channels and the mjh-* ids rather than the
-        // whole lineup, which is 84% American. That is the right trade only
-        // because the lineup is sorted local-first — a guide for the channels
-        // the viewer lands on beats a guide for none of them. A lineup
-        // spanning four countries wants a guide built for it, which means
-        // self-hosting iptv-org/epg; it publishes no hosted guide of its own.
-        val freePlaylistEpg = (project.findProperty("enkFreePlaylistEpg") as? String)
-            ?: System.getenv("ENK_FREE_PLAYLIST_EPG")
-            ?: "https://enktel.tv/api/guide"
-        // The on-demand half of the free tier. FREE_PLAYLIST_URL is live
-        // channels only, so a build with no line showed live TV and an empty
-        // Movies tab; this is the public-domain film catalogue collected by
-        // scripts/scrape-vod.mjs and published beside the lineup.
-        val freeVod = (project.findProperty("enkFreeVodUrl") as? String)
-            ?: System.getenv("ENK_FREE_VOD_URL")
-            ?: "https://enktel.tv/playlists/enktel-vod.m3u"
-        buildConfigField("String", "FREE_PLAYLIST_URL", "\"$freePlaylist\"")
-        buildConfigField("String", "FREE_PLAYLIST_EPG", "\"$freePlaylistEpg\"")
-        buildConfigField("String", "FREE_VOD_URL", "\"$freeVod\"")
+        // The free-to-air fallback used to be configured here — three build
+        // properties, three BuildConfig fields and the gradle plumbing to read
+        // them. Nothing has consumed any of it since the sign-in screen
+        // replaced the seeded playlist: a fresh install asks for the line the
+        // subscriber just bought rather than opening on somebody else's
+        // channels. Removed rather than left because an unread build flag is
+        // a configuration surface that still has to be understood by whoever
+        // reads this file next. The playlists it named are still published and
+        // still valid; `git log` has the block if one is ever wanted again.
     }
 
     // Room writes the resolved schema for every version under

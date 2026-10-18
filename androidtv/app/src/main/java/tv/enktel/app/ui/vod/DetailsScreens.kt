@@ -107,8 +107,11 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         // per line and the title stacked "The / Age / of / Disclo / sure".
         // On narrow mobile we now stack the poster above the metadata; TV
         // and tablet/landscape keep the side-by-side Row.
-        val cfg = androidx.compose.ui.platform.LocalConfiguration.current
-        val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+        // ScreenShape, not Configuration: the latter reports the whole
+        // display, so this read "roomy" for a phone pane in split-screen and
+        // laid the poster beside the metadata in 300 dp. See ScreenShape.
+        val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" &&
+            tv.enktel.app.ui.components.rememberScreenShape().narrow
         val outerPad = if (narrow) 20.dp else 48.dp
         if (narrow) Column(Modifier.fillMaxSize().padding(outerPad).verticalScroll(rememberScrollState())) {
             Box(Modifier.width(180.dp).height(260.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
@@ -411,8 +414,8 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
 
     // v1.28.1 — narrower horizontal padding on phones so the metadata column
     // isn't squeezed to ~180 dp with 48 dp side gutters.
-    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
-    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" && cfg.screenWidthDp < 600
+    val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" &&
+        tv.enktel.app.ui.components.rememberScreenShape().narrow
     val hPad = if (narrow) 16.dp else 48.dp
     val posterW = if (narrow) 90.dp else 110.dp
     val posterH = if (narrow) 130.dp else 160.dp

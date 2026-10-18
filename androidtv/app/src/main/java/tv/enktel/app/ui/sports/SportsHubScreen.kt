@@ -45,7 +45,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.DirectionsBike
+import androidx.compose.material.icons.automirrored.rounded.DirectionsBike
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Sports
 import androidx.compose.material.icons.rounded.SportsBaseball
@@ -1336,7 +1336,7 @@ private fun sportIcon(sport: String): ImageVector = when (sport) {
     "Tennis" -> Icons.Rounded.SportsTennis
     "Cricket" -> Icons.Rounded.SportsCricket
     "Motor Racing" -> Icons.Rounded.SportsMotorsports
-    "Cycling" -> Icons.Rounded.DirectionsBike
+    "Cycling" -> Icons.AutoMirrored.Rounded.DirectionsBike
     "Golf" -> Icons.Rounded.SportsGolf
     "Rugby" -> Icons.Rounded.SportsRugby
     "Volleyball" -> Icons.Rounded.SportsVolleyball

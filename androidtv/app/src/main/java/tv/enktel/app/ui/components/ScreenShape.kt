@@ -4,6 +4,8 @@ import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import tv.enktel.app.BuildConfig
@@ -98,23 +100,64 @@ data class ScreenShape(
         ((widthDp - padH.value.toInt() * 2) / targetTileDp).coerceIn(min, max)
 }
 
-/** Current viewport shape. Recomposes on rotation and on window resize. */
+/**
+ * Current viewport shape. Recomposes on rotation and on window resize.
+ *
+ * Measured from the window this app is actually drawn in, not from
+ * [Configuration]. `screenWidthDp` and `screenHeightDp` describe the *screen*
+ * — they exclude system bars inconsistently across versions, and in
+ * split-screen, freeform or a desktop window they keep reporting the whole
+ * display while the app has half of it. Every layout decision in this app
+ * branches on these numbers, so a screen that is wrong here is wrong
+ * everywhere at once: a phone in split-screen was being handed the two-pane
+ * Settings layout and the 48 dp rail gutters for a pane 300 dp wide.
+ *
+ * `LocalWindowInfo.containerSize` is the window, in pixels, which is the
+ * thing layout has to fit inside.
+ */
 @Composable
+// The only place in the app allowed to read Configuration's screen size, and
+// only as the fallback below. Suppressed with a reason rather than left as a
+// standing warning: a category that always has four hits in it is a category
+// people stop reading, and this is the file that exists so nowhere else has
+// to make this mistake.
+@Suppress("ConfigurationScreenWidthHeight")
 fun rememberScreenShape(): ScreenShape {
     val cfg = LocalConfiguration.current
-    return remember(cfg.screenWidthDp, cfg.screenHeightDp, cfg.orientation) {
-        val landscape = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val density = LocalDensity.current
+    val container = LocalWindowInfo.current.containerSize
+    return remember(container, cfg.screenWidthDp, cfg.screenHeightDp, density.density) {
+        // Before the first measure the container is reported as zero, and a
+        // 0 x 0 window classifies as narrow *and* short — which would hand
+        // every screen the phone layout for one frame, and the whole app the
+        // phone layout for good on any surface that never reports a size.
+        // Configuration is the fallback precisely because it is always
+        // populated, even when it is a little wrong.
+        val widthDp = if (container.width > 0) {
+            (container.width / density.density).toInt()
+        } else {
+            cfg.screenWidthDp
+        }
+        val heightDp = if (container.height > 0) {
+            (container.height / density.density).toInt()
+        } else {
+            cfg.screenHeightDp
+        }
         ScreenShape(
-            widthDp = cfg.screenWidthDp,
-            heightDp = cfg.screenHeightDp,
-            landscape = landscape,
-            narrow = cfg.screenWidthDp < 600,
+            widthDp = widthDp,
+            heightDp = heightDp,
+            // From the window's own proportions rather than the device's
+            // orientation. A phone held sideways with the app in the top half
+            // of a split screen is a *tall* pane on a landscape device, and it
+            // is the pane that has to be laid out.
+            landscape = widthDp > heightDp,
+            narrow = widthDp < 600,
             // The two populations to separate are a landscape phone (~360 dp)
             // and a television (540 dp at 1080p). 460 sits between them with
             // room on both sides; 500 left only 40 dp of margin against a TV,
             // which is close enough to be one odd device from misclassifying
             // the ten-foot layout as cramped.
-            short = cfg.screenHeightDp < 460,
+            short = heightDp < 460,
         )
     }
 }
