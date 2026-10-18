@@ -36,8 +36,14 @@ object ChannelFilters {
      *
      * Kept out of the *name* tokens but folded back in as searchable text, so
      * "au sport" still works while "seven" is not buried behind a prefix.
+     *
+     * Two shapes, because a bracketed marker is already delimited by its own
+     * brackets: `[US] HBO HD` carries no `|` or `:` and still obviously has a
+     * prefix, while a bare `BBC One HD` must not lose its first word to the
+     * same rule. So brackets stand alone and bare letters need a separator.
      */
-    private val PREFIX_RE = Regex("""^\s*[\[(]?([A-Za-z]{2,6})[\])]?\s*[|:\-–]\s*""")
+    private val PREFIX_RE =
+        Regex("""^\s*(?:[\[(]([A-Za-z]{2,6})[\])]|([A-Za-z]{2,6})\s*[|:\-–])\s*(?:[|:\-–]\s*)?""")
 
     private val SPLIT_RE = Regex("""[^a-z0-9]+""")
 
@@ -50,7 +56,72 @@ object ChannelFilters {
 
     /** The group marker a name carries, if any — `"AU| Seven"` → `"au"`. */
     fun groupPrefix(name: String): String =
-        PREFIX_RE.find(name.lowercase())?.groupValues?.getOrNull(1).orEmpty()
+        PREFIX_RE.find(name.lowercase())
+            ?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
+            .orEmpty()
+
+    /**
+     * What to print on a channel card.
+     *
+     * Providers put a country or group marker on the front of every name —
+     * `AU | Fox Cricket HD`, `UK: Sky Sports Main Event`. In a list it reads
+     * as a column of identical prefixes; on a three-across phone grid, where
+     * a cell is about 120 dp, it is five characters of the width spent on
+     * something every neighbouring card also says, and the actual name is
+     * what gets the ellipsis: `AU | Fox Cricke…`, `AU | Nickelode…`.
+     *
+     * Dropped for display only. The raw name is still what
+     * [matches] searches, so typing "au" finds them exactly as before, and
+     * the marker is not information the card loses — the category chips above
+     * it are the same grouping, and the category is on the card's second line
+     * whenever there is no programme to show instead.
+     *
+     * The same [PREFIX_RE] the matcher uses, so the two cannot disagree about
+     * what a prefix is. Falls back to the original whenever stripping would
+     * leave too little to identify: a channel genuinely called `UK: 4` should
+     * keep its prefix rather than become `4`.
+     */
+    fun displayName(name: String): String {
+        val stripped = PREFIX_RE.replace(name, "").trim()
+        return if (stripped.length >= MIN_DISPLAY_NAME) stripped else name.trim()
+    }
+
+    /** Below this, a stripped name is too short to be worth the ambiguity. */
+    private const val MIN_DISPLAY_NAME = 3
+
+    /**
+     * The two letters on the plate when a channel has no logo.
+     *
+     * Half a provider's line ships without one, and the plate was drawing
+     * `name.take(2)` off the raw name — which, after the country prefix, made
+     * fifteen consecutive Australian channels all read "AU". The name itself
+     * is printed directly underneath, so the plate repeating the one thing
+     * every neighbour also says is the least useful thing it could show.
+     *
+     * Initials of the first two words instead: `Fox Cricket HD` → "FC",
+     * `Channel 7 HD` → "C7".
+     */
+    fun initials(name: String): String {
+        val words = WORD_RE.findAll(displayName(name))
+            .map { it.value }
+            .filter { it.lowercase() !in QUALITY_TAGS }
+            .take(2)
+            .toList()
+        val second = words.getOrNull(1)
+        val letters = when {
+            words.isEmpty() -> displayName(name).take(2)
+            second == null -> words[0].take(2)
+            // A channel whose second word is its number keeps the number:
+            // "Channel 10 HD" is "C10", not "C1", which is a different
+            // channel on every Australian line.
+            second.all { it.isDigit() } ->
+                if (second.length <= 2) words[0].take(1) + second else words[0].take(2)
+            else -> words[0].take(1) + second.take(1)
+        }
+        return letters.uppercase()
+    }
+
+    private val WORD_RE = Regex("""[A-Za-z0-9]+""")
 
     /**
      * Does [channel] match a free-text [query]?

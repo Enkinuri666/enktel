@@ -68,6 +68,7 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Category
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.data.repo.NowNext
 import tv.enktel.app.data.xtream.XtreamClient
 import tv.enktel.app.ui.components.glassSurface
@@ -1084,7 +1085,7 @@ private fun InfoBar(
                 if (channel.logo.isNotBlank()) {
                     AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
                 } else {
-                    Text(channel.name.take(2).uppercase(), color = Color.White,
+                    Text(ChannelFilters.initials(channel.name), color = Color.White,
                          fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
@@ -1309,7 +1310,7 @@ private fun ChannelEpgPane(
                 if (channel.logo.isNotBlank()) {
                     AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(3.dp))
                 } else {
-                    Text(channel.name.take(2).uppercase(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(ChannelFilters.initials(channel.name), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(Modifier.width(10.dp))

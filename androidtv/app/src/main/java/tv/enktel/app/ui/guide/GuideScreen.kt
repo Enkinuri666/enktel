@@ -54,6 +54,7 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.data.xtream.XtreamClient
 import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.ui.components.Badge
@@ -302,7 +303,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                     AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(2.dp))
                                 } else {
                                     Text(
-                                        ch.name.take(2).uppercase(), fontSize = 11.sp,
+                                        ChannelFilters.initials(ch.name), fontSize = 11.sp,
                                         fontWeight = FontWeight.Black, color = EnktelTextDim,
                                     )
                                 }

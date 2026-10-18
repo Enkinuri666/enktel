@@ -108,6 +108,13 @@ class ScreenshotCaptureTest {
         repeat(steps) {
             rule.mainClock.advanceTimeBy(stepMs)
             rule.waitForIdle()
+            // waitForIdle only waits for the composition. A screen that loads
+            // its content with a suspending query hands that work to the IO
+            // dispatcher, on a real thread the test clock knows nothing
+            // about, so without a real pause the capture races it: the live
+            // grid photographed its channels with no guide on them about half
+            // the time, which looks exactly like a bug in the card.
+            Thread.sleep(5)
         }
     }
 
@@ -170,7 +177,37 @@ class ScreenshotCaptureTest {
                     num = i + 1,
                     categoryId = "1",
                     categoryName = "Australia",
+                    epgId = "ch.$i",
                     sortIdx = i,
+                )
+            },
+        )
+        // A guide on every channel, at a different point in each — otherwise
+        // the grid renders with no progress bars at all and the capture
+        // proves nothing about them. The last entry is a day-long block, the
+        // shape a line with no real EPG publishes: its card should show the
+        // title and no countdown.
+        val now = System.currentTimeMillis()
+        val minute = 60_000L
+        val titles = listOf(
+            "Seven News at Six", "A Current Affair", "The Project", "7.30",
+            "Insight", "NRL: Panthers v Storm", "AFL: Carlton v Collingwood",
+            "League Live", "Footy Classified", "Test Cricket: Day 3",
+            "LaLiga: Real Betis v Sevilla", "SportsCenter",
+            "Gold Rush", "Air Crash Investigation", "SpongeBob SquarePants",
+            "Premier League: Arsenal v Chelsea", "BBC News at Ten", "Succession",
+        )
+        g.db.epgDao().insertAll(
+            titles.mapIndexed { i, title ->
+                // On air now in every case, at a different point in each.
+                val startedMinutesAgo = (7L + i * 11L) % 95L + 3L
+                val leftMinutes = if (i == titles.lastIndex) 13 * 60L else 5L + (i * 17L) % 80L
+                EpgProgram(
+                    profileId = profileId,
+                    epgId = "ch.$i",
+                    startMs = now - startedMinutesAgo * minute,
+                    endMs = now + leftMinutes * minute,
+                    title = title,
                 )
             },
         )
