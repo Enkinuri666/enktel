@@ -12,6 +12,15 @@
       a good half of devices and the viewer is back to typing an IP address.
     -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!--
+      Declared explicitly, and not required. A Wi-Fi permission implies
+      `android.hardware.wifi` as a *required* feature unless this says
+      otherwise, and a great many Android TV boxes are Ethernet-only — which
+      would have made the app unavailable to them over a permission held for
+      one optional LAN feature. Send to PC works perfectly well over Ethernet;
+      the multicast lock simply has nothing to lock.
+    -->
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />

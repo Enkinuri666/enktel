@@ -47,6 +47,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Channel
+import tv.enktel.app.data.epg.NowPlaying
 import tv.enktel.app.data.repo.NowNext
 import tv.enktel.app.player.StreamStats
 import tv.enktel.app.ui.components.cinematicScrim
@@ -333,13 +334,11 @@ internal fun remainingLabel(endMs: Long, nowMs: Long = System.currentTimeMillis(
     return when {
         mins < 0 -> "Just finished"
         mins < 1 -> "Ends in under a minute"
-        mins == 1L -> "1 min left"
-        mins < 60 -> "$mins min left"
-        else -> {
-            val h = mins / 60
-            val m = mins % 60
-            if (m == 0L) "${h}h left" else "${h}h ${m}m left"
-        }
+        // The wording for everything above a minute belongs to NowPlaying, so
+        // the overlay and the channel card cannot disagree about the same
+        // programme. The two boundaries stay here: they are phrases only the
+        // overlay has the width to print.
+        else -> NowPlaying.minutesLeft(mins)
     }
 }
 

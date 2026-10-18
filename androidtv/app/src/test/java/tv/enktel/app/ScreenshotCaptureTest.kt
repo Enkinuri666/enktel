@@ -2,10 +2,12 @@ package tv.enktel.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,7 +18,9 @@ import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.DownloadEntry
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.i18n.Lang
 import tv.enktel.app.ui.theme.EnktelTheme
+import tv.enktel.app.ui.theme.EnktelBg
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +63,16 @@ class ScreenshotCaptureTest {
          */
         const val PHONE = "w411dp-h891dp-xhdpi"
         const val TV = "w960dp-h540dp-land-television-xhdpi-notouch"
+
+        /**
+         * A phone on its side. 891x411 is the PHONE qualifier rotated.
+         *
+         * The shape that exposed the Settings bug: wide enough that
+         * `shape.narrow` said "roomy", short enough that the fixed header ate
+         * the whole window and the settings under it were measured into
+         * nothing.
+         */
+        const val PHONE_LAND = "w891dp-h411dp-land-xhdpi"
     }
 
     private val outDir: File by lazy {
@@ -94,16 +108,36 @@ class ScreenshotCaptureTest {
         repeat(steps) {
             rule.mainClock.advanceTimeBy(stepMs)
             rule.waitForIdle()
+            // waitForIdle only waits for the composition. A screen that loads
+            // its content with a suspending query hands that work to the IO
+            // dispatcher, on a real thread the test clock knows nothing
+            // about, so without a real pause the capture races it: the live
+            // grid photographed its channels with no guide on them about half
+            // the time, which looks exactly like a bug in the card.
+            Thread.sleep(5)
         }
     }
 
-    private fun themed(content: @Composable () -> Unit) {
-        rule.setContent { EnktelTheme { Box { content() } } }
-    }
+    private fun themed(content: @Composable () -> Unit) = themed(Lang.EN, content)
 
-    /** The same screen, drawn in a chosen language. See `Strings`. */
+    /**
+     * The same screen, drawn in a chosen language, on the app's own surface.
+     *
+     * The background matters more than it sounds. Both shells paint EnktelBg
+     * behind whatever screen is showing — MobileShell at its root, the TV
+     * host at its — and most screens therefore do not paint one themselves.
+     * Captured bare they came out on the harness's default light surface,
+     * which turned near-white body text into near-white-on-pale and made
+     * every render a photograph of a contrast problem the app does not have.
+     * Two of the shots taken this way were nearly unreadable, and they were
+     * the ones I was about to draw conclusions from.
+     */
     private fun themed(lang: String, content: @Composable () -> Unit) {
-        rule.setContent { EnktelTheme(lang = lang) { Box { content() } } }
+        rule.setContent {
+            EnktelTheme(lang = lang) {
+                Box(Modifier.fillMaxSize().background(EnktelBg)) { content() }
+            }
+        }
     }
 
     // ── the graph, with just enough in it to draw ──────────────────────
@@ -143,7 +177,37 @@ class ScreenshotCaptureTest {
                     num = i + 1,
                     categoryId = "1",
                     categoryName = "Australia",
+                    epgId = "ch.$i",
                     sortIdx = i,
+                )
+            },
+        )
+        // A guide on every channel, at a different point in each — otherwise
+        // the grid renders with no progress bars at all and the capture
+        // proves nothing about them. The last entry is a day-long block, the
+        // shape a line with no real EPG publishes: its card should show the
+        // title and no countdown.
+        val now = System.currentTimeMillis()
+        val minute = 60_000L
+        val titles = listOf(
+            "Seven News at Six", "A Current Affair", "The Project", "7.30",
+            "Insight", "NRL: Panthers v Storm", "AFL: Carlton v Collingwood",
+            "League Live", "Footy Classified", "Test Cricket: Day 3",
+            "LaLiga: Real Betis v Sevilla", "SportsCenter",
+            "Gold Rush", "Air Crash Investigation", "SpongeBob SquarePants",
+            "Premier League: Arsenal v Chelsea", "BBC News at Ten", "Succession",
+        )
+        g.db.epgDao().insertAll(
+            titles.mapIndexed { i, title ->
+                // On air now in every case, at a different point in each.
+                val startedMinutesAgo = (7L + i * 11L) % 95L + 3L
+                val leftMinutes = if (i == titles.lastIndex) 13 * 60L else 5L + (i * 17L) % 80L
+                EpgProgram(
+                    profileId = profileId,
+                    epgId = "ch.$i",
+                    startMs = now - startedMinutesAgo * minute,
+                    endMs = now + leftMinutes * minute,
+                    title = title,
                 )
             },
         )
@@ -198,6 +262,34 @@ class ScreenshotCaptureTest {
                     title = "Premier League Review",
                 ),
             ),
+        )
+    }
+
+    /** A film library, so Movies has posters and categories to lay out. */
+    private fun seedMovies(g: AppGraph, profileId: Long): Unit = runBlocking {
+        g.db.contentDao().upsertCategories(
+            listOf("Action", "Drama", "Comedy", "Documentary").mapIndexed { i, name ->
+                tv.enktel.app.data.db.Category(
+                    key = "$profileId:vod:v$i", profileId = profileId, kind = "vod",
+                    categoryId = "v$i", name = name, sortIdx = i,
+                )
+            },
+        )
+        val titles = listOf(
+            "The Northern Line" to 2021, "Ridgeline" to 2019, "Harbourlight" to 2023,
+            "Ashgrove" to 2018, "The Long Weekend" to 2022, "Saltmarsh" to 2020,
+            "Winterfold" to 2024, "Quarry Road" to 2017, "The Cold Coast" to 2016,
+            "Brightwater" to 2025, "Ninepin" to 2015, "Low Country" to 2014,
+        )
+        g.db.contentDao().upsertMovies(
+            titles.mapIndexed { i, (name, year) ->
+                tv.enktel.app.data.db.Movie(
+                    key = "$profileId:m$i", profileId = profileId, streamId = (3000 + i).toLong(),
+                    name = name, year = year, categoryId = "v${i % 4}",
+                    genre = listOf("Action", "Drama", "Comedy", "Documentary")[i % 4],
+                    addedAt = System.currentTimeMillis() - i * 86_400_000L,
+                )
+            },
         )
     }
 
@@ -398,6 +490,102 @@ class ScreenshotCaptureTest {
         }
         settle()
         capture("settings-language")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE_LAND)
+    fun settingsLandscapePhone() {
+        val g = graph()
+        seedProfile(g)
+        themed {
+            tv.enktel.app.ui.screens.SettingsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("settings-landscape")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun settingsOnTelevision() {
+        val g = graph()
+        seedProfile(g)
+        themed {
+            tv.enktel.app.ui.screens.SettingsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("settings-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun liveBrowser() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.live.ChannelBrowserScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("live-browser")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun liveBrowserOnTelevision() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.live.ChannelBrowserScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("live-browser-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun movies() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedMovies(g, p)
+        themed {
+            tv.enktel.app.ui.vod.MoviesScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("movies")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun moviesOnTelevision() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedMovies(g, p)
+        themed {
+            tv.enktel.app.ui.vod.MoviesScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("movies-bigscreen")
     }
 
     @Test

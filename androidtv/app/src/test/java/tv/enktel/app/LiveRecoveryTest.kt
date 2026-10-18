@@ -145,4 +145,104 @@ class LiveRecoveryTest {
     fun `live absorbs more attempts inside the source than the default three`() {
         assertTrue(LiveRecovery.MIN_RETRY_COUNT > 3)
     }
+
+    // ---- where a recovered stream resumes ---------------------------------
+    //
+    // The second complaint, and a worse one than the stutter: a film that hit
+    // any recoverable fault came back at the opening titles. Recovery called
+    // seekToDefaultPosition() for both kinds of stream, and the default
+    // position of a file is zero. The hiccup lasted a second; the recovery
+    // threw away however long the viewer had been watching.
+
+    @Test
+    fun `live rejoins at the edge rather than at a remembered position`() {
+        assertEquals(
+            LiveRecovery.RESUME_AT_EDGE,
+            LiveRecovery.resumePositionMs(live = true, currentPositionMs = 2_400_000L),
+        )
+    }
+
+    @Test
+    fun `a film resumes where the viewer was, a beat earlier`() {
+        val fortyMinutes = 40 * 60 * 1000L
+        assertEquals(
+            fortyMinutes - LiveRecovery.RESUME_REWIND_MS,
+            LiveRecovery.resumePositionMs(live = false, currentPositionMs = fortyMinutes),
+        )
+    }
+
+    @Test
+    fun `the rewind never runs off the front of a film`() {
+        // A fault in the first second would otherwise ask for a negative
+        // position, which is a seek exception rather than a restart.
+        assertEquals(0L, LiveRecovery.resumePositionMs(live = false, currentPositionMs = 400L))
+        assertEquals(0L, LiveRecovery.resumePositionMs(live = false, currentPositionMs = 0L))
+        assertEquals(0L, LiveRecovery.resumePositionMs(live = false, currentPositionMs = -1L))
+    }
+
+    @Test
+    fun `the edge sentinel cannot be mistaken for a position`() {
+        // The engine branches on this value, so it has to be a number no real
+        // position can take.
+        assertTrue(LiveRecovery.RESUME_AT_EDGE < 0L)
+    }
+
+    // ---- the frozen picture ------------------------------------------------
+
+    @Test
+    fun `a stalled film is eventually treated as dead, not merely buffering`() {
+        // There was no VOD answer at all: the watchdog returned early for
+        // anything that was not live, so a panel that stopped sending left a
+        // frozen frame until OkHttp's 180-second read timeout.
+        val vod = LiveRecovery.stallThresholdMs(live = false)
+        assertTrue("a film must have a stall threshold", vod > 0)
+        assertTrue("and it must beat the 180s HTTP read timeout", vod < 180_000L)
+    }
+
+    @Test
+    fun `a film is given longer to recover itself than a channel`() {
+        // A film has a deep buffer and a long stall may still be a slow
+        // refill; re-preparing costs a visible stutter. Live has seconds of
+        // cushion by construction, so a stall there is already a failure.
+        assertTrue(
+            LiveRecovery.stallThresholdMs(live = false) > LiveRecovery.stallThresholdMs(live = true),
+        )
+    }
+
+    // ---- how patiently a load is retried -----------------------------------
+
+    @Test
+    fun `VOD retries more often than the default three`() {
+        // The same overloaded panels serve the films. One 502 used to end one.
+        assertTrue(LiveRecovery.VOD_MIN_RETRY_COUNT > 3)
+    }
+
+    @Test
+    fun `VOD waits where live cannot`() {
+        // The two policies are deliberately opposite. Live caps inside a
+        // segment because waiting costs it the window; a file is not going
+        // anywhere, and the player has a deep buffer to spend.
+        assertTrue(LiveRecovery.VOD_MAX_RETRY_DELAY_MS > LiveRecovery.MAX_RETRY_DELAY_MS)
+        assertEquals(1_000L, LiveRecovery.vodRetryDelayMs(1))
+        assertEquals(2_000L, LiveRecovery.vodRetryDelayMs(2))
+        assertEquals(LiveRecovery.VOD_MAX_RETRY_DELAY_MS, LiveRecovery.vodRetryDelayMs(50))
+    }
+
+    @Test
+    fun `a zero error count is a real VOD delay too`() {
+        assertEquals(1_000L, LiveRecovery.vodRetryDelayMs(0))
+        assertEquals(1_000L, LiveRecovery.vodRetryDelayMs(-3))
+    }
+
+    @Test
+    fun `the whole VOD retry schedule fits inside the stall threshold`() {
+        // Otherwise the two recoveries fight: the source is still patiently
+        // retrying a load while the watchdog has already decided the stream
+        // is dead and re-prepared it underneath.
+        val worstCase = (1..LiveRecovery.VOD_MIN_RETRY_COUNT).sumOf { LiveRecovery.vodRetryDelayMs(it) }
+        assertTrue(
+            "retry schedule is ${worstCase}ms against a ${LiveRecovery.VOD_STALL_MS}ms watchdog",
+            worstCase < LiveRecovery.VOD_STALL_MS,
+        )
+    }
 }

@@ -43,6 +43,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.data.repo.LiveScore
 import tv.enktel.app.data.repo.SportsRepository
 import tv.enktel.app.ui.components.Badge
@@ -270,7 +271,7 @@ private fun FinderRow(
                     if (row.channel.logo.isNotBlank()) {
                         AsyncImage(model = row.channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
                     } else {
-                        Text(row.channel.name.take(2).uppercase(), color = Color.White,
+                        Text(ChannelFilters.initials(row.channel.name), color = Color.White,
                             fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }

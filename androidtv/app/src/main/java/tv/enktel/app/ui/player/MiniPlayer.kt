@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,12 +88,16 @@ fun BoxScope.MiniPlayer(
     bottomInset: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val engine = session.engineOrNull() ?: return
-    val config = LocalConfiguration.current
-
     // Sized against the shortest edge so the window is a consistent fraction of
     // the display rather than a fixed dp that swamps a phone in portrait and
     // vanishes on a 55" panel.
-    val shortestDp = minOf(config.screenWidthDp, config.screenHeightDp)
+    //
+    // The shortest edge of the *window*, which in split-screen is not the
+    // shortest edge of the display: Configuration reported the whole screen,
+    // so a docked player in a half-height pane was sized for the full one and
+    // hung off the bottom of it. See ScreenShape.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val shortestDp = minOf(shape.widthDp, shape.heightDp)
     val widthDp = when (sizeStep) {
         0 -> shortestDp * 0.34f
         2 -> shortestDp * 0.62f

@@ -1,6 +1,7 @@
 package tv.enktel.app.data.m3u
 
 import android.content.Context
+import androidx.core.net.toUri
 import android.net.Uri
 import java.io.File
 
@@ -54,7 +55,7 @@ object PlaylistFiles {
 
     /** Open an imported copy for reading. */
     fun open(url: String): java.io.InputStream {
-        val path = Uri.parse(url).path ?: throw java.io.IOException("Bad playlist path")
+        val path = url.toUri().path ?: throw java.io.IOException("Bad playlist path")
         return File(path).inputStream()
     }
 
@@ -66,7 +67,7 @@ object PlaylistFiles {
      */
     fun forget(url: String) {
         if (!isLocal(url)) return
-        runCatching { Uri.parse(url).path?.let { File(it).delete() } }
+        runCatching { url.toUri().path?.let { File(it).delete() } }
     }
 
     /**

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -54,6 +55,7 @@ import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.net.ChannelStatus
+import tv.enktel.app.data.epg.NowPlaying
 import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.ui.components.CenterMessage
 import tv.enktel.app.ui.components.GlassChip
@@ -161,6 +163,17 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
             .mapNotNull { (id, list) ->
                 list.firstOrNull { now in it.startMs..it.endMs }?.let { id to it }
             }.toMap()
+    }
+
+    // One clock for the whole grid. A progress bar that only moves when
+    // something else recomposes is a still image of a progress bar; sixty
+    // cards each running their own timer is sixty recompositions a minute.
+    var nowMs by remember { androidx.compose.runtime.mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(30_000)
+            nowMs = System.currentTimeMillis()
+        }
     }
 
     val userLists by graph.db.userListDao().lists(p.id)
@@ -288,7 +301,8 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
                     favourite = ch.key in favouriteKeys,
                     isHidden = ch.key in hidden,
                     status = statuses[ch.key] ?: ChannelStatus.State.UNKNOWN,
-                    nowTitle = nowTitles[ch.epgId]?.title.orEmpty(),
+                    now = nowTitles[ch.epgId],
+                    nowMs = nowMs,
                     onPlay = {
                         scope.launch { graph.settings.setLastChannel(ch.key) }
                         nav.navigate("live?ch=${ch.key}")
@@ -327,7 +341,10 @@ private fun ChannelCard(
     favourite: Boolean,
     isHidden: Boolean,
     status: ChannelStatus.State,
-    nowTitle: String,
+    /** What is on this channel right now, or null when the guide has nothing. */
+    now: EpgProgram?,
+    /** Shared clock — see the ticker in the grid above. */
+    nowMs: Long,
     onPlay: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleHidden: () -> Unit,
@@ -383,7 +400,7 @@ private fun ChannelCard(
                     )
                 } else {
                     Text(
-                        channel.name.take(2).uppercase(),
+                        ChannelFilters.initials(channel.name),
                         color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Black,
                     )
                 }
@@ -415,15 +432,46 @@ private fun ChannelCard(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                channel.name,
+                // The provider's country prefix off the front — see
+                // ChannelFilters.displayName. On a 120 dp cell it was five
+                // characters every card repeated, and the name was what got
+                // the ellipsis.
+                ChannelFilters.displayName(channel.name),
                 fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
-                nowTitle.ifBlank { channel.categoryName.ifBlank { " " } },
-                color = if (nowTitle.isNotBlank()) EnktelBlue else EnktelTextDim,
+                now?.title?.ifBlank { null } ?: channel.categoryName.ifBlank { " " },
+                color = if (now != null) EnktelBlue else EnktelTextDim,
                 fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
+            // How far through, and how long is left. The title alone says
+            // what is on; this is what says whether you have missed it, and
+            // it is the one thing that made this a channel list rather than
+            // a live guide.
+            if (now != null) {
+                val progress = NowPlaying.progress(now.startMs, now.endMs, nowMs)
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White.copy(alpha = 0.12f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(EnktelBlue),
+                    )
+                }
+                NowPlaying.remaining(now.endMs, nowMs)?.let { left ->
+                    Spacer(Modifier.height(3.dp))
+                    Text(left, color = EnktelTextDim, fontSize = 9.sp, maxLines = 1)
+                }
+            }
 
             // Per-card overflow: long-press (or hold SELECT) reveals the two
             // actions that would otherwise need a separate management screen.

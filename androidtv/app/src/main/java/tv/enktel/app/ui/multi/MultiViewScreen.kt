@@ -89,7 +89,21 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
         }
     }
 
-    if (leftCh == null || rightCh == null) {
+    // Captured, not re-read.
+    //
+    // The guard below protected this composition pass and nothing else, while
+    // six `!!` reads of the same two state vars happened *later* — inside
+    // LaunchedEffect coroutines and inside the key handler. Both are null
+    // again the moment `graph.content.channel(key)` fails to resolve, which
+    // is what a catalogue re-sync or a stale deep link does to a channel key,
+    // and a `!!` inside a coroutine is an uncaught NullPointerException
+    // rather than a blank pane.
+    //
+    // Local vals cannot change underneath those callbacks: a swap recomposes
+    // and the callbacks are rebuilt around the new pair.
+    val leftChannel = leftCh
+    val rightChannel = rightCh
+    if (leftChannel == null || rightChannel == null) {
         CenterMessage("Loading multi-view…")
         return
     }
@@ -99,11 +113,11 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
     DisposableEffect(left, right) {
         onDispose { left.release(); right.release() }
     }
-    LaunchedEffect(leftCh?.key) {
-        left.play(graph.content.liveUrl(p, leftCh!!, streamFormat), live = true)
+    LaunchedEffect(leftChannel.key) {
+        left.play(graph.content.liveUrl(p, leftChannel, streamFormat), live = true)
     }
-    LaunchedEffect(rightCh?.key) {
-        right.play(graph.content.liveUrl(p, rightCh!!, streamFormat), live = true)
+    LaunchedEffect(rightChannel.key) {
+        right.play(graph.content.liveUrl(p, rightChannel, streamFormat), live = true)
     }
     // Only primary pane produces audio.
     LaunchedEffect(primary) {
@@ -125,20 +139,20 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (ev.key.nativeKeyCode) {
-                    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { primary = 0; toaster.info("Audio: ${leftCh?.name}"); true }
-                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { primary = 1; toaster.info("Audio: ${rightCh?.name}"); true }
+                    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { primary = 0; toaster.info("Audio: ${leftChannel.name}"); true }
+                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { primary = 1; toaster.info("Audio: ${rightChannel.name}"); true }
                     AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_CHANNEL_UP -> {
-                        scope.launch { swap(graph, p.id, primary, leftCh!!, rightCh!!, +1) { l, r -> leftCh = l; rightCh = r } }
+                        scope.launch { swap(graph, p.id, primary, leftChannel, rightChannel, +1) { l, r -> leftCh = l; rightCh = r } }
                         true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_DOWN, AndroidKeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                        scope.launch { swap(graph, p.id, primary, leftCh!!, rightCh!!, -1) { l, r -> leftCh = l; rightCh = r } }
+                        scope.launch { swap(graph, p.id, primary, leftChannel, rightChannel, -1) { l, r -> leftCh = l; rightCh = r } }
                         true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
                         // Fullscreen the primary side by dropping the other pane and returning to Live.
-                        val target = if (primary == 0) leftCh else rightCh
-                        nav.navigate("live?ch=${target?.key.orEmpty()}") { popUpTo("home") }
+                        val target = if (primary == 0) leftChannel else rightChannel
+                        nav.navigate("live?ch=${target.key}") { popUpTo("home") }
                         true
                     }
                     else -> false
@@ -146,8 +160,8 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
             },
     ) {
         Row(Modifier.fillMaxSize()) {
-            Pane(engine = left, isPrimary = primary == 0, channel = leftCh!!, modifier = Modifier.weight(1f).fillMaxHeight())
-            Pane(engine = right, isPrimary = primary == 1, channel = rightCh!!, modifier = Modifier.weight(1f).fillMaxHeight())
+            Pane(engine = left, isPrimary = primary == 0, channel = leftChannel, modifier = Modifier.weight(1f).fillMaxHeight())
+            Pane(engine = right, isPrimary = primary == 1, channel = rightChannel, modifier = Modifier.weight(1f).fillMaxHeight())
         }
         Column(
             Modifier

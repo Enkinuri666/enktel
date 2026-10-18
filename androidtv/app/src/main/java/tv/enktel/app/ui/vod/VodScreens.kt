@@ -591,7 +591,47 @@ private fun FilterBar(
     onQuery: (String) -> Unit,
     resultCount: Int,
 ) {
+    // Five control rows, or one.
+    //
+    // Search, sort, genre and year stacked above the grid come to about
+    // 335 dp. On a television that is a strip across the top of a 960 dp
+    // page; on a 411 dp phone it is the top third of the screen, and the
+    // first poster used to start below the fold. Browsing a film library is
+    // looking at posters — the filters are what you reach for occasionally,
+    // and occasionally is what a disclosure is for.
+    //
+    // Kept open on anything with the room, because there a permanently
+    // visible filter row costs nothing and saves a press.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val compact = shape.narrow || shape.short
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    // Shown on the collapsed button, so a filter left on is never invisible.
+    // A grid quietly excluding half the library with nothing on screen
+    // saying so is the failure this guards against.
+    val activeFilters = listOfNotNull(
+        genreFilter, decadeFilter?.toString(), query.takeIf { it.isNotBlank() },
+    ).size
+
     Column(Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp)) {
+        if (compact) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(bottom = if (expanded) 10.dp else 4.dp),
+            ) {
+                FocusButton(
+                    if (activeFilters > 0) "⚙  Filters · $activeFilters" else "⚙  Filters",
+                    accent = activeFilters > 0,
+                    onClick = { expanded = !expanded },
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    if (resultCount == 1) "1 title" else "$resultCount titles",
+                    color = tv.enktel.app.ui.theme.EnktelTextDim,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+        if (!compact || expanded) {
         // v1.25.0 — inline title search. Filters the visible grid live
         // without navigating away to the global search screen; useful for
         // "I know it's in Movies, I just don't want to scroll to it".
@@ -624,16 +664,28 @@ private fun FilterBar(
                 },
                 selectedId = sort,
                 onSelect = onSort,
+                // weight(fill = false): take up to the row's width when the
+                // four sort modes need it, no more. The track became
+                // horizontally scrollable so a phone could reach the last
+                // segment, and a scrolling Row fills whatever width it is
+                // offered — which pushed the title count off the right edge
+                // of this row entirely.
+                modifier = Modifier.weight(1f, fill = false),
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
             // The count next to the grid is what makes a filter that returns
             // nothing legible: "0 titles" is a fact, an empty grid is a
             // mystery. Same reasoning as the category chips in Live TV.
-            Text(
-                if (resultCount == 1) "1 title" else "$resultCount titles",
-                color = tv.enktel.app.ui.theme.EnktelTextDim,
-                fontSize = 12.sp,
-            )
+            //
+            // Not here when the bar is collapsible — the row above owns it
+            // then, and shows it whether the filters are open or shut.
+            if (!compact) {
+                Text(
+                    if (resultCount == 1) "1 title" else "$resultCount titles",
+                    color = tv.enktel.app.ui.theme.EnktelTextDim,
+                    fontSize = 12.sp,
+                )
+            }
         }
         Spacer(Modifier.height(4.dp))
         if (genres.isNotEmpty()) {
@@ -683,6 +735,7 @@ private fun FilterBar(
                     onClick = { onDecade(if (decadeFilter == d) null else d) },
                 )
             }
+        }
         }
     }
 }
