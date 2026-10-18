@@ -624,8 +624,15 @@ private fun FilterBar(
                 },
                 selectedId = sort,
                 onSelect = onSort,
+                // weight(fill = false): take up to the row's width when the
+                // four sort modes need it, no more. The track became
+                // horizontally scrollable so a phone could reach the last
+                // segment, and a scrolling Row fills whatever width it is
+                // offered — which pushed the title count off the right edge
+                // of this row entirely.
+                modifier = Modifier.weight(1f, fill = false),
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
             // The count next to the grid is what makes a filter that returns
             // nothing legible: "0 titles" is a fact, an empty grid is a
             // mystery. Same reasoning as the category chips in Live TV.

@@ -2,10 +2,12 @@ package tv.enktel.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,7 +18,9 @@ import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.DownloadEntry
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.i18n.Lang
 import tv.enktel.app.ui.theme.EnktelTheme
+import tv.enktel.app.ui.theme.EnktelBg
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -107,13 +111,26 @@ class ScreenshotCaptureTest {
         }
     }
 
-    private fun themed(content: @Composable () -> Unit) {
-        rule.setContent { EnktelTheme { Box { content() } } }
-    }
+    private fun themed(content: @Composable () -> Unit) = themed(Lang.EN, content)
 
-    /** The same screen, drawn in a chosen language. See `Strings`. */
+    /**
+     * The same screen, drawn in a chosen language, on the app's own surface.
+     *
+     * The background matters more than it sounds. Both shells paint EnktelBg
+     * behind whatever screen is showing — MobileShell at its root, the TV
+     * host at its — and most screens therefore do not paint one themselves.
+     * Captured bare they came out on the harness's default light surface,
+     * which turned near-white body text into near-white-on-pale and made
+     * every render a photograph of a contrast problem the app does not have.
+     * Two of the shots taken this way were nearly unreadable, and they were
+     * the ones I was about to draw conclusions from.
+     */
     private fun themed(lang: String, content: @Composable () -> Unit) {
-        rule.setContent { EnktelTheme(lang = lang) { Box { content() } } }
+        rule.setContent {
+            EnktelTheme(lang = lang) {
+                Box(Modifier.fillMaxSize().background(EnktelBg)) { content() }
+            }
+        }
     }
 
     // ── the graph, with just enough in it to draw ──────────────────────
@@ -208,6 +225,34 @@ class ScreenshotCaptureTest {
                     title = "Premier League Review",
                 ),
             ),
+        )
+    }
+
+    /** A film library, so Movies has posters and categories to lay out. */
+    private fun seedMovies(g: AppGraph, profileId: Long): Unit = runBlocking {
+        g.db.contentDao().upsertCategories(
+            listOf("Action", "Drama", "Comedy", "Documentary").mapIndexed { i, name ->
+                tv.enktel.app.data.db.Category(
+                    key = "$profileId:vod:v$i", profileId = profileId, kind = "vod",
+                    categoryId = "v$i", name = name, sortIdx = i,
+                )
+            },
+        )
+        val titles = listOf(
+            "The Northern Line" to 2021, "Ridgeline" to 2019, "Harbourlight" to 2023,
+            "Ashgrove" to 2018, "The Long Weekend" to 2022, "Saltmarsh" to 2020,
+            "Winterfold" to 2024, "Quarry Road" to 2017, "The Cold Coast" to 2016,
+            "Brightwater" to 2025, "Ninepin" to 2015, "Low Country" to 2014,
+        )
+        g.db.contentDao().upsertMovies(
+            titles.mapIndexed { i, (name, year) ->
+                tv.enktel.app.data.db.Movie(
+                    key = "$profileId:m$i", profileId = profileId, streamId = (3000 + i).toLong(),
+                    name = name, year = year, categoryId = "v${i % 4}",
+                    genre = listOf("Action", "Drama", "Comedy", "Documentary")[i % 4],
+                    addedAt = System.currentTimeMillis() - i * 86_400_000L,
+                )
+            },
         )
     }
 
@@ -438,6 +483,72 @@ class ScreenshotCaptureTest {
         }
         settle()
         capture("settings-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun liveBrowser() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.live.ChannelBrowserScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("live-browser")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun liveBrowserOnTelevision() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedChannels(g, p)
+        seedSport(g, p)
+        themed {
+            tv.enktel.app.ui.live.ChannelBrowserScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("live-browser-bigscreen")
+    }
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun movies() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedMovies(g, p)
+        themed {
+            tv.enktel.app.ui.vod.MoviesScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("movies")
+    }
+
+    @Test
+    @Config(qualifiers = TV)
+    fun moviesOnTelevision() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedMovies(g, p)
+        themed {
+            tv.enktel.app.ui.vod.MoviesScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+            )
+        }
+        settle()
+        capture("movies-bigscreen")
     }
 
     @Test
