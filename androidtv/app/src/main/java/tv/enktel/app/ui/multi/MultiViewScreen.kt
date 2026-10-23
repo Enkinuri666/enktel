@@ -108,8 +108,10 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
         return
     }
 
-    val left = remember(p.id, "L") { PlayerEngine(context, graph.http, bufferProfile) }
-    val right = remember(p.id, "R") { PlayerEngine(context, graph.http, bufferProfile) }
+    // Both panes on the playback client: two engines on one panel is
+    // exactly the case the shared five-per-host budget could not serve.
+    val left = remember(p.id, "L") { PlayerEngine(context, graph.streamHttp, bufferProfile) }
+    val right = remember(p.id, "R") { PlayerEngine(context, graph.streamHttp, bufferProfile) }
     DisposableEffect(left, right) {
         onDispose { left.release(); right.release() }
     }

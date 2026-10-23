@@ -154,7 +154,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     // stream that is already running. `expand()` flips the session out of
     // docked mode so the mini window gets out of the way.
     LaunchedEffect(Unit) { session.expand() }
-    val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.http) }
+    val zapPreloader = remember(p.id) { tv.enktel.app.player.ZapPreloader(graph.streamHttp) }
     /** Which way the last zap went: +1 up, -1 down, 0 before any zap. */
     var lastZapDirection by remember(p.id) { mutableIntStateOf(0) }
     DisposableEffect(zapPreloader) { onDispose { zapPreloader.cancel() } }

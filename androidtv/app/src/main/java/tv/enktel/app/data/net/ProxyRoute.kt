@@ -111,7 +111,11 @@ object ProxyRoute {
      *
      * Built once per configuration. The connection pool is explicitly its own —
      * `newBuilder` would otherwise share the base client's, which is exactly
-     * the sharing that made the selector approach fail.
+     * the sharing that made the selector approach fail. The dispatcher is its
+     * own for the same reason one layer up: `newBuilder` copies that by
+     * reference too, and a proxied request is nearly always a stream, which
+     * must not queue behind the catalogue traffic it is derived from. See
+     * [HttpProfiles].
      */
     fun clientOrNull(): OkHttpClient? {
         val c = config
@@ -124,6 +128,7 @@ object ProxyRoute {
             .proxy(Proxy(type, InetSocketAddress.createUnresolved(c.host, c.port)))
             .proxyAuthenticator(authenticator())
             .connectionPool(ConnectionPool())
+            .dispatcher(HttpProfiles.dispatcher(HttpProfiles.STREAM_TOTAL, HttpProfiles.STREAM_PER_HOST))
             .apply { interceptors().removeAll { it is StreamHealthInterceptor } }
             .build()
         client = built
