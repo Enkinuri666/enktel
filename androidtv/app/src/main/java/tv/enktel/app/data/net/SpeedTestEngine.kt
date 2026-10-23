@@ -55,6 +55,18 @@ object SpeedTestEngine {
      */
     const val WINDOW_SEC = 17L
 
+    /**
+     * Most sockets the throughput sample will ever open.
+     *
+     * Four is where the returns flatten on a domestic line, and it is also as
+     * many as the most generous IPTV plan this app has seen would spare while
+     * leaving the viewer able to watch something.
+     */
+    const val MAX_MEASURE_STREAMS = 4
+
+    /** Sockets used when the line does not publish a connection cap. */
+    const val UNKNOWN_CAP_STREAMS = 2
+
     /** A VOD asset — a plain file, sent as fast as the line allows. The only
      *  source that measures the connection rather than the content. */
     const val SOURCE_VOD = "vod"
@@ -190,6 +202,15 @@ object SpeedTestEngine {
         val packetLossPct: Int,
         val downloadMbps: Double,
         /**
+         * How many sockets the throughput figure was measured over.
+         *
+         * Carried out with the result because it changes what the number
+         * means. One socket measures what one request is allowed, which on a
+         * rate-limiting panel is a long way below the line; several measure
+         * the line. 0 means nothing was measured at all.
+         */
+        val downloadStreams: Int = 1,
+        /**
          * What the throughput figure was actually measured against.
          *
          * A speed test is only a speed test when the far end sends as fast as
@@ -240,7 +261,10 @@ object SpeedTestEngine {
             appendLine("Ping (TCP connect): ${pingMs} ms")
             appendLine("Jitter: ${jitterMs} ms")
             appendLine("Packet loss (probe failures): $packetLossPct%")
-            appendLine("Download throughput: %.2f Mbps".format(downloadMbps))
+            appendLine(
+                "Download throughput: %.2f Mbps".format(downloadMbps) +
+                    if (downloadStreams > 1) " (over $downloadStreams connections)" else "",
+            )
             appendLine("  measured against: " + SpeedTestEngine.sourceLabel(speedSource))
             appendLine("Connection type: $connectionType")
             if (device.linkDownKbps > 0) {
@@ -476,8 +500,12 @@ object SpeedTestEngine {
                 else -> "No stream to measure against…"
             },
         )
+        // Over several sockets, not one. A panel rate-limits per request, so a
+        // single-stream sample measures the panel's per-request allowance and
+        // reports it as the line's capacity — see ThroughputMeter.
+        val measureStreams = measurementStreams(server.maxConnections)
         val throughput = try {
-            measureThroughputMbps(http, speedUrl, onSpeedSample)
+            measureThroughputMbps(http, speedUrl, measureStreams, onSpeedSample)
         } catch (_: Exception) { 0.0 }
 
         // Last, and deliberately so.
@@ -527,6 +555,7 @@ object SpeedTestEngine {
             jitterMs = jitterMs,
             packetLossPct = packetLossPct,
             downloadMbps = throughput,
+            downloadStreams = if (throughput > 0) measureStreams else 0,
             speedSource = if (throughput > 0) speedSource else SOURCE_NONE,
             connectionType = kind,
             recommendation = recommendation,
@@ -989,78 +1018,107 @@ object SpeedTestEngine {
      *     slow-start on a high-bandwidth link, so short samples systematically
      *     under-report fast connections.
      *
-     * Now: prefers a VOD asset (served as fast as the line allows), runs for
-     * [WINDOW_SEC] seconds after the first byte, and reports [onSample] about
-     * five times a second so the UI can show the speed as it settles rather
-     * than a single number at the end.
+     *  4. **It was one socket.** A panel rate-limits per request — that is how
+     *     one account cannot saturate a server — and plenty of ISPs and CDNs
+     *     shape per flow besides. So the figure was one request's allowance
+     *     presented as the line's capacity, which is how a 200 Mbps connection
+     *     came back as "best suited to SD" and the viewer went to argue with
+     *     their ISP about a number that was never about their ISP.
+     *
+     * Now: prefers a VOD asset (served as fast as the line allows), measures
+     * over as many sockets as the line says it allows (see
+     * [measurementStreams] and [ThroughputMeter]), runs for [WINDOW_SEC]
+     * seconds after the first byte, and reports [onSample] about five times a
+     * second so the UI can show the speed as it settles rather than a single
+     * number at the end.
      */
-    private fun measureThroughputMbps(
+    private suspend fun measureThroughputMbps(
         http: OkHttpClient,
         url: String,
+        streams: Int,
         onSample: (SpeedSample) -> Unit = {},
-    ): Double {
+    ): Double = kotlinx.coroutines.coroutineScope {
+        val meter = ThroughputMeter(WINDOW_SEC * 1_000_000_000L)
+        val hardDeadlineNs = System.nanoTime() + (WINDOW_SEC + 12L) * 1_000_000_000L
+        val n = streams.coerceIn(1, MAX_MEASURE_STREAMS)
+        (0 until n)
+            .map { async(kotlinx.coroutines.Dispatchers.IO) { drain(http, url, meter, hardDeadlineNs, onSample) } }
+            .awaitAll()
+        meter.mbps()
+    }
+
+    /**
+     * One socket, reading into the shared meter until the window closes.
+     *
+     * Every worker asks for the same range rather than a slice of its own.
+     * Slicing sounds tidier and is wrong here: the asset's length is not known
+     * at this point, so a worker aimed past the end of a short film gets 416
+     * and contributes nothing, and the sample silently loses a quarter of its
+     * width. Identical requests cannot miss, and for a *throughput* question
+     * what matters is bytes crossing the line, not which bytes they are.
+     */
+    private fun drain(
+        http: OkHttpClient,
+        url: String,
+        meter: ThroughputMeter,
+        hardDeadlineNs: Long,
+        onSample: (SpeedSample) -> Unit,
+    ) {
         val req = Request.Builder().url(url)
             // 256 MB ceiling: large enough that a gigabit line cannot exhaust
             // it inside the window and start measuring an idle socket.
             .header("Range", "bytes=0-268435456")
             .header("Accept-Encoding", "identity")
             .build()
-
-        var bytes = 0L
-        var firstByteNs = 0L
-        var lastNs = 0L
-        var lastEmitNs = 0L
-        var lastEmitBytes = 0L
-        val callStart = System.nanoTime()
-        val hardDeadlineNs = callStart + (WINDOW_SEC + 12L) * 1_000_000_000L
-        val windowNs = WINDOW_SEC * 1_000_000_000L
-
         try {
             http.newCall(req).execute().use { resp ->
-                if (!(resp.code == 200 || resp.code == 206)) return 0.0
+                if (!(resp.code == 200 || resp.code == 206)) return
                 val source = resp.body.source()
                 val buf = okio.Buffer()
                 while (true) {
-                    val now = System.nanoTime()
-                    if (now > hardDeadlineNs) break
-                    if (firstByteNs != 0L && now - firstByteNs > windowNs) break
+                    var now = System.nanoTime()
+                    if (now > hardDeadlineNs || meter.windowExpired(now)) break
                     val read = try { source.read(buf, 262_144) } catch (_: Exception) { -1L }
                     if (read == -1L) break
-                    if (firstByteNs == 0L) {
-                        firstByteNs = System.nanoTime()
-                        lastEmitNs = firstByteNs
-                    }
-                    bytes += read
-                    lastNs = System.nanoTime()
+                    now = System.nanoTime()
+                    meter.record(read, now)
                     buf.clear()
-
-                    // ~5 readings a second: fast enough to look live, slow
-                    // enough that the instant figure is not pure jitter.
-                    if (lastNs - lastEmitNs >= 200_000_000L) {
-                        val instantSec = (lastNs - lastEmitNs) / 1_000_000_000.0
-                        val totalSec = (lastNs - firstByteNs) / 1_000_000_000.0
+                    meter.sampleOrNull(now)?.let {
                         onSample(
                             SpeedSample(
-                                elapsedSec = totalSec,
-                                instantMbps = ((bytes - lastEmitBytes) * 8.0 / instantSec) / 1_000_000.0,
-                                averageMbps = if (totalSec > 0) (bytes * 8.0 / totalSec) / 1_000_000.0 else 0.0,
-                                bytes = bytes,
+                                elapsedSec = it.elapsedSec,
+                                instantMbps = it.instantMbps,
+                                averageMbps = it.averageMbps,
+                                bytes = it.bytes,
                             ),
                         )
-                        lastEmitNs = lastNs
-                        lastEmitBytes = bytes
                     }
                 }
             }
         } catch (_: Exception) {
-            // Fall through — whatever was transferred before the failure is
-            // still a usable measurement if it ran long enough.
+            // Whatever this worker transferred before failing is still real
+            // traffic, and its siblings are still measuring. A refused socket
+            // on a capped line is the expected case, not an error.
         }
+    }
 
-        if (firstByteNs == 0L || bytes <= 0) return 0.0
-        val elapsedS = (lastNs - firstByteNs) / 1_000_000_000.0
-        if (elapsedS < 0.5) return 0.0
-        return (bytes * 8.0 / elapsedS) / 1_000_000.0
+    /**
+     * How many sockets to measure over, given what the line says it allows.
+     *
+     * The ceiling is the line's own, never one past it: unlike the connection
+     * cap probe, whose whole purpose is to find the boundary, this one has no
+     * business discovering it — a rejected socket here costs accuracy and
+     * teaches nothing.
+     *
+     * An unknown cap (a plain M3U line, or a panel that doesn't publish one)
+     * gets two rather than four. Two is enough to show that a line gives more
+     * than one socket's worth, and is a measurement no 1-connection line can
+     * be badly hurt by.
+     */
+    @VisibleForTesting
+    internal fun measurementStreams(reportedMax: Int): Int = when {
+        reportedMax <= 0 -> UNKNOWN_CAP_STREAMS
+        else -> reportedMax.coerceIn(1, MAX_MEASURE_STREAMS)
     }
 
     @VisibleForTesting

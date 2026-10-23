@@ -11,9 +11,11 @@ import java.util.concurrent.TimeUnit
 /**
  * Rapid channel-zapping latency hider.
  *
- * The player and the app share one OkHttp client, so the connection carrying
- * the channel now playing is already hot — but it is busy, and a zap needs a
- * second one. Paying for DNS, TCP and TLS at the moment the viewer presses the
+ * The player and this preloader share one OkHttp client — they must, because
+ * the pool is where a warmed connection lives, and warming a pool the player
+ * does not draw from is an expensive no-op that nothing reports. So the
+ * connection carrying the channel now playing is already hot — but it is busy,
+ * and a zap needs a second one. Paying for DNS, TCP and TLS at the moment the viewer presses the
  * button is routinely 300–800 ms of the delay they feel; opening that second
  * connection early collapses it to whatever the pool's keep-alive window has
  * left. That is the whole of what this does. It is not a media preloader: the

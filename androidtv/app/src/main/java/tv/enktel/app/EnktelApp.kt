@@ -146,6 +146,12 @@ class AppGraph(app: Application) {
         // LegacyTls — system anchors are still tried first, and nothing else
         // becomes trusted.
         .let { tv.enktel.app.data.net.LegacyTls.install(it) }
+        // Explicit request limits instead of OkHttp's five-per-host default,
+        // which is a cap this app cannot afford on a panel that serves the
+        // streams, the catalogue, the guide and the artwork from one host.
+        // See HttpProfiles — this is the budget for everything that is not
+        // playback or artwork, and both of those get a client of their own.
+        .let { tv.enktel.app.data.net.HttpProfiles.tuneShared(it) }
         .build()
 
     /**
@@ -171,6 +177,28 @@ class AppGraph(app: Application) {
     val diagHttp: OkHttpClient = http.newBuilder()
         .apply { interceptors().removeAll { it is tv.enktel.app.data.net.StreamHealthInterceptor } }
         .build()
+
+    /**
+     * Playback's own client: the player, the zap preloader and the recorder.
+     *
+     * Separate from [http] for the reason [HttpProfiles] sets out — Media3
+     * enqueues every media request, so a segment shares the per-host budget
+     * with whatever else is talking to the same panel, and a poster grid could
+     * leave the picture waiting in a queue. Derived, so it keeps the user
+     * agent, the failover and the TLS policy.
+     *
+     * Everything that reads a stream must use *this* client and not [http].
+     * The pool is what makes a warmed connection warm, and a warm-up landing
+     * in a different pool from the player is a no-op nothing reports.
+     */
+    val streamHttp: OkHttpClient by lazy {
+        tv.enktel.app.data.net.HttpProfiles.forStreaming(http)
+    }
+
+    /** Artwork's own client — bounded, and with timeouts a poster deserves. */
+    val imageHttp: OkHttpClient by lazy {
+        tv.enktel.app.data.net.HttpProfiles.forImages(http)
+    }
 
     val xtream by lazy { XtreamClient(http) }
     val playlists by lazy { PlaylistRepository(db.profileDao(), settings, xtream, db.contentDao()) }
@@ -218,7 +246,7 @@ class AppGraph(app: Application) {
      */
     val playback by lazy {
         tv.enktel.app.player.PlaybackSession(
-            app, http, settings,
+            app, streamHttp, settings,
             kotlinx.coroutines.CoroutineScope(
                 kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate,
             ),
@@ -320,12 +348,16 @@ class AppGraph(app: Application) {
  * builds only. Registering it explicitly takes that whole question off the
  * table.
  *
- * Handing it [AppGraph.http] matters for its own sake: that client carries
- * the VLC user agent panels are whitelisted against, the NO_PROXY setting
- * that avoids 407 loops, and the TLS list that keeps API 23 hardware
- * working. A Coil-built client would have none of it, and artwork hosted on
- * the same panel as the streams would fail for reasons nothing in the app
- * could explain.
+ * Handing it [AppGraph.imageHttp] matters for its own sake: that client is
+ * derived from the app-wide one, so it carries the VLC user agent panels are
+ * whitelisted against, the NO_PROXY setting that avoids 407 loops, and the TLS
+ * list that keeps API 23 hardware working. A Coil-built client would have none
+ * of it, and artwork hosted on the same panel as the streams would fail for
+ * reasons nothing in the app could explain.
+ *
+ * It is *derived* rather than shared because Coil enqueues every fetch, and a
+ * shared dispatcher meant thirty posters could hold every per-host slot the
+ * player needed for its next segment. See [tv.enktel.app.data.net.HttpProfiles].
  */
 class EnktelApp : Application(), SingletonImageLoader.Factory {
     lateinit var graph: AppGraph
@@ -334,7 +366,7 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
             .components {
-                add(OkHttpNetworkFetcherFactory(callFactory = { graph.http }))
+                add(OkHttpNetworkFetcherFactory(callFactory = { graph.imageHttp }))
             }
             // Fade artwork in rather than letting it snap.
             //

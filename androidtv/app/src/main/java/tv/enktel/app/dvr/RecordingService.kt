@@ -88,7 +88,7 @@ class RecordingService : Service() {
 
         var written = 0L
         try {
-            val call = app.graph.http.newCall(Request.Builder().url(rec.streamUrl).build())
+            val call = app.graph.streamHttp.newCall(Request.Builder().url(rec.streamUrl).build())
             call.execute().use { resp ->
                 check(resp.isSuccessful) { "HTTP ${resp.code}" }
                 resp.body.byteStream().use { input ->

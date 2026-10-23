@@ -271,6 +271,18 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
                     MetricRow("Resolved IP", r.resolvedIp ?: "unresolved")
                     MetricRow("DNS lookup", "${r.dnsLookupMs} ms")
                     MetricRow("Connection type", r.connectionType.name)
+                    if (r.downloadStreams > 0) {
+                        // Says what the headline figure is a measurement *of*.
+                        // A panel rate-limits per request, so one socket
+                        // reports one request's allowance and several report
+                        // the line — a difference worth being explicit about
+                        // next to a number the viewer may take to their ISP.
+                        MetricRow(
+                            "Measured over",
+                            if (r.downloadStreams == 1) "1 connection"
+                            else "${r.downloadStreams} connections",
+                        )
+                    }
                     if (r.device.linkDownKbps > 0) {
                         // Side by side with the measured figure on purpose:
                         // a link rated far above what the panel delivered
