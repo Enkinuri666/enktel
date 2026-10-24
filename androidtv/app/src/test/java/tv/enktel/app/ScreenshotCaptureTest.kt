@@ -293,6 +293,22 @@ class ScreenshotCaptureTest {
         )
     }
 
+    /** Enough of a box set to photograph the page it opens on. */
+    private fun seedSeries(g: AppGraph, profileId: Long): Unit = runBlocking {
+        g.db.contentDao().upsertSeries(
+            listOf("Harbourlight" to 2023, "Quarry Road" to 2017, "Ninepin" to 2015)
+                .mapIndexed { i, (name, year) ->
+                    tv.enktel.app.data.db.Series(
+                        key = "$profileId:s$i", profileId = profileId,
+                        seriesId = (4000 + i).toLong(), name = name, year = year,
+                        genre = listOf("Drama", "Crime", "Comedy")[i % 3],
+                        plot = "Three seasons of it, and the third is the one people talk about.",
+                        rating = 7.4 + i * 0.3,
+                    )
+                },
+        )
+    }
+
     private fun seedDownloads(g: AppGraph, profileId: Long): Unit = runBlocking {
         val rows = listOf(
             DownloadEntry(
@@ -554,6 +570,48 @@ class ScreenshotCaptureTest {
         }
         settle()
         capture("live-browser-bigscreen")
+    }
+
+    /**
+     * The page a viewer lands on from the grid — and the way back off it.
+     *
+     * Photographed because the back arrow is a corner control over a poster
+     * layout, which is exactly the kind of thing that reads fine in code and
+     * sits on top of the artwork on a real screen.
+     */
+    @Test
+    @Config(qualifiers = PHONE)
+    fun movieDetails() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedMovies(g, p)
+        themed {
+            tv.enktel.app.ui.vod.MovieDetailsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+                key = "$p:m0",
+            )
+        }
+        settle()
+        capture("movie-details")
+    }
+
+    /** The box-set page, whose poster sits where the back arrow would fall. */
+    @Test
+    @Config(qualifiers = PHONE)
+    fun seriesDetails() {
+        val g = graph()
+        val p = seedProfile(g)
+        seedSeries(g, p)
+        themed {
+            tv.enktel.app.ui.vod.SeriesDetailsScreen(
+                g,
+                androidx.navigation.compose.rememberNavController(),
+                key = "$p:s0",
+            )
+        }
+        settle()
+        capture("series-details")
     }
 
     @Test
