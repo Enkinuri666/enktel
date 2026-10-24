@@ -20,47 +20,65 @@
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
          style="width:600px;max-width:100%;background-color:#FFFFFF;border-radius:10px;overflow:hidden;">
 
-    <!-- Header -->
-    <tr><td bgcolor="#0A0E17" style="background-color:#0A0E17;padding:26px 30px;">
-      <span style="font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:bold;
-                   color:#ffffff;letter-spacing:0.5px;">ENK<span style="color:#3B9DFF;">TEL</span></span>
-      <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#7C89A6;
-                   letter-spacing:1.5px;">&nbsp; IPTV</span>
-    </td></tr>
-
-    <!-- Lede -->
-    <tr><td style="padding:30px 30px 6px 30px;">
-      <h1 style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;
-                 line-height:30px;color:#1F2937;">Your subscription is live</h1>
+    <!-- Masthead and hero, in one dark band.
+         The headline lives in the dark rather than under it: it is the app's
+         own background, so the message opens looking like the thing it is
+         about instead of like a receipt. -->
+    <tr><td bgcolor="#0B0E14" style="background-color:#0B0E14;padding:28px 30px 30px 30px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:bold;
+                     color:#F8FAFC;letter-spacing:0.5px;">ENK<span
+                     style="color:#00F0FF;">TEL</span><span
+                     style="font-size:11px;color:#94A3B8;letter-spacing:1.5px;">&nbsp; IPTV</span></td>
+          <td align="right">
+            <!-- The live pill. Colour doing a job: it says the account is on,
+                 which is the one fact the whole message exists to deliver. -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td bgcolor="#1A2332" style="background-color:#1A2332;border-radius:999px;
+                         padding:5px 12px;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                         font-weight:bold;letter-spacing:1.2px;color:#10B981;">&#9679; LIVE</td>
+            </tr></table>
+          </td>
+        </tr>
+      </table>
+      <h1 style="margin:22px 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:28px;
+                 line-height:34px;color:#F8FAFC;">Your subscription<br>is live</h1>
       <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;
-                line-height:21px;color:#6B7280;">
+                line-height:22px;color:#94A3B8;">
         One login works on everything you own — TV, phone, tablet, computer and
         browser. There is no account to create. The details below are all you need.
       </p>
     </td></tr>
+    <tr><td style="font-size:0;line-height:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="4" bgcolor="#00F0FF" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td><td height="4" bgcolor="#00A8B5" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td><td height="4" bgcolor="#7B2CBF" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr></table></td></tr>
 
-    <!-- Credentials -->
-    <tr><td style="padding:22px 30px 6px 30px;">
+    <!-- Credentials.
+         The one block somebody comes back to this email for, so it is the one
+         block that looks different from everything else: the app's own surface
+         colour, with the labels in neon and the values in white. -->
+    <tr><td style="padding:26px 30px 6px 30px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-             bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;">
-        <tr><td style="padding:18px 20px;">
+             bgcolor="#121824" style="background-color:#121824;border-radius:10px;">
+        <tr><td style="padding:20px 22px;">
+          <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                    font-weight:bold;letter-spacing:1.4px;color:#00F0FF;">YOUR DETAILS</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                 style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1F2937;">
+                 style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#F8FAFC;">
             <tr>
-              <td width="34%" style="padding:5px 0;color:#6B7280;font-size:13px;">Username</td>
-              <td style="padding:5px 0;font-weight:bold;">{{USERNAME}}</td>
+              <td width="34%" style="padding:6px 0;color:#94A3B8;font-size:13px;">Username</td>
+              <td style="padding:6px 0;font-weight:bold;">{{USERNAME}}</td>
             </tr>
             <tr>
-              <td style="padding:5px 0;color:#6B7280;font-size:13px;">Password</td>
-              <td style="padding:5px 0;font-weight:bold;">{{PASSWORD}}</td>
+              <td style="padding:6px 0;color:#94A3B8;font-size:13px;">Password</td>
+              <td style="padding:6px 0;font-weight:bold;">{{PASSWORD}}</td>
             </tr>
             <tr>
-              <td style="padding:5px 0;color:#6B7280;font-size:13px;">Server address</td>
-              <td style="padding:5px 0;font-weight:bold;">{{SERVER}}</td>
+              <td style="padding:6px 0;color:#94A3B8;font-size:13px;">Server address</td>
+              <td style="padding:6px 0;font-weight:bold;">{{SERVER}}</td>
             </tr>
             <tr>
-              <td style="padding:5px 0;color:#6B7280;font-size:13px;">Plan</td>
-              <td style="padding:5px 0;">{{PLAN}} &middot; runs until {{EXPIRES}}</td>
+              <td style="padding:6px 0;color:#94A3B8;font-size:13px;">Plan</td>
+              <td style="padding:6px 0;color:#F8FAFC;">{{PLAN}} &middot; runs until <span style="color:#10B981;font-weight:bold;">{{EXPIRES}}</span></td>
             </tr>
           </table>
           <!-- The one-paste line.
@@ -71,17 +89,18 @@
                and the apps still accept it if someone pastes it anyway; see
                SetupLink. -->
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                 style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1F2937;
-                        border-top:1px solid #E5E7EB;margin-top:12px;">
+                 style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#F8FAFC;
+                        border-top:1px solid #1A2332;margin-top:14px;">
             <tr>
-              <td style="padding:12px 0 4px 0;color:#6B7280;font-size:13px;">
+              <td style="padding:14px 0 6px 0;color:#94A3B8;font-size:13px;">
                 Setup link &mdash; for VLC and other players, and for anyone
                 setting up somewhere that asks for a link
               </td>
             </tr>
             <tr>
-              <td style="padding:0 0 2px 0;font-family:Consolas,Menlo,monospace;font-size:12px;
-                         line-height:18px;color:#1B6AE5;word-break:break-all;">
+              <td bgcolor="#0B0E14" style="background-color:#0B0E14;border-radius:6px;
+                         padding:10px 12px;font-family:Consolas,Menlo,monospace;font-size:12px;
+                         line-height:18px;color:#00F0FF;word-break:break-all;">
                 {{SERVER}}/get.php?username={{USERNAME}}&amp;password={{PASSWORD}}&amp;type=m3u_plus&amp;output=ts
               </td>
             </tr>
@@ -96,7 +115,9 @@
 
     <!-- Start here -->
     <tr><td style="padding:24px 30px 0 30px;">
-      <h2 style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;
+      <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                font-weight:bold;letter-spacing:1.4px;color:#00A8B5;">STEP ONE</p>
+      <h2 style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:18px;
                  color:#1F2937;">Start here</h2>
       <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
                 line-height:19px;color:#6B7280;">
@@ -106,52 +127,65 @@
         quickest way to check everything works. If it plays there, your
         subscription is fine &mdash; anything else is that device's setup.
       </p>
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://watch.enktel.tv" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Open the web player</a></td></tr></table>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#00F0FF" style="border-radius:6px;"><a href="https://watch.enktel.tv" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0B0E14;text-decoration:none;letter-spacing:0.2px;">Open the web player</a></td></tr></table>
     </td></tr>
 
     <!-- Devices -->
-    <tr><td style="padding:8px 30px 0 30px;">
+    <tr><td style="padding:26px 30px 0 30px;">
+      <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                font-weight:bold;letter-spacing:1.4px;color:#7B2CBF;">EVERYWHERE ELSE</p>
+      <h2 style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:18px;
+                 color:#1F2937;">On your other devices</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         
-        <tr><td style="padding:18px 0;border-bottom:1px solid #E5E7EB;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;
-                         font-weight:bold;color:#1F2937;padding-bottom:4px;">Phone &amp; tablet</td>
-            </tr>
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;
-                         line-height:19px;color:#6B7280;padding-bottom:12px;">The full app, including downloads you can watch with no signal at all.</td>
-            </tr>
-            <tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/download/v1.75.0/enktel-mobile-1.75.0.apk" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Download for Android</a></td></tr></table></td></tr>
+        <tr><td style="padding-bottom:12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;
+                        border-left:4px solid #00A8B5;">
+            <tr><td style="padding:16px 18px;">
+              <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                        font-weight:bold;letter-spacing:1.4px;color:#00A8B5;
+                        text-transform:uppercase;">Android</p>
+              <p style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
+                        font-weight:bold;color:#1F2937;">Phone &amp; tablet</p>
+              <p style="margin:0 0 13px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                        line-height:19px;color:#6B7280;">The full app, including downloads you can watch with no signal at all.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#00A8B5" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/download/v1.75.0/enktel-mobile-1.75.0.apk" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">Download for Android</a></td></tr></table>
+            </td></tr>
           </table>
         </td></tr>
         
-        <tr><td style="padding:18px 0;border-bottom:1px solid #E5E7EB;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;
-                         font-weight:bold;color:#1F2937;padding-bottom:4px;">TV, Fire Stick &amp; Android TV</td>
-            </tr>
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;
-                         line-height:19px;color:#6B7280;padding-bottom:12px;">The same app, laid out for a remote. On a Fire TV install <b>Downloader</b> first, then enter the address below and pick the file whose name contains <b>-tv-</b>.</td>
-            </tr>
-            <tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/latest" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">All downloads</a></td></tr></table></td></tr>
+        <tr><td style="padding-bottom:12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;
+                        border-left:4px solid #7B2CBF;">
+            <tr><td style="padding:16px 18px;">
+              <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                        font-weight:bold;letter-spacing:1.4px;color:#7B2CBF;
+                        text-transform:uppercase;">Big screen</p>
+              <p style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
+                        font-weight:bold;color:#1F2937;">TV, Fire Stick &amp; Android TV</p>
+              <p style="margin:0 0 13px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                        line-height:19px;color:#6B7280;">The same app, laid out for a remote. On a Fire TV install <b>Downloader</b> first, then enter the address below and pick the file whose name contains <b>-tv-</b>.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#7B2CBF" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/latest" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">All downloads</a></td></tr></table>
+            </td></tr>
           </table>
         </td></tr>
         
-        <tr><td style="padding:18px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;
-                         font-weight:bold;color:#1F2937;padding-bottom:4px;">Windows PC</td>
-            </tr>
-            <tr>
-              <td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;
-                         line-height:19px;color:#6B7280;padding-bottom:12px;">A desktop player, and the other half of Send to PC — it pulls finished downloads off your phone over your own Wi-Fi.<br><br>Windows will warn that it does not recognise the publisher. Choose <b>More info</b>, then <b>Run anyway</b>. That warning is about our certificate, not about the file.</td>
-            </tr>
-            <tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/latest" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Get the installer</a></td></tr></table></td></tr>
+        <tr><td style="">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;
+                        border-left:4px solid #475569;">
+            <tr><td style="padding:16px 18px;">
+              <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                        font-weight:bold;letter-spacing:1.4px;color:#475569;
+                        text-transform:uppercase;">Desktop</p>
+              <p style="margin:0 0 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
+                        font-weight:bold;color:#1F2937;">Windows PC</p>
+              <p style="margin:0 0 13px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                        line-height:19px;color:#6B7280;">A desktop player, and the other half of Send to PC — it pulls finished downloads off your phone over your own Wi-Fi.<br><br>Windows will warn that it does not recognise the publisher. Choose <b>More info</b>, then <b>Run anyway</b>. That warning is about our certificate, not about the file.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#475569" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/latest" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">Get the installer</a></td></tr></table>
+            </td></tr>
           </table>
         </td></tr>
       </table>
@@ -160,16 +194,18 @@
     <!-- Guide -->
     <tr><td style="padding:22px 30px 0 30px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-             style="border:1px solid #E5E7EB;border-radius:8px;">
-        <tr><td style="padding:18px 20px;">
-          <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
-                    font-weight:bold;color:#1F2937;">The illustrated guide</p>
-          <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
-                    line-height:19px;color:#6B7280;">
+             bgcolor="#0B0E14" style="background-color:#0B0E14;border-radius:10px;">
+        <tr><td style="padding:20px 22px;">
+          <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                    font-weight:bold;letter-spacing:1.4px;color:#00F0FF;">EVERY SCREEN, EXPLAINED</p>
+          <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:17px;
+                    font-weight:bold;color:#F8FAFC;">The illustrated guide</p>
+          <p style="margin:0 0 15px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                    line-height:20px;color:#94A3B8;">
             Every screen of every app, with the setup steps for each one and the
             answers to the six things that usually go wrong.
           </p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/download/v1.75.0/enktel_welcome_guide.pdf" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Open the guide (PDF)</a></td></tr></table>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#00F0FF" style="border-radius:6px;"><a href="https://github.com/Enkinuri666/enktel/releases/download/v1.75.0/enktel_welcome_guide.pdf" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0B0E14;text-decoration:none;letter-spacing:0.2px;">Open the guide (PDF)</a></td></tr></table>
         </td></tr>
       </table>
     </td></tr>
@@ -182,8 +218,11 @@
          it. -->
     <tr><td style="padding:22px 30px 0 30px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-             bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;">
+             bgcolor="#F5F7FB" style="background-color:#F5F7FB;border-radius:8px;
+                    border-left:4px solid #10B981;">
         <tr><td style="padding:18px 20px;">
+          <p style="margin:0 0 3px 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                    font-weight:bold;letter-spacing:1.4px;color:#10B981;">NO RUSH</p>
           <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;
                     font-weight:bold;color:#1F2937;">When it is time to renew</p>
           <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
@@ -193,23 +232,28 @@
             it, we take payment there and extend the line you are already using.
             Nothing to reinstall, and no settings to enter again.
           </p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#1B6AE5" style="border-radius:6px;"><a href="https://enktel.tv/checkout?renew={{USERNAME}}" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Renew my subscription</a></td></tr></table>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#10B981" style="border-radius:6px;"><a href="https://enktel.tv/checkout?renew={{USERNAME}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">Renew my subscription</a></td></tr></table>
         </td></tr>
       </table>
     </td></tr>
 
-    <!-- Footer -->
-    <tr><td style="padding:26px 30px 30px 30px;">
-      <p style="margin:0 0 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+    <!-- Footer. Dark, to close the message the way it opened. -->
+    <tr><td style="padding:26px 30px 0 30px;">
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
                 line-height:20px;color:#6B7280;">
         Stuck? Reply to this email, or use
-        <a href="https://enktel.tv/contact" style="color:#1B6AE5;">our contact page</a>. Tell us your
-        username and which device you are on — never your password.
+        <a href="https://enktel.tv/contact" style="color:#00A8B5;font-weight:bold;">our contact page</a>.
+        Tell us your username and which device you are on — never your password.
       </p>
-      <p style="margin:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;
-                line-height:17px;color:#9AA4BF;">
-        EnkTel IPTV &middot; <a href="https://enktel.tv" style="color:#9AA4BF;">enktel.tv</a><br>
-        App version 1.75.0
+    </td></tr>
+    <tr><td style="padding:22px 0 0 0;font-size:0;line-height:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="4" bgcolor="#00F0FF" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td><td height="4" bgcolor="#00A8B5" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td><td height="4" bgcolor="#7B2CBF" style="height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr></table></td></tr>
+    <tr><td bgcolor="#0B0E14" style="background-color:#0B0E14;padding:20px 30px 24px 30px;">
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;
+                font-weight:bold;letter-spacing:0.5px;color:#F8FAFC;">ENK<span
+                style="color:#00F0FF;">TEL</span></p>
+      <p style="margin:6px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;
+                line-height:17px;color:#94A3B8;">
+        <a href="https://enktel.tv" style="color:#94A3B8;">enktel.tv</a> &middot; App version 1.75.0
       </p>
     </td></tr>
 
