@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -893,3 +894,53 @@ fun ShareButton(
         if (!shareTarget(context, target)) toaster.info("Link copied to the clipboard")
     })
 }
+
+/**
+ * A visible way back, for the screens a phone arrives at by tapping something.
+ *
+ * ### Why it exists
+ *
+ * > After five or six films you give up.
+ *
+ * The complaint that produced [BrowsePosition] had a second half: a details
+ * page gives no sign of how to leave it. Back works — a gesture, the system
+ * button, a remote — but a page that fills the screen and offers only "Play"
+ * asks the viewer to remember a control rather than see one, and a viewer who
+ * is browsing rather than choosing is on this page precisely because they
+ * mean to leave it again.
+ *
+ * ### Why not on television
+ *
+ * Every remote has a Back button, so the arrow would buy nothing there — and
+ * it would cost something. The TV shell re-requests focus into the content on
+ * each arrival, so a focusable control in the top-left corner becomes the
+ * first thing focus lands on, and OK would leave the page the viewer just
+ * opened. Call sites gate on the flavour for that reason.
+ */
+@Composable
+fun BackArrow(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(BACK_ARROW_SIZE)
+            .clip(CircleShape)
+            // A filled plate rather than a wash over whatever is behind it.
+            // Rendered on a page with no backdrop image, a translucent black
+            // disc on a near-black background left the glyph floating with no
+            // visible target around it — it read as decoration rather than a
+            // control, and nothing showed where to tap.
+            .background(EnktelSurfaceHigh.copy(alpha = 0.92f))
+            .tapClick(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        // A glyph rather than a vector asset: the app draws its other small
+        // controls this way, and one font character cannot go missing from a
+        // release build the way a renamed drawable can.
+        Text("←", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** Height the content has to leave clear for a pinned [BackArrow]. */
+val BACK_ARROW_SIZE = 38.dp
+
+/** Arrow plus its margins — what a page adds to its top padding. */
+val BACK_ARROW_BAND = 50.dp

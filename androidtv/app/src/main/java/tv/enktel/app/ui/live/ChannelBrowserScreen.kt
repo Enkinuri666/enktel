@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,11 +100,15 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val favouriteKeys = remember(favouriteChannels) { favouriteChannels.map { it.key }.toSet() }
 
-    var categoryId by remember { mutableStateOf(ChannelFilters.ALL) }
-    var query by remember { mutableStateOf("") }
-    var favouritesOnly by remember { mutableStateOf(false) }
-    var radioOnly by remember { mutableStateOf<Boolean?>(false) }
-    var showHidden by remember { mutableStateOf(false) }
+    // All saveable rather than remembered: playing a channel disposes this
+    // screen, and coming back to "All channels", no search and no filters
+    // meant finding your way back to the same shelf every time. The same
+    // complaint as the film grid — see BrowsePosition.
+    var categoryId by rememberSaveable { mutableStateOf(ChannelFilters.ALL) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var favouritesOnly by rememberSaveable { mutableStateOf(false) }
+    var radioOnly by rememberSaveable { mutableStateOf<Boolean?>(false) }
+    var showHidden by rememberSaveable { mutableStateOf(false) }
 
     // Internet radio, fetched the first time the Radio view is opened.
     //
@@ -288,15 +294,25 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
             return
         }
 
+        // Back from a channel lands on the row it was started from rather than
+        // at the top of the list, and on a remote focus re-enters there too.
+        // See BrowsePosition.
+        val pos = tv.enktel.app.ui.components.rememberBrowsePosition(
+            signature = listOf(categoryId, query, favouritesOnly, radioOnly, showHidden)
+                .joinToString("\u0001"),
+            itemCount = channels.size,
+        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(if (isMobile) 116.dp else 168.dp),
-            modifier = Modifier.fillMaxSize().tvGridFocus(),
+            state = pos.state,
+            modifier = Modifier.fillMaxSize().tvGridFocus(pos.focusEntry),
             contentPadding = PaddingValues(horizontal = hPad, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(channels, key = { it.key }) { ch ->
+            itemsIndexed(channels, key = { _, ch -> ch.key }) { index, ch ->
                 ChannelCard(
+                    modifier = pos.anchor(index),
                     channel = ch,
                     favourite = ch.key in favouriteKeys,
                     isHidden = ch.key in hidden,
@@ -337,6 +353,8 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
  */
 @Composable
 private fun ChannelCard(
+    /** Where a remote re-enters the grid — see BrowsePosition. */
+    modifier: Modifier = Modifier,
     channel: Channel,
     favourite: Boolean,
     isHidden: Boolean,
@@ -360,7 +378,7 @@ private fun ChannelCard(
         // tv-material's own onClick/onLongClick only fire on D-pad SELECT, so
         // touch needs its own gesture detector — the same split the rest of
         // the app handles with `tapClick`, extended here to long-press.
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .pointerInput(channel.key) {
                 detectTapGestures(

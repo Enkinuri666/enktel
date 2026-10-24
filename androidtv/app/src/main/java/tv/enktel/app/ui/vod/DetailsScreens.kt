@@ -37,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -113,7 +114,23 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" &&
             tv.enktel.app.ui.components.rememberScreenShape().narrow
         val outerPad = if (narrow) 20.dp else 48.dp
-        if (narrow) Column(Modifier.fillMaxSize().padding(outerPad).verticalScroll(rememberScrollState())) {
+        // Composed before the page rather than after it, and lifted above it
+        // with zIndex. Drawing order would have been the obvious way round —
+        // last child, on top — and it is how the arrow went missing on the
+        // series page: a composable that returns early while its episodes load
+        // never reaches anything written below that point. A way out has to
+        // exist most of all on a page that is still waiting for a panel.
+        BackArrowOverlay(showBack = showBackOn(), nav = nav)
+        // A visible way out, on the flavour that has no Back button of its
+        // own. The band is added to the content's top padding rather than the
+        // arrow being floated over it: an arrow sitting on the poster is a
+        // control the viewer has to find twice. See BackArrow for why
+        // television is left alone.
+        val backBand = if (showBackOn()) tv.enktel.app.ui.components.BACK_ARROW_BAND else 0.dp
+        if (narrow) Column(
+            Modifier.fillMaxSize().padding(outerPad).padding(top = backBand)
+                .verticalScroll(rememberScrollState()),
+        ) {
             Box(Modifier.width(180.dp).height(260.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
                 if (m.poster.isNotBlank()) {
                     AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -124,7 +141,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 graph = graph, nav = nav, p = p, m = m, details = details,
                 url = url, progressKey = progressKey, resumeMs = resumeMs,
             )
-        } else Row(Modifier.fillMaxSize().padding(outerPad)) {
+        } else Row(Modifier.fillMaxSize().padding(outerPad).padding(top = backBand)) {
             Box(Modifier.width(220.dp).height(320.dp).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
                 if (m.poster.isNotBlank()) {
                     AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -433,7 +450,17 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         )
         Box(Modifier.fillMaxSize().cinematicScrim(maxAlpha = 1f, base = EnktelBg))
     }
-    Column(Modifier.fillMaxSize().padding(horizontal = hPad, vertical = 20.dp)) {
+    // Same as the film page, and composed before the content for the reason
+    // given there: this page returns early while its episodes load, so
+    // anything written after that point is not drawn in the one state where
+    // leaving is most likely to be what the viewer wants.
+    BackArrowOverlay(showBack = showBackOn(), nav = nav)
+    val backBand = if (showBackOn()) tv.enktel.app.ui.components.BACK_ARROW_BAND else 0.dp
+    Column(
+        Modifier.fillMaxSize()
+            .padding(horizontal = hPad, vertical = 20.dp)
+            .padding(top = backBand),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
                 if (s.poster.isNotBlank()) {
@@ -642,6 +669,30 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         }
     }
     }
+}
+
+/** Whether this build draws its own way back. See BackArrow. */
+private fun showBackOn(): Boolean = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+
+/**
+ * The corner arrow, lifted above the page it sits on.
+ *
+ * zIndex rather than composition order, so it cannot be skipped by a page
+ * that returns early — see the call sites.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.BackArrowOverlay(
+    showBack: Boolean,
+    nav: NavHostController,
+) {
+    if (!showBack) return
+    tv.enktel.app.ui.components.BackArrow(
+        onClick = { nav.popBackStack() },
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .zIndex(1f)
+            .padding(12.dp),
+    )
 }
 
 /** IMDb's brand yellow. A fixed mark, so it does not follow the theme accent. */

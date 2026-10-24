@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -69,7 +70,12 @@ fun SearchScreen(
     val scope = rememberCoroutineScope()
     val t = LocalStrings.current
 
-    var query by remember { mutableStateOf(initialQuery) }
+    // Saveable, keyed on the route's own query: opening a result disposes
+    // this screen, and a plain remember meant coming back to an empty box and
+    // typing the whole thing again. Keyed, so arriving from a *new* search
+    // (the rail's search box, or a spoken one) still starts from that query
+    // rather than resurrecting the last one.
+    var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery) }
 
     // Receive spoken searches: "search for Interstellar" navigates here and
     // pushes "Interstellar" onto the voice bus. We collect it and drop it
@@ -130,7 +136,7 @@ fun SearchScreen(
 
     // Scope switch. "All" stays the default — a search that silently excluded
     // four of the five content types would be worse than no scoping at all.
-    var scope0 by remember { mutableStateOf("all") }
+    var scope0 by rememberSaveable { mutableStateOf("all") }
     val segments = remember(channels, movies, series, guideOnly, sportHits, t) {
         listOf(
             Segment("all", t.scopeAll, channels.size + sportHits.size + movies.size + series.size + guideOnly.size),
