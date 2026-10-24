@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -233,15 +235,20 @@ private fun VodBrowseShell(graph: AppGraph, content: @Composable () -> Unit) {
 fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
-    var cat by remember { mutableStateOf<String?>(null) }
+    // rememberSaveable, not remember: opening a film disposes this screen, and
+    // with a plain remember the category, the decade and the search box came
+    // back empty — so "back" from a film you did not want meant picking
+    // Ex-Yu movies and 2010+ and scrolling down again, every time. See
+    // BrowsePosition, which does the same job for how far down the grid was.
+    var cat by rememberSaveable { mutableStateOf<String?>(null) }
     val categories by graph.content.categories(p.id, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
     val raw by (if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var genreFilter by remember { mutableStateOf<String?>(null) }
-    var decadeFilter by remember { mutableStateOf<Int?>(null) }
-    var query by remember { mutableStateOf("") }
+    var genreFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var decadeFilter by rememberSaveable { mutableStateOf<Int?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
     val genres = remember(raw) {
         raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
             .groupingBy { it }.eachCount().entries
@@ -371,16 +378,30 @@ private fun MoviesGrid(
         if (movies.isEmpty()) {
             CenterMessage("No movies in this category.")
         } else {
+            // Hoisted out of the grid's content so the restored position can
+            // count it: the hero occupies the grid's first slot, so every
+            // poster sits one index further along than it does in `movies`.
+            val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
+                ?: movies.firstOrNull { it.poster.isNotBlank() }
+            val heroSlots = if (hero != null) 1 else 0
+            // Comes back where the viewer left it after they open a film and
+            // decide against it — see BrowsePosition. The signature is
+            // everything that decides what is in this list, so changing a
+            // filter starts its own list at the top rather than halfway down
+            // someone else's.
+            val pos = tv.enktel.app.ui.components.rememberBrowsePosition(
+                signature = listOf(cat, genreFilter, decadeFilter, query, sort).joinToString("\u0001"),
+                itemCount = movies.size + heroSlots,
+            )
             LazyVerticalGrid(
                 // v1.25.0/v1.26.0 — denser adaptive grid: 104-118 dp cells.
                 columns = GridCells.Adaptive(cellSize),
+                state = pos.state,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize().tvGridFocus(),
+                modifier = Modifier.fillMaxSize().tvGridFocus(pos.focusEntry),
             ) {
-                    val hero = movies.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
-                        ?: movies.firstOrNull { it.poster.isNotBlank() }
                     if (hero != null) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             CategoryHero(
@@ -394,12 +415,14 @@ private fun MoviesGrid(
                             )
                         }
                     }
-                items(movies, key = { it.key }) { m ->
+                itemsIndexed(movies, key = { _, m -> m.key }) { index, m ->
                     PosterCard(
                         title = m.name,
                         imageUrl = m.poster,
                         subtitle = if (m.rating > 0) "★ ${"%.1f".format(m.rating)}" else if (m.year > 0) "${m.year}" else "",
                         onClick = { nav.navigate("movie/${m.key}") },
+                        // Where a remote re-enters the grid. See BrowsePosition.
+                        modifier = pos.anchor(index + heroSlots),
                         // Enriched rows carry a TMDB id, which is all the hover
                         // auto-trailer needs to find the clip.
                         tmdbId = m.tmdbId,
@@ -445,15 +468,25 @@ private fun SeriesGrid(
         if (series.isEmpty()) {
             CenterMessage("No series match these filters.")
         } else {
+            // Hoisted for the same reason as the film grid: the hero takes the
+            // grid's first slot, so the posters are offset by one.
+            val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
+                ?: series.firstOrNull { it.poster.isNotBlank() }
+            val heroSlots = if (hero != null) 1 else 0
+            // Same as the film grid: back from a box set returns to the row it
+            // was opened from. See BrowsePosition.
+            val pos = tv.enktel.app.ui.components.rememberBrowsePosition(
+                signature = listOf(cat, genreFilter, decadeFilter, query, sort).joinToString("\u0001"),
+                itemCount = series.size + heroSlots,
+            )
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(cellSize),
+                state = pos.state,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize().tvGridFocus(),
+                modifier = Modifier.fillMaxSize().tvGridFocus(pos.focusEntry),
             ) {
-                val hero = series.firstOrNull { it.poster.isNotBlank() && it.rating >= 6.0 }
-                    ?: series.firstOrNull { it.poster.isNotBlank() }
                 if (hero != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         CategoryHero(
@@ -467,8 +500,9 @@ private fun SeriesGrid(
                         )
                     }
                 }
-                items(series, key = { it.key }) { s ->
+                itemsIndexed(series, key = { _, s -> s.key }) { index, s ->
                     PosterCard(
+                        modifier = pos.anchor(index + heroSlots),
                         title = s.name,
                         imageUrl = s.poster,
                         subtitle = buildString {
@@ -489,16 +523,18 @@ private fun SeriesGrid(
 fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
-    var cat by remember { mutableStateOf<String?>(null) }
+    // Same reason as MoviesScreen: a browse screen that forgets where you were
+    // the moment you open something makes browsing a chore.
+    var cat by rememberSaveable { mutableStateOf<String?>(null) }
     val categories by graph.content.categories(p.id, "series").collectAsStateWithLifecycle(initialValue = emptyList())
     val raw by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val gate = rememberParentalGate(graph, "series")
     val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var genreFilter by remember { mutableStateOf<String?>(null) }
-    var decadeFilter by remember { mutableStateOf<Int?>(null) }
-    var query by remember { mutableStateOf("") }
+    var genreFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var decadeFilter by rememberSaveable { mutableStateOf<Int?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
     val genres = remember(raw) {
         raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
             .groupingBy { it }.eachCount().entries

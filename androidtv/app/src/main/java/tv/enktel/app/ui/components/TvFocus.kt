@@ -122,6 +122,21 @@ fun Modifier.tvRailFocus(): Modifier = this.focusGroup().focusRestorer()
 fun Modifier.tvGridFocus(): Modifier = this.focusRestorer()
 
 /**
+ * The same, with an explicit entry point for when there is nothing to restore.
+ *
+ * Restoration only works within one composition. Opening a title disposes the
+ * screen, so on the way back there is nothing to restore *from* — and the
+ * television shell re-requests focus into the content on every arrival, which
+ * lands on the first cell and scrolls a grid that had just been put back where
+ * the viewer left it. Pointing the fallback at the restored row instead keeps
+ * the scroll and starts the remote on the shelf they were reading.
+ *
+ * See [tv.enktel.app.ui.components.rememberBrowsePosition], which supplies the
+ * requester and attaches it to the right cell.
+ */
+fun Modifier.tvGridFocus(entry: FocusRequester): Modifier = this.focusRestorer(entry)
+
+/**
  * Makes a list of *unfocusable* content scrollable with the D-pad.
  *
  * ### Why Diagnostics could not be scrolled from a remote
