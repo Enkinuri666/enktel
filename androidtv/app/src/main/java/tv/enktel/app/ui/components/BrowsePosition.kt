@@ -1,7 +1,9 @@
 package tv.enktel.app.ui.components
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -174,4 +176,58 @@ class BrowsePosition internal constructor(
      */
     fun anchor(index: Int): Modifier =
         if (index == anchorIndex) Modifier.focusRequester(requester) else Modifier
+}
+
+/**
+ * The same, for a screen built out of stacked rails rather than a grid.
+ *
+ * The Sports Hub is a `LazyColumn` of rails, and it lost its place for exactly
+ * the reason the browse grids did: tuning to a channel or opening the Match
+ * Centre disposes the screen, and the EPG scan that fills it takes a second or
+ * two to come back, so the restored offset is measured away against an empty
+ * list before the fixtures land. Scrolling past LIVE SCORES, ON TODAY and
+ * HIGHLIGHTS to reach the replays, watching one, and being returned to the top
+ * of the screen is the same complaint in a different room.
+ *
+ * No focus anchor here, unlike the grid: these rails are full-width rows, and
+ * a television's focus entering the first visible one is already the right
+ * answer once the scroll is in the right place.
+ *
+ * @param signature everything that decides what the rails contain — the sport
+ *   filter, whether the my-teams filter is on. A different signature is a
+ *   different screen, which starts at its own top.
+ * @param itemCount how many rails the list currently holds. The restore waits
+ *   for this to be non-zero.
+ */
+@Composable
+fun rememberRailPosition(signature: String, itemCount: Int): LazyListState {
+    val state = rememberLazyListState()
+
+    var savedSignature by rememberSaveable { mutableStateOf("") }
+    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+    var restored by remember(signature) { mutableStateOf(false) }
+
+    LaunchedEffect(signature, itemCount) {
+        if (restored || itemCount <= 0) return@LaunchedEffect
+        val saved = BrowseSpot.Spot(savedSignature, savedIndex, savedOffset)
+        BrowseSpot.target(saved, signature, itemCount)?.let {
+            state.requestScrollToItem(it.index, it.offset)
+        }
+        restored = true
+    }
+
+    val liveCount by rememberUpdatedState(itemCount)
+    LaunchedEffect(state, signature) {
+        snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                if (!restored) return@collect
+                if (!BrowseSpot.worthSaving(index, offset, liveCount)) return@collect
+                savedSignature = signature
+                savedIndex = index
+                savedOffset = offset
+            }
+    }
+
+    return state
 }

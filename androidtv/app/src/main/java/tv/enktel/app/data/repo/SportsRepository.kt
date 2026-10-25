@@ -37,19 +37,25 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
      *  otherwise pull a ten-day EPG window for every sports-ish channel. */
     private val CHANNEL_SCAN_CAP = 400
 
-    /** One fixture found by a search, with the duplicate feeds folded in. */
-    data class SportsSearchHit(
+    /**
+     * One fixture, with every feed carrying it folded into it.
+     *
+     * Named for the thing rather than for the screen because both screens now
+     * need it. Search folded its duplicates from the start; the Sports Hub did
+     * not, and a playlist that carries one match on Main Event, on the league
+     * channel and again in SD filled LIVE NOW with three identical cards. On a
+     * real line — SD, HD, FHD, a backup feed and one per country prefix — the
+     * rail was five rows deep before it reached the second match.
+     */
+    data class SportsFixture(
         /**
-         * Every feed carrying this fixture, best-classified first.
+         * Every feed carrying this fixture, best first.
          *
-         * A panel routinely lists one match on Main Event, on the league
-         * channel, and again in SD — three rows for one thing to watch, which
-         * reads as a fault in the search rather than as a choice of feeds.
-         *
-         * The whole list rather than just the winner, because the caller needs
+         * The whole list rather than just the winner, because the callers need
          * to know which programmes were claimed: the search screen takes the
          * fixtures out of its guide rail, and folding a feed away without
-         * saying so put it straight back there under a different heading.
+         * saying so put it straight back there under a different heading. The
+         * hub uses it to offer the other feeds when the first one stalls.
          */
         val feeds: List<SportsEvent>,
     ) {
@@ -57,6 +63,22 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
 
         /** How many *other* channels carry the same fixture at the same time. */
         val alsoOn: Int get() = feeds.size - 1
+
+        /**
+         * Which phase this fixture is in at [now].
+         *
+         * [load] buckets once, when it runs. That is a photograph: a hub left
+         * open while waiting for a kick-off — which is exactly what people do
+         * with it — kept the match in UPCOMING after it had started, counting
+         * down to a time in the past, and LIVE NOW stayed empty until
+         * something happened to reload the screen. The phase is a function of
+         * the clock, so the screen asks for it against its own ticker.
+         */
+        fun phaseAt(now: Long): String = when {
+            event.endMs <= now -> "FINISHED"
+            event.startMs <= now -> "LIVE"
+            else -> "UPCOMING"
+        }
     }
 
     /**
@@ -93,7 +115,7 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
      * kept — the "Other" bucket catches anything without a specific league tag so no
      * sport ever silently disappears.
      */
-    suspend fun load(profileId: Long, filter: String = ""): Map<String, List<SportsEvent>> =
+    suspend fun load(profileId: Long, filter: String = ""): Map<String, List<SportsFixture>> =
         withContext(Dispatchers.Default) {
             val now = System.currentTimeMillis()
             val from = now - PAST_WINDOW
@@ -158,11 +180,16 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
                 }
             }
 
+            // Folded per phase rather than across the whole set: two legs of a
+            // tie share a title, and a match that finished this morning is not
+            // another feed of the one kicking off tonight.
             val bucketed = hits.groupBy { it.phase }
+            fun folded(phase: String): List<SportsFixture> =
+                foldFeeds(bucketed[phase].orEmpty().map { it to feedRank(it) }).map { it.first }
             mapOf(
-                "LIVE" to bucketed["LIVE"].orEmpty().sortedBy { it.startMs },
-                "UPCOMING" to bucketed["UPCOMING"].orEmpty().sortedBy { it.startMs },
-                "FINISHED" to bucketed["FINISHED"].orEmpty().sortedByDescending { it.startMs },
+                "LIVE" to folded("LIVE").sortedBy { it.event.startMs },
+                "UPCOMING" to folded("UPCOMING").sortedBy { it.event.startMs },
+                "FINISHED" to folded("FINISHED").sortedByDescending { it.event.startMs },
             )
         }
 
@@ -276,8 +303,8 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
     }
 
     /** All distinct sport names present across the loaded event set, sorted for stable UI. */
-    fun sportsInSet(events: Map<String, List<SportsEvent>>): List<String> {
-        val counts = events.values.flatten().groupingBy { it.sport }.eachCount()
+    fun sportsInSet(events: Map<String, List<SportsFixture>>): List<String> {
+        val counts = events.values.flatten().groupingBy { it.event.sport }.eachCount()
         // Most-populated sports first, alphabetical as a tiebreak; keep "Other" at the end.
         return counts.entries
             .sortedWith(compareBy({ it.key == "Other" }, { -it.value }, { it.key }))
@@ -481,13 +508,11 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
         channels: List<Channel>,
         now: Long = System.currentTimeMillis(),
         limit: Int = 40,
-    ): List<SportsSearchHit> {
+    ): List<SportsFixture> {
         if (programmes.isEmpty() || channels.isEmpty()) return emptyList()
         val byEpgId = channels.asSequence()
             .filter { it.epgId.isNotBlank() }
             .associateBy { it.epgId }
-
-        data class Scored(val event: SportsEvent, val confidence: Int)
 
         val scored = programmes.mapNotNull { prog ->
             val ch = byEpgId[prog.epgId] ?: return@mapNotNull null
@@ -497,36 +522,14 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
                 prog.startMs <= now -> "LIVE"
                 else -> "UPCOMING"
             }
-            Scored(SportsEvent(prog, ch, sport, phase), confidence)
+            SportsEvent(prog, ch, sport, phase) to confidence
         }
         if (scored.isEmpty()) return emptyList()
-
-        // Same title at roughly the same time is the same fixture, however
-        // many feeds carry it.
-        //
-        // Walked in order rather than bucketed by `startMs / 60_000`, which is
-        // what this did first: two feeds 40 seconds apart across a minute
-        // boundary land in different buckets and the match appears twice,
-        // which is precisely the case the tolerance exists for.
-        val groups = ArrayList<MutableList<Scored>>()
-        scored
-            .sortedWith(compareBy({ it.event.title.trim().lowercase() }, { it.event.startMs }))
-            .forEach { row ->
-                val open = groups.lastOrNull()?.last()
-                val sameFixture = open != null &&
-                    open.event.title.trim().equals(row.event.title.trim(), ignoreCase = true) &&
-                    row.event.startMs - open.event.startMs <= DUPLICATE_FEED_SLACK_MS
-                if (sameFixture) groups.last() += row else groups += mutableListOf(row)
-            }
 
         // On now first, then what is coming, then what has been. Within a
         // phase: the classification we are surest of, then by kick-off.
         val phaseRank = mapOf("LIVE" to 0, "UPCOMING" to 1, "FINISHED" to 2)
-        return groups
-            .map { feeds ->
-                val ranked = feeds.sortedByDescending { it.confidence }
-                SportsSearchHit(ranked.map { it.event }) to ranked.first().confidence
-            }
+        return foldFeeds(scored)
             .sortedWith(
                 compareBy(
                     { phaseRank[it.first.event.phase] ?: 3 },
@@ -536,6 +539,98 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
             )
             .take(limit)
             .map { it.first }
+    }
+
+    /**
+     * Fold the feeds of one fixture into one row, keeping the best first.
+     *
+     * Same title at roughly the same time is the same fixture, however many
+     * lines carry it. The caller supplies a rank per feed and gets it back
+     * with the fixture, because what makes a feed "best" differs: search means
+     * the classification it is surest of, the hub means the line most likely
+     * to play (see [feedRank]).
+     *
+     * Walked in order rather than bucketed by `startMs / 60_000`, which is
+     * what this did first: two feeds 40 seconds apart across a minute boundary
+     * land in different buckets and the match appears twice, which is
+     * precisely the case the tolerance exists for.
+     */
+    fun foldFeeds(scored: List<Pair<SportsEvent, Int>>): List<Pair<SportsFixture, Int>> {
+        if (scored.isEmpty()) return emptyList()
+        val groups = ArrayList<MutableList<Pair<SportsEvent, Int>>>()
+        scored
+            .sortedWith(compareBy({ it.first.title.trim().lowercase() }, { it.first.startMs }))
+            .forEach { row ->
+                val open = groups.lastOrNull()?.last()
+                val sameFixture = open != null &&
+                    open.first.title.trim().equals(row.first.title.trim(), ignoreCase = true) &&
+                    row.first.startMs - open.first.startMs <= DUPLICATE_FEED_SLACK_MS
+                if (sameFixture) groups.last() += row else groups += mutableListOf(row)
+            }
+        return groups.map { feeds ->
+            val ranked = feeds.sortedByDescending { it.second }
+            SportsFixture(ranked.map { it.first }) to ranked.first().second
+        }
+    }
+
+    /**
+     * Which feed of a fixture the hub should put forward.
+     *
+     * Folding duplicates means picking a survivor, and picking it arbitrarily
+     * would have broken something that used to work by luck: the CATCH-UP and
+     * REPLAYS cards play a finished match out of the provider's archive, which
+     * only some lines carry. Fold five feeds down to a line with no archive
+     * and the replay button has nothing to open — so an archive outranks
+     * everything else here.
+     *
+     * After that, the least decorated name wins. `BroadcastMatcher.tokens`
+     * strips the quality and packaging noise every provider adds, so what is
+     * left is how much the line carries of its own: "Sky Sports Main Event"
+     * over "Sky Sports Main Event Extra", and a plain HD line over a backup.
+     * It is a heuristic about names, not a claim about which socket works —
+     * which is why [SportsFixture.feeds] keeps the rest.
+     */
+    fun feedRank(ev: SportsEvent): Int {
+        val archive = if (ev.channel.hasArchive) 100 else 0
+        val words = BroadcastMatcher.tokens(ev.channel.name).size
+        return archive + (20 - words).coerceIn(0, 20)
+    }
+
+    /**
+     * The viewer's own fixtures first, everything else in the order it came.
+     *
+     * Settings has promised this in writing for several versions — "its
+     * fixtures pin to the top of the Live sport finder and the Sports Hub" —
+     * and the finder did it while the hub only offered a filter you had to
+     * know to press. Following a team and seeing nothing change is how a
+     * feature gets written off as broken.
+     *
+     * A stable partition rather than a sort: within each half the rails keep
+     * their own order, which is kick-off time, and that is not something a
+     * followed team should reshuffle.
+     */
+    fun pinFollowed(
+        fixtures: List<SportsFixture>,
+        teams: List<String>,
+    ): List<SportsFixture> {
+        if (teams.isEmpty() || fixtures.isEmpty()) return fixtures
+        val (mine, rest) = fixtures.partition { followsAny(it, teams) }
+        return mine + rest
+    }
+
+    /**
+     * Does any followed team appear in this fixture?
+     *
+     * The channel name counts as well as the title: pay-per-view and event
+     * lines carry the fixture in the channel name itself and have no guide
+     * entry worth the name — "UK: PPV 04 | Arsenal vs Chelsea".
+     */
+    fun followsAny(fixture: SportsFixture, teams: List<String>): Boolean {
+        if (teams.isEmpty()) return false
+        return fixture.feeds.any { feed ->
+            val haystack = feed.title + " " + feed.channel.name
+            teams.any { FixtureTeams.mentions(haystack, it) }
+        }
     }
 
     /**
@@ -550,6 +645,6 @@ class SportsRepository(private val content: ContentRepository, private val epg: 
 
     }
 
-    private fun emptyPhases(): Map<String, List<SportsEvent>> =
+    private fun emptyPhases(): Map<String, List<SportsFixture>> =
         mapOf("LIVE" to emptyList(), "UPCOMING" to emptyList(), "FINISHED" to emptyList())
 }

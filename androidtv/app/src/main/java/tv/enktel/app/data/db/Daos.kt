@@ -498,7 +498,20 @@ interface SportsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun addReminder(r: MatchReminder)
     @Query("DELETE FROM match_reminders WHERE key = :key") suspend fun cancelReminder(key: String)
     @Query("SELECT EXISTS(SELECT 1 FROM match_reminders WHERE key = :key)") suspend fun hasReminder(key: String): Boolean
-    @Query("SELECT * FROM match_reminders WHERE startMs > :now ORDER BY startMs") fun upcomingReminders(now: Long): Flow<List<MatchReminder>>
+
+    /** The stored row, so a notification can name the match it is about. */
+    @Query("SELECT * FROM match_reminders WHERE key = :key") suspend fun reminder(key: String): MatchReminder?
+
+    /**
+     * Reminders still worth showing: everything that has not finished.
+     *
+     * `endMs` rather than `startMs`, which is what this asked for while it had
+     * no callers. A match drops out of the list the moment it kicks off is a
+     * reminder list that is empty exactly when the viewer looks at it to find
+     * out where the match they asked about is on.
+     */
+    @Query("SELECT * FROM match_reminders WHERE endMs > :now ORDER BY startMs")
+    fun upcomingReminders(now: Long): Flow<List<MatchReminder>>
 }
 
 @Dao

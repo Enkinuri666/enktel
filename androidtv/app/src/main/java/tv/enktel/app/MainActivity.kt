@@ -473,7 +473,11 @@ private fun MainNav(
                 is tv.enktel.app.voice.VoiceIntent.WhatSportsIsOn -> {
                     val p = graph.playlists.activeProfile() ?: return@collect
                     val events = try { graph.sports.load(p.id) } catch (_: Throwable) { emptyMap() }
-                    val live = events["LIVE"].orEmpty()
+                    // The lead feed of each fixture, not every feed: the hub
+                    // folds its duplicates now, and "five live matches right
+                    // now" when it is one match on five lines is the same
+                    // wrong answer read aloud.
+                    val live = events["LIVE"].orEmpty().map { it.event }
                     val lines = live.take(6).map { ev ->
                         tv.enktel.app.voice.VoiceAnswerLine(
                             title = ev.title,
@@ -949,10 +953,13 @@ private fun MainNav(
                 }
                 is tv.enktel.app.voice.VoiceIntent.PlayTeamGame -> {
                     val p = graph.playlists.activeProfile() ?: return@collect
-                    val team = intent.team.lowercase()
                     val events = try { graph.sports.load(p.id) } catch (_: Throwable) { emptyMap() }
-                    val all = events.values.flatten()
-                    val hit = all.firstOrNull { team in it.title.lowercase() }
+                    val all = events.values.flatten().map { it.event }
+                    // Whole words, so "play the Roma game" does not tune to a
+                    // Romanian channel. See FixtureTeams.
+                    val hit = all.firstOrNull {
+                        tv.enktel.app.data.repo.FixtureTeams.mentions(it.title, intent.team)
+                    }
                     if (hit != null) {
                         nav.navigate("live?ch=${hit.channel.key}")
                         voiceBus.answers.emit(voiceCard(

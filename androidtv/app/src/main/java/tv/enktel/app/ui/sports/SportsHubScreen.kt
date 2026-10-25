@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +74,9 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Scoreboard
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.tv.material3.Icon
@@ -92,9 +95,14 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
+import tv.enktel.app.data.db.FollowedTeam
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.repo.FixtureTeams
 import tv.enktel.app.data.repo.SportsEvent
+import tv.enktel.app.data.repo.SportsRepository
+import tv.enktel.app.data.repo.SportsRepository.SportsFixture
 import tv.enktel.app.data.xtream.XtreamClient
+import tv.enktel.app.dvr.MatchReminderScheduler
 import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
@@ -104,10 +112,12 @@ import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
+import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 import tv.enktel.app.vodPlayerRoute
+import tv.enktel.app.ui.components.rememberRailPosition
 import tv.enktel.app.ui.components.tvRailFocus
 
 @Suppress("ProduceStateDoesNotAssignValue")
@@ -143,17 +153,37 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     var loading by remember { mutableStateOf(true) }
-    var events by remember { mutableStateOf<Map<String, List<SportsEvent>>>(emptyMap()) }
-    var sportFilter by remember { mutableStateOf<String?>(null) }
+    var events by remember { mutableStateOf<Map<String, List<SportsFixture>>>(emptyMap()) }
+    // Saveable, not remembered. Opening a match and coming back disposes this
+    // screen's composition, and everything it held in `remember` went with it
+    // — the sport you picked, the my-teams filter, how far down you had got.
+    // That is the complaint already fixed for Movies, Series, Live TV and
+    // Search; the Sports Hub is the same screen in a different room, and it
+    // is the one people leave and re-enter most, because every card on it is
+    // a reason to leave.
+    var sportFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableIntStateOf(0) }
     /** True while the refresh control is pulling the guide, so it can't be pressed twice. */
     var refreshing by remember { mutableStateOf(false) }
-    var teamFilterOn by remember { mutableStateOf(false) }
+    var teamFilterOn by rememberSaveable { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
     val matchCenterEnabled by graph.settings.matchCenterEnabled.collectAsStateWithLifecycle(initialValue = true)
     var liveScores by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
     val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+    // What the viewer has already asked to be told about.
+    //
+    // `upcomingReminders` had no callers at all: pressing the bell stored a
+    // row, scheduled a notification and then showed nothing anywhere, so there
+    // was no list of what you had set and no way to undo one. Press it twice
+    // and you were told twice.
+    //
+    // Subscribed once against the moment the screen opened rather than against
+    // the ticker, which would re-run the query every thirty seconds; the
+    // ticker trims the list below instead.
+    val openedAt = remember { System.currentTimeMillis() }
+    val remindersFlow = remember(openedAt) { graph.db.sportsDao().upcomingReminders(openedAt) }
+    val allReminders by remindersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     // Official broadcast schedule + published highlight packages. Both come
     // from TheSportsDB and are independent of the user's EPG, so they still
     // populate on a playlist with no guide data at all.
@@ -223,15 +253,6 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val channelsFlow = remember(p.id) { graph.content.channels(p.id) }
     val allChannelsForMatch by channelsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    val allSports = remember(events) {
-        try { graph.sports.sportsInSet(events) } catch (_: Throwable) { emptyList() }
-    }
-    fun matchesTeam(ev: SportsEvent): Boolean =
-        try { followed.any { it.name in ev.title.lowercase() } } catch (_: Throwable) { false }
-    val live = events["LIVE"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
-    val upcoming = events["UPCOMING"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
-    val finished = events["FINISHED"].orEmpty().let { if (teamFilterOn) it.filter(::matchesTeam) else it }
-
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
     val padHoriz = if (isMobile) 16.dp else 48.dp
 
@@ -239,10 +260,143 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     // rememberNowTicker: read once at composition, they stopped moving.
     val now = rememberNowTicker()
 
+    val allSports = remember(events) {
+        try { graph.sports.sportsInSet(events) } catch (_: Throwable) { emptyList() }
+    }
+
+    /** The followed names as stored — lowercased, and matched as whole words. */
+    val teamNames = remember(followed) { followed.map { it.name } }
+
+    // Which rail a fixture belongs in is a question about the clock, so it is
+    // asked against the ticker rather than taken from the scan.
+    //
+    // The scan buckets once, when it runs, and nothing re-ran it: a hub left
+    // open while waiting for a kick-off — the single most likely thing anyone
+    // does with this screen — kept the match in UPCOMING after it had started,
+    // counting down to a time in the past, while LIVE NOW stayed empty.
+    //
+    // Recomputed on the minute rather than on every tick of the clock: the
+    // phase of forty fixtures changes a few times an hour, and this walks all
+    // of them.
+    val minuteTick = now / 60_000L
+    val rails = remember(events, minuteTick, teamFilterOn, teamNames) {
+        val all = events.values.flatten()
+        fun rail(phase: String, newestFirst: Boolean): List<SportsFixture> {
+            val inPhase = all.filter { it.phaseAt(now) == phase }
+            val sorted =
+                if (newestFirst) inPhase.sortedByDescending { it.event.startMs }
+                else inPhase.sortedBy { it.event.startMs }
+            val kept =
+                if (teamFilterOn) sorted.filter { SportsRepository.followsAny(it, teamNames) }
+                else sorted
+            // Followed fixtures to the top of every rail — which Settings has
+            // promised in writing for several versions while only the Live
+            // sport finder did it.
+            return SportsRepository.pinFollowed(kept, teamNames)
+        }
+        Triple(rail("LIVE", false), rail("UPCOMING", false), rail("FINISHED", true))
+    }
+    val live = rails.first
+    val upcoming = rails.second
+    val finished = rails.third
+
+    // The two rails that come from TheSportsDB rather than the EPG get the
+    // same treatment: a followed team first. They are at the top of the
+    // screen and they are what gets scanned, so leaving them in the feed's own
+    // order is where "I follow Arsenal and nothing changed" came from.
+    val scoreRail = remember(liveScores, teamNames) { pinByTeam(liveScores, teamNames) }
+    val todayRail = remember(todaysFixtures, teamNames) { pinByTeam(todaysFixtures, teamNames) }
+
+    // A reminder for a match that has finished is clutter; one for a match
+    // already in play is still the answer to "where is it on".
+    val reminders = remember(allReminders, minuteTick) { allReminders.filter { it.endMs > now } }
+    val remindedKeys = remember(reminders) { reminders.mapTo(HashSet()) { it.key } }
+
+    /**
+     * Does the viewer follow every side of this fixture?
+     *
+     * Every side rather than any, which is what the rails use for pinning: a
+     * star is a control, and a filled one that still has something to add
+     * ("you follow Arsenal, press to also follow Chelsea") is a control
+     * lying about its own state.
+     */
+    fun followsAllSides(sides: List<String>): Boolean =
+        sides.isNotEmpty() && sides.all { t -> teamNames.any { FixtureTeams.mentions(t, it) } }
+
+    /**
+     * Follow — or stop following — both sides of a fixture, from its card.
+     *
+     * Following lived in Settings behind a text field you had to spell
+     * correctly, which is why the hub's my-teams filter was a button most
+     * people never saw: it only appears once something is followed. The teams
+     * are on the card already; this makes them pressable.
+     */
+    fun toggleFollow(ev: SportsEvent) {
+        // The cards hide the star when this is empty, so reaching here means
+        // something changed under the press; nothing to do rather than a
+        // message about it.
+        val teams = FixtureTeams.parse(ev.title)
+        if (teams.isEmpty()) return
+        scope.launch {
+            try {
+                val dao = graph.db.sportsDao()
+                val missing = teams.filterNot { t -> teamNames.any { FixtureTeams.mentions(t, it) } }
+                if (missing.isEmpty()) {
+                    followed
+                        .filter { f -> teams.any { FixtureTeams.mentions(it, f.name) } }
+                        .forEach { dao.unfollow(it.name) }
+                    toaster.info("Stopped following ${teams.joinToString(" and ")}")
+                } else {
+                    missing.forEach { t ->
+                        dao.follow(
+                            FollowedTeam(name = t.lowercase().trim(), displayName = t.trim()),
+                        )
+                    }
+                    toaster.success("Following ${missing.joinToString(" and ")}")
+                }
+            } catch (t: Throwable) {
+                toaster.error(t.message ?: "Could not change who you follow")
+            }
+        }
+    }
+
+    /** Set the reminder, or clear the one that is already set. */
+    fun toggleReminder(ev: SportsEvent) {
+        val key = MatchReminderScheduler.keyFor(ev.channel.key, ev.startMs)
+        scope.launch {
+            try {
+                if (key in remindedKeys) {
+                    MatchReminderScheduler.cancel(context, key)
+                    toaster.info("Reminder cleared")
+                } else {
+                    MatchReminderScheduler.schedule(
+                        context, ev.channel.key, ev.channel.name, ev.title, ev.startMs, ev.endMs,
+                    )
+                    toaster.success("Reminder set — ${MatchReminderScheduler.LEAD_MIN} min before kick-off")
+                }
+            } catch (t: Throwable) {
+                toaster.error(t.message ?: "Reminder failed")
+            }
+        }
+    }
+
+    // Where the screen was, so coming back from a match lands there.
+    //
+    // The count is the restore's "the rails have arrived" signal: the EPG scan
+    // takes a second or two to come back, and a position applied to an empty
+    // list is measured away before the fixtures land. See rememberRailPosition.
+    val contentCount = live.size + upcoming.size + finished.size +
+        liveScores.size + todaysFixtures.size + highlightClips.size
+    val railState = rememberRailPosition(
+        signature = "${sportFilter.orEmpty()}\u0001$teamFilterOn",
+        itemCount = contentCount,
+    )
+
     LazyColumn(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(EnktelSurface.copy(0.4f), EnktelSurface.copy(0.0f)))
         ),
+        state = railState,
         contentPadding = PaddingValues(top = 20.dp, bottom = 60.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -375,6 +529,51 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
+        // What the viewer asked to be told about, and the only place they can
+        // take it back.
+        //
+        // The bell on an UPCOMING card wrote a row and scheduled a
+        // notification, and that was the end of it: no list of what you had
+        // set, no way to cancel one, and a second press meant a second alert.
+        // This rail is also the only part of the hub that survives a playlist
+        // with no guide data, because it comes out of the database.
+        if (reminders.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    Icons.Rounded.NotificationsActive, "REMINDERS", EnktelPurple, padHoriz,
+                    count = reminders.size,
+                    subtitle = "${MatchReminderScheduler.LEAD_MIN} min before kick-off",
+                )
+            }
+            item {
+                LazyRow(
+                    modifier = Modifier.tvRailFocus(),
+                    contentPadding = PaddingValues(horizontal = padHoriz),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(reminders, key = { it.key }) { r ->
+                        ReminderChip(
+                            reminder = r,
+                            now = now,
+                            onTap = {
+                                toaster.info("Tuning to ${r.channelName}")
+                                nav.navigate("live?ch=${r.channelKey}")
+                            },
+                            onCancel = {
+                                scope.launch {
+                                    try {
+                                        MatchReminderScheduler.cancel(context, r.key)
+                                        toaster.info("Reminder cleared")
+                                    } catch (t: Throwable) {
+                                        toaster.error(t.message ?: "Could not clear it")
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
         when {
             loadError != null -> item {
                 GlassCard(padHoriz = padHoriz) {
@@ -428,15 +627,15 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
         }
-        if (scoresEnabled && liveScores.isNotEmpty()) {
-            item { SectionHeader(Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz, count = liveScores.size) }
+        if (scoresEnabled && scoreRail.isNotEmpty()) {
+            item { SectionHeader(Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz, count = scoreRail.size) }
             item {
                 LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(liveScores, key = { "${it.home}-${it.away}-${it.league}" }) { s ->
+                    items(scoreRail, key = { "${it.home}-${it.away}-${it.league}" }) { s ->
                         LiveScoreChip(
                             score = s,
                             // A scoreline we can identify opens the Match Centre;
@@ -445,20 +644,25 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                                 { nav.navigate(matchCenterRoute(id, "${s.home} v ${s.away}")) }
                             },
                             onTap = {
-                                // Fuzzy channel match by team names appearing in channel titles.
-                                scope.launch {
-                                    val matchChannel = try {
-                                        graph.content.channels(p.id).first().firstOrNull { ch ->
-                                            val title = ch.name.lowercase()
-                                            s.home.lowercase() in title || s.away.lowercase() in title
-                                        }
-                                    } catch (_: Throwable) { null }
-                                    if (matchChannel != null) {
-                                        toaster.info("Tuning to ${matchChannel.name}")
-                                        nav.navigate("live?ch=${matchChannel.key}")
-                                    } else {
-                                        toaster.info("No live channel matched for that match")
-                                    }
+                                // A channel whose name carries one of the teams —
+                                // the pay-per-view and event lines, which is where
+                                // this actually pays off ("UK: PPV 04 | Arsenal vs
+                                // Chelsea").
+                                //
+                                // Matched on whole words against the list this
+                                // screen already holds. It used to re-query the
+                                // channel table on every press and test for a bare
+                                // substring, so following Roma tuned to a Romanian
+                                // channel and a 15,000-row query ran for a tap.
+                                val matchChannel = allChannelsForMatch.firstOrNull { ch ->
+                                    FixtureTeams.mentions(ch.name, s.home) ||
+                                        FixtureTeams.mentions(ch.name, s.away)
+                                }
+                                if (matchChannel != null) {
+                                    toaster.info("Tuning to ${matchChannel.name}")
+                                    nav.navigate("live?ch=${matchChannel.key}")
+                                } else {
+                                    toaster.info("No live channel matched for that match")
                                 }
                             },
                         )
@@ -470,11 +674,11 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // from TheSportsDB rather than the user's EPG. It answers "what's on and
         // where do I tune in" even for fixtures the playlist doesn't carry, and
         // each row opens the Match Centre where the broadcaster list lives.
-        if (matchCenterEnabled && todaysFixtures.isNotEmpty()) {
+        if (matchCenterEnabled && todayRail.isNotEmpty()) {
             item {
                 SectionHeader(
                     Icons.Rounded.Podcasts, "ON TODAY", EnktelBlue, padHoriz,
-                    count = todaysFixtures.size,
+                    count = todayRail.size,
                     subtitle = "Published schedule",
                 )
             }
@@ -485,7 +689,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(
-                        todaysFixtures.take(40),
+                        todayRail.take(40),
                         key = { "${it.eventId}-${it.home}-${it.away}" },
                     ) { f ->
                         val casts = broadcastsByEvent[f.eventId].orEmpty()
@@ -545,10 +749,23 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (live.isNotEmpty()) {
             item { SectionHeader(Icons.Rounded.FiberManualRecord, "LIVE NOW", EnktelLive, padHoriz, count = live.size) }
-            items(live, key = { "L-${it.channel.key}-${it.program.id}" }) { ev ->
-                val matchedScore = try { if (scoresEnabled) graph.scores.matchByTitle(ev.title, liveScores) else null } catch (_: Throwable) { null }
+            items(live, key = { "L-${it.event.channel.key}-${it.event.program.id}" }) { fx ->
+                val ev = fx.event
+                val sides = remember(ev.title) { FixtureTeams.parse(ev.title) }
+                // Remembered, not recomputed. This walks the whole scoreboard
+                // per card, and the screen recomposes every thirty seconds off
+                // the ticker — forty cards times a scoreboard, twice a minute,
+                // for an answer that only changes when the scores do.
+                val matchedScore = remember(ev.title, liveScores, scoresEnabled) {
+                    try {
+                        if (scoresEnabled) graph.scores.matchByTitle(ev.title, liveScores) else null
+                    } catch (_: Throwable) { null }
+                }
                 LiveEventCard(
                     ev, score = matchedScore, padHoriz = padHoriz, now = now,
+                    alsoOn = fx.alsoOn,
+                    following = followsAllSides(sides),
+                    onFollow = if (sides.isEmpty()) null else { { toggleFollow(ev) } },
                     onTap = {
                         toaster.info("Tuning to ${ev.channel.name}")
                         nav.navigate("live?ch=${ev.channel.key}")
@@ -564,9 +781,15 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (upcoming.isNotEmpty()) {
             item { SectionHeader(Icons.Rounded.CalendarMonth, "UPCOMING", EnktelBlue, padHoriz, count = upcoming.size) }
-            items(upcoming, key = { "U-${it.channel.key}-${it.program.id}" }) { ev ->
+            items(upcoming, key = { "U-${it.event.channel.key}-${it.event.program.id}" }) { fx ->
+                val ev = fx.event
+                val sides = remember(ev.title) { FixtureTeams.parse(ev.title) }
                 UpcomingEventCard(
                     ev, padHoriz = padHoriz, now = now,
+                    alsoOn = fx.alsoOn,
+                    following = followsAllSides(sides),
+                    reminded = MatchReminderScheduler.keyFor(ev.channel.key, ev.startMs) in remindedKeys,
+                    onFollow = if (sides.isEmpty()) null else { { toggleFollow(ev) } },
                     onSchedule = {
                         scope.launch {
                             try {
@@ -577,16 +800,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             } catch (t: Throwable) { toaster.error(t.message ?: "Schedule failed") }
                         }
                     },
-                    onRemind = {
-                        scope.launch {
-                            try {
-                                tv.enktel.app.dvr.MatchReminderScheduler.schedule(
-                                    context, ev.channel.key, ev.channel.name, ev.title, ev.startMs, ev.endMs,
-                                )
-                                toaster.success("Reminder set")
-                            } catch (t: Throwable) { toaster.error(t.message ?: "Reminder failed") }
-                        }
-                    },
+                    onRemind = { toggleReminder(ev) },
                     onOpen = { nav.navigate("live?ch=${ev.channel.key}") },
                 )
             }
@@ -595,8 +809,8 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // older Replays (>6h ago). Same tap behaviour: pull from catch-up if the channel
         // supports it.
         val highlightWindow = 6 * 60 * 60_000L
-        val highlights = finished.filter { now - it.endMs <= highlightWindow }
-        val olderReplays = finished.filter { now - it.endMs > highlightWindow }
+        val highlights = finished.filter { now - it.event.endMs <= highlightWindow }
+        val olderReplays = finished.filter { now - it.event.endMs > highlightWindow }
         if (highlights.isNotEmpty()) {
             item {
                 SectionHeader(
@@ -605,23 +819,50 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     subtitle = "Finished in the last 6 hours",
                 )
             }
-            items(highlights, key = { "H-${it.channel.key}-${it.program.id}" }) { ev ->
+            items(highlights, key = { "H-${it.event.channel.key}-${it.event.program.id}" }) { fx ->
                 FinishedEventCard(
-                    ev, padHoriz = padHoriz,
-                    onReplay = { replay(ev) },
+                    fx.event, padHoriz = padHoriz,
+                    alsoOn = fx.alsoOn,
+                    onReplay = { replay(fx.event) },
                 )
             }
         }
         if (olderReplays.isNotEmpty()) {
             item { SectionHeader(Icons.Rounded.Replay, "REPLAYS", EnktelBlue, padHoriz, count = olderReplays.size) }
-            items(olderReplays, key = { "F-${it.channel.key}-${it.program.id}" }) { ev ->
+            items(olderReplays, key = { "F-${it.event.channel.key}-${it.event.program.id}" }) { fx ->
                 FinishedEventCard(
-                    ev, padHoriz = padHoriz,
-                    onReplay = { replay(ev) },
+                    fx.event, padHoriz = padHoriz,
+                    alsoOn = fx.alsoOn,
+                    onReplay = { replay(fx.event) },
                 )
             }
         }
     }
+}
+
+/**
+ * A followed team's fixtures first, in a feed that knows nothing about them.
+ *
+ * The live scoreboard and the published schedule come from TheSportsDB, which
+ * has its own idea of order — alphabetical by league, broadly — and they are
+ * the two rails at the top of the screen, which makes them the ones people
+ * scan. Leaving them alone while the EPG rails below pinned was half an
+ * answer, and half an answer to "I followed my team and nothing changed" is
+ * the same as none.
+ *
+ * A stable partition, like the rails': within each half the feed keeps its own
+ * order, which is the only order it has published.
+ */
+private fun pinByTeam(
+    fixtures: List<tv.enktel.app.data.repo.LiveScore>,
+    teams: List<String>,
+): List<tv.enktel.app.data.repo.LiveScore> {
+    if (teams.isEmpty() || fixtures.isEmpty()) return fixtures
+    val (mine, rest) = fixtures.partition { f ->
+        val haystack = "${f.home} ${f.away} ${f.league}"
+        teams.any { FixtureTeams.mentions(haystack, it) }
+    }
+    return mine + rest
 }
 
 /**
@@ -780,6 +1021,12 @@ internal fun LiveEventCard(
     now: Long,
     onTap: () -> Unit,
     onStats: (() -> Unit)? = null,
+    /** How many other lines carry this same fixture. See SportsFixture. */
+    alsoOn: Int = 0,
+    /** True when one of the viewer's followed teams is in it. */
+    following: Boolean = false,
+    /** Follow or unfollow the sides of this fixture; absent when it has none. */
+    onFollow: (() -> Unit)? = null,
 ) {
     val frac = ((now - ev.startMs).toFloat() / (ev.endMs - ev.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
     var cardFocused by remember { mutableStateOf(false) }
@@ -822,8 +1069,12 @@ internal fun LiveEventCard(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(ev.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(ev.channel.name, color = EnktelTextDim, fontSize = 11.sp)
+                    Text(
+                        ev.channel.name, color = EnktelTextDim, fontSize = 11.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
                 }
+                FollowStar(following, onFollow)
                 if (onStats != null) {
                     FocusIconButton(Icons.Rounded.Insights, "Match statistics", onClick = onStats)
                     Spacer(Modifier.width(8.dp))
@@ -843,8 +1094,10 @@ internal fun LiveEventCard(
             Spacer(Modifier.height(8.dp))
             ProgressBarThin(frac, Modifier.fillMaxWidth())
             Text(
-                "${hhmm(ev.startMs)} — ${hhmm(ev.endMs)}  ·  ${(now - ev.startMs) / 60_000}m in",
+                "${hhmm(ev.startMs)} — ${hhmm(ev.endMs)}  ·  ${(now - ev.startMs) / 60_000}m in" +
+                    feedsSuffix(alsoOn),
                 color = EnktelTextDim, fontSize = 11.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
@@ -860,6 +1113,25 @@ internal fun UpcomingEventCard(
     onSchedule: () -> Unit,
     onRemind: () -> Unit,
     onOpen: () -> Unit,
+    /** How many other lines carry this same fixture. See SportsFixture. */
+    alsoOn: Int = 0,
+    /** True when one of the viewer's followed teams is in it. */
+    following: Boolean = false,
+    /**
+     * True when a reminder is already set for this fixture.
+     *
+     * The bell had no state: it looked identical before and after, so the only
+     * way to find out whether it had worked was to press it again — which set
+     * a second one.
+     *
+     * Carried by the bell alone — struck through and accented — rather than
+     * also by a "REMINDER SET" badge, which is where this started: a third
+     * badge on a row that already holds the sport and the countdown has no
+     * room left on a 411dp handset, and it rendered one letter per line.
+     */
+    reminded: Boolean = false,
+    /** Follow or unfollow the sides of this fixture; absent when it has none. */
+    onFollow: (() -> Unit)? = null,
 ) {
     val inMs = ev.startMs - now
     val eta = when {
@@ -893,12 +1165,20 @@ internal fun UpcomingEventCard(
                 Spacer(Modifier.height(3.dp))
                 Text(ev.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${ev.channel.name}  ·  ${TimeFormat.format("EEE d MMM · HH:mm", ev.startMs)}",
+                    "${ev.channel.name}  ·  ${TimeFormat.format("EEE d MMM · HH:mm", ev.startMs)}" +
+                        feedsSuffix(alsoOn),
                     color = EnktelTextDim, fontSize = 11.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
             }
+            FollowStar(following, onFollow)
             Column(horizontalAlignment = Alignment.End) {
-                FocusIconButton(Icons.Rounded.NotificationsActive, "Remind me before kick-off", onClick = onRemind)
+                FocusIconButton(
+                    if (reminded) Icons.Rounded.NotificationsOff else Icons.Rounded.NotificationsActive,
+                    if (reminded) "Clear the reminder for this match" else "Remind me before kick-off",
+                    accent = reminded,
+                    onClick = onRemind,
+                )
                 Spacer(Modifier.height(4.dp))
                 // Was a bare "●", which is a dot. Nothing on the card said it
                 // meant "record this", and a dot beside a bell reads as a
@@ -910,7 +1190,13 @@ internal fun UpcomingEventCard(
 }
 
 @Composable
-internal fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.unit.Dp, onReplay: () -> Unit) {
+internal fun FinishedEventCard(
+    ev: SportsEvent,
+    padHoriz: androidx.compose.ui.unit.Dp,
+    onReplay: () -> Unit,
+    /** How many other lines carry this same fixture. See SportsFixture. */
+    alsoOn: Int = 0,
+) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var cardFocused by remember { mutableStateOf(false) }
     Surface(
@@ -934,13 +1220,21 @@ internal fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.un
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Badge("FT", EnktelOk)
                     SportBadge(ev.sport, EnktelTextDim)
+                    // An em-dash where a control belongs is not an answer, and
+                    // neither is a 52dp column of text wrapped to "No /
+                    // archive" beside the fixture's name. Said here, beside
+                    // the badge it replaces, because "why is this card here if
+                    // I cannot play it" was the actual question.
                     if (ev.channel.hasArchive) Badge("CATCH-UP", EnktelOk)
+                    else Badge("NO ARCHIVE", EnktelTextDim)
                 }
                 Spacer(Modifier.height(3.dp))
                 Text(ev.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${ev.channel.name} · ${TimeFormat.format("EEE d MMM HH:mm", ev.startMs)}",
+                    "${ev.channel.name} · ${TimeFormat.format("EEE d MMM HH:mm", ev.startMs)}" +
+                        feedsSuffix(alsoOn),
                     color = EnktelTextDim, fontSize = 11.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(6.dp))
                 // Highlights link-out — YouTube search intent using the event
@@ -953,20 +1247,147 @@ internal fun FinishedEventCard(ev: SportsEvent, padHoriz: androidx.compose.ui.un
                     runCatching { ctx.startActivity(intent) }
                 })
             }
-            // An em-dash where a control belongs is not an answer. A channel
-            // with no archive says so in words instead, because "why is this
-            // card here if I cannot play it" was the actual question.
             if (ev.channel.hasArchive) {
                 Icon(
                     Icons.Rounded.Replay, contentDescription = "Play from the start",
                     tint = EnktelOk, modifier = Modifier.size(24.dp),
                 )
-            } else {
+            }
+        }
+    }
+}
+
+/**
+ * "· on 2 more" — the other lines carrying this same fixture.
+ *
+ * The hub used to show one card per feed, so a playlist that carries a match
+ * on Main Event, on the league channel and again in SD filled LIVE NOW with
+ * three identical rows; on a real line, with SD/HD/FHD, a backup and one per
+ * country prefix, the rail was five rows deep before it reached the second
+ * match. They are folded into one card now, and this says so — both because a
+ * silent fold looks like missing channels, and because when a feed stalls the
+ * next thing anyone wants to know is whether there is another one.
+ *
+ * On a caption rather than in a badge beside LIVE and CRICKET, which is where
+ * this started: "+3 FEEDS" is too long for a row that already holds two badges
+ * on a 411dp handset, and it wrapped to "+3 FEED / S". The live card hangs it
+ * off the timing line rather than the channel name for the same reason — the
+ * timing line is full width, and the channel name shares its row with three
+ * controls.
+ *
+ * Empty at zero rather than "on 0 more": one feed is the common case, and a
+ * caption that usually ends in a zero is noise on every card.
+ */
+private fun feedsSuffix(alsoOn: Int): String =
+    if (alsoOn <= 0) "" else "  ·  +$alsoOn more ${if (alsoOn == 1) "feed" else "feeds"}"
+
+/**
+ * Follow the teams in this fixture, from the card they are printed on.
+ *
+ * Following was reachable only through Settings → Sports → a text field you
+ * had to spell the way the sports database does. The hub's own "my teams"
+ * filter then only appears once something is followed, so the feature was
+ * invisible from the one screen it exists for: you had to already know it was
+ * there to find out it was there.
+ *
+ * Absent rather than disabled when the title has no sides in it ("Matchday
+ * Live", "NFL RedZone"), because a control that does nothing is a worse answer
+ * than no control — see [FinishedEventCard]'s "No archive".
+ */
+@Composable
+private fun FollowStar(following: Boolean, onFollow: (() -> Unit)?) {
+    if (onFollow == null) return
+    FocusIconButton(
+        if (following) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+        if (following) "Stop following these teams" else "Follow these teams",
+        accent = following,
+        onClick = onFollow,
+    )
+    Spacer(Modifier.width(8.dp))
+}
+
+/**
+ * One reminder the viewer has set: the fixture, when it starts, and the way out.
+ *
+ * Tapping tunes to the channel, which is the point of having asked — by the
+ * time the alert arrives, "where was it on again" is the whole question. The ✕
+ * is here because it was nowhere: the bell wrote a row and scheduled a
+ * notification, and there was no screen in the app that could list or undo it.
+ */
+@Composable
+internal fun ReminderChip(
+    reminder: tv.enktel.app.data.db.MatchReminder,
+    now: Long,
+    onTap: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val inMs = reminder.startMs - now
+    // One word. "ON NOW" wrapped to two lines inside the badge the moment the
+    // chip was anything but its widest, which is a two-line badge above a
+    // two-line title on a card meant to be read at a glance.
+    val eta = when {
+        inMs <= 0 -> "now"
+        inMs < 60 * 60_000L -> "in ${(inMs / 60_000L).coerceAtLeast(1)}m"
+        inMs < 24 * 3600_000L -> "in ${inMs / 3600_000L}h ${inMs / 60_000L % 60}m"
+        else -> "in ${inMs / 86_400_000L}d"
+    }
+    val accent = if (inMs <= 0) EnktelLive else EnktelPurple
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onTap,
+        modifier = Modifier
+            // Fixed rather than a range: these sit in a rail, and a chip that
+            // gives up width to its neighbour hyphenates the fixture it is
+            // naming — "Arsen / al v …" — which is the one thing on it that
+            // has to be readable.
+            .width(238.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .sportsCardFocus(focused, accent)
+            .tapClick(onTap),
+        scale = noGrowScale(),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = EnktelSurfaceHigh.copy(0.5f),
+            focusedContainerColor = accent.copy(0.32f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(0.35f)),
+                shape = RoundedCornerShape(12.dp),
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        ),
+    ) {
+        Row(
+            Modifier.padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Badge(eta.uppercase(), accent)
+                }
+                Spacer(Modifier.height(5.dp))
                 Text(
-                    "No archive", color = EnktelTextDim, fontSize = 10.sp,
-                    modifier = Modifier.widthIn(max = 52.dp),
+                    reminder.title, color = Color.White, fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${TimeFormat.format("EEE HH:mm", reminder.startMs)}  ·  ${reminder.channelName}",
+                    color = EnktelTextDim, fontSize = 11.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
+            Spacer(Modifier.width(8.dp))
+            FocusIconButton(
+                Icons.Rounded.Close, "Clear this reminder",
+                onClick = onCancel,
+            )
         }
     }
 }
