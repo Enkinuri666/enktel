@@ -32,6 +32,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.components.BrowseSpot
 import tv.enktel.app.ui.components.rememberBrowsePosition
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import tv.enktel.app.ui.components.rememberRailPosition
 
 /**
  * Browsing should not start over every time you look at something.
@@ -236,5 +242,92 @@ class BrowsePositionTest {
         f.load()
 
         assertEquals(0, rule.runOnIdle { f.state.firstVisibleItemIndex })
+    }
+
+    // ---- the same screen, built out of rails -------------------------------
+
+    /**
+     * The Sports Hub's shape: a column of rails whose contents arrive late.
+     */
+    private class RailFixture(private val rule: androidx.compose.ui.test.junit4.ComposeContentTestRule) {
+        var loaded by mutableStateOf(false)
+        lateinit var state: LazyListState
+
+        @androidx.compose.runtime.Composable
+        fun Content(stateFor: @androidx.compose.runtime.Composable (Int) -> LazyListState) {
+            val count = if (loaded) RAILS else 0
+            state = stateFor(count)
+            LazyColumn(
+                state = state,
+                modifier = Modifier.fillMaxWidth().height(400.dp).testTag(TAG),
+            ) {
+                items(count) { Box(Modifier.fillMaxWidth().height(90.dp)) }
+            }
+        }
+
+        fun load() {
+            rule.runOnIdle { loaded = true }
+            rule.waitForIdle()
+        }
+
+        companion object {
+            const val RAILS = 60
+            const val TAG = "rails"
+        }
+    }
+
+    @Test
+    fun `a hub of rails comes back where it was`() {
+        // Tuning to a channel, opening the Match Centre or watching a replay
+        // all leave the Sports Hub, and the EPG scan that fills it takes a
+        // second or two to come back — so the restored offset is measured away
+        // against an empty list before the fixtures land. Scrolling past LIVE
+        // SCORES, ON TODAY and HIGHLIGHTS to reach the replays, watching one,
+        // and being returned to the top is the browse complaint in another
+        // room.
+        val restorer = StateRestorationTester(rule)
+        val f = RailFixture(rule)
+        restorer.setContent { f.Content { count -> rememberRailPosition(signature, count) } }
+
+        f.load()
+        rule.onNodeWithTag(RailFixture.TAG).performScrollToIndex(30)
+        rule.waitForIdle()
+        val wasAt = rule.runOnIdle { f.state.firstVisibleItemIndex }
+        assertTrue("the test needs to have scrolled somewhere", wasAt > 0)
+
+        rule.runOnIdle { f.loaded = false }
+        restorer.emulateSavedInstanceStateRestore()
+        f.load()
+
+        assertEquals(wasAt, rule.runOnIdle { f.state.firstVisibleItemIndex })
+    }
+
+    @Test
+    fun `a plain list state loses it too`() {
+        // The negative control, for the same reason as the grid's.
+        val restorer = StateRestorationTester(rule)
+        val f = RailFixture(rule)
+        restorer.setContent { f.Content { rememberLazyListState() } }
+
+        f.load()
+        rule.onNodeWithTag(RailFixture.TAG).performScrollToIndex(30)
+        rule.waitForIdle()
+        assertTrue(rule.runOnIdle { f.state.firstVisibleItemIndex } > 0)
+
+        rule.runOnIdle { f.loaded = false }
+        restorer.emulateSavedInstanceStateRestore()
+        f.load()
+
+        assertEquals(0, rule.runOnIdle { f.state.firstVisibleItemIndex })
+    }
+
+    @Test
+    fun `picking a different sport starts that rail at its own top`() {
+        // The signature is the sport filter and the my-teams toggle. A
+        // position recorded under one is meaningless under another.
+        val saved = BrowseSpot.Spot("Football\u0001false", 12, 40)
+        assertNull(BrowseSpot.target(saved, "Cricket\u0001false", 60))
+        assertNull(BrowseSpot.target(saved, "Football\u0001true", 60))
+        assertEquals(12, BrowseSpot.target(saved, "Football\u0001false", 60)?.index)
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +91,10 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     var loading by remember { mutableStateOf(true) }
     var rows by remember { mutableStateOf<List<SportsRepository.LiveSportsChannel>>(emptyList()) }
     var scores by remember { mutableStateOf<List<LiveScore>>(emptyList()) }
-    var sportFilter by remember { mutableStateOf<String?>(null) }
+    // Saveable for the same reason as the hub's: every row on this screen
+    // tunes away, and coming back to "All sports" having picked one is the
+    // screen forgetting what it was asked.
+    var sportFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
 
