@@ -39,6 +39,18 @@ data class StreamStats(
     val droppedFrames: Int = 0,
     val bufferAheadMs: Long = 0,
     val decoder: String = "",
+    /**
+     * Playback speed right now.
+     *
+     * On the overlay so that [LiveBufferPacer] easing off is something a
+     * tester can see rather than something they have to take on trust. A
+     * cushion being rebuilt and a connection that is merely slow look
+     * identical from the outside, which is how the missing cushion on raw TS
+     * went unnoticed for as long as it did.
+     */
+    val playbackSpeed: Float = 1f,
+    /** True while the pacer is below 1× rebuilding the live cushion. */
+    val rebuildingCushion: Boolean = false,
 )
 
 /**
@@ -367,6 +379,86 @@ class PlayerEngine(
             bufferingSinceMs = 0L
             reconnectStream()
         }
+    }
+
+    /**
+     * Keeps a live cushion alive on a stream that arrives at 1×.
+     *
+     * Runs on the player's own handler, not on the screen's one-second stats
+     * ticker: [LivePlayerScreen] stops pushing the moment the player goes into
+     * picture-in-picture, the dock or background audio, and those are exactly
+     * the long unattended sessions where a cushion that only ratchets down
+     * matters most. See [LiveBufferPacer] for why playing fractionally slow is
+     * the only lever a progressive live stream leaves.
+     */
+    private val pacerTick: Runnable = Runnable { pace() }
+
+    /** What the pacer last asked for; not read back from the player, which
+     *  reports the speed the renderers settled on rather than the request. */
+    private var pacedSpeed: Float = LiveBufferPacer.NORMAL_SPEED
+
+    private fun pace() {
+        if (!live) return
+        playerHandler.removeCallbacks(pacerTick)
+        playerHandler.postDelayed(pacerTick, LiveBufferPacer.TICK_MS)
+        val window = activeWindow ?: return
+        // Media3 paces HLS and DASH itself, off the live edge, which is the
+        // better signal when there is one. Two controllers writing the speed
+        // would fight.
+        if (media3IsPacing()) {
+            // Hand the speed back, not just the bookkeeping. One engine can
+            // play both shapes — an extensionless URL that failed as TS is
+            // retried as HLS on the same player — so this is reachable with
+            // the speed already eased off, and leaving 0.97 set while another
+            // controller believes it owns the speed is how a channel ends up
+            // permanently slow.
+            restoreNormalSpeed()
+            return
+        }
+        // A paused or stalled player is not spending buffer, and a speed set
+        // while it is not running tells us nothing about whether the cushion
+        // recovered. Decide only on evidence.
+        if (!player.isPlaying) return
+        val want = LiveBufferPacer.speedFor(
+            bufferedMs = player.totalBufferedDuration.coerceAtLeast(0),
+            currentSpeed = pacedSpeed,
+            window = window,
+        )
+        if (want != pacedSpeed) {
+            pacedSpeed = want
+            player.setPlaybackSpeed(want)
+        }
+    }
+
+    /** The three conditions Media3 checks before using its own live control. */
+    private fun media3IsPacing(): Boolean {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return false
+        return try {
+            val w = timeline.getWindow(player.currentMediaItemIndex, androidx.media3.common.Timeline.Window())
+            LiveBufferPacer.media3PacesThis(w.isLive(), w.isDynamic, w.windowStartTimeMs)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * Back to 1×, and stop pacing.
+     *
+     * Called before every new stream and on release. A speed left at 0.97
+     * would otherwise be inherited by the next channel — which may well be an
+     * HLS one that Media3 is about to start pacing itself — and by anything
+     * that reads the player afterwards.
+     */
+    private fun resetPacing() {
+        playerHandler.removeCallbacks(pacerTick)
+        restoreNormalSpeed()
+    }
+
+    private fun restoreNormalSpeed() {
+        if (pacedSpeed == LiveBufferPacer.NORMAL_SPEED) return
+        pacedSpeed = LiveBufferPacer.NORMAL_SPEED
+        runCatching { player.setPlaybackSpeed(LiveBufferPacer.NORMAL_SPEED) }
     }
 
     private fun scheduleStallCheck() {
@@ -953,6 +1045,9 @@ class PlayerEngine(
                             playingSinceMs = System.currentTimeMillis()
                         }
                         classifySeekSupport()
+                        // Idempotent: pace() re-posts itself, and the first
+                        // call simply starts the loop.
+                        if (live) pace()
                     }
                     Player.STATE_BUFFERING -> {
                         if (bufferingSinceMs == 0L) bufferingSinceMs = System.currentTimeMillis()
@@ -1101,6 +1196,8 @@ class PlayerEngine(
             bandwidthEstimate = bandwidthMeter.bitrateEstimate,
             droppedFrames = dropped,
             bufferAheadMs = (player.totalBufferedDuration).coerceAtLeast(0),
+            playbackSpeed = pacedSpeed,
+            rebuildingCushion = LiveBufferPacer.isRebuilding(pacedSpeed),
         )
         // Mirror to the process-wide snapshot the system monitor reads, so
         // playback health is visible from Settings without this screen being
@@ -1263,6 +1360,7 @@ class PlayerEngine(
         isLiveStream = live
         playingSinceMs = 0L
         bufferingSinceMs = 0L
+        resetPacing()
         val builder = MediaItem.Builder().setUri(url).apply {
             // Pin the MIME type when the caller asked us to skip container
             // auto-detection (Force MP4 fallback etc). Media3 uses this
@@ -1632,6 +1730,7 @@ class PlayerEngine(
     }
 
     fun release() {
+        resetPacing()
         playerHandler.removeCallbacksAndMessages(null)
         loudness?.release(); loudness = null
         dialogueFx?.release(); dialogueFx = null
