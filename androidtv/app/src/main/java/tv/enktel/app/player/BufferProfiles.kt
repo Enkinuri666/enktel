@@ -57,7 +57,8 @@ object BufferProfiles {
     const val LIVE_MAX_CEILING_MS = 15_000
 
     /**
-     * How far behind the live edge a live stream plays.
+     * How far behind the live edge a live stream plays — **on HLS and DASH
+     * only**.
      *
      * Nothing set this before, so the player sat wherever the provider's
      * playlist put it — which on IPTV panels is routinely a second or less.
@@ -75,6 +76,17 @@ object BufferProfiles {
      * Media3 clamps the request to what the live window can actually support,
      * so a panel with a short playlist gets as much offset as it has rather
      * than a request to seek behind content that has already rolled off.
+     *
+     * ### What this does not reach
+     *
+     * A raw MPEG-TS channel gets none of it. `ProgressiveMediaSource` builds a
+     * timeline that is live but not dynamic and has no wall-clock anchor, and
+     * `ExoPlayerImplInternal.shouldUseLivePlaybackSpeedControl` requires all
+     * three before it will look at a `LiveConfiguration` at all — so the
+     * offset and the 0.97–1.03 speed range are attached to every live
+     * MediaItem and then discarded on most of them. [LiveBufferPacer] is the
+     * equivalent for those streams, driven by the buffer level rather than by
+     * a live edge that a progressive stream does not have.
      *
      * One number to change if the balance is ever wrong — and worth knowing
      * that the "low" buffer profile exists for viewers who complain about
@@ -120,19 +132,37 @@ object BufferProfiles {
     /**
      * Live: stay near the edge, start fast, never outrun the provider's
      * segment window.
+     *
+     * ### Why live resumes from a stall with the full cushion
+     *
+     * `rebufMs` is what the player waits for *after a stall*, and on live it
+     * is set to the whole of `minMs` rather than a fraction of it. That looks
+     * like making stalls worse and is the opposite.
+     *
+     * A raw TS channel arrives at exactly playback rate (see
+     * [LiveBufferPacer]), so a player that resumes with two and a half
+     * seconds in hand holds two and a half seconds for as long as the channel
+     * is on: there is no surplus bandwidth to earn more with. The next dip
+     * spends it and stalls again. Resuming at the level the load control calls
+     * healthy costs a second or so more on the one stall and buys a margin
+     * that survives the next dip — one pause instead of five, which is the
+     * complaint this answers.
+     *
+     * It costs nothing at tune-in. Time-to-first-frame is `playMs`, which is
+     * untouched, so zapping stays as fast as it was.
      */
     private fun liveWindow(profile: String, isTv: Boolean): Window = when (profile) {
         // Lowest latency. For sport, and for the users who complain about
         // being behind the broadcast.
-        "low" -> Window(minMs = 2_000, maxMs = 8_000, playMs = 500, rebufMs = 1_500)
+        "low" -> Window(minMs = 2_000, maxMs = 8_000, playMs = 500, rebufMs = 2_000)
         // Most tolerant of a bad line, still inside the segment window.
-        "large" -> Window(minMs = 6_000, maxMs = 15_000, playMs = 1_500, rebufMs = 3_000)
+        "large" -> Window(minMs = 6_000, maxMs = 15_000, playMs = 1_500, rebufMs = 6_000)
         else -> if (isTv) {
-            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_000, rebufMs = 2_000)
+            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_000, rebufMs = 4_000)
         } else {
             // A phone changes networks mid-stream in a way a set-top box does
             // not, so it starts a little more conservatively.
-            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_200, rebufMs = 2_500)
+            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_200, rebufMs = 4_000)
         }
     }
 

@@ -1184,7 +1184,21 @@ private fun StatsOverlay(
             else -> "${net / 1000} kbps"
         }
         Text("Network  $netLabel est.", color = Color.White, fontSize = 12.sp)
-        Text("Buffer  ${s.bufferAheadMs / 1000}.${s.bufferAheadMs % 1000 / 100}s ahead", color = Color.White, fontSize = 12.sp)
+        // The buffer, and — when it is being rebuilt — what is being done
+        // about it. A live cushion that is recovering and a connection that is
+        // merely slow look identical from a single number, which is how a
+        // missing cushion on every raw-TS channel stayed invisible. See
+        // LiveBufferPacer.
+        val cushion = if (s.rebuildingCushion) {
+            "  ·  rebuilding at %.2f×".format(s.playbackSpeed)
+        } else {
+            ""
+        }
+        Text(
+            "Buffer  ${s.bufferAheadMs / 1000}.${s.bufferAheadMs % 1000 / 100}s ahead$cushion",
+            color = if (s.rebuildingCushion) EnktelBlue else Color.White,
+            fontSize = 12.sp,
+        )
         Text("Dropped frames  ${s.droppedFrames}", color = Color.White, fontSize = 12.sp)
         Text("Decoder  ${s.decoder.ifBlank { "—" }}  ·  ${format.uppercase()}", color = Color.White, fontSize = 12.sp)
     }
