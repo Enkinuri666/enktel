@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
@@ -83,7 +82,6 @@ import androidx.tv.material3.Icon
 import tv.enktel.app.ui.components.FocusIconButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,6 +106,7 @@ import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.LocalToaster
 import tv.enktel.app.ui.components.ProgressBarThin
+import tv.enktel.app.ui.components.focusLift
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
@@ -984,9 +983,9 @@ private fun Modifier.sportsCardFocus(
         label = "sportsCardLift",
     )
     return this
-        // See PosterCard: the lambda overload keeps an animated offset in the
-        // layout phase rather than recomposing on every frame.
-        .offset { IntOffset(0, lift.roundToPx()) }
+        // See focusLift: drawn rather than laid out, so a focused card does
+        // not become a DOWN target for its own neighbours.
+        .focusLift(lift)
         .shadow(
             elevation = elevation,
             shape = RoundedCornerShape(16.dp),

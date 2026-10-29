@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,7 +60,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
@@ -397,12 +395,12 @@ fun PosterCard(
         onClick = { NavSounds.open(); onClick() },
         modifier = modifier
             .width(w)
-            // Lambda overload on purpose: `lift` is an animated state, and the
-            // non-lambda `offset(y =)` reads it during composition, so every
-            // frame of a focus animation recomposes the card. The lambda is
-            // read in the layout phase instead, which on a rail of thirty
-            // posters is the difference between a smooth lift and a stutter.
-            .offset { IntOffset(0, lift.roundToPx()) }
+            // Drawn, not laid out. An `offset` here moves the card's focus
+            // rect as well as its picture, which makes the cards either side
+            // of a focused one count as "below" it and leaves a D-pad
+            // ping-ponging along the rail instead of reaching the next one.
+            // See focusLift.
+            .focusLift(lift)
             // NB: no .shadow() here. This is the misaligned "glowing box".
             //
             // tv-material applies focusedScale to the Surface's own graphics
