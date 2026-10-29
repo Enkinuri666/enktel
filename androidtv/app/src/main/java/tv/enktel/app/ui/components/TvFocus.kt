@@ -8,6 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -135,6 +139,54 @@ fun Modifier.tvGridFocus(): Modifier = this.focusRestorer()
  * requester and attaches it to the right cell.
  */
 fun Modifier.tvGridFocus(entry: FocusRequester): Modifier = this.focusRestorer(entry)
+
+/**
+ * The focus lift: a card that rises when focused, without moving.
+ *
+ * ### Why DOWN stopped working on a television
+ *
+ * > On TV users are unable to navigate downwards with the remote.
+ *
+ * Every card in the app rises 6 dp when it takes focus — posters, the Home
+ * category tiles, the Sports cards. It was written as
+ * `Modifier.offset { IntOffset(0, lift.roundToPx()) }`, which moves the card
+ * in the **layout** phase, and a card's layout bounds are exactly what
+ * Compose's directional focus search scores candidates against.
+ *
+ * So a focused card sits 6 dp higher than the unfocused cards either side of
+ * it — which makes those neighbours, geometrically, *below* it. Press DOWN
+ * and the search quite correctly picks the card to the right: it is six
+ * pixels lower. That card then takes focus and lifts, the first one drops,
+ * and the next DOWN press sends focus straight back. The result is a remote
+ * that ping-pongs between the first two cards of a rail and can never reach
+ * the rail underneath — the whole of Home, below the first row, unreachable.
+ *
+ * `focusGroup` does not save it (see [tvRailFocus]): a group makes the rail
+ * one stop for a search arriving from outside, but a search that *starts*
+ * inside the rail still considers the rail's own members first, and the lift
+ * hands it one that looks like a legitimate answer.
+ *
+ * ### Why this is drawn rather than laid out
+ *
+ * `graphicsLayer { translationY = … }` looks like the obvious fix and is not:
+ * a layer transform is reported through `LayoutCoordinates` too, so the focus
+ * rect moves with it and the ping-pong is identical. Measured, not assumed —
+ * both are in [tv.enktel.app.RemoteFocusLiftTest].
+ *
+ * `drawWithContent` with a translated draw does not go through layout at all.
+ * The pixels move; the card's bounds, and therefore its focus rect, do not.
+ * Visually it is the same lift it always was.
+ *
+ * Place it exactly where the old `offset` was — ahead of `shadow`, so the
+ * shadow still travels with the card.
+ */
+fun Modifier.focusLift(lift: Dp): Modifier = this.drawWithContent {
+    if (lift == 0.dp) {
+        drawContent()
+    } else {
+        translate(top = lift.toPx()) { this@drawWithContent.drawContent() }
+    }
+}
 
 /**
  * Makes a list of *unfocusable* content scrollable with the D-pad.

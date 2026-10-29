@@ -37,8 +37,16 @@ import androidx.compose.ui.graphics.graphicsLayer
  *     caller can react to focus (used by the backdrop-crossfade rig in
  *     phase 2).
  *
- * Each keeps the underlying view laid out at 1× — only the visual scale
- * changes, so scrolling and focus target rects stay stable.
+ * Each keeps the underlying view laid out at 1×, so scrolling stays stable.
+ *
+ * It does **not** keep the focus target rect stable, which this said until a
+ * remote could not navigate down the Home screen. A `graphicsLayer`
+ * transform is reported back through `LayoutCoordinates`, so Compose's
+ * directional focus search sees the scaled bounds: a focused card's top edge
+ * rises, which can make the unscaled card beside it count as "below" and send
+ * a DOWN press sideways. See `Modifier.focusLift` and RemoteFocusLiftTest,
+ * where that is measured. Nothing calls these three today; if something does
+ * again, it needs the same treatment as the lift.
  */
 // v1.35.0 — the scale target now comes from the active palette
 // (EnktelFocusScale) rather than a constant here, so a theme owns its own

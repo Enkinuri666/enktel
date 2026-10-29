@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,13 +39,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import tv.enktel.app.ui.components.focusLift
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.components.tvRailFocus
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -173,7 +172,9 @@ private fun CategoryTile(c: HomeCategory, compact: Boolean, onClick: () -> Unit)
         modifier = Modifier
             .width(w)
             .height(h)
-            .offset { IntOffset(0, lift.roundToPx()) }
+            // Drawn rather than laid out, so the lift cannot turn the tile
+            // beside this one into a DOWN target. See focusLift.
+            .focusLift(lift)
             .shadow(
                 elevation = elevation,
                 shape = RoundedCornerShape(16.dp),
