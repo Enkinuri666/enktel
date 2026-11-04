@@ -551,6 +551,16 @@ interface DownloadDao {
     suspend fun markFailed(id: String, err: String, status: String = "FAILED", now: Long = System.currentTimeMillis())
     @Query("SELECT COALESCE(SUM(downloadedBytes), 0) FROM downloads") suspend fun totalBytes(): Long
 
+    /**
+     * Downloads waiting for a slot, oldest first.
+     *
+     * Only the parallel engine queues here: a system-engine row is handed to
+     * the platform DownloadManager, which runs its own queue and needs no
+     * help from ours. See DownloadBudget for why there is a queue at all.
+     */
+    @Query("SELECT * FROM downloads WHERE status = 'QUEUED' AND engine = 'parallel' ORDER BY addedAt LIMIT :limit")
+    suspend fun queuedParallel(limit: Int): List<DownloadEntry>
+
     // ---- pause / resume ---------------------------------------------------
 
     @Query("UPDATE downloads SET status = :status, updatedAt = :now WHERE id = :id")

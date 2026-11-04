@@ -19,6 +19,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
@@ -59,8 +61,6 @@ class DownloadHub(
         const val NOTIFICATION_CHANNEL_NAME = "Downloads"
         private const val POLL_INTERVAL_MS = 1_500L
         private const val UA = tv.enktel.app.DEFAULT_UA
-        /** Used when the panel doesn't report a connection cap. */
-        private const val DEFAULT_STREAMS = 4
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -74,6 +74,14 @@ class DownloadHub(
     private val sysJobs = mutableMapOf<String, Long>()
     private val parallelJobs = mutableMapOf<String, ParallelDownloader.Handle>()
     private val jobsLock = Any()
+    /**
+     * Serialises admission.
+     *
+     * Two downloads finishing in the same breath would otherwise both see the
+     * same free slot and both take it, which is the stampede this gate exists
+     * to prevent, in miniature.
+     */
+    private val pumpMutex = Mutex()
     private var poll: Job? = null
 
     /** Last percentage the rail totals were recomputed at, so a whole-table
@@ -222,6 +230,17 @@ class DownloadHub(
         scope.launch {
             val existing = dao.byId(entry.id)
             if (existing != null && existing.status == "DONE") return@launch
+            // Already in flight. Without this the row would be rewritten to
+            // QUEUED underneath its own running job, [pump] would pick it up
+            // as waiting, and the same file would be downloaded twice into
+            // the same target — the second handle replacing the first in
+            // [parallelJobs], so nothing could even stop the orphan.
+            // `resume` has always checked this; `enqueue` did not need to
+            // until enqueuing stopped meaning starting.
+            val inFlight = synchronized(jobsLock) {
+                parallelJobs.containsKey(entry.id) || sysJobs.containsKey(entry.id)
+            }
+            if (inFlight) return@launch
 
             // Park rather than fail. A download that silently does nothing is
             // the worst outcome here — the row states plainly why it's waiting,
@@ -246,11 +265,41 @@ class DownloadHub(
                 (engine == "auto" && chosenFolderUri.isBlank())
             val forceSystem = !useSaf && engine == "system"
 
-            when {
-                useSaf -> enqueueParallelSaf(entry, chosenFolderUri)
-                forceSystem -> enqueueSystem(entry)
-                forceParallel -> enqueueParallelFile(entry)
-                else -> enqueueParallelFile(entry) // fallback
+            if (forceSystem && !useSaf) {
+                enqueueSystem(entry)
+                return@launch
+            }
+            // Everything else is ours to schedule. Park it and let [pump]
+            // decide when the line has room — see DownloadBudget for why
+            // starting all of them, which is what this used to do, is how a
+            // season download ends up slower than a single episode.
+            dao.upsert(entry.copy(status = "QUEUED", engine = "parallel", errorMessage = ""))
+            pump()
+        }
+    }
+
+    /**
+     * Start whatever the line has room for, oldest first.
+     *
+     * Called whenever the picture changes: something enqueued, something
+     * resumed, something finished, failed or paused. Idempotent and cheap —
+     * with no free slot it is one count and one arithmetic call. Serialised
+     * on [pumpMutex].
+     */
+    private suspend fun pump() {
+        pumpMutex.withLock {
+            while (true) {
+                val next = dao.queuedParallel(1).firstOrNull() ?: return
+                // The cap belongs to the line, so it is read from the entry
+                // about to start rather than from a profile chosen elsewhere.
+                val plan = DownloadBudget.plan(maxConnectionsFor(next.profileId))
+                val running = synchronized(jobsLock) { parallelJobs.size }
+                if (DownloadBudget.slotsFree(plan, running) <= 0) return
+                // startParallel registers the job before it returns, so the
+                // next turn of this loop counts it. When it cannot start at
+                // all the row is already FAILED and no longer queued, so the
+                // loop moves on rather than spinning on it.
+                startParallel(next, plan.streamsEach)
             }
         }
     }
@@ -303,28 +352,11 @@ class DownloadHub(
             }
             if (alreadyRunning) return@launch
 
-            val folderUri = settings.downloadFolderUriNow()
-            val useSaf = folderUri.isNotBlank() && folderUri.startsWith("content://")
-            if (useSaf && entry.filePath.startsWith("content://")) {
-                dao.upsert(entry.copy(status = "RUNNING", errorMessage = ""))
-                val doc = runCatching { DocumentFile.fromSingleUri(app, entry.filePath.toUri()) }.getOrNull()
-                if (doc != null && doc.canWrite()) {
-                    launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc), entry.resumeState)
-                    return@launch
-                }
-                // The picked file vanished (folder permission revoked, user
-                // deleted it) — fall through and start a fresh one.
-                enqueueParallelSaf(entry.copy(resumeState = ""), folderUri)
-                return@launch
-            }
-            val outFile = if (entry.filePath.isNotBlank() && !entry.filePath.startsWith("content://")) {
-                File(entry.filePath)
-            } else plannedFileFor(entry)
-            outFile.parentFile?.mkdirs()
-            // A resume blob is only meaningful while its partial file is intact.
-            val state = if (outFile.exists()) entry.resumeState else ""
-            dao.upsert(entry.copy(status = "RUNNING", errorMessage = "", filePath = outFile.absolutePath))
-            launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile), state)
+            // Queued, not started. Resuming ten downloads at once is the same
+            // stampede as enqueuing ten, and it is the thing viewers were
+            // doing by hand to get their speed back.
+            dao.upsert(entry.copy(status = "QUEUED", engine = "parallel", errorMessage = ""))
+            pump()
         }
     }
 
@@ -374,31 +406,72 @@ class DownloadHub(
         startPolling()
     }
 
-    // ---- Parallel engine (file target) -------------------------------------
+    // ---- Parallel engine ----------------------------------------------------
 
-    private suspend fun enqueueParallelFile(entry: DownloadEntry) {
-        val outFile = plannedFileFor(entry)
+    /**
+     * Resolve a queued row's target and put it in flight.
+     *
+     * One starter for the three paths that used to each have their own: a
+     * fresh file download, a fresh SAF download, and a resume of either. They
+     * only ever differed in how the target is found, and keeping them apart
+     * meant the admission gate would have had to be written three times —
+     * which is how an entry slips past one of them.
+     *
+     * @return true when a job was registered, false when the row was failed
+     *   instead (unwritable folder, no space). Either way the row is no longer
+     *   QUEUED, so [pump] can move on.
+     */
+    private suspend fun startParallel(entry: DownloadEntry, streams: Int): Boolean {
+        val folderUri = settings.downloadFolderUriNow()
+        val useSaf = folderUri.isNotBlank() && folderUri.startsWith("content://")
+
+        if (useSaf) {
+            // Reuse the file a previous attempt created, so a resume appends
+            // to its own partial rather than starting a second copy beside it.
+            val existing = entry.filePath
+                .takeIf { it.startsWith("content://") }
+                ?.let { runCatching { DocumentFile.fromSingleUri(app, it.toUri()) }.getOrNull() }
+                ?.takeIf { it.canWrite() }
+            if (existing != null) {
+                dao.upsert(entry.copy(status = "RUNNING", engine = "parallel", errorMessage = ""))
+                launchParallel(entry, ParallelDownloader.Target.SafTarget(app, existing), entry.resumeState, streams)
+                return true
+            }
+            val tree = runCatching { DocumentFile.fromTreeUri(app, folderUri.toUri()) }.getOrNull()
+            if (tree == null || !tree.canWrite()) {
+                dao.markFailed(entry.id, "Chosen folder is unwritable")
+                return false
+            }
+            val doc = createSafFile(tree, entry) ?: run {
+                dao.markFailed(entry.id, "Could not create file in chosen folder")
+                return false
+            }
+            // The picked file vanished, so whatever offsets were recorded
+            // describe bytes that are no longer anywhere.
+            dao.upsert(
+                entry.copy(
+                    status = "RUNNING", engine = "parallel", errorMessage = "",
+                    filePath = doc.uri.toString(), resumeState = "",
+                ),
+            )
+            launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc), "", streams)
+            return true
+        }
+
+        val outFile = if (entry.filePath.isNotBlank() && !entry.filePath.startsWith("content://")) {
+            File(entry.filePath)
+        } else plannedFileFor(entry)
         outFile.parentFile?.mkdirs()
-        dao.upsert(entry.copy(status = "RUNNING", engine = "parallel", filePath = outFile.absolutePath))
-        launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile), entry.resumeState)
-    }
-
-    // ---- Parallel engine (SAF target) --------------------------------------
-
-    private suspend fun enqueueParallelSaf(entry: DownloadEntry, treeUriStr: String) {
-        val tree = try {
-            DocumentFile.fromTreeUri(app, treeUriStr.toUri())
-        } catch (t: Throwable) { null }
-        if (tree == null || !tree.canWrite()) {
-            dao.upsert(entry.copy(status = "FAILED", errorMessage = "Chosen folder is unwritable"))
-            return
-        }
-        val doc = createSafFile(tree, entry) ?: run {
-            dao.upsert(entry.copy(status = "FAILED", errorMessage = "Could not create file in chosen folder"))
-            return
-        }
-        dao.upsert(entry.copy(status = "RUNNING", engine = "parallel", filePath = doc.uri.toString()))
-        launchParallel(entry, ParallelDownloader.Target.SafTarget(app, doc), entry.resumeState)
+        // A resume blob is only meaningful while its partial file is intact.
+        val state = if (outFile.exists()) entry.resumeState else ""
+        dao.upsert(
+            entry.copy(
+                status = "RUNNING", engine = "parallel", errorMessage = "",
+                filePath = outFile.absolutePath,
+            ),
+        )
+        launchParallel(entry, ParallelDownloader.Target.FileTarget(outFile), state, streams)
+        return true
     }
 
     private fun createSafFile(root: DocumentFile, entry: DownloadEntry): DocumentFile? {
@@ -447,23 +520,19 @@ class DownloadHub(
      * keep the default, and the adaptive throttle still backs off if the host
      * turns out to be stricter than advertised.
      */
-    private suspend fun streamsFor(profileId: Long): Int {
-        val maxConn = try { profiles.byId(profileId)?.maxConnections ?: 0 } catch (_: Throwable) { 0 }
-        return when {
-            maxConn <= 0 -> DEFAULT_STREAMS
-            maxConn == 1 -> 1
-            else -> (maxConn - 1).coerceIn(1, DEFAULT_STREAMS)
-        }
-    }
+    /** The line's published connection cap, or 0 when it publishes none. */
+    private suspend fun maxConnectionsFor(profileId: Long): Int =
+        try { profiles.byId(profileId)?.maxConnections ?: 0 } catch (_: Throwable) { 0 }
 
     private fun launchParallel(
         entry: DownloadEntry,
         target: ParallelDownloader.Target,
         resumeState: String = "",
+        /** Range workers this download may open — its share of the line. */
+        streams: Int,
     ) {
         val id = entry.id
         scope.launch {
-        val streams = streamsFor(entry.profileId)
         val handle = parallel.start(
             url = entry.sourceUrl,
             target = target,
@@ -505,6 +574,7 @@ class DownloadHub(
                     syncKeepAlive()
                     clearRate(id)
                     refreshTotals()
+                    pump()
                 }
             },
             onError = { msg ->
@@ -513,6 +583,7 @@ class DownloadHub(
                     synchronized(jobsLock) { parallelJobs.remove(id) }
                     syncKeepAlive()
                     clearRate(id)
+                    pump()
                 }
             },
             onPaused = { downloaded, total, state ->
@@ -523,6 +594,7 @@ class DownloadHub(
                     syncKeepAlive()
                     clearRate(id)
                     refreshTotals()
+                    pump()
                 }
             },
         )

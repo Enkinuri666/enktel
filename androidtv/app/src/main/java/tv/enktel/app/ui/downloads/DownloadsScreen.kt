@@ -420,7 +420,12 @@ private fun DownloadRow(
                 "PAUSED" -> if (entry.errorMessage.startsWith("Waiting for Wi-Fi")) {
                     "${entry.errorMessage} · $doneText / $sizeText"
                 } else "Paused · $doneText / $sizeText · ▶ resumes here"
-                else -> "Queued · $sizeText"
+                // Named, not just "Queued". The whole reason downloads now
+                // wait is that starting them all made every one of them slow,
+                // and a viewer who cannot see why a row is idle is a viewer
+                // who starts pausing and resuming by hand — which is the habit
+                // this queue exists to make unnecessary. See DownloadBudget.
+                else -> "Waiting for a free connection · $sizeText"
             }
             Text(statusLine, color = statusColor, fontSize = 11.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)

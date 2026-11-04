@@ -462,6 +462,7 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
             // the System Monitor screen asks it to — see SystemMonitor.start().
             startupStep("system monitor") { tv.enktel.app.data.net.SystemMonitor.install(this) }
             startupStep("epg schedule") { tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this) }
+            startupStep("epg on launch") { refreshGuideIfStale() }
             // Built here rather than left to the Downloads screen.
             //
             // DownloadHub's constructor is not just allocation: it reconciles
@@ -490,6 +491,48 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
      * fails. Deliberately not silent — a swallowed exception that nobody can
      * see is how a real fault turns into a mystery.
      */
+    /**
+     * Fetch the guide when the app opens, if it is old enough to be worth it.
+     *
+     * The guide used to be refreshed on a playlist's very first sync and then
+     * only by WorkManager's twelve-hour job — which a television in standby
+     * between evenings may go days without running — or by the button in
+     * Settings. Viewers were pressing that button, which is the report this
+     * answers. [tv.enktel.app.data.epg.EpgFreshness] holds the decision and
+     * says why it is not simply "every launch".
+     *
+     * Off the first-frame path (this runs from the idle handler) and entirely
+     * best-effort: a guide that fails to refresh leaves the one already
+     * stored, which since EpgRepository.refresh stopped clearing up front is
+     * now actually true.
+     */
+    private fun refreshGuideIfStale() {
+        graph.appScope.launch {
+            try {
+                val profile = graph.playlists.activeProfile() ?: return@launch
+                val last = graph.settings.epgLastSync()
+                val empty = graph.db.epgDao().count(profile.id) == 0
+                if (!tv.enktel.app.data.epg.EpgFreshness.shouldRefreshOnLaunch(
+                        lastSyncMs = last,
+                        nowMs = System.currentTimeMillis(),
+                        catalogueSynced = profile.lastSync != 0L,
+                        guideEmpty = empty,
+                    )
+                ) {
+                    return@launch
+                }
+                graph.epg.refresh(profile)
+                graph.settings.setEpgLastSync(System.currentTimeMillis())
+            } catch (ce: kotlinx.coroutines.CancellationException) {
+                throw ce
+            } catch (_: Throwable) {
+                // A panel that cannot be reached on launch is not an error to
+                // show anyone: the stored guide is still there, and the next
+                // launch or the periodic worker will try again.
+            }
+        }
+    }
+
     private inline fun startupStep(name: String, block: () -> Unit) {
         runCatching(block).onFailure {
             android.util.Log.w("EnktelApp", "startup step '$name' failed; continuing without it", it)
