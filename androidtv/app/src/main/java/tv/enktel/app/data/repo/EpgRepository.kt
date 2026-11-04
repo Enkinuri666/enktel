@@ -58,8 +58,27 @@ class EpgRepository(
             if (!resp.isSuccessful) throw IOException("EPG returned HTTP ${resp.code}")
             val raw = resp.body.byteStream()
             val stream = gunzipIfNeeded(raw)
-            epg.clear(p.id)
-            XmltvParser.parse(stream, p.id, wanted, from, to) { batch -> epg.insertAll(batch) }
+            // Clear on the first batch, not before the parse.
+            //
+            // This used to wipe the guide the moment the response headers
+            // looked right, so a panel that 200s and then dies mid-body — or
+            // serves gzip that turns out to be an error page — left the
+            // viewer with no guide at all until the next successful fetch.
+            // That was survivable while the only refresh was a button someone
+            // chose to press. It is not now the app refreshes on launch: a
+            // flaky panel would blank the guide every time the app opened.
+            //
+            // Deferring it costs one boolean and means a failed refresh
+            // leaves yesterday's guide in place, which is worth a great deal
+            // more than an empty one.
+            var cleared = false
+            XmltvParser.parse(stream, p.id, wanted, from, to) { batch ->
+                if (!cleared) {
+                    epg.clear(p.id)
+                    cleared = true
+                }
+                epg.insertAll(batch)
+            }
         }
         epg.prune(now - TimeUnit.DAYS.toMillis(9))
         total
