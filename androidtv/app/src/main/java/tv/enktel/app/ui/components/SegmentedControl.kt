@@ -25,6 +25,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.inkOn
 
 /**
  * A single top-level mode switch, in the style streaming apps use for
@@ -85,10 +86,20 @@ fun SegmentedControl(
                 modifier = Modifier.height(32.dp).tapClick { onSelect(seg.id) },
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(percent = 50)),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = accent.copy(alpha = 0.9f * alpha),
+                    containerColor = accent.copy(alpha = alpha),
                     focusedContainerColor = accent,
-                    contentColor = if (selected) Color.White else EnktelTextDim,
-                    focusedContentColor = Color.White,
+                    // The selected segment is a fill of the accent, so its
+                    // label takes the ink that reads on that fill — white on
+                    // these accents measured 1.2:1 to 3.1:1.
+                    contentColor = if (selected) inkOn(accent) else EnktelTextDim,
+                    focusedContentColor = inkOn(accent),
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                border = ClickableSurfaceDefaults.border(
+                    focusedBorder = androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(2.dp, tv.enktel.app.ui.theme.EnktelText),
+                        shape = RoundedCornerShape(percent = 50),
+                    ),
                 ),
             ) {
                 Box(

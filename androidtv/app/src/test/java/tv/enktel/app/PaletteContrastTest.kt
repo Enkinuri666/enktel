@@ -104,6 +104,40 @@ class PaletteContrastTest {
     }
 
     @Test
+    fun `a focused control's label is readable on the accent`() {
+        // The rule every palette broke, all at once, for the whole life of the
+        // app. A focused button, chip or segment fills with `primary` and drew
+        // its label in white — which measures 1.20:1 on Monochrome, 1.22:1 on
+        // High Contrast and no better than 3.10:1 anywhere. These accents were
+        // picked to be luminous against black, and a luminous fill is exactly
+        // what a white label cannot sit on.
+        //
+        // onPrimary is computed from the accent, so this cannot regress by
+        // someone adding a palette and forgetting a field. It is here so that
+        // it cannot regress by someone "simplifying" the computation either.
+        each { assertAtLeast(4.5, contrast(it.onPrimary, it.primary), "onPrimary on the accent", it) }
+    }
+
+    @Test
+    fun `white on the accent really was unreadable`() {
+        // The negative control. If this ever fails, some palette has grown an
+        // accent dark enough for white, onPrimary will have followed it there
+        // on its own, and the comment above needs rewriting — nothing else.
+        each {
+            assertTrue(
+                "${it.id}: white on the accent is ${"%.2f".format(contrast(Color.White, it.primary))}:1 — " +
+                    "this palette no longer needs dark ink",
+                contrast(Color.White, it.primary) < 4.5,
+            )
+        }
+    }
+
+    @Test
+    fun `a focused destructive control's label is readable on the alert colour`() {
+        each { assertAtLeast(4.5, contrast(it.onLive, it.live), "onLive on the alert colour", it) }
+    }
+
+    @Test
     fun `the focus accent is findable from the sofa`() {
         // The rule Cinematic broke. primary draws the D-pad focus ring, and a
         // focus indicator is the one thing in a TV UI that must never be
