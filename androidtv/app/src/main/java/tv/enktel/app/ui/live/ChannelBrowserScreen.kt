@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.live
 
+import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -94,9 +95,15 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
     val p = profile ?: return
     val scope = rememberCoroutineScope()
 
-    val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    // null until the query has answered, so "still reading" and "no channels"
+    // stop being the same state — the grid used to say "No channels yet — add
+    // a playlist in Settings" on every visit, for as long as the table took
+    // to load, to people who had ten thousand of them.
+    val loadedChannels by remember(p.id) { graph.content.channels(p.id) }
+        .collectAsStateWithLifecycle<List<tv.enktel.app.data.db.Channel>?>(initialValue = null)
+    val allChannels = loadedChannels.orEmpty()
     val hidden by graph.settings.hiddenChannels.collectAsStateWithLifecycle(initialValue = emptySet())
-    val favouriteChannels by graph.content.favoriteChannels(p.id)
+    val favouriteChannels by remember(p.id) { graph.content.favoriteChannels(p.id) }
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val favouriteKeys = remember(favouriteChannels) { favouriteChannels.map { it.key }.toSet() }
 
@@ -141,23 +148,41 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         if (radioOnly == true) allChannels + directoryRadio else allChannels
     }
 
-    val categories = remember(sourceChannels) { ChannelFilters.categoriesOf(sourceChannels) }
-    val counts = remember(sourceChannels, hidden) { ChannelFilters.categoryCounts(sourceChannels, hidden) }
-    val channels = remember(
-        sourceChannels, categoryId, query, favouriteKeys, hidden, favouritesOnly, radioOnly, showHidden,
+    // Everything below was worked out inside remember { }, on the UI thread,
+    // from the whole channel list: on a 20,000-channel line a single letter
+    // typed into the search cost about half a second on a Fire TV Stick, and
+    // the box could not show the letter until it was done. The words each
+    // channel is found by are now built once, off the UI thread, and a
+    // keystroke filters against them there too. See ChannelFilters.index.
+    val categories by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<Pair<String, String>>(), sourceChannels,
+    ) { ChannelFilters.categoriesOf(sourceChannels) }
+    val counts by tv.enktel.app.ui.components.rememberComputed(
+        emptyMap<String, Int>(), sourceChannels, hidden,
+    ) { ChannelFilters.categoryCounts(sourceChannels, hidden) }
+    val indexed by tv.enktel.app.ui.components.rememberComputed<List<ChannelFilters.Indexed>?>(
+        null, sourceChannels,
+    ) { ChannelFilters.index(sourceChannels) }
+    val filtered by tv.enktel.app.ui.components.rememberComputed<List<tv.enktel.app.data.db.Channel>?>(
+        null, indexed, categoryId, query, favouriteKeys, hidden, favouritesOnly, radioOnly, showHidden,
     ) {
-        ChannelFilters.apply(
-            channels = sourceChannels,
-            categoryId = categoryId,
-            query = query,
-            favourites = favouriteKeys,
-            // "Manage hidden" is the one view where hidden channels have to be
-            // visible — otherwise there is no way to ever unhide one.
-            hidden = if (showHidden) emptySet() else hidden,
-            favouritesOnly = favouritesOnly,
-            radioOnly = radioOnly,
-        ).let { list -> if (showHidden) list.filter { it.key in hidden } else list }
+        indexed?.let { rows ->
+            ChannelFilters.apply(
+                indexed = rows,
+                categoryId = categoryId,
+                query = query,
+                favourites = favouriteKeys,
+                // "Manage hidden" is the one view where hidden channels have to
+                // be visible — otherwise there is no way to ever unhide one.
+                hidden = if (showHidden) emptySet() else hidden,
+                favouritesOnly = favouritesOnly,
+                radioOnly = radioOnly,
+            ).let { list -> if (showHidden) list.filter { it.key in hidden } else list }
+        }
     }
+    val channels = filtered.orEmpty()
+    // Still reading the table, or still arranging what came out of it.
+    val loading = loadedChannels == null || filtered == null
 
     // Now-playing titles for the visible page, one query rather than one per card.
     var nowTitles by remember { mutableStateOf<Map<String, EpgProgram>>(emptyMap()) }
@@ -182,7 +207,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
-    val userLists by graph.db.userListDao().lists(p.id)
+    val userLists by remember(p.id) { graph.db.userListDao().lists(p.id) }
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
     val statuses by ChannelStatus.states.collectAsStateWithLifecycle()
@@ -271,8 +296,12 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         }
         Spacer(Modifier.height(12.dp))
 
+        if (loading) {
+            // Nothing, rather than a message that is about to be untrue.
+            return
+        }
         if (allChannels.isEmpty()) {
-            CenterMessage("No channels yet — add a playlist in Settings.")
+            CenterMessage("No channels yet — add a playlist in Settings.", icon = androidx.compose.material.icons.Icons.Rounded.LiveTv)
             return
         }
         if (channels.isEmpty()) {
@@ -419,7 +448,7 @@ private fun ChannelCard(
                 } else {
                     Text(
                         ChannelFilters.initials(channel.name),
-                        color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Black,
+                        color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Bold,
                     )
                 }
                 // Status + favourite markers, top corners.
@@ -429,7 +458,7 @@ private fun ChannelCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (favourite) Text("★", color = EnktelBlue, fontSize = 12.sp)
-                    if (isHidden) Text("🚫", fontSize = 10.sp)
+                    if (isHidden) tv.enktel.app.ui.components.GlyphIcon("🚫", tint = EnktelTextDim, size = 12.dp)
                     Box(
                         Modifier.size(8.dp).clip(CircleShape).background(
                             when (status) {
@@ -544,11 +573,16 @@ private fun OverflowAction(label: String, modifier: Modifier = Modifier, onClick
             containerColor = Color.White.copy(alpha = 0.08f),
             focusedContainerColor = EnktelBlue,
             contentColor = EnktelTextDim,
-            focusedContentColor = Color.White,
+            focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            tv.enktel.app.ui.components.GlyphText(
+                label,
+                style = tv.enktel.app.ui.theme.EnktelType.overline.copy(letterSpacing = 0.2.sp),
+                maxLines = 1,
+            )
         }
     }
 }

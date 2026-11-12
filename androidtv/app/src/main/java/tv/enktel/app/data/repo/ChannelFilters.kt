@@ -134,15 +134,48 @@ object ChannelFilters {
      * number is how you find a channel, and `name LIKE '%7%'` matched every
      * channel with a 7 anywhere in its title instead.
      */
-    fun matches(channel: Channel, query: String): Boolean {
-        val q = tokens(query)
-        if (q.isEmpty()) return true
-        val hay = tokens(channel.name) +
+    fun matches(channel: Channel, query: String): Boolean =
+        matchesTokens(haystack(channel), tokens(query))
+
+    /**
+     * The words a channel can be found by: its name, its group, its region
+     * prefix and its number.
+     *
+     * Three regex passes and a handful of lists per channel, which is nothing
+     * for one channel and a great deal for twenty thousand — see [index].
+     */
+    fun haystack(channel: Channel): List<String> =
+        tokens(channel.name) +
             tokens(channel.categoryName) +
             listOfNotNull(groupPrefix(channel.name).takeIf { it.isNotBlank() }) +
             listOf(channel.num.toString())
-        return q.all { needle -> hay.any { it.startsWith(needle) } }
-    }
+
+    /** Every word of the query begins some word of the channel. */
+    private fun matchesTokens(hay: List<String>, q: List<String>): Boolean =
+        q.isEmpty() || q.all { needle -> hay.any { it.startsWith(needle) } }
+
+    /** A channel and its [haystack], so the haystack is built once. */
+    class Indexed internal constructor(val channel: Channel, internal val hay: List<String>)
+
+    /**
+     * Work out every channel's searchable words, once.
+     *
+     * ## Why this exists
+     *
+     * [apply] used to call [matches] per channel, and [matches] re-tokenised
+     * the *query* for every channel it was asked about — two regex passes over
+     * a string that had not changed since the previous channel — then
+     * tokenised the channel's name and group from scratch as well. Typing
+     * "sport" into the Live TV search on a 20,000-channel line was around
+     * 140,000 regex operations **per keystroke**, on the UI thread: 34 ms on a
+     * development machine, which is roughly half a second on a Fire TV Stick.
+     * Each letter froze the screen it was being typed into.
+     *
+     * The words a channel is found by do not change while you type. Build
+     * them when the channel list arrives — off the UI thread — and a keystroke
+     * is then a few thousand `startsWith` calls.
+     */
+    fun index(channels: List<Channel>): List<Indexed> = channels.map { Indexed(it, haystack(it)) }
 
     /**
      * The full channel pipeline, in the order a user reasons about it.
@@ -158,13 +191,49 @@ object ChannelFilters {
         hidden: Set<String> = emptySet(),
         favouritesOnly: Boolean = false,
         radioOnly: Boolean? = null,
-    ): List<Channel> = channels.asSequence()
-        .filter { it.key !in hidden }
-        .filter { categoryId == ALL || it.categoryId == categoryId }
-        .filter { !favouritesOnly || it.key in favourites }
-        .filter { radioOnly == null || it.isRadio == radioOnly }
-        .filter { matches(it, query) }
-        .toList()
+    ): List<Channel> {
+        // Once, not once per channel.
+        val q = tokens(query)
+        return channels.asSequence()
+            .filter { it.key !in hidden }
+            .filter { categoryId == ALL || it.categoryId == categoryId }
+            .filter { !favouritesOnly || it.key in favourites }
+            .filter { radioOnly == null || it.isRadio == radioOnly }
+            // Last, and only for a real query: the cheap exclusions above have
+            // usually thrown most of the list away before any word is built.
+            .filter { q.isEmpty() || matchesTokens(haystack(it), q) }
+            .toList()
+    }
+
+    /**
+     * [apply], over channels whose words were worked out by [index].
+     *
+     * Named for the JVM, where `List<Channel>` and `List<Indexed>` are the
+     * same parameter and the two overloads would otherwise collide.
+     */
+    @JvmName("applyIndexed")
+    fun apply(
+        indexed: List<Indexed>,
+        categoryId: String = ALL,
+        query: String = "",
+        favourites: Set<String> = emptySet(),
+        hidden: Set<String> = emptySet(),
+        favouritesOnly: Boolean = false,
+        radioOnly: Boolean? = null,
+    ): List<Channel> {
+        val q = tokens(query)
+        val out = ArrayList<Channel>()
+        for (row in indexed) {
+            val ch = row.channel
+            if (ch.key in hidden) continue
+            if (categoryId != ALL && ch.categoryId != categoryId) continue
+            if (favouritesOnly && ch.key !in favourites) continue
+            if (radioOnly != null && ch.isRadio != radioOnly) continue
+            if (!matchesTokens(row.hay, q)) continue
+            out += ch
+        }
+        return out
+    }
 
     /**
      * How many visible channels each category holds, plus [ALL].

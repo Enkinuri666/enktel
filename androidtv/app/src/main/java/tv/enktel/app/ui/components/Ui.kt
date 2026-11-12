@@ -25,6 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,18 +73,24 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBorder
 import tv.enktel.app.ui.theme.EnktelFocusGlow
 import tv.enktel.app.ui.theme.EnktelFocusGlowRadius
 import tv.enktel.app.ui.theme.EnktelFocusRingWidth
 import tv.enktel.app.ui.theme.EnktelFocusScale
 import tv.enktel.app.ui.theme.EnktelPurple
+import tv.enktel.app.ui.theme.EnktelRadius
+import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelText
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextFaint
 import tv.enktel.app.ui.theme.EnktelTextOnArt
 import tv.enktel.app.ui.theme.EnktelTextOnArtDim
 import tv.enktel.app.ui.theme.EnktelType
+import tv.enktel.app.ui.theme.inkOn
 
 /**
  * TV-material surfaces only react to DPAD select; on touchscreens (phones, tablets,
@@ -112,44 +121,41 @@ fun Modifier.tapClick(onClick: () -> Unit): Modifier {
     }
 }
 
+/**
+ * The app's button.
+ *
+ * A label, optionally led by an icon. If [text] itself begins with a
+ * pictograph — `"▶ Play"`, `"⬇ Download"` — it is drawn as the matching vector
+ * rather than as a character; see [Glyphs] for why. An explicit [icon] wins.
+ *
+ * [accent] is the old two-state flag and still works: it selects
+ * [ButtonKind.Tonal], which is what "this is on" and "this is the chosen one"
+ * should look like. A real call to action should say [ButtonKind.Primary].
+ */
 @Composable
 fun FocusButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accent: Boolean = false,
+    icon: ImageVector? = null,
+    kind: ButtonKind = if (accent) ButtonKind.Tonal else ButtonKind.Neutral,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (accent) EnktelBlue.copy(alpha = 0.25f) else EnktelSurfaceHigh,
-            focusedContainerColor = EnktelBlue,
-            focusedContentColor = Color.White,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        Text(
-            text,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-            style = EnktelType.label,
-            maxLines = 1,
+    val parts = remember(text) { Glyphs.split(text) }
+    ControlSurface(onClick, kind, modifier) {
+        ControlContent(
+            icon = icon ?: parts.mark?.icon,
+            label = parts.text,
+            // Only an icon standing alone needs describing; beside a label it
+            // would be read out twice.
+            iconDescription = if (parts.text.isEmpty()) parts.mark?.name else null,
+            centred = kind == ButtonKind.Primary,
         )
     }
 }
 
 /**
  * A [FocusButton] whose face is a drawn icon rather than a character.
- *
- * The Sports Hub used emoji for its controls — 🔎 ↻ ★ 📊 🔔 ● — which is the
- * same mistake the nav rail made and fixed. An emoji is a glyph from whichever
- * font the device happens to ship: it cannot take the focused content colour,
- * so it stays the same shade whether the button is focused or not; it is
- * baseline-aligned rather than optically centred, so a row of them sits
- * crooked; and it is a different drawing on a Fire Stick, a Samsung phone and
- * a Pixel. A vector tracks the content colour, centres, and is one drawing
- * everywhere.
  *
  * [label] is optional: with one this is a labelled button, without one it is a
  * square. The icon is never the only thing describing the action —
@@ -164,39 +170,30 @@ fun FocusIconButton(
     modifier: Modifier = Modifier,
     label: String? = null,
     accent: Boolean = false,
+    kind: ButtonKind = if (accent) ButtonKind.Tonal else ButtonKind.Neutral,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (accent) EnktelBlue.copy(alpha = 0.25f) else EnktelSurfaceHigh,
-            focusedContainerColor = EnktelBlue,
-            focusedContentColor = Color.White,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        Row(
-            // Tighter horizontally than FocusButton's 18.dp when there is no
-            // label: an icon needs the same optical margin all round, and
-            // 18.dp on a 18.dp glyph makes a lozenge rather than a button.
-            Modifier.padding(
-                horizontal = if (label == null) 11.dp else 14.dp,
-                vertical = 10.dp,
-            ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(18.dp))
-            if (label != null) Text(label, style = EnktelType.label, maxLines = 1)
-        }
+    ControlSurface(onClick, kind, modifier) {
+        ControlContent(
+            icon = icon,
+            label = label.orEmpty(),
+            iconDescription = if (label == null) contentDescription else null,
+            centred = kind == ButtonKind.Primary,
+        )
     }
 }
 
 /**
- * Netflix-style pill chip for filter rows. Sits lower than FocusButton visually
- * (used for tag/genre/decade selection, not primary CTAs) and adds a hairline
- * border in the selected state so a chosen filter reads at a glance.
+ * Pill chip for filter rows: categories, genres, decades, languages.
+ *
+ * Sits lower than [FocusButton] — a chip narrows what you are looking at, a
+ * button does something. Selected is a tint and an outline; focused is the
+ * solid accent, with the label in [inkOn] that accent so it stays readable on
+ * every theme.
+ *
+ * [accent] is for the handful of places colour means something (live, kids,
+ * a sport). A filter row that is merely *another* filter row should not pick
+ * its own colour: Movies had purple genres above green years above blue
+ * categories, three colours saying one thing.
  */
 @Composable
 fun GlassChip(
@@ -205,38 +202,65 @@ fun GlassChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accent: Color = EnktelBlue,
+    icon: ImageVector? = null,
 ) {
+    val parts = remember(text) { Glyphs.split(text) }
+    val drawn = icon ?: parts.mark?.icon
+    val shape = EnktelRadius.shapePill
     Surface(
         onClick = onClick,
         modifier = modifier.tapClick(onClick),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) accent.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f),
+            containerColor = if (selected) accent.copy(alpha = 0.22f) else EnktelText.copy(alpha = 0.06f),
+            contentColor = if (selected) EnktelText else EnktelTextDim,
             focusedContainerColor = accent,
-            contentColor = if (selected) Color.White else EnktelTextDim,
-            focusedContentColor = Color.White,
+            focusedContentColor = inkOn(accent),
+            pressedContainerColor = accent,
+            pressedContentColor = inkOn(accent),
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = CONTROL_FOCUS_SCALE),
         border = ClickableSurfaceDefaults.border(
             border = androidx.tv.material3.Border(
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    if (selected) accent.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f),
+                    if (selected) accent.copy(alpha = 0.75f) else EnktelText.copy(alpha = 0.10f),
                 ),
-                shape = RoundedCornerShape(24.dp),
+                shape = shape,
             ),
-            focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
-                shape = RoundedCornerShape(24.dp),
-            ),
+            // Focused and selected both fill with the accent, so the ring is
+            // the only thing left to say "and this one is also the chosen one".
+            focusedBorder = if (selected) {
+                androidx.tv.material3.Border(
+                    border = androidx.compose.foundation.BorderStroke(2.dp, EnktelText),
+                    shape = shape,
+                )
+            } else {
+                androidx.tv.material3.Border.None
+            },
         ),
     ) {
-        Text(
-            text,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            style = EnktelType.caption,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Row(
+            Modifier.height(34.dp).padding(start = if (drawn != null) 11.dp else 14.dp, end = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (drawn != null) {
+                Icon(
+                    drawn,
+                    contentDescription = if (parts.text.isEmpty()) parts.mark?.name else null,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
+            if (parts.text.isNotEmpty()) {
+                Text(
+                    parts.text,
+                    style = EnktelType.caption,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -251,6 +275,29 @@ fun ChipRowLabel(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * The app's text input.
+ *
+ * ## What changed, and why
+ *
+ * This used to be a caption with an empty slab under it. With nothing typed —
+ * which is how every search box in the app spends most of its life — the
+ * control was a dark rectangle the full width of the screen with no mark on
+ * it, and the only clue to what it was sat *outside* it, in dim 12 sp. On the
+ * Live TV grid it read as a banner that had failed to load.
+ *
+ * The prompt now lives inside the field, where the text will go, behind an
+ * icon that says what kind of field it is. That is the idiom every search box
+ * on every platform uses, so nobody has to work out that it is one.
+ *
+ * [labelAbove] keeps the old arrangement for the one case that wants it: a
+ * form. On the sign-in screen "Username" and "Password" have to stay readable
+ * after the field is filled, or a mistyped entry cannot be checked against
+ * what it was supposed to be.
+ *
+ * A pictograph at the front of [label] (`"🔍 Search titles…"`) becomes the
+ * leading icon. See [Glyphs].
+ */
 @Composable
 fun TvTextField(
     value: String,
@@ -258,11 +305,16 @@ fun TvTextField(
     label: String,
     modifier: Modifier = Modifier,
     password: Boolean = false,
+    leadingIcon: ImageVector? = null,
+    labelAbove: Boolean = false,
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+    val parts = remember(label) { Glyphs.split(label) }
+    val icon = leadingIcon ?: parts.mark?.icon
+    val prompt = parts.text
 
     // Focus alone must not open the keyboard.
     //
@@ -283,16 +335,21 @@ fun TvTextField(
     LaunchedEffect(typing) { if (typing) keyboard?.show() else keyboard?.hide() }
     LaunchedEffect(focused) { if (!focused) typing = false }
 
+    val shape = EnktelRadius.shapeMd
+    val textStyle = EnktelType.body.copy(color = EnktelText, fontSize = 15.sp, lineHeight = 20.sp)
+
     Column(modifier.fillMaxWidth()) {
-        Text(label, color = EnktelTextDim, style = EnktelType.caption)
-        Spacer(Modifier.height(4.dp))
+        if (labelAbove) {
+            Text(prompt, color = EnktelTextDim, style = EnktelType.caption)
+            Spacer(Modifier.height(6.dp))
+        }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
             readOnly = !editable,
             visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-            textStyle = EnktelType.subtitle.copy(color = EnktelText, fontSize = 16.sp),
+            textStyle = textStyle,
             cursorBrush = SolidColor(EnktelBlue),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(
@@ -320,13 +377,44 @@ fun TvTextField(
                         else -> false
                     }
                 }
-                .background(EnktelSurfaceHigh, RoundedCornerShape(8.dp))
+                .background(EnktelSurfaceHigh, shape)
+                // A hairline at rest so the field has an edge on the palettes
+                // whose surface sits close to the page; the accent when it is
+                // the thing the D-pad is on.
                 .border(
-                    2.dp,
-                    if (focused) EnktelBlue else Color.Transparent,
-                    RoundedCornerShape(8.dp),
+                    if (focused) 2.dp else 1.dp,
+                    if (focused) EnktelBlue else EnktelBorder,
+                    shape,
                 )
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .height(48.dp)
+                .padding(horizontal = 14.dp),
+            decorationBox = { field ->
+                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    if (icon != null) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = if (focused) EnktelBlue else EnktelTextDim,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        // The prompt, until there is something to show instead.
+                        // Not when the label is above: saying it twice is noise.
+                        if (value.isEmpty() && !labelAbove) {
+                            Text(
+                                prompt,
+                                style = textStyle,
+                                color = EnktelTextFaint,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        field()
+                    }
+                }
+            },
         )
     }
 }
@@ -503,7 +591,7 @@ fun PosterCard(
                     Text(
                         title.take(2).uppercase(),
                         fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = EnktelTextOnArt.copy(0.7f),
                     )
                 }
@@ -532,7 +620,7 @@ fun PosterCard(
                     "$rank",
                     style = TextStyle(
                         fontSize = if (wide) 44.sp else 54.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White.copy(alpha = 0.92f),
                         drawStyle = Stroke(width = 3f),
                     ),
@@ -613,7 +701,7 @@ fun ThumbBox(label: String, imageUrl: String, modifier: Modifier = Modifier, siz
             Text(
                 label.take(2).uppercase(),
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 color = EnktelText.copy(0.7f),
             )
         }
@@ -636,17 +724,35 @@ fun ConfirmDialog(
         Surface(
             onClick = {},
             modifier = Modifier.padding(horizontal = 24.dp).widthIn(max = 420.dp).fillMaxWidth(),
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
-            colors = ClickableSurfaceDefaults.colors(containerColor = EnktelSurfaceHigh, contentColor = Color.White),
+            shape = ClickableSurfaceDefaults.shape(EnktelRadius.shapeXl),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = EnktelSurface,
+                contentColor = EnktelText,
+                focusedContainerColor = EnktelSurface,
+                focusedContentColor = EnktelText,
+            ),
+            // The card is a Surface only so a tap inside it is swallowed
+            // rather than dismissing. It must not swell when focus crosses it.
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            border = ClickableSurfaceDefaults.border(
+                border = androidx.tv.material3.Border(
+                    androidx.compose.foundation.BorderStroke(1.dp, EnktelBorder),
+                    shape = EnktelRadius.shapeXl,
+                ),
+                focusedBorder = androidx.tv.material3.Border(
+                    androidx.compose.foundation.BorderStroke(1.dp, EnktelBorder),
+                    shape = EnktelRadius.shapeXl,
+                ),
+            ),
         ) {
             Column(Modifier.padding(24.dp)) {
                 Text(title, style = EnktelType.title, color = EnktelText)
                 Spacer(Modifier.height(8.dp))
                 Text(message, style = EnktelType.body, color = EnktelTextDim)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(22.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FocusButton(confirmLabel, accent = true, onClick = onConfirm)
-                    FocusButton("Cancel", onClick = onDismiss)
+                    FocusButton(confirmLabel, kind = ButtonKind.Primary, onClick = onConfirm)
+                    FocusButton("Cancel", kind = ButtonKind.Ghost, onClick = onDismiss)
                 }
             }
         }
@@ -685,6 +791,13 @@ fun <T> ContentRailIndexed(
     itemContent: @Composable (Int, T) -> Unit,
 ) {
     if (items.isEmpty()) return
+    // Every rail in the app comes through here, so this is where a repeated
+    // key is made impossible rather than at thirty call sites — see uniqueBy
+    // for what a repeated key does to a screen. `key` is deliberately not a
+    // remember key: it is a new lambda on every call and always means the
+    // same thing for a given rail.
+    @Suppress("NAME_SHADOWING")
+    val items = remember(items) { items.uniqueBy(key) }
     // focusGroup() is what makes DOWN work on this screen.
     //
     // Without it, every card in every rail is a flat peer in one focus
@@ -709,35 +822,16 @@ fun <T> ContentRailIndexed(
     val gutter = rememberScreenShape().padH
 
     Column(modifier.fillMaxWidth().focusGroup()) {
-        // Netflix-grade rail heading: a coloured accent bar, chunky title, muted item count.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 6.dp, top = 4.dp),
-        ) {
-            Box(
-                Modifier
-                    .height(20.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.55f)))),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                title,
-                style = EnktelType.title,
-                color = EnktelText,
-            )
-            if (subtitle.isNotBlank()) {
-                Spacer(Modifier.width(10.dp))
-                Text(subtitle, style = EnktelType.caption, color = EnktelTextDim)
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                "${items.size}",
-                style = EnktelType.caption,
-                color = EnktelTextDim,
-            )
-        }
+        // One heading for every rail. The count used to sit at the far right
+        // edge of the screen, a full width away from the title it belonged
+        // to; SectionHeader keeps it beside the words.
+        SectionHeader(
+            title = title,
+            count = items.size,
+            note = subtitle,
+            accent = accent,
+            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 4.dp, top = 4.dp),
+        )
         LazyRow(
             modifier = Modifier.focusRestorer(),
             // Vertical padding is load-bearing, not decoration: a focused card
@@ -763,7 +857,8 @@ fun Badge(text: String, color: Color = EnktelBlue) {
             .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(text, style = EnktelType.overline, color = color)
+        // "⏪ 20:15" and "🔊 Channel 7" are badges that led with a character.
+        GlyphText(text, style = EnktelType.overline, color = color, maxLines = 1)
     }
 }
 
@@ -789,10 +884,45 @@ fun ProgressBarThin(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * What a screen shows when it has nothing to show, or is still finding out.
+ *
+ * It was one line of bold dim text set dead centre, at whatever width the
+ * sentence came to — so a long one ran edge to edge across a television and
+ * a short one was a caption floating in a black screen. An empty Watchlist
+ * and a failed load looked identical, and neither looked intended.
+ *
+ * Now a measure a person can read (about 60 characters), centred, and — when
+ * the caller says what kind of emptiness this is — the icon of the thing that
+ * would have been here. "No recordings yet" under a recorder icon reads as a
+ * place where recordings will go. The same words alone read as a fault.
+ */
 @Composable
-fun CenterMessage(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = EnktelTextDim, style = EnktelType.subtitle)
+fun CenterMessage(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+    Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.widthIn(max = 440.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (icon != null) {
+                Box(
+                    Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(EnktelSurfaceHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = EnktelTextDim, modifier = Modifier.size(28.dp))
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+            Text(
+                text,
+                color = EnktelTextDim,
+                style = EnktelType.body.copy(fontSize = 15.sp, lineHeight = 22.sp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -817,15 +947,20 @@ fun PinDialog(
                 .padding(horizontal = 24.dp)
                 .widthIn(max = 340.dp)
                 .fillMaxWidth()
-                .background(EnktelSurfaceHigh, RoundedCornerShape(12.dp))
+                .background(EnktelSurface, EnktelRadius.shapeXl)
+                .border(1.dp, EnktelBorder, EnktelRadius.shapeXl)
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(title, color = EnktelText, style = EnktelType.title)
-            TvTextField(pin, { pin = it.filter(Char::isDigit).take(8) }, "PIN", password = true)
+            TvTextField(
+                pin, { pin = it.filter(Char::isDigit).take(8) }, "PIN",
+                password = true,
+                leadingIcon = androidx.compose.material.icons.Icons.Rounded.Lock,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FocusButton("Unlock", accent = true, onClick = { onSubmit(pin) })
-                FocusButton("Cancel", onClick = onDismiss)
+                FocusButton("Unlock", kind = ButtonKind.Primary, onClick = { onSubmit(pin) })
+                FocusButton("Cancel", kind = ButtonKind.Ghost, onClick = onDismiss)
             }
         }
     }
@@ -884,13 +1019,18 @@ fun shareTarget(context: android.content.Context, target: tv.enktel.app.DeepLink
 @Composable
 fun ShareButton(
     target: tv.enktel.app.DeepLink.Target,
-    label: String = "\u2197  Share",
+    label: String = "Share",
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val toaster = LocalToaster.current
-    FocusButton(label, onClick = {
-        if (!shareTarget(context, target)) toaster.info("Link copied to the clipboard")
-    })
+    FocusButton(
+        // Callers used to pass "↗ Share channel"; the arrow is the icon now.
+        Glyphs.strip(label),
+        icon = androidx.compose.material.icons.Icons.Rounded.Share,
+        onClick = {
+            if (!shareTarget(context, target)) toaster.info("Link copied to the clipboard")
+        },
+    )
 }
 
 /**
@@ -930,10 +1070,14 @@ fun BackArrow(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .tapClick(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        // A glyph rather than a vector asset: the app draws its other small
-        // controls this way, and one font character cannot go missing from a
-        // release build the way a renamed drawable can.
-        Text("←", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        // Drawn, like every other control now. The character it replaced was
+        // a thin text arrow on some devices and a blue emoji box on others.
+        Icon(
+            androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = EnktelText,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

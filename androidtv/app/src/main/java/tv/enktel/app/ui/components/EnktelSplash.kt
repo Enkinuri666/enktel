@@ -149,10 +149,10 @@ private fun SplashCanvas() {
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "ENK", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black,
+                        "ENK", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "TEL", color = EnktelBlue, fontSize = 34.sp, fontWeight = FontWeight.Black,
+                        "TEL", color = EnktelBlue, fontSize = 34.sp, fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(

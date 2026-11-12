@@ -85,7 +85,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     }
     val p = profile ?: return
     val toaster = LocalToaster.current
-    val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+    val followed by remember() { graph.db.sportsDao().followed() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
 
     var loading by remember { mutableStateOf(true) }
@@ -124,7 +124,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val pad = if (isMobile) 16.dp else 48.dp
+    val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     val sports = remember(rows) {
         rows.groupingBy { it.sport }.eachCount().entries
@@ -144,7 +144,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
             Column(Modifier.padding(horizontal = pad)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
-                        Text("Live Sport Finder", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                        Text("Live Sport Finder", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "Every channel carrying sport at this moment — no scrolling required.",
                             color = EnktelTextDim, fontSize = 12.sp,
@@ -302,7 +302,7 @@ private fun FinderRow(
                     FocusButton("📊", onClick = onMatchCenter)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("▶", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                tv.enktel.app.ui.components.GlyphIcon("▶", tint = Color.White, size = 24.dp)
             }
             if (score != null) {
                 Spacer(Modifier.height(6.dp))

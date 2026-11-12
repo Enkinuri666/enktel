@@ -183,13 +183,10 @@ fun CatchupBrowseScreen(graph: AppGraph, nav: NavHostController) {
                     Surface(
                         onClick = open,
                         modifier = Modifier.fillMaxWidth().tapClick(open),
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                        colors = ClickableSurfaceDefaults.colors(
-                            containerColor = EnktelSurfaceHigh.copy(0.5f),
-                            focusedContainerColor = EnktelBlue,
-                            focusedContentColor = Color.White,
-                            contentColor = Color.White,
-                        ),
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+                        colors = tv.enktel.app.ui.components.RowFocus.colors(),
+                        border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(12.dp)),
+                        scale = tv.enktel.app.ui.components.RowFocus.scale(),
                     ) {
                         Row(
                             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -267,13 +264,10 @@ private fun ArchiveRow(
         onClick = onPlay,
         enabled = inWindow && !busy,
         modifier = Modifier.fillMaxWidth().tapClick(onPlay),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = EnktelSurfaceHigh.copy(0.5f),
-            focusedContainerColor = EnktelBlue,
-            focusedContentColor = Color.White,
-            contentColor = Color.White,
-        ),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = tv.enktel.app.ui.components.RowFocus.colors(),
+        border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(12.dp)),
+        scale = tv.enktel.app.ui.components.RowFocus.scale(),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 10.dp),

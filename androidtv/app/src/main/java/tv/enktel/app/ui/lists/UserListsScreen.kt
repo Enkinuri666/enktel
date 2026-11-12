@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.lists
 
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -73,7 +74,7 @@ fun UserListsScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val dao = graph.db.userListDao()
 
-    val lists by dao.lists(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val lists by remember(p.id) { dao.lists(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     var openList by remember { mutableStateOf<UserList?>(null) }
     var newName by remember { mutableStateOf("") }
 
@@ -200,7 +201,7 @@ private fun ListDetail(
 ) {
     val scope = rememberCoroutineScope()
     val dao = graph.db.userListDao()
-    val items by dao.items(list.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val items by remember(list.id) { dao.items(list.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
         Row(Modifier.padding(horizontal = hPad), verticalAlignment = Alignment.CenterVertically) {
@@ -212,7 +213,10 @@ private fun ListDetail(
         }
         Spacer(Modifier.height(14.dp))
         if (items.isEmpty()) {
-            CenterMessage("Nothing here yet — press and hold a channel or title to add it.")
+            CenterMessage(
+                "Nothing here yet — press and hold a channel or title to add it.",
+                icon = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.PlaylistPlay,
+            )
             return
         }
         LazyVerticalGrid(

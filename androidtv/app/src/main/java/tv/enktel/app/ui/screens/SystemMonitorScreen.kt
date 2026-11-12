@@ -91,7 +91,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 20.dp else 48.dp
+    val hPad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     // Same as Diagnostics: a wall of readings with nothing focusable in it,
     // so the D-pad had no way to move the list.
@@ -126,7 +126,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             sample.verdict, color = accent, fontSize = 20.sp,
-                            fontWeight = FontWeight.Black, modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                         )
                         Badge(sample.transport.name, EnktelBlue)
                     }
@@ -151,7 +151,9 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
                         Stat("Link down", kbpsLabel(sample.linkDownKbps), modifier = Modifier.weight(1f))
                         Stat("Timeouts", "${sample.timeouts}",
                             tint = if (sample.timeouts > 0) EnktelLive else null, modifier = Modifier.weight(1f))
-                        Stat("Blocked (403)", "${sample.blocked403}",
+                        // "Blocked", not "Blocked (403)": four tiles share a phone's
+                        // width and the longer label was cut to "Blocked (4…".
+                        Stat("Blocked", "${sample.blocked403}",
                             tint = if (sample.blocked403 > 0) EnktelLive else null, modifier = Modifier.weight(1f))
                     }
                     if (sample.activeGateway != null) {

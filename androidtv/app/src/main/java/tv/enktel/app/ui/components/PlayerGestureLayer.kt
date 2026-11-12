@@ -144,7 +144,11 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
             .padding(horizontal = 22.dp, vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, color = Color.White.copy(0.9f), fontSize = 12.sp, fontWeight = FontWeight.Black)
+        GlyphText(
+            label,
+            color = Color.White.copy(0.9f),
+            style = tv.enktel.app.ui.theme.EnktelType.label,
+        )
         Spacer(Modifier.height(10.dp))
         // Vertical bar filling from bottom to current fraction — reads like a slider
         // even without markers on the sides.
@@ -165,6 +169,6 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
             )
         }
         Spacer(Modifier.height(10.dp))
-        Text("$pct%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        Text("$pct%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }

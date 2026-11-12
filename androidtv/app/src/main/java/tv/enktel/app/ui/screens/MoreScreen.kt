@@ -65,14 +65,16 @@ fun MoreScreen(onSelect: (String) -> Unit) {
     // 48dp is a television's overscan gutter. On a 411dp handset it eats a
     // quarter of the width, so the tiles came out narrow enough to wrap their
     // own one-line descriptions.
-    val gutter = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 16.dp else 48.dp
+    // The page gutter every screen shares, so the title does not step
+    // sideways between destinations.
+    val gutter = tv.enktel.app.ui.components.rememberScreenShape().padH
     // Painted rather than inherited. Every other destination sits on the
     // shell's gradient, but this one is also drawn by the screenshot harness
     // and by anything that hosts it outside the shell, and a grid of light
     // grey tiles on whatever happens to be behind is not a design.
     Column(Modifier.fillMaxSize().background(EnktelBg)) {
         Column(Modifier.padding(start = gutter, top = 28.dp, end = gutter, bottom = 4.dp)) {
-            Text(t.navMore, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(t.navMore, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(
                 t.moreSubtitle,
@@ -104,12 +106,9 @@ private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
             .onFocusChanged { focused = it.isFocused }
             .tapClick(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = EnktelSurfaceHigh.copy(0.5f),
-            focusedContainerColor = EnktelBlue,
-            contentColor = Color.White,
-            focusedContentColor = Color.White,
-        ),
+        colors = tv.enktel.app.ui.components.RowFocus.colors(),
+        border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(16.dp)),
+        scale = tv.enktel.app.ui.components.RowFocus.scale(),
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(

@@ -249,12 +249,36 @@ object VoiceIntentParser {
         // A tune instruction opens with its verb — nobody asks to change
         // channel halfway through a sentence — so requiring that costs
         // nothing and stops the catch-all swallowing the language around it.
+        // "go to 45 minutes" / "jump to 12" / "seek to 90" — a position in
+        // what is playing, not a channel.
+        //
+        // Up here because the rule that was meant to catch these sits at the
+        // bottom of the playback section, underneath two rules that take its
+        // verbs first. "go to 45 minutes" was read by the tune rule just
+        // below as a channel called "45 minutes"; "jump to 12" was read by
+        // the skip-forward rule as "jump", with no number, and skipped thirty
+        // seconds. Only "seek to" ever arrived. Nothing crashed, so nothing
+        // said so — the command did something else, every time.
+        //
+        // "go to" needs its unit to count as a seek: "go to 45" on its own is
+        // how people ask for channel 45, and that still tunes.
+        Regex("^(?:(?:seek|jump) to (\\d+)\\s*(?:minutes?|mins?)?|go to (\\d+)\\s*(?:minutes?|mins?))\\b")
+            .find(text)?.let { m ->
+                val digits = m.groupValues[1].ifEmpty { m.groupValues[2] }
+                digits.toIntOrNull()?.let { return VoiceIntent.SeekTo(it) }
+            }
+
         val tuneRegex = Regex(
             "^(?:turn|switch|change|tune|put|change to|go|watch) " +
                 "(?:it |the channel |over )?" +
                 "(?:to |on )?(?:channel )?(.+)",
         )
-        tuneRegex.find(text)?.let {
+        // "go back 10 minutes" and "go forward" open with a tune verb and are
+        // not tunes. They used to change the channel to one called "back 10
+        // minutes"; they are left for the playback rules further down. Only
+        // after "go" — "watch back to the future" is a title and still tunes.
+        val goTransport = GO_TRANSPORT.containsMatchIn(text)
+        if (!goTransport) tuneRegex.find(text)?.let {
             val q = it.groupValues[1].trim()
             if (q.isNotBlank() && !q.matchesAny("sports", "the sports", "movies", "series")) {
                 return VoiceIntent.TuneChannel(q)
@@ -452,43 +476,40 @@ object VoiceIntentParser {
             )) return VoiceIntent.OpenSports
 
         // ---- Playback transport ------------------------------------------------
-        // "skip forward 30 seconds" / "jump ahead 2 minutes" / "forward 15"
-        Regex(
-            "(?:skip|jump|fast[- ]?forward|forward|ff|go forward|move ahead)" +
-                "(?: (?:by |ahead |the |about ))?(?:\\s*)?(\\d+)?\\s*(minute|minutes|second|seconds|sec|min)?",
-        ).find(text)?.let {
-            val n = it.groupValues[1].toIntOrNull() ?: 30
-            val unit = it.groupValues[2]
-            val secs = if (unit.startsWith("min")) n * 60 else n
-            return VoiceIntent.SeekForward(secs)
-        }
-        Regex(
-            "(?:rewind|go back|back|skip back|jump back|rewind by)" +
-                "(?: (?:by |the |about ))?(?:\\s*)?(\\d+)?\\s*(minute|minutes|second|seconds|sec|min)?",
-        ).find(text)?.let {
-            val n = it.groupValues[1].toIntOrNull() ?: 30
-            val unit = it.groupValues[2]
-            val secs = if (unit.startsWith("min")) n * 60 else n
-            return VoiceIntent.SeekBack(secs)
-        }
-        Regex("(?:seek|go|jump) to (\\d+)\\s*(?:minutes?|min)?")
-            .find(text)?.let {
-                return VoiceIntent.SeekTo(it.groupValues[1].toInt())
-            }
-        if (text.matchesAny(
-                "restart", "start over", "from the beginning", "restart from the beginning",
-                "play from the start", "restart it", "play from beginning",
-            )) return VoiceIntent.Restart
+        //
+        // Named things first, amounts second. Every phrase in the four lists
+        // below contains a verb the seek rules also know — "skip intro",
+        // "go back an episode", "skip to the next episode" — and while the seek
+        // rules came first, each of them was read as "skip" or "back" with no
+        // number and moved thirty seconds instead.
         if (text.matchesAny(
                 "skip intro", "skip the intro", "skip opening", "skip credits",
                 "skip the opening",
             )) return VoiceIntent.SkipIntro
         if (text.matchesAny(
+                "previous episode", "play previous episode", "last episode", "go back an episode",
+            )) return VoiceIntent.PreviousEpisode
+        if (text.matchesAny(
                 "next episode", "play next episode", "next", "play next",
             )) return VoiceIntent.NextEpisode
         if (text.matchesAny(
-                "previous episode", "play previous episode", "last episode", "go back an episode",
-            )) return VoiceIntent.PreviousEpisode
+                "restart", "start over", "from the beginning", "restart from the beginning",
+                "play from the start", "restart it", "play from beginning",
+                "back to the beginning", "back to the start",
+            )) return VoiceIntent.Restart
+
+        // "skip forward 30 seconds" / "jump ahead 2 minutes" / "forward 15"
+        // "rewind" / "go back 10 minutes" / "skip back"
+        VoiceSeek.parse(text, NUMBER_WORDS)?.let { return it }
+
+        // toIntOrNull: the pattern matches a number of any length, and a recogniser
+        // that hears a phone number or a date after "go to" hands over more
+        // digits than an Int holds. toInt() threw on those, from inside the
+        // speech callback, which is a crash for mishearing somebody.
+        Regex("\\b(?:seek|go|jump) to (\\d+)\\s*(?:minutes?|min)?\\b")
+            .find(text)?.let { m ->
+                m.groupValues[1].toIntOrNull()?.let { return VoiceIntent.SeekTo(it) }
+            }
         if (text.matchesAny(
                 "picture in picture", "pip", "enter pip", "minimize the player",
                 "shrink the player", "picture-in-picture",
@@ -580,6 +601,99 @@ object VoiceIntentParser {
     private fun String.equalsAny(vararg patterns: String): Boolean =
         patterns.any { this == it }
 
+    /** "go back …" / "go forward …": opens with a tune verb, is a playback command. */
+    private val GO_TRANSPORT = Regex("^go (?:back|backwards?|forward)\\b")
+
     private fun String.matchesAny(vararg patterns: String): Boolean =
         patterns.any { this == it || this.startsWith("$it ") || this.endsWith(" $it") || " $it " in " $this " }
+}
+
+
+/**
+ * "Skip forward thirty seconds", "rewind", "go back ten minutes".
+ *
+ * ### What this replaced
+ *
+ * Two regular expressions, searched for *anywhere* in the phrase, with every
+ * part after the verb optional. That combination matched far more than it was
+ * written for:
+ *
+ *  - `ff` is in the forward list, and it is also in "the o**ff**ice",
+ *    "co**ff**ee", "tra**ff**ic", "di**ff**erent" and "o**ff**". Asking for The
+ *    Office skipped thirty seconds. `back` did the same to "play**back**" and
+ *    "feed**back**".
+ *  - "skip back 20 seconds" skipped *forward*: the forward rule ran first,
+ *    recognised "skip", found no number straight after it, and stopped there.
+ *  - "skip forward 2 minutes" was thirty seconds, for the same reason.
+ *
+ * None of that is a crash, which is why it lasted: the player did something,
+ * just not what was said.
+ *
+ * ### The rule now
+ *
+ * The phrase has to *be* a seek, start to finish: one of the verbs below, then
+ * nothing, or something vague ("a bit"), or an amount of time. Anything else
+ * after the verb — "skip intro", "back to the future" — means it is some other
+ * command or a title, and this answers null so the rules after it get a turn.
+ */
+internal object VoiceSeek {
+
+    /** Thirty seconds, when no amount is given: what the old rules did, and a sensible nudge. */
+    const val DEFAULT_SECONDS = 30
+
+    /** Nobody means more than this, and it keeps the arithmetic inside an Int. */
+    private const val MAX_SECONDS = 24 * 60 * 60
+
+    // Longest first, so "skip back" is tried before "skip".
+    private val BACK = listOf(
+        "skip backwards", "skip backward", "jump backwards", "jump backward",
+        "move backwards", "move backward", "go backwards", "go backward",
+        "skip back", "jump back", "move back", "go back", "rewind by", "rewind", "backwards", "backward", "back",
+    ).sortedByDescending { it.length }
+
+    private val FORWARD = listOf(
+        "skip forward", "skip ahead", "jump forward", "jump ahead", "move forward", "move ahead",
+        "go forward", "fast forward", "fast-forward", "fastforward", "forward", "skip", "jump", "ff",
+    ).sortedByDescending { it.length }
+
+    private val VAGUE = setOf("a bit", "a little", "a little bit", "a moment", "a few seconds", "a touch")
+    private val AMOUNT = Regex("(\\d+|[a-z]+)(?: ?(hours?|hrs?|minutes?|mins?|seconds?|secs?))?")
+
+    fun parse(text: String, numberWords: Map<String, Int>): VoiceIntent? {
+        val phrase = text.removeSuffix(" please").removeSuffix(" now").trim()
+        // Back before forward: "skip back" must not be claimed by "skip".
+        verbIn(phrase, BACK)?.let { verb ->
+            return seconds(phrase.substring(verb.length), numberWords)?.let { VoiceIntent.SeekBack(it) }
+        }
+        verbIn(phrase, FORWARD)?.let { verb ->
+            return seconds(phrase.substring(verb.length), numberWords)?.let { VoiceIntent.SeekForward(it) }
+        }
+        return null
+    }
+
+    /** The verb [phrase] opens with — as a whole word, never as letters inside one. */
+    private fun verbIn(phrase: String, verbs: List<String>): String? =
+        verbs.firstOrNull { phrase == it || phrase.startsWith("$it ") }
+
+    /** How long [tail] says, or null when it does not say a length of time at all. */
+    private fun seconds(tail: String, numberWords: Map<String, Int>): Int? {
+        var rest = tail.trim()
+        for (filler in listOf("by ", "about ", "for ")) rest = rest.removePrefix(filler)
+        if (rest.isEmpty() || rest in VAGUE) return DEFAULT_SECONDS
+        val m = AMOUNT.matchEntire(rest) ?: return null
+        val word = m.groupValues[1]
+        val unit = m.groupValues[2]
+        val n = word.toIntOrNull()
+            ?: numberWords[word]
+            ?: (1.takeIf { word == "a" || word == "an" })
+            ?: return null
+        // "a" on its own is not an amount: "skip a" is not thirty… anything.
+        if (unit.isEmpty() && word.toIntOrNull() == null && word !in numberWords) return null
+        val each = when {
+            unit.startsWith("h") -> 3600L
+            unit.startsWith("min") -> 60L
+            else -> 1L
+        }
+        return (n.toLong() * each).coerceIn(1, MAX_SECONDS.toLong()).toInt()
+    }
 }

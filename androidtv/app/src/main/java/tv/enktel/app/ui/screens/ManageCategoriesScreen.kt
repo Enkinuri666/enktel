@@ -62,9 +62,9 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
 
     var kind by remember { mutableStateOf("live") } // live | vod | series
-    val categoriesRaw by graph.content.categories(p.id, kind).collectAsStateWithLifecycle(initialValue = emptyList())
-    val savedOrder by graph.settings.categoryOrder(kind).collectAsStateWithLifecycle(initialValue = emptyList())
-    val hidden by graph.settings.hiddenCategories(kind).collectAsStateWithLifecycle(initialValue = emptySet())
+    val categoriesRaw by remember(p.id, kind) { graph.content.categories(p.id, kind) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val savedOrder by remember(kind) { graph.settings.categoryOrder(kind) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val hidden by remember(kind) { graph.settings.hiddenCategories(kind) }.collectAsStateWithLifecycle(initialValue = emptySet())
 
     // Merge saved order with any newly-added categories (append them at the end).
     val order = remember(categoriesRaw, savedOrder) {
@@ -75,7 +75,10 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
 
     Column(
         Modifier.fillMaxSize()
-            .padding(horizontal = 32.dp, vertical = 24.dp),
+            .padding(
+                horizontal = tv.enktel.app.ui.components.rememberScreenShape().padH,
+                vertical = tv.enktel.app.ui.components.rememberScreenShape().padV,
+            ),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         SectionTitle("Manage Categories")
@@ -87,8 +90,8 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
         ChipRowLabel("Content type")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassChip("Live TV", selected = kind == "live", onClick = { kind = "live" })
-            GlassChip("Movies", selected = kind == "vod", accent = EnktelOk, onClick = { kind = "vod" })
-            GlassChip("Series", selected = kind == "series", accent = EnktelPurple, onClick = { kind = "series" })
+            GlassChip("Movies", selected = kind == "vod", onClick = { kind = "vod" })
+            GlassChip("Series", selected = kind == "series", onClick = { kind = "series" })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FocusButton("Reset order", onClick = {

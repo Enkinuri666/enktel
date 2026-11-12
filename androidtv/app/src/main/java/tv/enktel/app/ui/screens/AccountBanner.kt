@@ -132,7 +132,7 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
                 )
             }
             Text(
-                p.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black,
+                p.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
             if (p.username.isNotBlank()) {

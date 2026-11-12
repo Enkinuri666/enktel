@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.EnktelFeed
+import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.data.repo.ReleaseCountdown
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
@@ -92,7 +94,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
         failed = false
         val today = EnktelFeed.todayEpochDay()
         val got = try { graph.feed.upcoming(today, limit = 40) } catch (_: Throwable) { null }
-        titles = got.orEmpty()
+        titles = got.orEmpty().uniqueBy { it.listKey() }
         failed = got == null
         loading = false
     }
@@ -119,7 +121,11 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val pad = if (isMobile) 16.dp else 48.dp
+    // "Is this already on the line?", answered once for the whole screen.
+    val titleIndex by tv.enktel.app.ui.components.rememberComputed(
+        emptyMap<String, String>(), profile?.id,
+    ) { profile?.let { graph.content.movieTitleIndex(it.id) }.orEmpty() }
+    val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     Box(Modifier.fillMaxSize().background(EnktelBg)) {
         when {
@@ -127,7 +133,10 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
             failed && titles.isEmpty() -> CenterMessage(
                 "Couldn't reach the release feed. Check the connection and try again.",
             )
-            titles.isEmpty() -> CenterMessage("Nothing announced at the moment — check back soon.")
+            titles.isEmpty() -> CenterMessage(
+                "Nothing announced at the moment — check back soon.",
+                icon = androidx.compose.material.icons.Icons.Rounded.NewReleases,
+            )
             else -> LazyColumn(
                 Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 20.dp, bottom = 60.dp),
@@ -137,7 +146,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                     Column(Modifier.padding(horizontal = pad)) {
                         Text(
                             "Coming Soon", color = Color.White,
-                            fontSize = if (isMobile) 24.sp else 30.sp, fontWeight = FontWeight.Black,
+                            fontSize = if (isMobile) 24.sp else 30.sp, fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "Films with a release date, counting down. Trailers play in EnkTel.",
@@ -154,7 +163,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                         }
                     }
                 }
-                items(titles, key = { it.id }) { t ->
+                items(titles, key = { it.listKey() }) { t ->
                     UpcomingCard(
                         graph = graph,
                         nav = nav,
@@ -162,6 +171,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                         nowMs = nowMs,
                         zoneOffsetMs = zoneOffsetMs,
                         profileId = profile?.id ?: -1L,
+                        titleIndex = titleIndex,
                         pad = pad,
                         isMobile = isMobile,
                     )
@@ -171,6 +181,17 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
     }
 }
 
+/**
+ * What tells one upcoming film from another in the list.
+ *
+ * Its id, when it has one. The feed's parser turns a missing id into 0, and
+ * keying on the id alone gave every such film the same key — two of them and
+ * the list threw on the way in, closing the screen. A film without an id is
+ * told apart by what it is called and when it is out.
+ */
+private fun EnktelFeed.Upcoming.listKey(): Any =
+    if (id != 0L) id else "untitled-id:$title:$releaseDate"
+
 @Composable
 private fun UpcomingCard(
     graph: AppGraph,
@@ -179,6 +200,8 @@ private fun UpcomingCard(
     nowMs: Long,
     zoneOffsetMs: Long,
     profileId: Long,
+    /** Lowercased title → the key of the film on this line that has it. */
+    titleIndex: Map<String, String>,
     pad: androidx.compose.ui.unit.Dp,
     isMobile: Boolean,
 ) {
@@ -197,10 +220,11 @@ private fun UpcomingCard(
 
     // Whether this line already carries it. Some panels list a title before
     // release, and "you already have this" is worth more than a countdown.
-    val catalogue by graph.content.movies(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
-    val already = remember(catalogue, item.title) {
-        catalogue.firstOrNull { it.name.trim().equals(item.title.trim(), ignoreCase = true) }
-    }
+    //
+    // Looked up in an index the screen built once. Each card used to collect
+    // the entire film library for itself and scan it for one title, so six
+    // cards on screen held six copies of every film on the line.
+    val alreadyKey = titleIndex[tv.enktel.app.data.repo.ContentRepository.titleKey(item.title)]
 
     Row(
         Modifier
@@ -273,9 +297,9 @@ private fun UpcomingCard(
                         )
                     })
                 }
-                already?.let { m ->
+                alreadyKey?.let { key ->
                     FocusButton("Open in your catalogue", onClick = {
-                        nav.navigate("movie/${m.key}")
+                        nav.navigate("movie/$key")
                     })
                 }
                 tv.enktel.app.ui.components.ShareButton(

@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.automirrored.rounded.Dvr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -62,7 +63,7 @@ import kotlin.math.max
  */
 @Composable
 fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
-    val recordings by graph.db.recordingDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
+    val recordings by remember() { graph.db.recordingDao().all() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var pendingDelete by remember { mutableStateOf<Recording?>(null) }
@@ -96,7 +97,12 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         if (recordings.isEmpty()) {
-            item { CenterMessage("No recordings yet. Use “Record now” in the Live player or schedule from the TV Guide.") }
+            item {
+                CenterMessage(
+                    "No recordings yet. Use “Record now” in the Live player or schedule from the TV Guide.",
+                    icon = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.Dvr,
+                )
+            }
             return@LazyColumn
         }
 
@@ -144,8 +150,13 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             confirmLabel = "Delete",
             onConfirm = {
                 scope.launch {
+                    // Deleting one that is still recording has to stop it
+                    // first. Removing the file and the row left the recorder
+                    // running: still downloading, into a file nothing could
+                    // see, and still holding one of the line's connections.
+                    if (rec.status == "RECORDING") runCatching { RecordScheduler.cancel(context, rec.id) }
                     if (rec.filePath.isNotBlank()) runCatching { File(rec.filePath).delete() }
-                    graph.db.recordingDao().delete(rec)
+                    runCatching { graph.db.recordingDao().delete(rec) }
                 }
                 pendingDelete = null
             },
@@ -171,7 +182,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.recordingSection(
                     .background(accent),
             )
             Spacer(Modifier.width(10.dp))
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 0.3.sp)
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 0.3.sp)
             Spacer(Modifier.width(10.dp))
             Badge(items.size.toString(), accent)
         }

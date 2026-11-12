@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Typography
 
 /**
  * The app's type scale.
@@ -48,35 +50,35 @@ object EnktelType {
     val display: TextStyle
         @Composable get() = TextStyle(
             fontSize = 34.sp,
-            fontWeight = FontWeight.Black,
-            lineHeight = 38.sp,
-            letterSpacing = (-0.4).sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 40.sp,
+            letterSpacing = (-0.6).sp,
         )
 
     /** Screen title, and the programme headline in the player overlay. */
     val headline: TextStyle
         @Composable get() = TextStyle(
             fontSize = 26.sp,
-            fontWeight = FontWeight.Black,
-            lineHeight = 30.sp,
-            letterSpacing = (-0.2).sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 32.sp,
+            letterSpacing = (-0.4).sp,
         )
 
     /** Rail heading, card group heading, dialog title. */
     val title: TextStyle
         @Composable get() = TextStyle(
             fontSize = 19.sp,
-            fontWeight = FontWeight.Black,
-            lineHeight = 23.sp,
-            letterSpacing = 0.3.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 24.sp,
+            letterSpacing = (-0.1).sp,
         )
 
-    /** The supporting line under a title. Bold so it holds against artwork. */
+    /** The supporting line under a title. */
     val subtitle: TextStyle
         @Composable get() = TextStyle(
             fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 19.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 20.sp,
         )
 
     /** Running text: descriptions, synopses, explanatory copy in Settings. */
@@ -92,7 +94,7 @@ object EnktelType {
         @Composable get() = TextStyle(
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            lineHeight = 16.sp,
+            lineHeight = 17.sp,
         )
 
     /** Metadata beside a title: year, rating, channel number, duration. */
@@ -100,23 +102,81 @@ object EnktelType {
         @Composable get() = TextStyle(
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            lineHeight = 15.sp,
+            lineHeight = 16.sp,
         )
 
     /**
      * The uppercase eyebrow above a group — "FEATURED", "NEXT", "LIVE SCORES".
      *
      * Wide tracking is not decoration at this size: uppercase letterforms set
-     * tight are the first thing to turn into a grey smear at distance, and 10 sp
-     * is already the floor of what a television resolves.
+     * tight are the first thing to turn into a grey smear at distance, and
+     * 11 sp is already near the floor of what a television resolves.
      */
     val overline: TextStyle
         @Composable get() = TextStyle(
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            lineHeight = 13.sp,
-            letterSpacing = 1.4.sp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 14.sp,
+            letterSpacing = 1.1.sp,
         )
+}
+
+/**
+ * The Material typography that every bare `Text(...)` inherits from.
+ *
+ * ## The bug this fixes
+ *
+ * `EnktelTheme` never passed a `typography` to `MaterialTheme`, so the app ran
+ * on tv-material's defaults — and tv-material's default text style is
+ * `bodyLarge`: 16 sp on a **24 sp line**, tracked out by 0.5 sp.
+ *
+ * Almost nothing in the app is 16 sp. There are 500-odd call sites that write
+ * `Text(…, fontSize = 12.sp)` and nothing else, and every one of them kept the
+ * inherited 24 sp line and the inherited tracking. On a single line that is
+ * invisible, because Compose trims the leading above the first line and below
+ * the last. The moment the text wraps it is not: a 12 sp caption set on a 24 sp
+ * line is double-spaced. That is the "paragraph with a blank line between every
+ * row" on More, Downloads, Settings and the Sports cards — and it cuts the
+ * other way on headings, where a 26 sp title wrapping onto a 24 sp line has its
+ * second row riding up into its first.
+ *
+ * ## Why em, not sp
+ *
+ * A line height in `sp` is only right for the one font size it was chosen for.
+ * A line height in `em` is a ratio, and it is resolved *after* the call site's
+ * own `fontSize` is merged in — so `Text(fontSize = 11.sp)` gets a 14.9 sp line
+ * and `Text(fontSize = 15.sp)` gets a 20.3 sp one, from the same default, with
+ * no edit to either. One change here re-leads every one of those call sites.
+ *
+ * 1.35 is the compromise between interface labels (which want about 1.25) and
+ * running copy (about 1.45). The large styles are tighter, because leading that
+ * suits a caption leaves a two-line headline looking like two headlines.
+ *
+ * Tracking goes to zero. Roboto at interface sizes is drawn to be set without
+ * any, and half an sp on a 12 sp face is four percent of the em — enough to make
+ * every label in the app read slightly spaced-out without anyone being able to
+ * say why.
+ */
+val EnktelMaterialTypography: Typography = Typography().let { base ->
+    fun TextStyle.led(leading: Float) = copy(lineHeight = leading.em, letterSpacing = 0.sp)
+    base.copy(
+        displayLarge = base.displayLarge.led(1.12f),
+        displayMedium = base.displayMedium.led(1.12f),
+        displaySmall = base.displaySmall.led(1.15f),
+        headlineLarge = base.headlineLarge.led(1.18f),
+        headlineMedium = base.headlineMedium.led(1.2f),
+        headlineSmall = base.headlineSmall.led(1.22f),
+        titleLarge = base.titleLarge.led(1.25f),
+        titleMedium = base.titleMedium.led(1.3f),
+        titleSmall = base.titleSmall.led(1.3f),
+        // The default for every `Text` that does not name a style.
+        bodyLarge = base.bodyLarge.led(1.35f),
+        bodyMedium = base.bodyMedium.led(1.4f),
+        bodySmall = base.bodySmall.led(1.35f),
+        labelLarge = base.labelLarge.led(1.3f),
+        labelMedium = base.labelMedium.led(1.3f),
+        labelSmall = base.labelSmall.led(1.3f),
+    )
 }
 
 /**

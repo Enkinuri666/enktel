@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.watchlist
 
+import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,10 +38,12 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     var kind by remember { mutableStateOf("all") }
-    val items by when (kind) {
-        "vod" -> graph.watchlist.ofKind(p.id, "vod")
-        "series" -> graph.watchlist.ofKind(p.id, "series")
-        else -> graph.watchlist.all(p.id)
+    val items by remember(p.id, kind) {
+        when (kind) {
+            "vod" -> graph.watchlist.ofKind(p.id, "vod")
+            "series" -> graph.watchlist.ofKind(p.id, "series")
+            else -> graph.watchlist.all(p.id)
+        }
     }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
@@ -52,25 +55,26 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
             SectionTitle("My Watchlist")
             Spacer(Modifier.height(10.dp))
         }
-        ChipRowLabel(
-            "Filter",
-            modifier = Modifier.padding(start = shape.padH, top = 6.dp, bottom = 6.dp),
-        )
+        // No "FILTER" caption: three chips reading All, Movies, Series under
+        // a title that says Watchlist do not need to be told what they are.
         Row(
-            Modifier.padding(horizontal = shape.padH, vertical = 4.dp),
+            Modifier.padding(start = shape.padH, end = shape.padH, top = 12.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            GlassChip("All (${items.size})", selected = kind == "all", accent = EnktelPurple, onClick = { kind = "all" })
-            GlassChip("Movies", selected = kind == "vod", accent = EnktelPurple, onClick = { kind = "vod" })
-            GlassChip("Series", selected = kind == "series", accent = EnktelPurple, onClick = { kind = "series" })
+            GlassChip("All (${items.size})", selected = kind == "all", onClick = { kind = "all" })
+            GlassChip("Movies", selected = kind == "vod", onClick = { kind = "vod" })
+            GlassChip("Series", selected = kind == "series", onClick = { kind = "series" })
         }
         if (items.isEmpty()) {
-            CenterMessage("Nothing saved yet. Press ☆ on a movie or series to add it here.")
+            CenterMessage(
+                "Nothing saved yet. Choose Watchlist on a movie or series to keep it here.",
+                icon = androidx.compose.material.icons.Icons.Rounded.BookmarkBorder,
+            )
             return
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(140.dp),
-            contentPadding = PaddingValues(24.dp),
+            contentPadding = PaddingValues(horizontal = shape.padH, vertical = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize().tvGridFocus(),

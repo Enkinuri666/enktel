@@ -134,6 +134,116 @@ class VoiceIntentParserTest {
     }
 
     @Test
+    fun `asking for a position seeks to it, whichever verb is used`() {
+        // Two of these three never worked. The seek rule sat below the tune
+        // rule, which read "go to 45 minutes" as a channel called
+        // "45 minutes", and below the skip rule, which read "jump to 12" as
+        // "jump" and skipped thirty seconds.
+        assertEquals(VoiceIntent.SeekTo(90), parse("seek to 90"))
+        assertEquals(VoiceIntent.SeekTo(45), parse("go to 45 minutes"))
+        assertEquals(VoiceIntent.SeekTo(12), parse("jump to 12"))
+        assertEquals(VoiceIntent.SeekTo(12), parse("jump to 12 minutes"))
+        assertEquals(VoiceIntent.SeekTo(5), parse("go to 5 min"))
+    }
+
+    @Test
+    fun `a bare number after go to is still a channel`() {
+        // "go to 45" is how people ask for channel 45. Only a unit makes it a time.
+        assertEquals(VoiceIntent.TuneChannel("45"), parse("go to 45"))
+        assertEquals(VoiceIntent.TuneChannel("fox news"), parse("go to fox news"))
+    }
+
+    // ── skipping and rewinding ─────────────────────────────────────────
+
+    @Test
+    fun `skipping forward by an amount`() {
+        assertEquals(VoiceIntent.SeekForward(30), parse("skip forward 30 seconds"))
+        assertEquals(VoiceIntent.SeekForward(120), parse("jump ahead 2 minutes"))
+        assertEquals(VoiceIntent.SeekForward(15), parse("forward 15"))
+        assertEquals(VoiceIntent.SeekForward(300), parse("move ahead 5 minutes"))
+        assertEquals(VoiceIntent.SeekForward(30), parse("go forward 30 seconds"))
+        assertEquals(VoiceIntent.SeekForward(10), parse("skip ten seconds"))
+        assertEquals(VoiceIntent.SeekForward(60), parse("skip ahead a minute"))
+        assertEquals(VoiceIntent.SeekForward(3600), parse("fast forward 1 hour"))
+        // Thirty seconds, because "skip" matched and stopped before the number.
+        assertEquals(VoiceIntent.SeekForward(120), parse("skip forward 2 minutes"))
+    }
+
+    @Test
+    fun `skipping forward with no amount is a thirty second nudge`() {
+        for (phrase in listOf("skip", "skip forward", "jump ahead", "fast forward", "ff", "go forward", "skip ahead a bit")) {
+            assertEquals(phrase, VoiceIntent.SeekForward(30), parse(phrase))
+        }
+    }
+
+    @Test
+    fun `going back goes back`() {
+        assertEquals(VoiceIntent.SeekBack(120), parse("rewind 2 minutes"))
+        assertEquals(VoiceIntent.SeekBack(600), parse("go back 10 minutes"))
+        assertEquals(VoiceIntent.SeekBack(10), parse("rewind by 10"))
+        for (phrase in listOf("rewind", "back", "go back", "jump back", "skip back", "go back a little")) {
+            assertEquals(phrase, VoiceIntent.SeekBack(30), parse(phrase))
+        }
+    }
+
+    @Test
+    fun `skip back does not skip forward`() {
+        // The forward rule ran first and knew the word "skip". It took the
+        // phrase, found no number directly after the verb, and skipped thirty
+        // seconds the wrong way.
+        assertEquals(VoiceIntent.SeekBack(20), parse("skip back 20 seconds"))
+        assertEquals(VoiceIntent.SeekBack(300), parse("jump back 5 minutes"))
+    }
+
+    @Test
+    fun `a title with ff or back in it is not a seek`() {
+        // "ff" is in the forward list. It is also in "office", "coffee",
+        // "traffic" and "off", and the old rule searched for it anywhere.
+        for (phrase in listOf(
+            "the office", "play the office", "open the office", "coffee break", "traffic",
+            "different strokes", "stuff you should know", "sleep timer off",
+        )) {
+            assertTrue("$phrase skipped forward", parse(phrase) !is VoiceIntent.SeekForward)
+        }
+        for (phrase in listOf("feedback", "playback speed", "back to the future", "play back to the future")) {
+            assertTrue("$phrase rewound", parse(phrase) !is VoiceIntent.SeekBack)
+        }
+        assertEquals(VoiceIntent.TuneChannel("back to the future"), parse("watch back to the future"))
+    }
+
+    @Test
+    fun `named playback commands are not read as skips`() {
+        // Each contains a verb the seek rules know, and each used to move the
+        // player thirty seconds instead of doing what it says.
+        assertEquals(VoiceIntent.SkipIntro, parse("skip intro"))
+        assertEquals(VoiceIntent.SkipIntro, parse("skip the intro"))
+        assertEquals(VoiceIntent.SkipIntro, parse("skip credits"))
+        assertEquals(VoiceIntent.PreviousEpisode, parse("go back an episode"))
+        assertEquals(VoiceIntent.NextEpisode, parse("skip to the next episode"))
+        assertEquals(VoiceIntent.NextEpisode, parse("jump to next episode"))
+        assertEquals(VoiceIntent.Restart, parse("go back to the beginning"))
+    }
+
+    @Test
+    fun `an absurd amount is clamped rather than overflowing`() {
+        assertEquals(VoiceIntent.SeekForward(24 * 60 * 60), parse("skip forward 999999 hours"))
+        // More digits than an Int holds: not an amount at all, and not a crash.
+        assertTrue(runCatching { parse("skip forward 99999999999999 seconds") }.isSuccess)
+    }
+
+    @Test
+    fun `a number too big to be a minute is not a crash`() {
+        // What a recogniser makes of a phone number or a date. toInt() threw
+        // NumberFormatException here, inside the speech callback. Whatever
+        // these become instead, they must become something.
+        for (phrase in listOf("go to 5551234567890 minutes", "seek to 99999999999 minutes", "jump to 20261112093000")) {
+            val intent = runCatching { parse(phrase) }
+            assertTrue("$phrase threw ${intent.exceptionOrNull()}", intent.isSuccess)
+            assertTrue("$phrase became a seek", intent.getOrNull() !is VoiceIntent.SeekTo)
+        }
+    }
+
+    @Test
     fun `search phrasings reach search`() {
         assertEquals(VoiceIntent.Search("batman"), parse("search for the batman"))
         assertEquals(VoiceIntent.Search("comedy"), parse("find me a comedy"))

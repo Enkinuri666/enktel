@@ -167,6 +167,53 @@ interface ContentDao {
     @Query("SELECT `key`, firstSeenAt, imdbId, imdbRating, imdbVotes FROM series WHERE profileId = :profileId")
     suspend fun seriesCarryOver(profileId: Long): List<CarryOver>
 
+    // ---- narrow reads ---------------------------------------------------
+    //
+    // Each of these replaces a place that collected `movies(profileId)` or
+    // `channels(profileId)` — the whole table, as full rows, kept live — to
+    // use a sliver of it. On a line with a six-figure film library that is
+    // tens of megabytes read and held for a rail of thirty logos, or to find
+    // out whether one title is present.
+
+    /** The first [n] channels in playlist order: all a Home rail ever shows. */
+    @Query("SELECT * FROM channels WHERE profileId = :profileId ORDER BY sortIdx LIMIT :n")
+    fun channelsHead(profileId: Long, n: Int): Flow<List<Channel>>
+
+    /**
+     * Films that could appear under "More like this", as the columns that
+     * decide it.
+     *
+     * `poster != ''` is not a shortcut: a title without artwork scores zero in
+     * SimilarTitles and can never be listed, so leaving it out changes
+     * nothing but how much is read.
+     *
+     * `ORDER BY name` is not decoration either. The ranking is a stable sort,
+     * so titles that tie on score and rating stay in the order they arrived
+     * in — and `movies()` arrives in name order. Without the clause the rail
+     * showed the same twenty titles in a different order, which
+     * `NarrowReadsTest` caught the first time it ran.
+     */
+    @Query(
+        "SELECT `key`, name, poster, genre, `cast`, director, year, rating " +
+            "FROM movies WHERE profileId = :profileId AND poster != '' ORDER BY name",
+    )
+    suspend fun movieFacets(profileId: Long): List<TitleFacets>
+
+    /** As [movieFacets], for box sets. */
+    @Query(
+        "SELECT `key`, name, poster, genre, `cast`, director, year, rating " +
+            "FROM series WHERE profileId = :profileId AND poster != '' ORDER BY name",
+    )
+    suspend fun seriesFacets(profileId: Long): List<TitleFacets>
+
+    /** Every film's title and key, in the order `movies()` returns them. */
+    @Query("SELECT `key`, name FROM movies WHERE profileId = :profileId ORDER BY name")
+    suspend fun movieTitles(profileId: Long): List<TitleKey>
+
+    /** A random handful of films that have artwork — the screensaver's slides. */
+    @Query("SELECT * FROM movies WHERE profileId = :profileId AND poster != '' ORDER BY RANDOM() LIMIT :n")
+    suspend fun randomPosters(profileId: Long, n: Int): List<Movie>
+
     /**
      * Push enriched fields from the worker without rewriting the entire row.
      *
@@ -522,6 +569,18 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id") suspend fun byId(id: Long): Recording?
     @Query("SELECT * FROM recordings ORDER BY startMs DESC") fun all(): Flow<List<Recording>>
     @Query("UPDATE recordings SET status = :status WHERE id = :id") suspend fun setStatus(id: Long, status: String)
+
+    /**
+     * Progress, written to one column.
+     *
+     * The recorder used to read the row, copy it with a new size and write the
+     * whole thing back, several times a minute. Anything that changed the row
+     * in between — Stop marking it done, say — was overwritten with the copy,
+     * and a row deleted in between was a null dereference.
+     *
+     * @return rows changed: 0 means the recording is no longer in the list.
+     */
+    @Query("UPDATE recordings SET sizeBytes = :bytes WHERE id = :id") suspend fun setSize(id: Long, bytes: Long): Int
 
     /** Rows still claiming to be recording — used at start-up to clean up after
      *  a process death, which otherwise leaves a permanent "● REC" badge on a

@@ -76,11 +76,32 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      # Robolectric fetches its android-all jar itself, at test time, straight
+      # into ~/.m2 — not through Gradle, so setup-gradle's cache does not cover
+      # it and every run re-downloads it. A hiccup on that transfer fails every
+      # Robolectric class in the suite at once, before a single test body runs,
+      # and that is what killed v1.79.0's first release build: 968 tests and
+      # both lints passed, six classes died on a socket.
+      #
+      # The key hashes the whole version catalogue, so any dependency bump
+      # misses it; restore-keys then reuses the newest existing cache and only
+      # what actually changed is fetched.
+      - name: Cache Robolectric android-all jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('androidtv/gradle/libs.versions.toml') }}
+          restore-keys: |
+            robolectric-${{ runner.os }}-
+
       - name: Lint (both flavors, release variant)
         run: ./gradlew :app:lintTvRelease :app:lintMobileRelease --no-daemon
 
       - name: Unit tests
-        run: ./gradlew :app:testTvDebugUnitTest :app:testMobileDebugUnitTest --no-daemon
+        # Wrapped in a script so both workflows run the tests identically: it
+        # retries once, and only when the failure is Robolectric's jar download
+        # rather than a test. See the comments in it.
+        run: "$GITHUB_WORKSPACE/.github/scripts/unit-tests.sh"
 
       # Room writes app/schemas/<db>/<version>.json during KSP, and those files
       # are committed so an entity change without a matching Migration shows up

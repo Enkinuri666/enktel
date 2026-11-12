@@ -1,5 +1,7 @@
 package tv.enktel.app.ui.mobile
 
+import androidx.compose.material.icons.rounded.ChevronRight
+import tv.enktel.app.ui.components.localLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
@@ -255,7 +257,7 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
                             .background(Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Box(
@@ -389,7 +391,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                                 "E",
                                 color = Color.White,
                                 fontSize = 22.sp,
-                                fontWeight = FontWeight.Black,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                         Text(
@@ -452,8 +454,8 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                .background(EnktelSurfaceHigh)
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(tv.enktel.app.ui.theme.EnktelSurface)
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .pointerInput(Unit) { detectTapGestures { /* absorb bg taps */ } },
@@ -468,28 +470,34 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                     .padding(horizontal = 20.dp),
             )
             Text(
-                "Menu", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
+                "More",
+                color = tv.enktel.app.ui.theme.EnktelText,
+                style = tv.enktel.app.ui.theme.EnktelType.title,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
             )
-            listOf(
-                // Search leads. It came off the bar to make room for Movies and
-                // Series, and a thing people reach for often belongs at the top
-                // of the sheet rather than in the middle of it.
-                "🔎  Search" to "search",
-                "🎟  Coming Soon" to "comingSoon",
-                "📺  TV Guide" to "guide",
-                "⏪  Catch-Up" to "catchup",
-                "☆  Watchlist" to "watchlist",
-                "≡  My Lists" to "lists",
-                "⬇  Downloads" to "downloads",
-                "⏺  Recordings" to "recordings",
-                "⚙  Settings" to "settings",
-            ).forEach { (label, route) ->
+            // The same destinations, icons and names the television's rail
+            // uses, taken from the one list that defines them. This sheet had
+            // its own copy written out as strings with an emoji in front of
+            // each, so "Catch-Up" was ⏪ here and a clock on the rail, and a
+            // destination added to one never reached the other.
+            //
+            // Search leads. It came off the bar to make room for Movies and
+            // Series, and a thing people reach for often belongs at the top
+            // of the sheet rather than in the middle of it.
+            val order = listOf(
+                "search", "comingSoon", "guide", "catchup", "watchlist",
+                "lists", "downloads", "recordings", "settings",
+            )
+            val entries = order.mapNotNull { route ->
+                tv.enktel.app.ui.components.FULL_ITEMS.firstOrNull { it.route == route }
+            }
+            entries.forEach { item ->
+                val route = item.route
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .height(52.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         // clickable, so the row ripples, takes focus and reads
                         // as a button to a screen reader and a D-pad alike —
                         // the sheet had the same finger-only problem the bar did.
@@ -504,10 +512,36 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                                 popUpTo("home") { inclusive = false; saveState = true }
                             }
                         }
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Box(
+                        Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(tv.enktel.app.ui.theme.EnktelBlue.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.tv.material3.Icon(
+                            item.icon,
+                            contentDescription = null,
+                            tint = tv.enktel.app.ui.theme.EnktelBlue,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Text(
+                        item.localLabel(),
+                        color = tv.enktel.app.ui.theme.EnktelText,
+                        style = tv.enktel.app.ui.theme.EnktelType.subtitle,
+                        modifier = Modifier.weight(1f),
+                    )
+                    androidx.tv.material3.Icon(
+                        androidx.compose.material.icons.Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = EnktelTextDim,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
             // Small tail spacer so the last row never kisses the sheet edge visually.

@@ -1,5 +1,15 @@
 package tv.enktel.app.ui.downloads
 
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +56,9 @@ import tv.enktel.app.data.share.LanShare
 import tv.enktel.app.data.share.LanShareFiles
 import tv.enktel.app.data.share.LanShareController
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.LocalToaster
+import tv.enktel.app.ui.components.PickerMissing
+import tv.enktel.app.ui.components.launchOr
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBg
@@ -67,7 +79,7 @@ import java.io.File
  */
 @Composable
 fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
-    val entries by graph.downloads.observe().collectAsStateWithLifecycle(initialValue = emptyList())
+    val entries by remember() { graph.downloads.observe() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val totalBytes by graph.downloads.totalBytes.collectAsStateWithLifecycle()
     val speeds by graph.downloads.speeds.collectAsStateWithLifecycle()
 
@@ -79,6 +91,8 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     // Set when the folder button lands on a file the system will not let
     // anything open — which is every download made before a folder was picked.
     var sealedNotice by remember { mutableStateOf<DownloadLocation.Reveal.Sealed?>(null) }
+
+    val toaster = LocalToaster.current
 
     // The same picker Settings uses. Offered here as well because this is
     // where the viewer actually discovers the problem: they wanted the file
@@ -101,9 +115,10 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             is DownloadLocation.Reveal.Sealed -> sealedNotice = r
             is DownloadLocation.Reveal.Folder -> {
                 // ACTION_VIEW on a tree URI is honoured by some file managers
-                // and ignored by others, so the picker — which every device
-                // has, and which opens *at* the folder — is the fallback
-                // rather than a dead button.
+                // and ignored by others, so the picker — which opens *at* the
+                // folder — is the fallback rather than a dead button. Not
+                // every device has one of those either (a Fire TV stick does
+                // not), so the fallback's own fallback is to say so.
                 val view = android.content.Intent(android.content.Intent.ACTION_VIEW)
                     .setDataAndType(r.treeUri.toUri(), android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
                     .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -111,7 +126,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 if (ctx.packageManager.resolveActivity(view, 0) != null) {
                     runCatching { ctx.startActivity(view) }
                 } else {
-                    runCatching { folderPicker.launch(r.treeUri.toUri()) }
+                    folderPicker.launchOr(r.treeUri.toUri()) { toaster.error(PickerMissing.FOLDER) }
                 }
             }
             is DownloadLocation.Reveal.Path -> {
@@ -129,16 +144,19 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     // which put the first and last rows off the visible picture.
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
 
-    Column(Modifier.fillMaxSize().background(EnktelBg).padding(horizontal = shape.padH, vertical = shape.padV)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            SectionTitle("Downloads")
-            Spacer(Modifier.width(12.dp))
-            Text(
-                "· ${totalBytes.humanBytes()} on device",
-                color = EnktelTextDim, fontSize = 13.sp,
-            )
-        }
-        Spacer(Modifier.height(4.dp))
+    // No bottom padding on the page: the list carries it as content padding.
+    // With it out here the list was clipped a gutter short of the screen, so
+    // the last visible row was sliced off mid-card with a band of black under
+    // it instead of running off the bottom edge the way a list does.
+    Column(
+        Modifier.fillMaxSize().background(EnktelBg)
+            .padding(start = shape.padH, end = shape.padH, top = shape.padV),
+    ) {
+        tv.enktel.app.ui.components.ScreenHeader(
+            title = "Downloads",
+            subtitle = "${totalBytes.humanBytes()} on this device",
+        )
+        Spacer(Modifier.height(8.dp))
         // Two different truths, and the difference matters: one of these
         // folders survives uninstall and can be read from a PC, and the other
         // cannot be opened by anything at all.
@@ -152,7 +170,9 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 "Saved movies and episodes play offline. Files go to the folder you picked, so they " +
                     "survive uninstalling and can be opened here or copied from a PC."
             },
-            color = EnktelTextDim, fontSize = 12.sp,
+            color = tv.enktel.app.ui.theme.EnktelTextFaint,
+            style = tv.enktel.app.ui.theme.EnktelType.caption,
+            modifier = Modifier.widthIn(max = 720.dp),
         )
         Spacer(Modifier.height(12.dp))
 
@@ -177,8 +197,14 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             FocusButton(
-                text = if (sharing != null) "■ Stop sending" else "📤 Send to PC",
-                accent = sharing == null,
+                text = if (sharing != null) "Stop sending" else "Send to PC",
+                icon = if (sharing != null) Icons.Rounded.Stop else Icons.Rounded.Computer,
+                // Stopping is the one that needs to look like stopping.
+                kind = if (sharing != null) {
+                    tv.enktel.app.ui.components.ButtonKind.Danger
+                } else {
+                    tv.enktel.app.ui.components.ButtonKind.Neutral
+                },
                 onClick = {
                     if (sharing != null) {
                         LanShareController.stop(ctx)
@@ -204,7 +230,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 "On your PC, open a browser and go to:",
                 color = EnktelTextDim, fontSize = 12.sp,
             )
-            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
                 "Or open the EnkTel app on your PC — it finds this device on the network by " +
@@ -227,7 +253,10 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(14.dp))
 
         if (entries.isEmpty()) {
-            CenterMessage("Nothing downloaded yet. Open a movie or episode and tap ⬇ Download.")
+            CenterMessage(
+                "Nothing downloaded yet. Open a movie or episode and choose Download.",
+                icon = androidx.compose.material.icons.Icons.Rounded.Download,
+            )
             return
         }
 
@@ -238,9 +267,12 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
         val doneEpisodes = done.filter { it.kind == "episode" }
         val doneSeries = doneEpisodes.groupBy { it.seriesName.ifBlank { "Series" } }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = shape.padV + 8.dp),
+        ) {
             if (running.isNotEmpty()) {
-                item { GroupHeader("In progress · ${running.size}") }
+                item { GroupHeader("In progress", running.size) }
                 items(running, key = { it.id }) { entry ->
                     DownloadRow(
                         entry,
@@ -254,7 +286,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 item { Spacer(Modifier.height(6.dp)) }
             }
             if (doneMovies.isNotEmpty()) {
-                item { GroupHeader("Movies · ${doneMovies.size}") }
+                item { GroupHeader("Movies", doneMovies.size) }
                 items(doneMovies, key = { it.id }) { entry ->
                     DownloadRow(
                         entry,
@@ -266,7 +298,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             }
             doneSeries.forEach { (seriesName, eps) ->
                 item {
-                    GroupHeader("Series · $seriesName · ${eps.size} episode${if (eps.size == 1) "" else "s"}")
+                    GroupHeader(seriesName, eps.size, note = if (eps.size == 1) "episode" else "episodes")
                 }
                 val bySeason = eps.groupBy { it.season }.toSortedMap()
                 bySeason.forEach { (season, list) ->
@@ -312,7 +344,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             title = "Where this file lives",
             message = "${notice.because}\n\n${notice.path}",
             confirmLabel = "Pick a folder",
-            onConfirm = { runCatching { folderPicker.launch(null) } },
+            onConfirm = { folderPicker.launchOr(null) { toaster.error(PickerMissing.FOLDER) } },
             onDismiss = { sealedNotice = null },
         )
     }
@@ -327,9 +359,11 @@ private fun formatEta(secs: Long): String = when {
 }
 
 @Composable
-private fun GroupHeader(text: String) {
-    Text(text, color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Black,
-        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+private fun GroupHeader(title: String, count: Int, note: String = "") {
+    tv.enktel.app.ui.components.SectionHeader(
+        title, count = count, note = note,
+        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+    )
 }
 
 /** Shared "open the saved file offline" click handler. Falls back to the
@@ -415,11 +449,11 @@ private fun DownloadRow(
             } else ""
             val statusLine = when (status) {
                 "DONE" -> "Saved · $sizeText"
-                "FAILED" -> "Failed · ${entry.errorMessage.ifBlank { "tap ↻ to resume" }}"
+                "FAILED" -> "Failed · ${entry.errorMessage.ifBlank { "choose Retry to resume" }}"
                 "RUNNING" -> "$doneText / $sizeText$rateText$etaText"
                 "PAUSED" -> if (entry.errorMessage.startsWith("Waiting for Wi-Fi")) {
                     "${entry.errorMessage} · $doneText / $sizeText"
-                } else "Paused · $doneText / $sizeText · ▶ resumes here"
+                } else "Paused · $doneText / $sizeText · resumes from here"
                 // Named, not just "Queued". The whole reason downloads now
                 // wait is that starting them all made every one of them slow,
                 // and a viewer who cannot see why a row is idle is a viewer
@@ -427,55 +461,74 @@ private fun DownloadRow(
                 // this queue exists to make unnecessary. See DownloadBudget.
                 else -> "Waiting for a free connection · $sizeText"
             }
-            Text(statusLine, color = statusColor, fontSize = 11.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                statusLine, color = statusColor,
+                style = tv.enktel.app.ui.theme.EnktelType.caption,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
             if (status == "RUNNING" || status == "PAUSED" || status == "QUEUED") {
                 Spacer(Modifier.height(6.dp))
                 ProgressBarThin(entry.progressPct / 100f, Modifier.fillMaxWidth())
             }
         }
         Spacer(Modifier.width(12.dp))
-        Column(horizontalAlignment = Alignment.End) {
+        // Side by side, not stacked. Two buttons in a column made every row two
+        // stops tall for a D-pad — DOWN from Play landed on the same row's
+        // Remove instead of the next row's Play — and made the row itself
+        // taller than its artwork to fit them.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             if (onPlay != null) {
-                FocusButton(
-                    text = "▶",
-                    accent = true,
+                tv.enktel.app.ui.components.FocusIconButton(
+                    Icons.Rounded.PlayArrow, "Play",
+                    kind = tv.enktel.app.ui.components.ButtonKind.Primary,
                     onClick = onPlay,
                 )
-                Spacer(Modifier.height(6.dp))
             }
             // In-flight rows get a transport control instead: pause holds the
             // bytes already on disk, resume picks up from that exact offset.
             when {
                 entry.status == "RUNNING" || entry.status == "QUEUED" ->
                     onPause?.let {
-                        FocusButton(text = "⏸", onClick = it)
-                        Spacer(Modifier.height(6.dp))
+                        tv.enktel.app.ui.components.FocusIconButton(Icons.Rounded.Pause, "Pause", onClick = it)
                     }
                 entry.status == "PAUSED" ->
                     onResume?.let {
-                        FocusButton(text = "▶", accent = true, onClick = it)
-                        Spacer(Modifier.height(6.dp))
+                        tv.enktel.app.ui.components.FocusIconButton(
+                            Icons.Rounded.PlayArrow, "Resume", accent = true, onClick = it,
+                        )
                     }
                 entry.status == "FAILED" ->
                     onResume?.let {
-                        FocusButton(text = "↻", accent = true, onClick = it)
-                        Spacer(Modifier.height(6.dp))
+                        tv.enktel.app.ui.components.FocusIconButton(
+                            Icons.Rounded.Refresh, "Retry", label = "Retry", accent = true, onClick = it,
+                        )
                     }
             }
             // Only on a finished row: there is no folder to show until the
             // file exists, and offering one mid-download would point at a
             // partial file.
             if (entry.status == "DONE" && onReveal != null) {
-                FocusButton(
-                    text = DownloadLocation.buttonLabel(
+                val revealLabel = tv.enktel.app.ui.components.Glyphs.strip(
+                    DownloadLocation.buttonLabel(
                         DownloadLocation.reveal(entry.filePath, android.os.Build.VERSION.SDK_INT),
                     ),
+                )
+                // On a phone the words cost the row its title: with "Show
+                // folder" spelled out, "Harbourlight" was drawn as "Harb…".
+                tv.enktel.app.ui.components.FocusIconButton(
+                    Icons.Rounded.FolderOpen, revealLabel,
+                    label = if (tv.enktel.app.ui.components.rememberScreenShape().narrow) null else revealLabel,
                     onClick = onReveal,
                 )
-                Spacer(Modifier.height(6.dp))
             }
-            FocusButton(text = "✕", onClick = onDelete)
+            tv.enktel.app.ui.components.FocusIconButton(
+                Icons.Rounded.DeleteOutline, "Remove",
+                kind = tv.enktel.app.ui.components.ButtonKind.Ghost,
+                onClick = onDelete,
+            )
         }
     }
 }

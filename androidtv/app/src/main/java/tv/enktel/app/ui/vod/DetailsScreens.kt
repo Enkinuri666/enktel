@@ -1,5 +1,15 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.BookmarkAdded
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.Downloading
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import tv.enktel.app.ui.components.ButtonKind
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -91,7 +102,16 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     // time the panel is slow or down — the hero image was simply absent and
     // the page opened on flat background. The enriched copy is already in the
     // local row, so it costs nothing and is always there.
-    val hero = details?.backdrop?.takeIf { it.isNotBlank() } ?: m.backdrop
+    //
+    // And when neither has a backdrop, the poster. Most of an IPTV catalogue
+    // has never been near TMDB, so "backdrop or nothing" meant most titles
+    // opened on a flat black page with a small rectangle in one corner. A
+    // poster cropped to the screen and dimmed this far is no longer a picture
+    // of anything — it is the film's own colours behind its own page, which
+    // is all a backdrop is for.
+    val hero = details?.backdrop?.takeIf { it.isNotBlank() }
+        ?: m.backdrop.takeIf { it.isNotBlank() }
+        ?: m.poster
     Box(Modifier.fillMaxSize()) {
         if (hero.isNotBlank()) {
             AsyncImage(
@@ -113,7 +133,10 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
         // laid the poster beside the metadata in 300 dp. See ScreenShape.
         val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" &&
             tv.enktel.app.ui.components.rememberScreenShape().narrow
-        val outerPad = if (narrow) 20.dp else 48.dp
+        // The page's gutter, from the same place every other screen takes it.
+        val outerPad = tv.enktel.app.ui.components.rememberScreenShape().let {
+            if (narrow) it.padH + 4.dp else it.padH
+        }
         // Composed before the page rather than after it, and lifted above it
         // with zIndex. Drawing order would have been the obvious way round —
         // last child, on top — and it is how the arrow went missing on the
@@ -131,7 +154,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             Modifier.fillMaxSize().padding(outerPad).padding(top = backBand)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Box(Modifier.width(180.dp).height(260.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
+            Box(Modifier.width(180.dp).height(260.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(16.dp)).background(EnktelSurfaceHigh)) {
                 if (m.poster.isNotBlank()) {
                     AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
@@ -142,7 +165,7 @@ fun MovieDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 url = url, progressKey = progressKey, resumeMs = resumeMs,
             )
         } else Row(Modifier.fillMaxSize().padding(outerPad).padding(top = backBand)) {
-            Box(Modifier.width(220.dp).height(320.dp).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
+            Box(Modifier.width(220.dp).height(320.dp).clip(RoundedCornerShape(16.dp)).background(EnktelSurfaceHigh)) {
                 if (m.poster.isNotBlank()) {
                     AsyncImage(model = m.poster, contentDescription = m.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
@@ -170,8 +193,12 @@ private fun MovieDetailsBody(
     progressKey: String,
     resumeMs: Long,
 ) {
-    Text(m.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(8.dp))
+    Text(
+        m.name,
+        color = tv.enktel.app.ui.theme.EnktelTextOnArt,
+        style = tv.enktel.app.ui.theme.EnktelType.display.copy(fontSize = 30.sp, lineHeight = 35.sp),
+    )
+    Spacer(Modifier.height(10.dp))
     androidx.compose.foundation.layout.FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -221,14 +248,20 @@ private fun MovieDetailsBody(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        FocusButton("▶ Play", accent = true, onClick = {
-            nav.navigate(vodPlayerRoute(url, m.name, progressKey, poster = m.poster))
-        })
-        if (resumeMs > 60_000) {
-            FocusButton("Resume ${resumeMs / 60000}m", onClick = {
-                nav.navigate(vodPlayerRoute(url, m.name, progressKey, poster = m.poster))
-            })
-        }
+        // The thing this page is for. It was drawn as a faint tint, the same
+        // as a switched-on toggle in Settings, in a row of five other buttons
+        // — on a phone, with no focus to pick it out, it was the least
+        // prominent control on its own page.
+        //
+        // One button, not two. "Play" and "Resume 42m" went to the same
+        // route, and the player resumes on its own; two buttons that do the
+        // same thing make the viewer wonder which of them starts over.
+        FocusButton(
+            if (resumeMs > 60_000) "Resume · ${resumeMs / 60000} min in" else "Play",
+            icon = Icons.Rounded.PlayArrow,
+            kind = ButtonKind.Primary,
+            onClick = { nav.navigate(vodPlayerRoute(url, m.name, progressKey, poster = m.poster)) },
+        )
         trailerKey?.let { key ->
             FocusButton("🎬 Trailer", onClick = {
                 // In-app, not an ACTION_VIEW at the YouTube app. A sideloaded
@@ -261,7 +294,14 @@ private fun MovieDetailsBody(
     Spacer(Modifier.height(18.dp))
     val plot = details?.plot?.takeIf { it.isNotBlank() } ?: m.plot
     if (plot.isNotBlank()) {
-        Text(plot, color = Color.White.copy(0.9f), fontSize = 14.sp, lineHeight = 21.sp)
+        Text(
+            plot,
+            color = tv.enktel.app.ui.theme.EnktelTextOnArt.copy(alpha = 0.9f),
+            style = tv.enktel.app.ui.theme.EnktelType.body.copy(fontSize = 15.sp, lineHeight = 22.sp),
+            // A paragraph the full width of a television is a line 150
+            // characters long, which nobody reads to the end of.
+            modifier = Modifier.widthIn(max = 620.dp),
+        )
         Spacer(Modifier.height(16.dp))
     }
     if (details != null) {
@@ -274,12 +314,19 @@ private fun MovieDetailsBody(
     // decided against it had only Back, and whoever liked it had no way to
     // find its neighbours — while the app knew exactly what else was on the
     // line and never said.
-    val allMovies by remember(p.id) { graph.content.movies(p.id) }
-        .collectAsStateWithLifecycle(initialValue = emptyList<Movie>())
-    val similar = remember(m.key, allMovies) {
+    //
+    // Read and ranked off the UI thread, from eight columns rather than whole
+    // rows. This used to collect `movies(p.id)` — every film on the line, as
+    // full rows, kept live for as long as the page was open — and rank them
+    // inside remember { }, which is the UI thread. On a large library that is
+    // a details page that takes seconds to become responsive after it opens,
+    // and tens of megabytes held to draw a rail of twenty posters.
+    val similar by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<tv.enktel.app.data.db.TitleFacets>(), p.id, m.key,
+    ) {
         tv.enktel.app.data.repo.SimilarTitles.rank(
             seed = tv.enktel.app.data.repo.SimilarTitles.of(m),
-            pool = allMovies,
+            pool = graph.content.movieFacets(p.id),
             facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
         )
     }
@@ -309,12 +356,8 @@ private fun <T> SimilarRail(
 ) {
     if (titles.isEmpty()) return
     Spacer(Modifier.height(24.dp))
-    Text(
-        "MORE LIKE THIS",
-        color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black,
-        letterSpacing = 1.4.sp,
-    )
-    Spacer(Modifier.height(10.dp))
+    tv.enktel.app.ui.components.SectionHeader("More like this")
+    Spacer(Modifier.height(12.dp))
     LazyRow(
         modifier = Modifier.tvRailFocus(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -334,21 +377,27 @@ private fun <T> SimilarRail(
 
 @Composable
 fun WatchlistButton(graph: AppGraph, profileId: Long, kind: String, refId: Long, name: String, poster: String) {
-    val saved by graph.watchlist.isSavedFlow(profileId, kind, refId).collectAsStateWithLifecycle(initialValue = false)
+    val saved by remember(profileId, kind, refId) { graph.watchlist.isSavedFlow(profileId, kind, refId) }.collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
-    FocusButton(if (saved) "✓ In Watchlist" else "＋ Watchlist", onClick = {
-        scope.launch { graph.watchlist.toggle(profileId, kind, refId, name, poster) }
-    })
+    FocusButton(
+        if (saved) "In Watchlist" else "Watchlist",
+        icon = if (saved) Icons.Rounded.BookmarkAdded else Icons.Rounded.BookmarkAdd,
+        accent = saved,
+        onClick = { scope.launch { graph.watchlist.toggle(profileId, kind, refId, name, poster) } },
+    )
 }
 
 @Composable
 fun FavButton(graph: AppGraph, profileId: Long, kind: String, refId: Long) {
-    val fav by graph.content.isFavoriteFlow(profileId, kind, refId)
+    val fav by remember(profileId, kind, refId) { graph.content.isFavoriteFlow(profileId, kind, refId) }
         .collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
-    FocusButton(if (fav) "★ Favorited" else "☆ Favorite", onClick = {
-        scope.launch { graph.content.toggleFavorite(profileId, kind, refId) }
-    })
+    FocusButton(
+        if (fav) "Favorited" else "Favorite",
+        icon = if (fav) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+        accent = fav,
+        onClick = { scope.launch { graph.content.toggleFavorite(profileId, kind, refId) } },
+    )
 }
 
 /**
@@ -371,14 +420,19 @@ fun DownloadButton(
     season: Int = 0,
     episode: Int = 0,
 ) {
-    val exists by graph.db.downloadDao().existsFlow(id).collectAsStateWithLifecycle(initialValue = false)
-    val done by graph.db.downloadDao().completedFlow(id).collectAsStateWithLifecycle(initialValue = false)
+    val exists by remember(id) { graph.db.downloadDao().existsFlow(id) }.collectAsStateWithLifecycle(initialValue = false)
+    val done by remember(id) { graph.db.downloadDao().completedFlow(id) }.collectAsStateWithLifecycle(initialValue = false)
     val label = when {
-        done -> "✓ Saved offline"
-        exists -> "⏳ Downloading…"
-        else -> "⬇ Download"
+        done -> "Saved offline"
+        exists -> "Downloading…"
+        else -> "Download"
     }
-    FocusButton(label, onClick = {
+    val icon = when {
+        done -> Icons.Rounded.DownloadDone
+        exists -> Icons.Rounded.Downloading
+        else -> Icons.Rounded.Download
+    }
+    FocusButton(label, icon = icon, accent = done, onClick = {
         if (done) return@FocusButton
         if (exists) {
             graph.downloads.cancel(id)
@@ -419,12 +473,13 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     // Other series on this line that resemble this one. The catalogue itself,
     // not a recommendation service — a rail of titles the playlist does not
     // carry would be an advert for somebody else's library.
-    val allSeries by remember(p.id) { graph.content.series(p.id) }
-        .collectAsStateWithLifecycle(initialValue = emptyList<Series>())
-    val similarSeries = remember(s.key, allSeries) {
+    // Off the UI thread and from a projection; see the film page.
+    val similarSeries by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<tv.enktel.app.data.db.TitleFacets>(), p.id, s.key,
+    ) {
         tv.enktel.app.data.repo.SimilarTitles.rank(
             seed = tv.enktel.app.data.repo.SimilarTitles.of(s),
-            pool = allSeries,
+            pool = graph.content.seriesFacets(p.id),
             facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
         )
     }
@@ -433,17 +488,19 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     // isn't squeezed to ~180 dp with 48 dp side gutters.
     val narrow = tv.enktel.app.BuildConfig.FLAVOR == "mobile" &&
         tv.enktel.app.ui.components.rememberScreenShape().narrow
-    val hPad = if (narrow) 16.dp else 48.dp
-    val posterW = if (narrow) 90.dp else 110.dp
-    val posterH = if (narrow) 130.dp else 160.dp
+    val hPad = tv.enktel.app.ui.components.rememberScreenShape().padH
+    val posterW = if (narrow) 90.dp else 120.dp
+    val posterH = if (narrow) 130.dp else 176.dp
     val gap = if (narrow) 14.dp else 24.dp
+    // The poster stands in when TMDB has no backdrop; see the film page.
+    val seriesHero = s.backdrop.ifBlank { s.poster }
     Box(Modifier.fillMaxSize()) {
-    if (s.backdrop.isNotBlank()) {
+    if (seriesHero.isNotBlank()) {
         // Series never had a hero image at all — only films did, and only when
         // the panel supplied one. This is the enriched TMDB backdrop, so it is
         // there for every series TMDB knows.
         AsyncImage(
-            model = s.backdrop, contentDescription = null,
+            model = seriesHero, contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
             alpha = 0.25f,
@@ -462,27 +519,45 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
             .padding(top = backBand),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(12.dp)).background(EnktelSurfaceHigh)) {
+            Box(Modifier.width(posterW).height(posterH).clip(RoundedCornerShape(16.dp)).background(EnktelSurfaceHigh)) {
                 if (s.poster.isNotBlank()) {
                     AsyncImage(model = s.poster, contentDescription = s.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
             Spacer(Modifier.width(gap))
             Column(Modifier.weight(1f)) {
-                Text(s.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
+                Text(
+                    s.name,
+                    color = tv.enktel.app.ui.theme.EnktelTextOnArt,
+                    style = tv.enktel.app.ui.theme.EnktelType.headline,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     tv.enktel.app.data.metadata.RatingRank.badge(s.imdbRating, s.imdbVotes)
                         .takeIf { it.isNotEmpty() }
                         ?.let { Badge(it, color = ImdbYellow) }
                     if (s.rating > 0) Badge("★ ${"%.1f".format(s.rating)}")
                     if (s.genre.isNotBlank()) Badge(s.genre.take(30))
-                    Badge("${seasons.size} season${if (seasons.size == 1) "" else "s"}")
+                    // Not until the episodes are in. This read "0 seasons" for
+                    // as long as the panel took to answer, which on a slow one
+                    // is long enough to believe it.
+                    if (details != null) {
+                        Badge("${seasons.size} season${if (seasons.size == 1) "" else "s"}")
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 val plot = details?.plot?.ifBlank { s.plot } ?: s.plot
                 if (plot.isNotBlank()) {
-                    Text(plot, color = Color.White.copy(0.85f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        plot,
+                        color = tv.enktel.app.ui.theme.EnktelTextOnArt.copy(alpha = 0.88f),
+                        style = tv.enktel.app.ui.theme.EnktelType.body,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 620.dp),
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 // Series had no trailer button at all — only films did, for no
@@ -499,7 +574,13 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                         }.getOrNull()
                     seriesAlts = keys.drop(1)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Wraps. As a plain Row, Trailer + IMDb + Favorite + Watchlist +
+                // Share is wider than a phone, and Share was left as a sliver
+                // of button against the right-hand edge.
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     seriesTrailer?.let { key ->
                         FocusButton("🎬 Trailer", onClick = {
                             nav.navigate(
@@ -546,7 +627,7 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 }
                 graph.downloads.enqueueMany(entries)
             })
-            FocusButton("⬇ All episodes", accent = true, onClick = {
+            FocusButton("⬇ All episodes", onClick = {
                 val entries = seasons.values.flatten().map { ep ->
                     tv.enktel.app.data.db.DownloadEntry(
                         id = "${p.id}:episode:${ep.id}",
@@ -610,18 +691,15 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                 androidx.tv.material3.Surface(
                     onClick = playEpisode,
                     modifier = Modifier.fillMaxWidth().tapClick(playEpisode),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = EnktelSurfaceHigh.copy(0.5f),
-                        focusedContainerColor = tv.enktel.app.ui.theme.EnktelBlue,
-                        focusedContentColor = Color.White,
-                        contentColor = Color.White,
-                    ),
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                    colors = tv.enktel.app.ui.components.RowFocus.colors(),
+                    border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(12.dp)),
+                    scale = tv.enktel.app.ui.components.RowFocus.scale(),
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "E${ep.episode}",
-                            color = tv.enktel.app.ui.theme.EnktelBlue, fontWeight = FontWeight.Black, fontSize = 14.sp,
+                            color = tv.enktel.app.ui.theme.EnktelBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             modifier = Modifier.width(48.dp),
                         )
                         Column(Modifier.weight(1f)) {
@@ -663,7 +741,12 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     poster = { it.poster },
                     label = { it.name },
                     subtitle = { if (it.year > 0) it.year.toString() else "" },
-                    onOpen = { nav.navigate("seriesDetails/${'$'}{it.key}") },
+                    // Was "seriesDetails/${'$'}{it.key}", which is not an
+                    // interpolation: `${'$'}` is a literal dollar sign, so the
+                    // route was the text "seriesDetails/$" + "{it.key}" and every
+                    // card in this rail opened a series that does not exist — a
+                    // blank page. See DetailRoutesTest.
+                    onOpen = { nav.navigate(seriesDetailsRoute(it.key)) },
                 )
             }
         }
@@ -733,3 +816,13 @@ private fun ImdbButton(imdbId: String) {
         }
     })
 }
+
+/**
+ * The route that opens a box set's page.
+ *
+ * A function rather than a string at each call site because the one place
+ * that wrote it by hand got it wrong in a way a compiler cannot see: a string
+ * template with a stray `${'$'}` in it is still a valid string.
+ */
+internal fun seriesDetailsRoute(key: String): String = "seriesDetails/$key"
+

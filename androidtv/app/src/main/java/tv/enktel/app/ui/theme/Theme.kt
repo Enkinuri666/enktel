@@ -67,7 +67,58 @@ data class EnktelPalette(
      * merely redundant, and forcing it elsewhere would cost more than it buys.
      */
     val warn: Color = Color(0xFFFBBF24),
-)
+) {
+    /**
+     * The ink drawn *on* [primary]: a focused button's label, a selected
+     * segment's text, the glyph inside a filled accent control.
+     *
+     * Every focused control in the app fills with [primary] and used to set
+     * its label in white. Measured against the palettes above, white on the
+     * accent comes to between 1.2:1 and 3.1:1 — it fails in all eleven, and it
+     * is worst exactly where it matters most: 1.22:1 on High Contrast's yellow
+     * and 1.20:1 on Monochrome's near-white, where the label of whichever
+     * button has focus is close to invisible. These accents were chosen to be
+     * luminous against a black page, which is the opposite of what a white
+     * label needs under it.
+     *
+     * Computed, not declared, so it cannot be forgotten on the next palette:
+     * whichever of near-black and white contrasts better with the accent.
+     * Today that is near-black for every palette (6:1 to 15:1).
+     */
+    val onPrimary: Color
+        get() = if (contrastWith(primary, InkOnLight) >= contrastWith(primary, Color.White)) InkOnLight else Color.White
+
+    /** As [onPrimary], for the alert colour — a focused destructive button. */
+    val onLive: Color
+        get() = if (contrastWith(live, InkOnLight) >= contrastWith(live, Color.White)) InkOnLight else Color.White
+}
+
+/** Near-black ink for labels on a luminous fill. Not pure black: it sits on colour, not on OLED-off. */
+private val InkOnLight = Color(0xFF05080D)
+
+private fun channelLuminance(c: Float): Double {
+    val v = c.toDouble()
+    return if (v <= 0.03928) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
+}
+
+private fun relativeLuminance(c: Color): Double =
+    0.2126 * channelLuminance(c.red) + 0.7152 * channelLuminance(c.green) + 0.0722 * channelLuminance(c.blue)
+
+/**
+ * The ink that reads best on a fill of [fill]: near-black or white.
+ *
+ * For controls that take their own accent — a chip coloured for a sport, a
+ * badge in the alert red — where the palette cannot have decided in advance.
+ */
+fun inkOn(fill: Color): Color =
+    if (contrastWith(fill, InkOnLight) >= contrastWith(fill, Color.White)) InkOnLight else Color.White
+
+/** WCAG contrast ratio between two opaque colours, 1.0 to 21.0. */
+internal fun contrastWith(a: Color, b: Color): Double {
+    val la = relativeLuminance(a)
+    val lb = relativeLuminance(b)
+    return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
+}
 
 /**
  * v1.35.0 — "Deep Space" theme, and the new default for fresh installs.
@@ -371,6 +422,12 @@ val EnktelTextFaint: Color @Composable get() = LocalPalette.current.textFaint
 /** Caution — degraded but working. See [EnktelPalette.warn]. */
 val EnktelWarn: Color @Composable get() = LocalPalette.current.warn
 
+/** Ink for anything drawn on a fill of the accent. See [EnktelPalette.onPrimary]. */
+val EnktelOnPrimary: Color @Composable get() = LocalPalette.current.onPrimary
+
+/** Ink for anything drawn on a fill of the alert colour. */
+val EnktelOnLive: Color @Composable get() = LocalPalette.current.onLive
+
 /** Thickness of the D-pad focus outline. */
 val EnktelFocusRingWidth: Dp @Composable get() = LocalPalette.current.focusRingWidth
 
@@ -415,11 +472,18 @@ fun EnktelTheme(
         LocalOverlayOpacity provides overlayOpacity.coerceIn(0.6f, 1f),
         LocalDensity provides scaledDensity,
         tv.enktel.app.i18n.LocalStrings provides tv.enktel.app.i18n.stringsFor(lang),
+        // tv-material's LocalContentColor defaults to *black*, and only a
+        // Surface ever replaces it. Every Text or Icon drawn straight onto the
+        // page without naming a colour was therefore black on a near-black
+        // background — the sign-in screen's own heading among them. Nothing
+        // in this app is ever drawn on white, so the page's default ink is
+        // the palette's text colour.
+        androidx.tv.material3.LocalContentColor provides palette.text,
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(
                 primary = palette.primary,
-                onPrimary = Color.White,
+                onPrimary = palette.onPrimary,
                 secondary = palette.secondary,
                 onSecondary = Color.White,
                 background = palette.bg,
@@ -430,6 +494,10 @@ fun EnktelTheme(
                 onSurfaceVariant = palette.textDim,
                 border = palette.border,
             ),
+            // Without this every bare Text ran on tv-material's 24 sp line and
+            // 0.5 sp tracking, whatever size it was drawn at. See
+            // EnktelMaterialTypography.
+            typography = EnktelMaterialTypography,
             content = content,
         )
     }

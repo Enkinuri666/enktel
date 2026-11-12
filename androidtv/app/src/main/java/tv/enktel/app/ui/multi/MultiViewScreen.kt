@@ -128,7 +128,7 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
     }
 
     val rootFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { rootFocus.requestFocus() }
+    LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
 
     BackHandler { nav.popBackStack() }
 

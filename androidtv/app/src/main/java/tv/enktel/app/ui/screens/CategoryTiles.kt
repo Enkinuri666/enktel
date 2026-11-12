@@ -232,7 +232,7 @@ private fun CategoryTile(c: HomeCategory, compact: Boolean, onClick: () -> Unit)
                 tv.enktel.app.i18n.LocalStrings.current.navLabel(c.navId).orEmpty(),
                 color = Color.White,
                 fontSize = if (compact) 13.sp else 17.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(if (compact) 12.dp else 16.dp),

@@ -312,11 +312,10 @@ fun BoxScope.MiniPlayer(
             if (!interactive) {
                 // TV has no tap target here, so say where the controls are
                 // instead of drawing buttons the remote can't reach.
-                Text(
+                tv.enktel.app.ui.components.GlyphText(
                     "▶ in menu",
                     color = EnktelBlue,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = tv.enktel.app.ui.theme.EnktelType.overline.copy(letterSpacing = 0.2.sp),
                 )
             }
         }
@@ -333,6 +332,6 @@ private fun MiniIconButton(glyph: String, modifier: Modifier, onClick: () -> Uni
             .pointerInput(glyph) { detectTapGestures { onClick() } },
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        tv.enktel.app.ui.components.GlyphIcon(glyph, tint = Color.White, size = 16.dp)
     }
 }
