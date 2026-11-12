@@ -500,3 +500,30 @@ data class CarryOver(
     val imdbRating: Double,
     val imdbVotes: Int,
 )
+
+/**
+ * A title, as far as "More like this" is concerned.
+ *
+ * The eight columns [tv.enktel.app.data.repo.SimilarTitles] scores on and the
+ * rail draws with — and none of the others. A details page used to load every
+ * full row of the library to rank it: plot, backdrop, stream details and all,
+ * for every film on the line, held for as long as the page stayed open. See
+ * `ContentDao.movieFacets`.
+ */
+data class TitleFacets(
+    val key: String,
+    val name: String,
+    val poster: String,
+    val genre: String,
+    val cast: String,
+    val director: String,
+    val year: Int,
+    val rating: Double,
+)
+
+/** A title and the key that opens it — all a "do you have this?" lookup needs. */
+data class TitleKey(
+    val key: String,
+    val name: String,
+)
+

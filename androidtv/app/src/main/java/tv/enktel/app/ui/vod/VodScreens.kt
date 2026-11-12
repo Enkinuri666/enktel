@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -250,50 +251,33 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
     // Ex-Yu movies and 2010+ and scrolling down again, every time. See
     // BrowsePosition, which does the same job for how far down the grid was.
     var cat by rememberSaveable { mutableStateOf<String?>(null) }
-    val categories by graph.content.categories(p.id, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
-    val raw by (if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!))
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val categories by remember(p.id) { graph.content.categories(p.id, "vod") }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // null until the query has answered. An empty list here used to mean two
+    // different things — "still reading the table" and "nothing in it" — and
+    // the grid drew "No movies in this category" for both, so that message
+    // flashed up on every visit for as long as the database took.
+    val raw by remember(p.id, cat) {
+        if (cat == null) graph.content.movies(p.id) else graph.content.moviesIn(p.id, cat!!)
+    }.collectAsStateWithLifecycle<List<tv.enktel.app.data.db.Movie>?>(initialValue = null)
     val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var decadeFilter by rememberSaveable { mutableStateOf<Int?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
-    val genres = remember(raw) {
-        raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
-            .groupingBy { it }.eachCount().entries
-            .sortedByDescending { it.value }.take(18).map { it.key }
-    }
-    val movies = remember(raw, sort, genreFilter, decadeFilter, query) {
-        val needle = query.trim().lowercase()
-        raw.asSequence()
-            .filter { m -> genreFilter == null || m.genre.contains(genreFilter!!, ignoreCase = true) }
-            .filter { m -> tv.enktel.app.data.repo.VodFilters.matchesYear(m.year, decadeFilter) }
-            .filter { m ->
-                if (needle.isEmpty()) true
-                else m.name.lowercase().contains(needle) ||
-                    m.cast.lowercase().contains(needle) ||
-                    m.director.lowercase().contains(needle)
-            }
-            .let { seq ->
-                when (sort) {
-                    // Sorting on the panel's own number ordered a shelf of
-                    // zeroes on any lineup that does not publish ratings —
-                    // which is most of them — while a real IMDb rating sat
-                    // unused in the same row. RatingRank prefers that one and
-                    // weights it by how many votes it rests on.
-                    "rating" -> seq.sortedByDescending {
-                        tv.enktel.app.data.metadata.RatingRank.score(it.imdbRating, it.imdbVotes, it.rating)
-                    }
-                    "added" -> seq.sortedByDescending { it.addedAt }
-                    // Year alone left every title the panel gave no year for in
-                    // one undifferentiated block in query order; ingest time
-                    // breaks the tie.
-                    "year" -> tv.enktel.app.data.repo.VodFilters
-                        .newest(seq.toList(), { it.year }, { it.addedAt }).asSequence()
-                    else -> seq.sortedBy { it.name.lowercase() }
-                }
-            }.toList()
-    }
+    // Indexed once when the library arrives, arranged again when a filter
+    // changes, and neither on the UI thread. This was a filter and a sort of
+    // the whole table inside remember { }, which froze the screen for as long
+    // as it took: over a second on a Fire TV Stick for a large library on
+    // A–Z, again for every chip and every typed letter. See VodShelf.
+    val index by tv.enktel.app.ui.components.rememberComputed<tv.enktel.app.data.repo.VodShelf.Index<tv.enktel.app.data.db.Movie>?>(
+        null, raw,
+    ) { raw?.let { tv.enktel.app.data.repo.VodShelf.movies(it) } }
+    val arranged by tv.enktel.app.ui.components.rememberComputed<List<tv.enktel.app.data.db.Movie>?>(
+        null, index, sort, genreFilter, decadeFilter, query,
+    ) { index?.let { tv.enktel.app.data.repo.VodShelf.arrange(it, sort, genreFilter, decadeFilter, query) } }
+    val genres = index?.genres.orEmpty()
+    val movies = arranged.orEmpty()
+    val loading = arranged == null
     val gate = rememberParentalGate(graph, "vod")
 
     // v1.26.0 — phone portrait uses chip-row + full-width grid instead of a
@@ -322,7 +306,7 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
                     onLocked = gate.prompt,
                 ) { cat = it }
                 MoviesGrid(
-                    movies = movies, categories = categories, cat = cat, nav = nav,
+                    movies = movies, loading = loading, categories = categories, cat = cat, nav = nav,
                     cellSize = cellSize, sort = sort, genres = genres,
                     genreFilter = genreFilter, onGenre = { genreFilter = it },
                     decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
@@ -340,7 +324,7 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
             ) { cat = it }
             Column(Modifier.fillMaxSize()) {
                 MoviesGrid(
-                    movies = movies, categories = categories, cat = cat, nav = nav,
+                    movies = movies, loading = loading, categories = categories, cat = cat, nav = nav,
                     cellSize = cellSize, sort = sort, genres = genres,
                     genreFilter = genreFilter, onGenre = { genreFilter = it },
                     decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
@@ -356,6 +340,7 @@ fun MoviesScreen(graph: AppGraph, nav: NavHostController) {
 @Composable
 private fun MoviesGrid(
     movies: List<tv.enktel.app.data.db.Movie>,
+    loading: Boolean,
     categories: List<tv.enktel.app.data.db.Category>,
     cat: String?,
     nav: NavHostController,
@@ -384,7 +369,9 @@ private fun MoviesGrid(
             onQuery = onQuery,
             resultCount = movies.size,
         )
-        if (movies.isEmpty()) {
+        if (loading) {
+            ShelfSkeleton(cellSize)
+        } else if (movies.isEmpty()) {
             CenterMessage("No movies in this category.", icon = androidx.compose.material.icons.Icons.Rounded.Movie)
         } else {
             // Hoisted out of the grid's content so the restored position can
@@ -446,6 +433,7 @@ private fun MoviesGrid(
 @Composable
 private fun SeriesGrid(
     series: List<tv.enktel.app.data.db.Series>,
+    loading: Boolean,
     categories: List<tv.enktel.app.data.db.Category>,
     cat: String?,
     nav: NavHostController,
@@ -474,7 +462,9 @@ private fun SeriesGrid(
             onQuery = onQuery,
             resultCount = series.size,
         )
-        if (series.isEmpty()) {
+        if (loading) {
+            ShelfSkeleton(cellSize)
+        } else if (series.isEmpty()) {
             CenterMessage("No series match these filters.", icon = androidx.compose.material.icons.Icons.Rounded.Theaters)
         } else {
             // Hoisted for the same reason as the film grid: the hero takes the
@@ -535,37 +525,27 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
     // Same reason as MoviesScreen: a browse screen that forgets where you were
     // the moment you open something makes browsing a chore.
     var cat by rememberSaveable { mutableStateOf<String?>(null) }
-    val categories by graph.content.categories(p.id, "series").collectAsStateWithLifecycle(initialValue = emptyList())
-    val raw by (if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!))
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val categories by remember(p.id) { graph.content.categories(p.id, "series") }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // null until the query has answered; see MoviesScreen.
+    val raw by remember(p.id, cat) {
+        if (cat == null) graph.content.series(p.id) else graph.content.seriesIn(p.id, cat!!)
+    }.collectAsStateWithLifecycle<List<tv.enktel.app.data.db.Series>?>(initialValue = null)
     val gate = rememberParentalGate(graph, "series")
     val sort by graph.settings.vodSort.collectAsStateWithLifecycle(initialValue = "added")
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var genreFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var decadeFilter by rememberSaveable { mutableStateOf<Int?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
-    val genres = remember(raw) {
-        raw.flatMap { tv.enktel.app.data.repo.ContentRepository.splitGenres(it.genre) }
-            .groupingBy { it }.eachCount().entries
-            .sortedByDescending { it.value }.take(18).map { it.key }
-    }
-    val series = remember(raw, sort, genreFilter, decadeFilter, query) {
-        val needle = query.trim().lowercase()
-        raw.asSequence()
-            .filter { s -> genreFilter == null || s.genre.contains(genreFilter!!, ignoreCase = true) }
-            .filter { s -> tv.enktel.app.data.repo.VodFilters.matchesYear(s.year, decadeFilter) }
-            .filter { s -> needle.isEmpty() || s.name.lowercase().contains(needle) }
-            .let { seq ->
-                when (sort) {
-                    // Same reasoning as the film list above.
-                    "rating" -> seq.sortedByDescending {
-                        tv.enktel.app.data.metadata.RatingRank.score(it.imdbRating, it.imdbVotes, it.rating)
-                    }
-                    "year", "added" -> seq.sortedByDescending { it.year }
-                    else -> seq.sortedBy { it.name.lowercase() }
-                }
-            }.toList()
-    }
+    // Same reasoning as the film list: off the UI thread, and indexed once.
+    val index by tv.enktel.app.ui.components.rememberComputed<tv.enktel.app.data.repo.VodShelf.Index<tv.enktel.app.data.db.Series>?>(
+        null, raw,
+    ) { raw?.let { tv.enktel.app.data.repo.VodShelf.series(it) } }
+    val arranged by tv.enktel.app.ui.components.rememberComputed<List<tv.enktel.app.data.db.Series>?>(
+        null, index, sort, genreFilter, decadeFilter, query,
+    ) { index?.let { tv.enktel.app.data.repo.VodShelf.arrange(it, sort, genreFilter, decadeFilter, query) } }
+    val genres = index?.genres.orEmpty()
+    val series = arranged.orEmpty()
+    val loading = arranged == null
 
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
@@ -590,7 +570,7 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
                     onLocked = gate.prompt,
                 ) { cat = it }
                 SeriesGrid(
-                    series = series, categories = categories, cat = cat, nav = nav,
+                    series = series, loading = loading, categories = categories, cat = cat, nav = nav,
                     cellSize = cellSize, sort = sort, genres = genres,
                     genreFilter = genreFilter, onGenre = { genreFilter = it },
                     decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
@@ -608,7 +588,7 @@ fun SeriesScreen(graph: AppGraph, nav: NavHostController) {
             ) { cat = it }
             Column(Modifier.fillMaxSize()) {
                 SeriesGrid(
-                    series = series, categories = categories, cat = cat, nav = nav,
+                    series = series, loading = loading, categories = categories, cat = cat, nav = nav,
                     cellSize = cellSize, sort = sort, genres = genres,
                     genreFilter = genreFilter, onGenre = { genreFilter = it },
                     decadeFilter = decadeFilter, onDecade = { decadeFilter = it },
@@ -779,6 +759,37 @@ private fun FilterBar(
                 )
             }
         }
+        }
+    }
+}
+
+/**
+ * The grid, before there is anything to put in it.
+ *
+ * Shown while the library is being read and arranged. It has the grid's own
+ * columns, spacing and card shape, so when the posters arrive they replace
+ * these in place rather than the page rearranging itself around them — and so
+ * a slow database reads as "loading" instead of as the empty-category message
+ * it used to flash.
+ */
+@Composable
+private fun ShelfSkeleton(cellSize: androidx.compose.ui.unit.Dp) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(cellSize),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        userScrollEnabled = false,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        items(18) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(150f / 210f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(EnktelSurfaceHigh),
+            )
         }
     }
 }

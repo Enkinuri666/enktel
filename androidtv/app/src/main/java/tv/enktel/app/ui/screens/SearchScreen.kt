@@ -87,13 +87,13 @@ fun SearchScreen(
     var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var series by remember { mutableStateOf<List<Series>>(emptyList()) }
     var epg by remember { mutableStateOf<List<tv.enktel.app.data.db.EpgProgram>>(emptyList()) }
-    val history by graph.db.searchDao().recent(20).collectAsStateWithLifecycle(initialValue = emptyList())
+    val history by remember() { graph.db.searchDao().recent(20) }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     // Live channels come from the synced catalogue and are matched in-process
     // rather than by the DAO's `name LIKE '%q%'`. That query cannot find
     // "AU| SEVEN MATE HD" from "seven mate" (the space breaks the infix), nor
     // from "73" (its number), nor from "mate seven". See ChannelFilters.
-    val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val allChannels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     val hidden by graph.settings.hiddenChannels.collectAsStateWithLifecycle(initialValue = emptySet())
 
     LaunchedEffect(query) {
@@ -111,9 +111,21 @@ fun SearchScreen(
         epg = try { graph.db.epgDao().searchUpcoming(p.id, query, System.currentTimeMillis()) }
               catch (_: Throwable) { emptyList() }
     }
-    LaunchedEffect(query, allChannels, hidden) {
-        channels = if (query.length < 2) emptyList()
-        else ChannelFilters.apply(allChannels, query = query, hidden = hidden).take(60)
+    // A LaunchedEffect runs on the UI thread unless told otherwise, so this
+    // matched every channel on the line against the query there, once per
+    // keystroke. The words are indexed once and the match runs off-thread.
+    val channelIndex by tv.enktel.app.ui.components.rememberComputed<List<ChannelFilters.Indexed>?>(
+        null, allChannels,
+    ) { ChannelFilters.index(allChannels) }
+    LaunchedEffect(query, channelIndex, hidden) {
+        val rows = channelIndex
+        channels = if (query.length < 2 || rows == null) {
+            emptyList()
+        } else {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                ChannelFilters.apply(rows, query = query, hidden = hidden).take(60)
+            }
+        }
     }
 
     // Sport, cut from the guide hits rather than searched separately.
@@ -123,9 +135,9 @@ fun SearchScreen(
     // window over up to 400 channels on every keystroke to learn something
     // this list already knows. It also means the two rails cannot disagree:
     // whatever is a fixture leaves the Guide rail, so nothing appears twice.
-    val sportHits = remember(epg, allChannels) {
-        SportsRepository.searchHits(epg, allChannels)
-    }
+    val sportHits by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<SportsRepository.SportsFixture>(), epg, allChannels,
+    ) { SportsRepository.searchHits(epg, allChannels) }
     val guideOnly = remember(epg, sportHits) {
         // Every folded feed, not just the row that survived the fold — the
         // duplicate that lost is still the same fixture, and leaving it here

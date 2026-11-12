@@ -74,7 +74,7 @@ fun UserListsScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val dao = graph.db.userListDao()
 
-    val lists by dao.lists(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val lists by remember(p.id) { dao.lists(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     var openList by remember { mutableStateOf<UserList?>(null) }
     var newName by remember { mutableStateOf("") }
 
@@ -201,7 +201,7 @@ private fun ListDetail(
 ) {
     val scope = rememberCoroutineScope()
     val dao = graph.db.userListDao()
-    val items by dao.items(list.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val items by remember(list.id) { dao.items(list.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Column(Modifier.fillMaxSize().padding(top = 20.dp)) {
         Row(Modifier.padding(horizontal = hPad), verticalAlignment = Alignment.CenterVertically) {

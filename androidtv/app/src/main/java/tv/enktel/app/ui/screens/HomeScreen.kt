@@ -64,6 +64,9 @@ import tv.enktel.app.vodPlayerRoute
 // Lint false-positive: produceState's vararg-keys overload isn't recognized by the
 // ProduceStateDoesNotAssignValue detector even though every producer below assigns `value`.
 @Suppress("ProduceStateDoesNotAssignValue")
+/** How many channels Home's "All Channels" rail shows. */
+private const val HOME_CHANNEL_RAIL = 30
+
 @Composable
 fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) {
@@ -71,22 +74,26 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     }
     val p = profile ?: return
 
-    val continueWatching by graph.content.continueWatching(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val continueWatching by remember(p.id) { graph.content.continueWatching(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     // Resume points written before the player carried artwork have no poster,
     // and this is the screen that shows them. Films can be matched back to the
     // catalogue; the rail redraws itself when the UPDATE lands, because the
     // query above is a Flow. See UserDao.backfillProgressArtwork.
     LaunchedEffect(p.id) { graph.content.backfillProgressArtwork(p.id) }
-    val favChannels by graph.content.favoriteChannels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val recentMovies by graph.content.recentMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val favMovies by graph.content.favoriteMovies(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val recordings by graph.db.recordingDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
+    val favChannels by remember(p.id) { graph.content.favoriteChannels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentMovies by remember(p.id) { graph.content.recentMovies(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val favMovies by remember(p.id) { graph.content.favoriteMovies(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Thirty rows, because thirty is what the rail shows. This collected the
+    // whole channel table — twenty thousand full rows on a large line — to
+    // call `.take(30)` on it.
+    val allChannels by remember(p.id) { graph.content.channelsHead(p.id, HOME_CHANNEL_RAIL) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val recordings by remember() { graph.db.recordingDao().all() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val recentRecordings = remember(recordings) {
         recordings.filter { it.status == "DONE" && it.filePath.isNotBlank() }.sortedByDescending { it.startMs }.take(10)
     }
 
-    val watchlist by graph.watchlist.all(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val watchlist by remember(p.id) { graph.watchlist.all(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     // v1.25.0 — one aggregated computation with cross-rail dedup so a
     // single title no longer shows up in five rails at once. See
     // RecommendationsRepository.homeRails().
@@ -639,7 +646,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         item {
-            ContentRail("All Channels", allChannels.take(30), key = { it.key }) { ch ->
+            ContentRail("All Channels", allChannels, key = { it.key }) { ch ->
                 PosterCard(
                     title = ch.name,
                     imageUrl = ch.logo,

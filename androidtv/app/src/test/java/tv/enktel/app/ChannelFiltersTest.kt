@@ -149,4 +149,70 @@ class ChannelFiltersTest {
         assertEquals(mate.epgId, flix.epgId)
         assertFalse(mate.key == flix.key)
     }
+
+    // ---- the index ----------------------------------------------------------
+
+    /**
+     * A line big enough to have the shapes that matter: regional prefixes in
+     * three spellings, quality tags, numbers, duplicate names, radio.
+     */
+    private val bigLine: List<Channel> = run {
+        val groups = listOf("AU | ", "UK: ", "[US] ", "DE - ", "")
+        val names = listOf(
+            "Seven Mate HD", "Channel 10", "Sky Sports Main Event", "Fox Sports 501 FHD",
+            "BBC One", "Discovery 4K", "Nat Geo Wild", "Cartoon Network", "beIN Sports 1",
+        )
+        (0 until 400).map { i ->
+            Channel(
+                key = "1:$i", profileId = 1, streamId = i.toLong(),
+                name = groups[i % groups.size] + names[i % names.size] + if (i % 11 == 0) " ${i % 40}" else "",
+                num = i + 1,
+                categoryId = "c${i % 12}",
+                categoryName = listOf("Australia", "UK | SPORTS", "Kids", "News HD", "")[i % 5],
+                isRadio = i % 23 == 0,
+            )
+        }
+    }
+
+    @Test
+    fun `the indexed pipeline returns exactly what the plain one does`() {
+        // The index exists only to make this faster. If it ever returns a
+        // different channel, or the same channels in a different order, the
+        // search box and the grid under it have stopped agreeing.
+        val indexed = ChannelFilters.index(bigLine)
+        val queries = listOf("", " ", "sport", "sky sp", "sev mate", "mate sev", "10", "au", "uk sports", "hd", "zzz", "4")
+        val categories = listOf(ChannelFilters.ALL, "c3", "c11", "nope")
+        val hidden = setOf("1:3", "1:44", "1:207")
+        val favourites = setOf("1:2", "1:44", "1:90", "1:301")
+        var checked = 0
+        var nonEmpty = 0
+        for (q in queries) for (cat in categories) for (favOnly in listOf(false, true)) for (radio in listOf(null, false, true)) {
+            val plain = ChannelFilters.apply(bigLine, cat, q, favourites, hidden, favOnly, radio)
+            val fast = ChannelFilters.apply(indexed, cat, q, favourites, hidden, favOnly, radio)
+            assertEquals("query='$q' cat=$cat favOnly=$favOnly radio=$radio", plain.map { it.key }, fast.map { it.key })
+            checked++
+            if (plain.isNotEmpty()) nonEmpty++
+        }
+        assertTrue("only $checked cases", checked >= 250)
+        // Not vacuous: plenty of these have to actually return something.
+        assertTrue("only $nonEmpty of $checked cases matched anything", nonEmpty > 40)
+    }
+
+    @Test
+    fun `matching one channel agrees with matching through the index`() {
+        val indexed = ChannelFilters.index(bigLine)
+        listOf("sport", "sev", "10", "uk", "nat geo", "x").forEach { q ->
+            val viaMatches = bigLine.filter { ChannelFilters.matches(it, q) }.map { it.key }
+            val viaIndex = ChannelFilters.apply(indexed, query = q).map { it.key }
+            assertEquals("query='$q'", viaMatches, viaIndex)
+        }
+    }
+
+    @Test
+    fun `a query that is only a quality tag matches everything`() {
+        // "hd" tokenises to nothing — it is stripped as noise — so it must not
+        // filter the list to empty. True before the index; kept true by it.
+        assertEquals(bigLine.size, ChannelFilters.apply(ChannelFilters.index(bigLine), query = "hd").size)
+        assertEquals(bigLine.size, ChannelFilters.apply(bigLine, query = "HD").size)
+    }
 }

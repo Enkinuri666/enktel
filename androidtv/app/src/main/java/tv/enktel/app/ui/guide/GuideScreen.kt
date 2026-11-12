@@ -155,7 +155,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val toaster = LocalToaster.current
 
-    val channels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val channels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     var dayOffset by remember { mutableIntStateOf(0) }
     var programs by remember { mutableStateOf<Map<String, List<EpgProgram>>>(emptyMap()) }
     var selected by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }

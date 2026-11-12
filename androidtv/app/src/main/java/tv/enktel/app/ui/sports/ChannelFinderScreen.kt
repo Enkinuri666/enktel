@@ -85,7 +85,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     }
     val p = profile ?: return
     val toaster = LocalToaster.current
-    val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+    val followed by remember() { graph.db.sportsDao().followed() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
 
     var loading by remember { mutableStateOf(true) }

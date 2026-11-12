@@ -99,10 +99,10 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
-    val allChannels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    val allChannels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     val prefsChannelKey by graph.settings.lastChannel.collectAsStateWithLifecycle(initialValue = "")
     val hidden by graph.settings.hiddenChannels.collectAsStateWithLifecycle(initialValue = emptySet())
-    val favouriteChannels by graph.content.favoriteChannels(p.id)
+    val favouriteChannels by remember(p.id) { graph.content.favoriteChannels(p.id) }
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val favouriteKeys = remember(favouriteChannels) { favouriteChannels.map { it.key }.toSet() }
 
@@ -110,18 +110,31 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
     var query by remember { mutableStateOf("") }
     var favouritesOnly by remember { mutableStateOf(false) }
 
-    val categories = remember(allChannels) { ChannelFilters.categoriesOf(allChannels) }
-    val counts = remember(allChannels, hidden) { ChannelFilters.categoryCounts(allChannels, hidden) }
-    val channels = remember(allChannels, categoryId, query, favouriteKeys, hidden, favouritesOnly) {
-        ChannelFilters.apply(
-            channels = allChannels,
-            categoryId = categoryId,
-            query = query,
-            favourites = favouriteKeys,
-            hidden = hidden,
-            favouritesOnly = favouritesOnly,
-        )
+    // Off the UI thread, and indexed once; see ChannelBrowserScreen.
+    val categories by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<Pair<String, String>>(), allChannels,
+    ) { ChannelFilters.categoriesOf(allChannels) }
+    val counts by tv.enktel.app.ui.components.rememberComputed(
+        emptyMap<String, Int>(), allChannels, hidden,
+    ) { ChannelFilters.categoryCounts(allChannels, hidden) }
+    val indexed by tv.enktel.app.ui.components.rememberComputed<List<ChannelFilters.Indexed>?>(
+        null, allChannels,
+    ) { ChannelFilters.index(allChannels) }
+    val filtered by tv.enktel.app.ui.components.rememberComputed<List<tv.enktel.app.data.db.Channel>?>(
+        null, indexed, categoryId, query, favouriteKeys, hidden, favouritesOnly,
+    ) {
+        indexed?.let { rows ->
+            ChannelFilters.apply(
+                indexed = rows,
+                categoryId = categoryId,
+                query = query,
+                favourites = favouriteKeys,
+                hidden = hidden,
+                favouritesOnly = favouritesOnly,
+            )
+        }
     }
+    val channels = filtered.orEmpty()
 
     // Selection is held by key, not by index. An index into a list that
     // re-filters underneath you silently points at a different channel.

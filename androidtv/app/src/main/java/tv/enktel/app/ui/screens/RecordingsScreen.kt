@@ -63,7 +63,7 @@ import kotlin.math.max
  */
 @Composable
 fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
-    val recordings by graph.db.recordingDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
+    val recordings by remember() { graph.db.recordingDao().all() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var pendingDelete by remember { mutableStateOf<Recording?>(null) }

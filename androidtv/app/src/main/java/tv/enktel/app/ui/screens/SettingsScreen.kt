@@ -1,5 +1,8 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.FiberManualRecord
@@ -270,7 +273,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         if (category == "Playlists") {
         Text("PLAYLISTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         profiles.forEach { p ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FocusButton(
                     (if (p.id == activeId) "✓ " else "") + "${p.name} (${p.kind})",
                     accent = p.id == activeId,
@@ -358,10 +364,16 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusButton("+ Add playlist", onClick = { nav.navigate("onboarding") })
-            FocusButton("\u2b06 Import file", onClick = { playlistPicker.launch(arrayOf("*/*")) })
-            FocusButton("\u2b07 Export", onClick = {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FocusButton("Add playlist", icon = Icons.Rounded.Add, onClick = { nav.navigate("onboarding") })
+            FocusButton(
+                "Import file", icon = Icons.Rounded.Upload,
+                onClick = { playlistPicker.launch(arrayOf("*/*")) },
+            )
+            FocusButton("Export", icon = Icons.Rounded.Download, onClick = {
                 val p = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
                 val stem = p?.name?.replace(Regex("[^A-Za-z0-9 _-]"), "")?.trim().orEmpty()
                 exportPicker.launch("${stem.ifBlank { "enktel" }}.m3u")
@@ -558,28 +570,40 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             val vMax by graph.settings.vodMaxBufferMs.collectAsStateWithLifecycle(initialValue = 120_000)
             val vPlay by graph.settings.vodPlaybackMs.collectAsStateWithLifecycle(initialValue = 2_000)
             val vRebuf by graph.settings.vodRebufferMs.collectAsStateWithLifecycle(initialValue = 5_000)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Min buffer")
                 listOf(10_000 to "10s", 15_000 to "15s", 20_000 to "20s", 25_000 to "25s", 30_000 to "30s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = vMin == v,
                         onClick = { scope.launch { graph.settings.setVodMinBufferMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Max buffer")
                 listOf(60_000 to "60s", 90_000 to "90s", 120_000 to "120s", 180_000 to "180s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = vMax == v,
                         onClick = { scope.launch { graph.settings.setVodMaxBufferMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Playback start")
                 listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = vPlay == v,
                         onClick = { scope.launch { graph.settings.setVodPlaybackMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Rebuffer")
                 listOf(3_000 to "3s", 4_000 to "4s", 5_000 to "5s", 7_000 to "7s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = vRebuf == v,
@@ -600,28 +624,40 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             val lMax by graph.settings.liveMaxBufferMs.collectAsStateWithLifecycle(initialValue = 8_000)
             val lPlay by graph.settings.livePlaybackMs.collectAsStateWithLifecycle(initialValue = 500)
             val lRebuf by graph.settings.liveRebufferMs.collectAsStateWithLifecycle(initialValue = 1_500)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Min buffer")
                 listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s", 5_000 to "5s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = lMin == v,
                         onClick = { scope.launch { graph.settings.setLiveMinBufferMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Max buffer")
                 listOf(5_000 to "5s", 8_000 to "8s", 10_000 to "10s", 15_000 to "15s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = lMax == v,
                         onClick = { scope.launch { graph.settings.setLiveMaxBufferMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Playback start")
                 listOf(300 to "300ms", 500 to "500ms", 800 to "800ms", 1_000 to "1s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = lPlay == v,
                         onClick = { scope.launch { graph.settings.setLivePlaybackMs(v) } })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 tv.enktel.app.ui.components.ChipRowLabel("Rebuffer")
                 listOf(1_000 to "1s", 1_500 to "1.5s", 2_000 to "2s", 3_000 to "3s").forEach { (v, l) ->
                     tv.enktel.app.ui.components.GlassChip(l, selected = lRebuf == v,
@@ -685,7 +721,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text("DVR RECORDING PADDING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val recPrefix by graph.settings.recPrefixMin.collectAsStateWithLifecycle(initialValue = 2)
         val recSuffix by graph.settings.recSuffixMin.collectAsStateWithLifecycle(initialValue = 5)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("Start ${recPrefix}m early", onClick = {
                 scope.launch { graph.settings.setRecPrefixMin(when (recPrefix) { 0 -> 2; 2 -> 5; 5 -> 10; else -> 0 }) }
             })
@@ -832,7 +871,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             label = "Add mirror host (e.g. http://mirror.example.com:8080)",
         )
         Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("Add", accent = true, onClick = {
                 val trimmed = newGw.trim()
                 if (trimmed.isNotEmpty() && trimmed !in backupGw) {
@@ -1021,11 +1063,14 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (pinHash.isNotBlank()) {
             Text("Tap a category to lock/unlock it (🔒 = PIN required):", color = EnktelTextDim, fontSize = 11.sp)
-            val liveCats by graph.content.categories(activeId, "live").collectAsStateWithLifecycle(initialValue = emptyList())
-            val vodCats by graph.content.categories(activeId, "vod").collectAsStateWithLifecycle(initialValue = emptyList())
-            val seriesCats by graph.content.categories(activeId, "series").collectAsStateWithLifecycle(initialValue = emptyList())
+            val liveCats by remember(activeId) { graph.content.categories(activeId, "live") }.collectAsStateWithLifecycle(initialValue = emptyList())
+            val vodCats by remember(activeId) { graph.content.categories(activeId, "vod") }.collectAsStateWithLifecycle(initialValue = emptyList())
+            val seriesCats by remember(activeId) { graph.content.categories(activeId, "series") }.collectAsStateWithLifecycle(initialValue = emptyList())
             (liveCats + vodCats + seriesCats).chunked(3).forEach { rowCats ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     rowCats.forEach { cat ->
                         val lockKey = "${cat.kind}:${cat.categoryId}"
                         val locked = lockKey in lockedCats
@@ -1105,7 +1150,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Live TV closed captions",
             color = EnktelText, fontSize = 13.sp, fontWeight = FontWeight.Bold,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             tv.enktel.app.player.ClosedCaptions.MODES.forEach { m ->
                 FocusButton(
                     tv.enktel.app.player.ClosedCaptions.label(m),
@@ -1134,19 +1182,28 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val subBg by graph.settings.subBgAlpha.collectAsStateWithLifecycle(initialValue = 0)
         val extSub by graph.settings.extSubUrl.collectAsStateWithLifecycle(initialValue = "")
         var newSub by remember { mutableStateOf("") }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             listOf("white", "yellow", "cyan", "green").forEach { c ->
                 FocusButton("Color: $c", accent = subColor == c, onClick = {
                     scope.launch { graph.settings.setSubColor(c) }
                 })
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             listOf("none", "outline", "shadow", "raised", "depressed").forEach { e ->
                 FocusButton("Edge: $e", accent = subEdge == e, onClick = { scope.launch { graph.settings.setSubEdge(e) } })
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("Background: ${if (subBg == 0) "off" else "${subBg * 100 / 255}%"}", onClick = {
                 scope.launch { graph.settings.setSubBgAlpha(when (subBg) { 0 -> 128; 128 -> 200; 200 -> 255; else -> 0 }) }
             })
@@ -1183,7 +1240,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val autoPipBack by graph.settings.autoPipOnBack.collectAsStateWithLifecycle(initialValue = true)
         val autoPipHome by graph.settings.autoPipOnHome.collectAsStateWithLifecycle(initialValue = true)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FocusButton("Auto-play next episode: ${if (autoplay) "on" else "off"}", accent = autoplay, onClick = {
                     scope.launch { graph.settings.setAutoplayNextEp(!autoplay) }
                 })
@@ -1191,7 +1251,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     scope.launch { graph.settings.setSkipIntroSec(when (skipIntro) { 0 -> 30; 30 -> 60; 60 -> 90; 90 -> 120; else -> 0 }) }
                 })
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FocusButton("Picture-in-Picture: ${if (pip) "on" else "off"}", accent = pip, onClick = {
                     scope.launch { graph.settings.setPipEnabled(!pip) }
                 })
@@ -1279,7 +1342,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "Turn off to stop the Sports Hub making these lookups.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("🔎  Live sport finder", onClick = { nav.navigate("sportsFinder") })
             FocusButton("🏟  Sports Hub", onClick = { nav.navigate("sports") })
         }
@@ -1295,7 +1361,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "do not — nothing broadcasts under a player's name.",
             color = EnktelTextDim, fontSize = 11.sp,
         )
-        val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+        val followed by remember() { graph.db.sportsDao().followed() }.collectAsStateWithLifecycle(initialValue = emptyList())
         var newTeam by remember { mutableStateOf("") }
         var checking by remember { mutableStateOf(false) }
         var suggestions by remember {
@@ -1357,7 +1423,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         // Confirmed candidates, with enough detail to tell two Uniteds apart.
         suggestions.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 row.forEach { s ->
                     FocusButton(
                         "＋ ${s.name}" + if (s.detail.isNotBlank()) "  ·  ${s.detail}" else "",
@@ -1378,7 +1447,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
         followed.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 row.forEach { t ->
                     FocusButton("★ ${t.displayName}  ✕", onClick = {
                         scope.launch {
@@ -1395,7 +1467,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(10.dp))
         Text("BACK BUTTON IN PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("Exit player", accent = backAction == "exit",
                 onClick = { scope.launch { graph.settings.setBackAction("exit") } })
             FocusButton("⧉ Standard PiP", accent = backAction == "pip",
@@ -1418,14 +1493,20 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(10.dp))
         Text("MINI PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
         val dockSize by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             listOf("Small" to 0, "Medium" to 1, "Large" to 2).forEach { (label, step) ->
                 FocusButton(label, accent = dockSize == step,
                     onClick = { scope.launch { graph.settings.setDockSizeStep(step) } })
             }
         }
         val dockCorner by graph.settings.dockCorner.collectAsStateWithLifecycle(initialValue = "BOTTOM_END")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             listOf(
                 "↖ Top left" to "TOP_START", "↗ Top right" to "TOP_END",
                 "↙ Bottom left" to "BOTTOM_START", "↘ Bottom right" to "BOTTOM_END",
@@ -1459,7 +1540,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
         val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
         tv.enktel.app.ui.theme.ALL_PALETTES.chunked(4).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 row.forEach { pal ->
                     FocusButton(
                         (if (themeId == pal.id) "✓ " else "") + pal.label,
@@ -1470,13 +1554,19 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         Text("Overlay opacity: ${opacityPct}%", color = EnktelTextDim, fontSize = 11.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FocusButton("−", onClick = { scope.launch { graph.settings.setUiOpacityPct(opacityPct - 5) } })
             FocusButton("+", onClick = { scope.launch { graph.settings.setUiOpacityPct(opacityPct + 5) } })
             FocusButton("Reset", onClick = { scope.launch { graph.settings.setUiOpacityPct(92) } })
         }
         Text("Text size: ${textPct}%", color = EnktelTextDim, fontSize = 11.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             listOf(85 to "Small", 100 to "Normal", 115 to "Large", 130 to "X-Large").forEach { (v, label) ->
                 FocusButton(label, accent = textPct == v, onClick = { scope.launch { graph.settings.setTextScalePct(v) } })
             }
@@ -1807,7 +1897,10 @@ private fun FilmLibrary(
         color = EnktelTextDim, fontSize = 11.sp,
     )
     tv.enktel.app.ui.components.TvTextField(draft, { draft = it }, "Film library M3U URL")
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         FocusButton("Save", accent = true, onClick = {
             scope.launch {
                 val stored = graph.playlists.setVodUrl(profile, draft)
@@ -1877,7 +1970,10 @@ private fun RealDebridSection(
     tv.enktel.app.ui.components.TvTextField(
         draft, { draft = it }, "API token", password = true,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         FocusButton(if (busy) "Checking…" else "Save & check", accent = true, onClick = onClick@{
             if (busy) return@onClick
             busy = true
@@ -1959,7 +2055,10 @@ private fun LanguagePicker(graph: AppGraph, scope: kotlinx.coroutines.CoroutineS
         .collectAsStateWithLifecycle(initialValue = tv.enktel.app.i18n.Lang.SYSTEM)
 
     Text(t.language, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         // Each option is written in its own language, never translated. A
         // picker that renders "Serbo-Croatian" while the app is in English,
         // and "Engleski" once you have switched, is unreadable precisely to

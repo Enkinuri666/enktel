@@ -140,6 +140,34 @@ class ContentRepository(
     fun seriesIn(profileId: Long, categoryId: String) = content.seriesIn(profileId, categoryId)
     fun continueWatching(profileId: Long, n: Int = 20) = user.continueWatching(profileId, n)
 
+    /** See `ContentDao.channelsHead`. */
+    fun channelsHead(profileId: Long, n: Int) = content.channelsHead(profileId, n)
+
+    /** See `ContentDao.movieFacets`. */
+    suspend fun movieFacets(profileId: Long) = content.movieFacets(profileId)
+    suspend fun seriesFacets(profileId: Long) = content.seriesFacets(profileId)
+
+    /** See `ContentDao.randomPosters`. */
+    suspend fun randomPosters(profileId: Long, n: Int) = content.randomPosters(profileId, n)
+
+    /**
+     * Which film on this line has a given title, if any.
+     *
+     * Keyed by the title trimmed and lowercased, to the key that opens it.
+     * Built once per screen and asked many times — Coming Soon asks once per
+     * card, and each card used to load the entire library to answer.
+     *
+     * The first film of a name wins, in name order, which is what the
+     * `firstOrNull` over `movies()` it replaces returned.
+     */
+    suspend fun movieTitleIndex(profileId: Long): Map<String, String> {
+        val out = HashMap<String, String>()
+        content.movieTitles(profileId).forEach { row ->
+            out.putIfAbsent(titleKey(row.name), row.key)
+        }
+        return out
+    }
+
     /** Unfiltered watch history — see [tv.enktel.app.data.db.UserDao.watchHistory]. */
     fun watchHistory(profileId: Long, n: Int = 30) = user.watchHistory(profileId, n)
 
@@ -765,6 +793,9 @@ class ContentRepository(
         }
 
         /** Normalize a messy panel genre string into clean tags. */
+        /** How a title is keyed in [movieTitleIndex]. Callers must key the same way. */
+        fun titleKey(title: String): String = title.trim().lowercase()
+
         fun splitGenres(genre: String): List<String> =
             genre.split(',', '/', '|', ';')
                 .map { it.trim().replaceFirstChar(Char::uppercase) }

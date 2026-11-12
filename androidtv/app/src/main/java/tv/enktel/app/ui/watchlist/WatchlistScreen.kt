@@ -38,10 +38,12 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     var kind by remember { mutableStateOf("all") }
-    val items by when (kind) {
-        "vod" -> graph.watchlist.ofKind(p.id, "vod")
-        "series" -> graph.watchlist.ofKind(p.id, "series")
-        else -> graph.watchlist.all(p.id)
+    val items by remember(p.id, kind) {
+        when (kind) {
+            "vod" -> graph.watchlist.ofKind(p.id, "vod")
+            "series" -> graph.watchlist.ofKind(p.id, "series")
+            else -> graph.watchlist.all(p.id)
+        }
     }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val shape = tv.enktel.app.ui.components.rememberScreenShape()

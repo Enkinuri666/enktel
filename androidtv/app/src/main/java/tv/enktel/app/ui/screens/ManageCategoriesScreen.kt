@@ -62,9 +62,9 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
     val scope = rememberCoroutineScope()
 
     var kind by remember { mutableStateOf("live") } // live | vod | series
-    val categoriesRaw by graph.content.categories(p.id, kind).collectAsStateWithLifecycle(initialValue = emptyList())
-    val savedOrder by graph.settings.categoryOrder(kind).collectAsStateWithLifecycle(initialValue = emptyList())
-    val hidden by graph.settings.hiddenCategories(kind).collectAsStateWithLifecycle(initialValue = emptySet())
+    val categoriesRaw by remember(p.id, kind) { graph.content.categories(p.id, kind) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val savedOrder by remember(kind) { graph.settings.categoryOrder(kind) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val hidden by remember(kind) { graph.settings.hiddenCategories(kind) }.collectAsStateWithLifecycle(initialValue = emptySet())
 
     // Merge saved order with any newly-added categories (append them at the end).
     val order = remember(categoriesRaw, savedOrder) {

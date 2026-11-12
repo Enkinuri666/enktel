@@ -216,8 +216,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
     }
 
-    val channels by graph.content.channels(p.id).collectAsStateWithLifecycle(initialValue = emptyList())
-    val categories by graph.content.categories(p.id, "live").collectAsStateWithLifecycle(initialValue = emptyList())
+    val channels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val categories by remember(p.id) { graph.content.categories(p.id, "live") }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var current by remember { mutableStateOf<Channel?>(null) }
     var nowNext by remember { mutableStateOf(NowNext(null, null)) }

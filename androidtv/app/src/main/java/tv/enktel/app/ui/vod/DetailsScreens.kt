@@ -314,12 +314,19 @@ private fun MovieDetailsBody(
     // decided against it had only Back, and whoever liked it had no way to
     // find its neighbours — while the app knew exactly what else was on the
     // line and never said.
-    val allMovies by remember(p.id) { graph.content.movies(p.id) }
-        .collectAsStateWithLifecycle(initialValue = emptyList<Movie>())
-    val similar = remember(m.key, allMovies) {
+    //
+    // Read and ranked off the UI thread, from eight columns rather than whole
+    // rows. This used to collect `movies(p.id)` — every film on the line, as
+    // full rows, kept live for as long as the page was open — and rank them
+    // inside remember { }, which is the UI thread. On a large library that is
+    // a details page that takes seconds to become responsive after it opens,
+    // and tens of megabytes held to draw a rail of twenty posters.
+    val similar by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<tv.enktel.app.data.db.TitleFacets>(), p.id, m.key,
+    ) {
         tv.enktel.app.data.repo.SimilarTitles.rank(
             seed = tv.enktel.app.data.repo.SimilarTitles.of(m),
-            pool = allMovies,
+            pool = graph.content.movieFacets(p.id),
             facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
         )
     }
@@ -370,7 +377,7 @@ private fun <T> SimilarRail(
 
 @Composable
 fun WatchlistButton(graph: AppGraph, profileId: Long, kind: String, refId: Long, name: String, poster: String) {
-    val saved by graph.watchlist.isSavedFlow(profileId, kind, refId).collectAsStateWithLifecycle(initialValue = false)
+    val saved by remember(profileId, kind, refId) { graph.watchlist.isSavedFlow(profileId, kind, refId) }.collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
     FocusButton(
         if (saved) "In Watchlist" else "Watchlist",
@@ -382,7 +389,7 @@ fun WatchlistButton(graph: AppGraph, profileId: Long, kind: String, refId: Long,
 
 @Composable
 fun FavButton(graph: AppGraph, profileId: Long, kind: String, refId: Long) {
-    val fav by graph.content.isFavoriteFlow(profileId, kind, refId)
+    val fav by remember(profileId, kind, refId) { graph.content.isFavoriteFlow(profileId, kind, refId) }
         .collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
     FocusButton(
@@ -413,8 +420,8 @@ fun DownloadButton(
     season: Int = 0,
     episode: Int = 0,
 ) {
-    val exists by graph.db.downloadDao().existsFlow(id).collectAsStateWithLifecycle(initialValue = false)
-    val done by graph.db.downloadDao().completedFlow(id).collectAsStateWithLifecycle(initialValue = false)
+    val exists by remember(id) { graph.db.downloadDao().existsFlow(id) }.collectAsStateWithLifecycle(initialValue = false)
+    val done by remember(id) { graph.db.downloadDao().completedFlow(id) }.collectAsStateWithLifecycle(initialValue = false)
     val label = when {
         done -> "Saved offline"
         exists -> "Downloading…"
@@ -466,12 +473,13 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
     // Other series on this line that resemble this one. The catalogue itself,
     // not a recommendation service — a rail of titles the playlist does not
     // carry would be an advert for somebody else's library.
-    val allSeries by remember(p.id) { graph.content.series(p.id) }
-        .collectAsStateWithLifecycle(initialValue = emptyList<Series>())
-    val similarSeries = remember(s.key, allSeries) {
+    // Off the UI thread and from a projection; see the film page.
+    val similarSeries by tv.enktel.app.ui.components.rememberComputed(
+        emptyList<tv.enktel.app.data.db.TitleFacets>(), p.id, s.key,
+    ) {
         tv.enktel.app.data.repo.SimilarTitles.rank(
             seed = tv.enktel.app.data.repo.SimilarTitles.of(s),
-            pool = allSeries,
+            pool = graph.content.seriesFacets(p.id),
             facets = { tv.enktel.app.data.repo.SimilarTitles.of(it) },
         )
     }
@@ -566,7 +574,13 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                         }.getOrNull()
                     seriesAlts = keys.drop(1)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Wraps. As a plain Row, Trailer + IMDb + Favorite + Watchlist +
+                // Share is wider than a phone, and Share was left as a sliver
+                // of button against the right-hand edge.
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     seriesTrailer?.let { key ->
                         FocusButton("🎬 Trailer", onClick = {
                             nav.navigate(
@@ -727,7 +741,12 @@ fun SeriesDetailsScreen(graph: AppGraph, nav: NavHostController, key: String) {
                     poster = { it.poster },
                     label = { it.name },
                     subtitle = { if (it.year > 0) it.year.toString() else "" },
-                    onOpen = { nav.navigate("seriesDetails/${'$'}{it.key}") },
+                    // Was "seriesDetails/${'$'}{it.key}", which is not an
+                    // interpolation: `${'$'}` is a literal dollar sign, so the
+                    // route was the text "seriesDetails/$" + "{it.key}" and every
+                    // card in this rail opened a series that does not exist — a
+                    // blank page. See DetailRoutesTest.
+                    onOpen = { nav.navigate(seriesDetailsRoute(it.key)) },
                 )
             }
         }
@@ -797,3 +816,13 @@ private fun ImdbButton(imdbId: String) {
         }
     })
 }
+
+/**
+ * The route that opens a box set's page.
+ *
+ * A function rather than a string at each call site because the one place
+ * that wrote it by hand got it wrong in a way a compiler cannot see: a string
+ * template with a stray `${'$'}` in it is still a valid string.
+ */
+internal fun seriesDetailsRoute(key: String): String = "seriesDetails/$key"
+

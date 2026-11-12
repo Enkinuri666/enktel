@@ -169,7 +169,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val scoresEnabled by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
     val matchCenterEnabled by graph.settings.matchCenterEnabled.collectAsStateWithLifecycle(initialValue = true)
     var liveScores by remember { mutableStateOf<List<tv.enktel.app.data.repo.LiveScore>>(emptyList()) }
-    val followed by graph.db.sportsDao().followed().collectAsStateWithLifecycle(initialValue = emptyList())
+    val followed by remember() { graph.db.sportsDao().followed() }.collectAsStateWithLifecycle(initialValue = emptyList())
     // What the viewer has already asked to be told about.
     //
     // `upcomingReminders` had no callers at all: pressing the bell stored a
@@ -932,27 +932,19 @@ internal fun SectionHeader(
     count: Int? = null,
     subtitle: String? = null,
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(start = padHoriz, end = padHoriz, top = 14.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(4.dp, 20.dp).background(color, RoundedCornerShape(4.dp)))
-        Spacer(Modifier.width(10.dp))
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        if (count != null) {
-            Spacer(Modifier.width(8.dp))
-            Text("$count", color = color.copy(alpha = 0.65f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-        if (subtitle != null) {
-            Spacer(Modifier.width(10.dp))
-            Text(
-                subtitle, color = EnktelTextDim, fontSize = 11.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    // The app's section heading, not this screen's own. It was a 13 sp
+    // capitalised label set in the section's colour — REMINDERS in purple,
+    // LIVE SCORES in green — while every other screen headed its sections in
+    // sentence case at title size. The colour stays, on the bar and the icon,
+    // because here it does carry meaning: red is what is on air.
+    tv.enktel.app.ui.components.SectionHeader(
+        title = text.lowercase().replaceFirstChar { it.titlecase() },
+        count = count,
+        note = subtitle.orEmpty(),
+        accent = color,
+        icon = icon,
+        modifier = Modifier.fillMaxWidth().padding(start = padHoriz, end = padHoriz, top = 14.dp, bottom = 8.dp),
+    )
 }
 
 /**

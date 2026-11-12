@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screensaver
 
+import androidx.compose.runtime.produceState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -101,8 +102,12 @@ fun ScreensaverHost(graph: AppGraph, isPlaying: () -> Boolean, content: @Composa
 @Composable
 private fun Screensaver(graph: AppGraph, onDismiss: () -> Unit) {
     val profileId by graph.settings.activeProfileId.collectAsStateWithLifecycle(initialValue = 0L)
-    val movies by graph.content.movies(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
-    val backdrops = remember(movies) { movies.filter { it.poster.isNotBlank() }.shuffled().take(20) }
+    // Twenty random films with artwork, asked for as exactly that. This used
+    // to collect the entire film library to shuffle it and keep twenty — on
+    // an idle device, which is the one moment nothing should be working.
+    val backdrops by produceState(emptyList<tv.enktel.app.data.db.Movie>(), profileId) {
+        value = runCatching { graph.content.randomPosters(profileId, 20) }.getOrDefault(emptyList())
+    }
     var idx by remember { mutableIntStateOf(0) }
     LaunchedEffect(backdrops) {
         if (backdrops.isEmpty()) return@LaunchedEffect

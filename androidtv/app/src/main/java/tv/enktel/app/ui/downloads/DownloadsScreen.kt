@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.downloads
 
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Computer
@@ -75,7 +76,7 @@ import java.io.File
  */
 @Composable
 fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
-    val entries by graph.downloads.observe().collectAsStateWithLifecycle(initialValue = emptyList())
+    val entries by remember() { graph.downloads.observe() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val totalBytes by graph.downloads.totalBytes.collectAsStateWithLifecycle()
     val speeds by graph.downloads.speeds.collectAsStateWithLifecycle()
 
@@ -504,10 +505,16 @@ private fun DownloadRow(
             // file exists, and offering one mid-download would point at a
             // partial file.
             if (entry.status == "DONE" && onReveal != null) {
-                FocusButton(
-                    text = DownloadLocation.buttonLabel(
+                val revealLabel = tv.enktel.app.ui.components.Glyphs.strip(
+                    DownloadLocation.buttonLabel(
                         DownloadLocation.reveal(entry.filePath, android.os.Build.VERSION.SDK_INT),
                     ),
+                )
+                // On a phone the words cost the row its title: with "Show
+                // folder" spelled out, "Harbourlight" was drawn as "Harb…".
+                tv.enktel.app.ui.components.FocusIconButton(
+                    Icons.Rounded.FolderOpen, revealLabel,
+                    label = if (tv.enktel.app.ui.components.rememberScreenShape().narrow) null else revealLabel,
                     onClick = onReveal,
                 )
             }

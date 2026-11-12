@@ -52,21 +52,36 @@ object SimilarTitles {
     private const val WELL_RATED = 2
 
     /** How alike [other] is to [seed]. Zero means "do not show this". */
-    fun score(seed: Facets, other: Facets): Int {
-        if (other.key == seed.key || !other.hasArt) return 0
+    fun score(seed: Facets, other: Facets): Int = score(Seed(seed), other)
 
-        val seedGenres = seed.genres.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+    /**
+     * The title being compared against, with its genres and cast normalised
+     * once.
+     *
+     * [score] used to rebuild both sets from the seed on every call, and
+     * [rank] calls it once per title in the library — so the same eight
+     * strings were trimmed, lowercased and collected into a set a hundred
+     * thousand times to rank one page. They do not change between calls.
+     */
+    private class Seed(val facets: Facets) {
+        val genres: Set<String> = facets.genres.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val cast: Set<String> = facets.cast.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val director: String = facets.director.trim()
+    }
+
+    private fun score(seed: Seed, other: Facets): Int {
+        if (other.key == seed.facets.key || !other.hasArt) return 0
+
         val otherGenres = other.genres.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
-        val sharedGenres = seedGenres.intersect(otherGenres).size
+        val sharedGenres = seed.genres.intersect(otherGenres).size
 
-        val seedCast = seed.cast.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
         val sharedCast = other.cast
             .map { it.trim().lowercase() }
-            .count { it.isNotBlank() && it in seedCast }
+            .count { it.isNotBlank() && it in seed.cast }
             .coerceAtMost(MAX_CAST_MATCHES)
 
-        val sameDirector = seed.director.isNotBlank() &&
-            seed.director.trim().equals(other.director.trim(), ignoreCase = true)
+        val sameDirector = seed.facets.director.isNotBlank() &&
+            seed.director.equals(other.director.trim(), ignoreCase = true)
 
         // Nothing in common with the title on screen. Era and rating are not
         // evidence of resemblance on their own — half the catalogue shares them.
@@ -74,8 +89,8 @@ object SimilarTitles {
 
         var total = sharedGenres * GENRE + sharedCast * CAST
         if (sameDirector) total += DIRECTOR
-        if (seed.year > 0 && other.year > 0) {
-            val gap = abs(seed.year - other.year)
+        if (seed.facets.year > 0 && other.year > 0) {
+            val gap = abs(seed.facets.year - other.year)
             total += when {
                 gap <= 3 -> SAME_ERA
                 gap <= 8 -> NEAR_ERA
@@ -98,15 +113,28 @@ object SimilarTitles {
         pool: List<T>,
         limit: Int = 20,
         facets: (T) -> Facets,
-    ): List<T> =
-        pool.asSequence()
+    ): List<T> {
+        val prepared = Seed(seed)
+        return pool.asSequence()
             .map { it to facets(it) }
-            .map { (row, f) -> Triple(row, score(seed, f), f.rating) }
+            .map { (row, f) -> Triple(row, score(prepared, f), f.rating) }
             .filter { it.second > 0 }
             .sortedWith(compareByDescending<Triple<T, Int, Double>> { it.second }.thenByDescending { it.third })
             .take(limit)
             .map { it.first }
             .toList()
+    }
+
+    /** Facets of a projected row. See [tv.enktel.app.data.db.TitleFacets]. */
+    fun of(t: tv.enktel.app.data.db.TitleFacets): Facets = Facets(
+        key = t.key,
+        genres = ContentRepository.splitGenres(t.genre),
+        cast = splitPeople(t.cast),
+        director = t.director,
+        year = t.year,
+        rating = t.rating,
+        hasArt = t.poster.isNotBlank(),
+    )
 
     /** Facets of a film row. */
     fun of(m: tv.enktel.app.data.db.Movie): Facets = Facets(

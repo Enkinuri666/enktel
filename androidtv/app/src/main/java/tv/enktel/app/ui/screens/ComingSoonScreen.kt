@@ -120,6 +120,10 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+    // "Is this already on the line?", answered once for the whole screen.
+    val titleIndex by tv.enktel.app.ui.components.rememberComputed(
+        emptyMap<String, String>(), profile?.id,
+    ) { profile?.let { graph.content.movieTitleIndex(it.id) }.orEmpty() }
     val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     Box(Modifier.fillMaxSize().background(EnktelBg)) {
@@ -166,6 +170,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                         nowMs = nowMs,
                         zoneOffsetMs = zoneOffsetMs,
                         profileId = profile?.id ?: -1L,
+                        titleIndex = titleIndex,
                         pad = pad,
                         isMobile = isMobile,
                     )
@@ -183,6 +188,8 @@ private fun UpcomingCard(
     nowMs: Long,
     zoneOffsetMs: Long,
     profileId: Long,
+    /** Lowercased title → the key of the film on this line that has it. */
+    titleIndex: Map<String, String>,
     pad: androidx.compose.ui.unit.Dp,
     isMobile: Boolean,
 ) {
@@ -201,10 +208,11 @@ private fun UpcomingCard(
 
     // Whether this line already carries it. Some panels list a title before
     // release, and "you already have this" is worth more than a countdown.
-    val catalogue by graph.content.movies(profileId).collectAsStateWithLifecycle(initialValue = emptyList())
-    val already = remember(catalogue, item.title) {
-        catalogue.firstOrNull { it.name.trim().equals(item.title.trim(), ignoreCase = true) }
-    }
+    //
+    // Looked up in an index the screen built once. Each card used to collect
+    // the entire film library for itself and scan it for one title, so six
+    // cards on screen held six copies of every film on the line.
+    val alreadyKey = titleIndex[tv.enktel.app.data.repo.ContentRepository.titleKey(item.title)]
 
     Row(
         Modifier
@@ -277,9 +285,9 @@ private fun UpcomingCard(
                         )
                     })
                 }
-                already?.let { m ->
+                alreadyKey?.let { key ->
                     FocusButton("Open in your catalogue", onClick = {
-                        nav.navigate("movie/${m.key}")
+                        nav.navigate("movie/$key")
                     })
                 }
                 tv.enktel.app.ui.components.ShareButton(

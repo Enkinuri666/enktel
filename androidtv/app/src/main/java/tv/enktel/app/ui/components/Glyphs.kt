@@ -35,7 +35,7 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -172,7 +172,7 @@ object Glyphs {
         "👁" to Mark(Icons.Rounded.Visibility, "Shown"),
         "⏳" to Mark(Icons.Rounded.HourglassTop, "Working"),
         "⚠" to Mark(Icons.Rounded.WarningAmber, "Warning"),
-        "❓" to Mark(Icons.Rounded.HelpOutline, "Unknown"),
+        "❓" to Mark(Icons.AutoMirrored.Rounded.HelpOutline, "Unknown"),
         // direction
         "←" to Mark(Icons.AutoMirrored.Rounded.ArrowBack, "Back"),
         "→" to Mark(Icons.AutoMirrored.Rounded.ArrowForward, "Forward"),
@@ -187,6 +187,7 @@ object Glyphs {
         "↘" to Mark(Icons.Rounded.SouthEast, "Bottom right"),
         "↙" to Mark(Icons.Rounded.SouthWest, "Bottom left"),
         "⬇" to Mark(Icons.Rounded.Download, "Download"),
+        "⬆" to Mark(Icons.Rounded.Upload, "Upload"),
         // places and things
         "📺" to Mark(Icons.Rounded.Tv, "TV"),
         "📻" to Mark(Icons.Rounded.Radio, "Radio"),
