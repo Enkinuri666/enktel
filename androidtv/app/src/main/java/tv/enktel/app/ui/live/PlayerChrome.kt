@@ -390,9 +390,10 @@ private fun ProgressTrack(frac: Float) {
 
 @Composable
 private fun StatusPill(text: String, color: Color) {
-    Text(
+    tv.enktel.app.ui.components.GlyphText(
         text,
-        color = color, style = EnktelType.overline, letterSpacing = 0.6.sp,
+        color = color, style = EnktelType.overline.copy(letterSpacing = 0.6.sp),
+        maxLines = 1,
         modifier = Modifier
             .padding(end = 6.dp)
             .clip(RoundedCornerShape(4.dp))

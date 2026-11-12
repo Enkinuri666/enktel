@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val pad = if (isMobile) 16.dp else 48.dp
+    val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     Box(Modifier.fillMaxSize().background(EnktelBg)) {
         when {
@@ -127,7 +128,10 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
             failed && titles.isEmpty() -> CenterMessage(
                 "Couldn't reach the release feed. Check the connection and try again.",
             )
-            titles.isEmpty() -> CenterMessage("Nothing announced at the moment — check back soon.")
+            titles.isEmpty() -> CenterMessage(
+                "Nothing announced at the moment — check back soon.",
+                icon = androidx.compose.material.icons.Icons.Rounded.NewReleases,
+            )
             else -> LazyColumn(
                 Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 20.dp, bottom = 60.dp),

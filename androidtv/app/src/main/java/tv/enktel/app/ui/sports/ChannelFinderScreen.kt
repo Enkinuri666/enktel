@@ -124,7 +124,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val pad = if (isMobile) 16.dp else 48.dp
+    val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     val sports = remember(rows) {
         rows.groupingBy { it.sport }.eachCount().entries
@@ -302,7 +302,7 @@ private fun FinderRow(
                     FocusButton("📊", onClick = onMatchCenter)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("▶", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                tv.enktel.app.ui.components.GlyphIcon("▶", tint = Color.White, size = 24.dp)
             }
             if (score != null) {
                 Spacer(Modifier.height(6.dp))

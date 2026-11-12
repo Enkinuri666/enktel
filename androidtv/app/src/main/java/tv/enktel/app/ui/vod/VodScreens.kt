@@ -1,5 +1,7 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
@@ -197,10 +199,13 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
                     .background(if (selected) EnktelBlue else Color.Transparent, RoundedCornerShape(4.dp)),
             )
             Spacer(Modifier.width(10.dp))
-            Text(
-                text, fontSize = 13.sp, maxLines = 1,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                modifier = Modifier.padding(PaddingValues(top = 8.dp, bottom = 8.dp, end = 8.dp)),
+            tv.enktel.app.ui.components.GlyphText(
+                text,
+                style = tv.enktel.app.ui.theme.EnktelType.label.copy(
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                ),
+                maxLines = 1,
+                modifier = Modifier.padding(PaddingValues(top = 9.dp, bottom = 9.dp, end = 8.dp)),
             )
         }
     }
@@ -380,7 +385,7 @@ private fun MoviesGrid(
             resultCount = movies.size,
         )
         if (movies.isEmpty()) {
-            CenterMessage("No movies in this category.")
+            CenterMessage("No movies in this category.", icon = androidx.compose.material.icons.Icons.Rounded.Movie)
         } else {
             // Hoisted out of the grid's content so the restored position can
             // count it: the hero occupies the grid's first slot, so every
@@ -470,7 +475,7 @@ private fun SeriesGrid(
             resultCount = series.size,
         )
         if (series.isEmpty()) {
-            CenterMessage("No series match these filters.")
+            CenterMessage("No series match these filters.", icon = androidx.compose.material.icons.Icons.Rounded.Theaters)
         } else {
             // Hoisted for the same reason as the film grid: the hero takes the
             // grid's first slot, so the posters are offset by one.

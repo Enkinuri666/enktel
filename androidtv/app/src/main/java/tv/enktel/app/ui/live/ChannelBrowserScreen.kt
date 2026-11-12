@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.live
 
+import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -272,7 +273,7 @@ fun ChannelBrowserScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         if (allChannels.isEmpty()) {
-            CenterMessage("No channels yet — add a playlist in Settings.")
+            CenterMessage("No channels yet — add a playlist in Settings.", icon = androidx.compose.material.icons.Icons.Rounded.LiveTv)
             return
         }
         if (channels.isEmpty()) {
@@ -429,7 +430,7 @@ private fun ChannelCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (favourite) Text("★", color = EnktelBlue, fontSize = 12.sp)
-                    if (isHidden) Text("🚫", fontSize = 10.sp)
+                    if (isHidden) tv.enktel.app.ui.components.GlyphIcon("🚫", tint = EnktelTextDim, size = 12.dp)
                     Box(
                         Modifier.size(8.dp).clip(CircleShape).background(
                             when (status) {
@@ -549,7 +550,11 @@ private fun OverflowAction(label: String, modifier: Modifier = Modifier, onClick
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            tv.enktel.app.ui.components.GlyphText(
+                label,
+                style = tv.enktel.app.ui.theme.EnktelType.overline.copy(letterSpacing = 0.2.sp),
+                maxLines = 1,
+            )
         }
     }
 }

@@ -344,7 +344,12 @@ private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Mod
                 .padding(horizontal = 22.dp, vertical = 20.dp)
                 .pointerInput(Unit) { detectTapGestures { /* absorb */ } },
         ) {
-            Text(answer.eyebrow.uppercase(), color = EnktelBlue, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            tv.enktel.app.ui.components.GlyphText(
+                answer.eyebrow.uppercase(),
+                color = EnktelBlue,
+                style = tv.enktel.app.ui.theme.EnktelType.overline,
+                maxLines = 1,
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 answer.heading, color = androidx.compose.ui.graphics.Color.White,

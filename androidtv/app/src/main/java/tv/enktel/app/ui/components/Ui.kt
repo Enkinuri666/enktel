@@ -849,7 +849,8 @@ fun Badge(text: String, color: Color = EnktelBlue) {
             .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(text, style = EnktelType.overline, color = color)
+        // "⏪ 20:15" and "🔊 Channel 7" are badges that led with a character.
+        GlyphText(text, style = EnktelType.overline, color = color, maxLines = 1)
     }
 }
 
@@ -875,10 +876,45 @@ fun ProgressBarThin(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * What a screen shows when it has nothing to show, or is still finding out.
+ *
+ * It was one line of bold dim text set dead centre, at whatever width the
+ * sentence came to — so a long one ran edge to edge across a television and
+ * a short one was a caption floating in a black screen. An empty Watchlist
+ * and a failed load looked identical, and neither looked intended.
+ *
+ * Now a measure a person can read (about 60 characters), centred, and — when
+ * the caller says what kind of emptiness this is — the icon of the thing that
+ * would have been here. "No recordings yet" under a recorder icon reads as a
+ * place where recordings will go. The same words alone read as a fault.
+ */
 @Composable
-fun CenterMessage(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = EnktelTextDim, style = EnktelType.subtitle)
+fun CenterMessage(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+    Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.widthIn(max = 440.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (icon != null) {
+                Box(
+                    Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(EnktelSurfaceHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = EnktelTextDim, modifier = Modifier.size(28.dp))
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+            Text(
+                text,
+                color = EnktelTextDim,
+                style = EnktelType.body.copy(fontSize = 15.sp, lineHeight = 22.sp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
     }
 }
 

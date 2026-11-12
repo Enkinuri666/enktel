@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.guide
 
+import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -253,7 +254,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(10.dp))
 
         if (allChannels.isEmpty()) {
-            CenterMessage("No channels yet — add a playlist in Settings.")
+            CenterMessage("No channels yet — add a playlist in Settings.", icon = androidx.compose.material.icons.Icons.Rounded.LiveTv)
             return
         }
         if (channels.isEmpty()) {

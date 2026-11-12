@@ -375,3 +375,62 @@ object RowFocus {
     private fun ringWidth(): Dp =
         (tv.enktel.app.ui.theme.EnktelFocusRingWidth - 1.dp).coerceAtLeast(2.dp)
 }
+
+/**
+ * A pictograph that stands alone, drawn.
+ *
+ * For the places a single character was the whole control — the mini
+ * player's ✕ and ⛶, the skip button's ⏭ — where there is no label to hang an
+ * icon on. Falls back to the character itself for anything [Glyphs] does not
+ * know, so nothing can go blank.
+ */
+@Composable
+fun GlyphIcon(
+    glyph: String,
+    modifier: Modifier = Modifier,
+    tint: Color = androidx.tv.material3.LocalContentColor.current,
+    size: Dp = 18.dp,
+) {
+    val mark = androidx.compose.runtime.remember(glyph) { Glyphs.split(glyph).mark }
+    if (mark != null) {
+        Icon(mark.icon, contentDescription = mark.name, tint = tint, modifier = modifier.size(size))
+    } else {
+        Text(glyph, color = tint, modifier = modifier)
+    }
+}
+
+/**
+ * A line of text that may lead with a pictograph, with the pictograph drawn.
+ *
+ * The same job [FocusButton] does for its own label, for text that is not in
+ * a button: a status line, a heading, a hint. The icon is sized from the text
+ * it sits beside and takes the same colour, so it reads as part of the line
+ * rather than as something placed next to it.
+ */
+@Composable
+fun GlyphText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    style: androidx.compose.ui.text.TextStyle = androidx.tv.material3.LocalTextStyle.current,
+    maxLines: Int = Int.MAX_VALUE,
+) {
+    val parts = androidx.compose.runtime.remember(text) { Glyphs.split(text) }
+    val ink = if (color != Color.Unspecified) color else androidx.tv.material3.LocalContentColor.current
+    val mark = parts.mark
+    if (mark == null) {
+        Text(text, modifier = modifier, color = ink, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        return
+    }
+    val iconSize = with(androidx.compose.ui.platform.LocalDensity.current) {
+        val sp = if (style.fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) style.fontSize else EnktelType.body.fontSize
+        (sp * 1.2f).toDp()
+    }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(mark.icon, contentDescription = if (parts.text.isEmpty()) mark.name else null, tint = ink, modifier = Modifier.size(iconSize))
+        if (parts.text.isNotEmpty()) {
+            Spacer(Modifier.width(iconSize * 0.35f))
+            Text(parts.text, color = ink, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}

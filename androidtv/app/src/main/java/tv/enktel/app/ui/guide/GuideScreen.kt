@@ -1,5 +1,8 @@
 package tv.enktel.app.ui.guide
 
+import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -81,6 +84,40 @@ import tv.enktel.app.ui.components.tvRailFocus
 private val HOUR = 3_600_000L
 private val DP_PER_HOUR = 220.dp
 
+/** How far in from the left edge of the timeline "now" is parked. */
+private const val GUIDE_NOW_LEAD_DP = 150f
+
+/**
+ * Where to scroll the timeline so that [nowMs] sits [GUIDE_NOW_LEAD_DP] in
+ * from its left edge, in the pixels `ScrollState.scrollTo` takes.
+ *
+ * ## The bug this replaces
+ *
+ * The grid is laid out at 220 **dp** an hour. The scroll was computed as
+ * `hours * 220 - 300` and handed straight to `scrollTo`, which takes
+ * **pixels** — so the sum was only right on a screen where one dp is one
+ * pixel, and no device this app runs on is one.
+ *
+ * On a 1080p television a dp is two pixels, so the guide scrolled half as far
+ * as it meant to: opened at four in the afternoon it showed eight in the
+ * morning, with "now" eight hours off the right-hand edge. On a 4K panel it
+ * scrolled a third of the way. And the NOW button — the control that exists
+ * to fix exactly this — called the same function and landed in the same
+ * wrong place, which is why pressing it appeared to do nothing useful.
+ *
+ * Pure, and outside the composable, so the arithmetic can be tested at the
+ * densities it actually has to work at.
+ */
+internal fun guideScrollPx(nowMs: Long, dayStartMs: Long, density: Float): Int {
+    val hours = (nowMs - dayStartMs).toFloat() / HOUR
+    val dp = DP_PER_HOUR.value * hours - GUIDE_NOW_LEAD_DP
+    return (dp * density).toInt().coerceAtLeast(0)
+}
+
+/** Where [nowMs] is drawn on the timeline, in pixels from its start. */
+internal fun guideNowPx(nowMs: Long, dayStartMs: Long, density: Float): Float =
+    DP_PER_HOUR.value * ((nowMs - dayStartMs).toFloat() / HOUR) * density
+
 /**
  * A faint genre wash behind each programme cell.
  *
@@ -156,9 +193,9 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             kotlinx.coroutines.delay(wait)
         }
     }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     suspend fun scrollToNow() {
-        val px = ((now - dayStart).toFloat() / HOUR * 220f).toInt() - 300
-        hScroll.scrollTo(px.coerceAtLeast(0))
+        hScroll.scrollTo(guideScrollPx(now, dayStart, density))
     }
     LaunchedEffect(dayOffset, channels.isEmpty()) {
         if (dayOffset == 0) scrollToNow() else hScroll.scrollTo(0)
@@ -172,12 +209,20 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         ) {
             SectionTitle("TV Guide")
             Spacer(Modifier.weight(1f))
-            FocusButton("◀", onClick = { dayOffset-- })
+            tv.enktel.app.ui.components.FocusIconButton(
+                androidx.compose.material.icons.Icons.Rounded.ChevronLeft, "Previous day",
+                onClick = { dayOffset-- },
+            )
             Text(
                 TimeFormat.format("EEEE d MMMM", dayStart),
                 color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
             )
-            FocusButton("▶", onClick = { dayOffset++ })
+            // A chevron, not a play triangle: this moves a day forward, and
+            // "▶" beside a programme guide says "start playing".
+            tv.enktel.app.ui.components.FocusIconButton(
+                androidx.compose.material.icons.Icons.Rounded.ChevronRight, "Next day",
+                onClick = { dayOffset++ },
+            )
             Spacer(Modifier.width(6.dp))
             // Snap-back to right now. If you're on a different day it jumps you back
             // to today first. Coloured accent so it's the "safe home" like on an STB.
@@ -212,7 +257,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         Spacer(Modifier.height(14.dp))
 
         if (channels.isEmpty()) {
-            CenterMessage("No channels yet — add a playlist in Settings.")
+            CenterMessage("No channels yet — add a playlist in Settings.", icon = androidx.compose.material.icons.Icons.Rounded.LiveTv)
             return
         }
 

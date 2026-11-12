@@ -75,7 +75,10 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
 
     Column(
         Modifier.fillMaxSize()
-            .padding(horizontal = 32.dp, vertical = 24.dp),
+            .padding(
+                horizontal = tv.enktel.app.ui.components.rememberScreenShape().padH,
+                vertical = tv.enktel.app.ui.components.rememberScreenShape().padV,
+            ),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         SectionTitle("Manage Categories")
@@ -87,8 +90,8 @@ fun ManageCategoriesScreen(graph: AppGraph, nav: NavHostController) {
         ChipRowLabel("Content type")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassChip("Live TV", selected = kind == "live", onClick = { kind = "live" })
-            GlassChip("Movies", selected = kind == "vod", accent = EnktelOk, onClick = { kind = "vod" })
-            GlassChip("Series", selected = kind == "series", accent = EnktelPurple, onClick = { kind = "series" })
+            GlassChip("Movies", selected = kind == "vod", onClick = { kind = "vod" })
+            GlassChip("Series", selected = kind == "series", onClick = { kind = "series" })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FocusButton("Reset order", onClick = {

@@ -253,7 +253,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val allChannelsForMatch by channelsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val padHoriz = if (isMobile) 16.dp else 48.dp
+    val padHoriz = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     // Drives every elapsed time and countdown on the screen. See
     // rememberNowTicker: read once at composition, they stopped moving.

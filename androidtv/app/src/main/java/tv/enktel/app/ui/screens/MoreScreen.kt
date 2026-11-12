@@ -65,7 +65,9 @@ fun MoreScreen(onSelect: (String) -> Unit) {
     // 48dp is a television's overscan gutter. On a 411dp handset it eats a
     // quarter of the width, so the tiles came out narrow enough to wrap their
     // own one-line descriptions.
-    val gutter = if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") 16.dp else 48.dp
+    // The page gutter every screen shares, so the title does not step
+    // sideways between destinations.
+    val gutter = tv.enktel.app.ui.components.rememberScreenShape().padH
     // Painted rather than inherited. Every other destination sits on the
     // shell's gradient, but this one is also drawn by the screenshot harness
     // and by anything that hosts it outside the shell, and a grid of light

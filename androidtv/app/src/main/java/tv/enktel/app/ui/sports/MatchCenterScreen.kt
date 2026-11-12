@@ -1,5 +1,10 @@
 package tv.enktel.app.ui.sports
 
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.GpsFixed
+import androidx.compose.material.icons.rounded.SportsSoccer
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -149,7 +154,7 @@ fun MatchCenterScreen(
     }
 
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val pad = if (isMobile) 16.dp else 48.dp
+    val pad = tv.enktel.app.ui.components.rememberScreenShape().padH
     val d = detail
 
     LazyColumn(
@@ -471,7 +476,13 @@ private fun TimelineRow(e: MatchEvent) {
             color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.width(42.dp),
         )
-        Text(iconFor(e.type), fontSize = 13.sp, color = Color.White)
+        val mark = markFor(e.type)
+        androidx.tv.material3.Icon(
+            mark.icon,
+            contentDescription = e.type,
+            tint = mark.tint ?: tv.enktel.app.ui.theme.EnktelText,
+            modifier = Modifier.size(16.dp),
+        )
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -487,13 +498,27 @@ private fun TimelineRow(e: MatchEvent) {
     }
 }
 
-private fun iconFor(type: String): String = when {
-    type.contains("goal", true) -> "⚽"
-    type.contains("yellow", true) -> "🟨"
-    type.contains("red", true) -> "🟥"
-    type.contains("subst", true) -> "🔁"
-    type.contains("penalty", true) -> "🎯"
-    else -> "•"
+/**
+ * What a timeline event is, as a drawing and a colour.
+ *
+ * These were emoji — ⚽ 🟨 🟥 🔁 🎯 — which is the one place in the app where
+ * the colour of the mark *is* the information: a yellow card and a red card
+ * differ in nothing else. An emoji square is whatever shade the device's font
+ * ships, and on a couple of them 🟨 and 🟧 are not far apart. The card is now
+ * a drawn shape in a stated colour.
+ */
+private data class EventMark(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val tint: Color?,
+)
+
+private fun markFor(type: String): EventMark = when {
+    type.contains("goal", true) -> EventMark(androidx.compose.material.icons.Icons.Rounded.SportsSoccer, null)
+    type.contains("yellow", true) -> EventMark(androidx.compose.material.icons.Icons.Rounded.Style, Color(0xFFFACC15))
+    type.contains("red", true) -> EventMark(androidx.compose.material.icons.Icons.Rounded.Style, Color(0xFFEF4444))
+    type.contains("subst", true) -> EventMark(androidx.compose.material.icons.Icons.Rounded.SwapVert, null)
+    type.contains("penalty", true) -> EventMark(androidx.compose.material.icons.Icons.Rounded.GpsFixed, null)
+    else -> EventMark(androidx.compose.material.icons.Icons.Rounded.FiberManualRecord, null)
 }
 
 @Composable

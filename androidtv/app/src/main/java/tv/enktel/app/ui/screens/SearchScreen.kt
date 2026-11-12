@@ -275,7 +275,7 @@ fun SearchScreen(
         }
         if (movies.isNotEmpty() && show("movies")) {
             item {
-                ContentRail(t.navMovies, movies, accent = EnktelOk, key = { it.key }) { m ->
+                ContentRail(t.navMovies, movies, key = { it.key }) { m ->
                     PosterCard(
                         m.name, m.poster,
                         subtitle = if (m.year > 0) "${m.year}" else m.genre.take(20),
@@ -286,7 +286,7 @@ fun SearchScreen(
         }
         if (series.isNotEmpty() && show("series")) {
             item {
-                ContentRail(t.navSeries, series, accent = EnktelPurple, key = { it.key }) { s ->
+                ContentRail(t.navSeries, series, key = { it.key }) { s ->
                     PosterCard(s.name, s.poster, subtitle = if (s.year > 0) "${s.year}" else "",
                         onClick = { nav.navigate("seriesDetails/${s.key}") })
                 }

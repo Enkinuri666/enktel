@@ -929,7 +929,7 @@ fun VodPlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("⏭", color = Color.White, fontSize = 15.sp)
+                tv.enktel.app.ui.components.GlyphIcon("⏭", tint = Color.White, size = 18.dp)
                 Text(
                     "Skip Intro",
                     color = Color.White,
@@ -982,7 +982,7 @@ fun VodPlayerScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text("⚠", color = EnktelLive, fontSize = 13.sp)
+                        tv.enktel.app.ui.components.GlyphIcon("⚠", tint = EnktelLive, size = 16.dp)
                         Text(why, color = EnktelTextDim, fontSize = 12.sp, modifier = Modifier.weight(1f))
                         if (offerSwitch && engine.hasAlternateSource) {
                             FocusButton("Try another source", accent = true, onClick = {

@@ -91,7 +91,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
     }
 
     val isMobile = BuildConfig.FLAVOR == "mobile"
-    val hPad = if (isMobile) 20.dp else 48.dp
+    val hPad = tv.enktel.app.ui.components.rememberScreenShape().padH
 
     // Same as Diagnostics: a wall of readings with nothing focusable in it,
     // so the D-pad had no way to move the list.

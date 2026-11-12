@@ -283,7 +283,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "Continue Watching", continueWatching,
-                    accent = tv.enktel.app.ui.theme.EnktelLive,
                     subtitle = "pick up where you left off",
                     key = { it.key },
                 ) { cw ->
@@ -323,7 +322,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "My Watchlist", watchlist.take(15),
-                    accent = tv.enktel.app.ui.theme.EnktelPurple,
                     key = { it.key },
                 ) { w ->
                     PosterCard(
@@ -346,7 +344,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "⚡  Just Added", justAdded.filterNot { it.key in heroKeys },
-                    accent = tv.enktel.app.ui.theme.EnktelBlue,
                     subtitle = "new since your last sync",
                     key = { it.key },
                 ) { m ->
@@ -370,7 +367,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "🆕  Latest Releases", latestReleases.filterNot { it.key in heroKeys },
-                    accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "newest on your line",
                     key = { it.key },
                 ) { m ->
@@ -412,7 +408,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 tv.enktel.app.ui.components.ContentRailIndexed(
                     "★  Top Rated", topRated,
-                    accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "highest rated in your playlist",
                     key = { it.key },
                 ) { i, m ->
@@ -430,7 +425,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "📺  New Series", newSeries,
-                    accent = tv.enktel.app.ui.theme.EnktelPurple,
                     subtitle = "newest shows in your playlist",
                     key = { it.key },
                 ) { sr ->
@@ -447,7 +441,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "📚  Documentaries", documentaries,
-                    accent = tv.enktel.app.ui.theme.EnktelBlue,
                     subtitle = "factual and long-form",
                     key = { it.key },
                 ) { m ->
@@ -496,7 +489,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 tv.enktel.app.ui.components.ContentRailIndexed(
                     "Trending on EnkTel", trending,
-                    accent = tv.enktel.app.ui.theme.EnktelLive,
                     subtitle = "everyone's watching",
                     key = { it.key },
                 ) { i, m ->
@@ -514,7 +506,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 tv.enktel.app.ui.components.ContentRailIndexed(
                     "⭐  Top Picks", topPicks,
-                    accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "TMDB-rated highlights from your library",
                     key = { it.key },
                 ) { i, m ->
@@ -544,7 +535,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "🔥 Fast-Paced Thrillers", moodFastPaced,
-                    accent = tv.enktel.app.ui.theme.EnktelLive,
                     subtitle = "keep the adrenaline high",
                     key = { it.key },
                 ) { m ->
@@ -558,7 +548,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "🌒 Gritty & Tension-Filled", moodGritty,
-                    accent = tv.enktel.app.ui.theme.EnktelPurple,
                     subtitle = "shadowy, morally grey",
                     key = { it.key },
                 ) { m ->
@@ -572,7 +561,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "🧠 Mind-Bending Plots", moodMindBending,
-                    accent = tv.enktel.app.ui.theme.EnktelBlue,
                     subtitle = "sci-fi and mystery, top-rated",
                     key = { it.key },
                 ) { m ->
@@ -600,7 +588,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "☀️ Feel-Good & Warm-Fuzzy", moodFeelGood,
-                    accent = tv.enktel.app.ui.theme.EnktelOk,
                     subtitle = "wholesome vibes",
                     key = { it.key },
                 ) { m ->
@@ -614,7 +601,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "Recent Recordings", recentRecordings,
-                    accent = tv.enktel.app.ui.theme.EnktelLive,
                     subtitle = "saved to your library",
                     key = { it.id },
                 ) { rec ->

@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.automirrored.rounded.Dvr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +97,12 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         if (recordings.isEmpty()) {
-            item { CenterMessage("No recordings yet. Use “Record now” in the Live player or schedule from the TV Guide.") }
+            item {
+                CenterMessage(
+                    "No recordings yet. Use “Record now” in the Live player or schedule from the TV Guide.",
+                    icon = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.Dvr,
+                )
+            }
             return@LazyColumn
         }
 

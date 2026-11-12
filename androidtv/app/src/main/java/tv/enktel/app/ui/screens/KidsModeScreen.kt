@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.rounded.ChildCare
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -88,12 +89,19 @@ fun KidsModeScreen(graph: AppGraph, nav: NavHostController) {
                 Modifier.fillMaxWidth().padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🧸 Kids Zone", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                tv.enktel.app.ui.components.GlyphText(
+                "🧸 Kids Zone",
+                color = tv.enktel.app.ui.theme.EnktelText,
+                style = tv.enktel.app.ui.theme.EnktelType.headline,
+            )
                 Spacer(Modifier.weight(1f))
             }
 
             if (movies.isEmpty() && channels.isEmpty()) {
-                CenterMessage("No kid-safe content found yet. Ask a grown-up to refresh the playlist.")
+                CenterMessage(
+                    "No kid-safe content found yet. Ask a grown-up to refresh the playlist.",
+                    icon = androidx.compose.material.icons.Icons.Rounded.ChildCare,
+                )
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(180.dp),

@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.lists
 
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -212,7 +213,10 @@ private fun ListDetail(
         }
         Spacer(Modifier.height(14.dp))
         if (items.isEmpty()) {
-            CenterMessage("Nothing here yet — press and hold a channel or title to add it.")
+            CenterMessage(
+                "Nothing here yet — press and hold a channel or title to add it.",
+                icon = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.PlaylistPlay,
+            )
             return
         }
         LazyVerticalGrid(
