@@ -151,8 +151,19 @@ class RecordingService : Service() {
         val dao = app.graph.db.recordingDao()
         var file: File? = null
         var failed = false
+        // Whether this call got as far as claiming the row. Without it the
+        // `finally` below would "settle" a recording that was never started —
+        // and settle means mark it done — which would turn a cancelled
+        // recording into a finished one of zero bytes.
+        var began = false
         try {
+            // An alarm can start the whole process in order to record, and a
+            // new process sweeps up rows left saying RECORDING by the one
+            // before it. Let that finish first, or it sweeps up this one.
+            app.graph.staleRecordingsClosed.join()
             val rec = dao.byId(id) ?: return
+            if (!RecordingOutcome.recordable(rec.status)) return
+            began = true
             val dir = File(getExternalFilesDir(null) ?: filesDir, "recordings").apply { mkdirs() }
             val safeName = rec.title.replace(Regex("[^A-Za-z0-9 _-]"), "_").take(60)
             val target = File(dir, "${safeName}_${rec.id}.ts")
@@ -199,7 +210,7 @@ class RecordingService : Service() {
             // database call: the final size and end time of every recording
             // the viewer stopped by hand were being thrown away right here,
             // leaving the list showing whatever the last progress tick said.
-            withContext(NonCancellable) { settle(id, file, failed) }
+            if (began) withContext(NonCancellable) { settle(id, file, failed) }
             jobs.remove(id)
             if (jobs.isEmpty()) stopSelfSafely()
         }

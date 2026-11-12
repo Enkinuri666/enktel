@@ -50,6 +50,30 @@ object RecordingOutcome {
         )
     }
 
+    /**
+     * Whether a row is one the recorder should act on.
+     *
+     * A recording can be asked for twice — its alarm and its WorkManager job
+     * both exist, on purpose, and fire within moments of each other — and it
+     * can be asked for after it was cancelled, if cancelling the alarm did not
+     * take. Only a row still waiting, or one "record now" has just created,
+     * is started; a finished, failed or cancelled one is left as it is.
+     */
+    fun recordable(status: String): Boolean = status == "SCHEDULED" || status == "RECORDING"
+
+    /**
+     * How long until a scheduled recording starts, as a person would say it.
+     *
+     * The row used to print the minutes whatever their number, so tomorrow
+     * evening's news was "Starts in 1559 min".
+     */
+    fun startsIn(minutes: Long): String = when {
+        minutes <= 0 -> "Starting…"
+        minutes < 90 -> "Starts in $minutes min"
+        minutes < 48 * 60 -> "Starts in ${minutes / 60} h"
+        else -> "Starts in ${minutes / (24 * 60)} days"
+    }
+
     enum class Refused { RETRY, GIVE_UP }
 
     /**

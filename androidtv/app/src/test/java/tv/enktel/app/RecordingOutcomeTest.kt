@@ -116,6 +116,21 @@ class RecordingOutcomeTest {
         assertTrue(RecordingOutcome.progressDue(RecordingOutcome.PROGRESS_STEP, 0))
     }
 
+    // ---- the countdown on a scheduled row ----
+
+    @Test
+    fun `the wait is said the way a person would say it`() {
+        assertEquals("Starting…", RecordingOutcome.startsIn(0))
+        assertEquals("Starting…", RecordingOutcome.startsIn(-5))
+        assertEquals("Starts in 1 min", RecordingOutcome.startsIn(1))
+        assertEquals("Starts in 89 min", RecordingOutcome.startsIn(89))
+        assertEquals("Starts in 2 h", RecordingOutcome.startsIn(134))
+        // Tomorrow evening's news used to be "Starts in 1559 min".
+        assertEquals("Starts in 25 h", RecordingOutcome.startsIn(1559))
+        assertEquals("Starts in 2 days", RecordingOutcome.startsIn(48 * 60))
+        assertEquals("Starts in 6 days", RecordingOutcome.startsIn(6 * 24 * 60 + 300))
+    }
+
     // ---- a start Android refused ----
 
     @Test

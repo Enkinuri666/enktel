@@ -78,8 +78,26 @@ object RecordScheduler {
             .setInputData(Data.Builder().putLong(RecordingService.EXTRA_ID, id).build())
             .build()
         WorkManager.getInstance(context).enqueue(work)
+        // And the alarm, where the device allows one. The job above starts the
+        // recording when the app is open; the alarm is what starts it when it
+        // is not. See RecordingAlarms.
+        RecordingAlarms.arm(context, id, paddedStart)
         return id
     }
+
+    /**
+     * What to tell the viewer who has just scheduled a recording.
+     *
+     * Honest about the one thing they cannot see: whether it will start on
+     * its own. Where it will not, saying "scheduled" and nothing else is how
+     * somebody comes home to a recording that never began.
+     */
+    fun scheduledMessage(context: Context): String =
+        if (RecordingAlarms.exactAllowed(context)) {
+            "Recording scheduled"
+        } else {
+            "Scheduled — but it will only start while EnkTel is open. Open Recordings to fix that."
+        }
 
     /** Bytes free on the volume backing the recordings directory. */
     fun freeStorageBytes(context: Context): Long {
@@ -101,6 +119,7 @@ object RecordScheduler {
             // close the row, so close it here.
             if (!RecordingService.stop(context, recordingId)) dao.setStatus(recordingId, "DONE")
         } else {
+            RecordingAlarms.cancel(context, recordingId)
             dao.setStatus(recordingId, "CANCELLED")
         }
     }
