@@ -56,7 +56,6 @@ import tv.enktel.app.data.net.DeviceProbe
 import tv.enktel.app.data.net.SpeedTestEngine
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
-import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -163,15 +162,16 @@ fun SpeedTestScreen(graph: AppGraph, nav: NavHostController) {
         verticalArrangement = Arrangement.spacedBy(shape.sectionGap),
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionTitle("Connection Diagnostics")
-                Spacer(Modifier.weight(1f))
-                FocusButton(
-                    if (running) "Testing…" else "▶ Run diagnostics",
-                    accent = true,
-                    onClick = { runTest() },
-                )
-            }
+            tv.enktel.app.ui.components.ScreenHeader(
+                title = "Connection Diagnostics",
+                trailing = {
+                    FocusButton(
+                        if (running) "Testing…" else "▶ Run diagnostics",
+                        accent = true,
+                        onClick = { runTest() },
+                    )
+                },
+            )
         }
         item {
             PanelDoctorSection(graph = graph, profile = p, scope = scope)

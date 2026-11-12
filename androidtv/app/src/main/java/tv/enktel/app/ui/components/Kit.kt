@@ -2,6 +2,8 @@ package tv.enktel.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -212,7 +214,18 @@ internal fun BoxScope.ControlContent(
  *
  * This takes no gutter of its own. The caller's page padding positions it, so
  * the title always shares a left edge with the content under it.
+ *
+ * ### When the title and its controls do not both fit
+ *
+ * A flow, not a row. In a row the title took what the controls left, and on a
+ * phone "Connection Diagnostics" beside a "Run diagnostics" button left
+ * neither of them room: the title ran under the button and the button's label
+ * was cut to "Run di…". Here the controls sit at the far end of the title's
+ * line when there is room for both, and drop to a line of their own when
+ * there is not — the same header, laid out by the space it actually has
+ * rather than by which build it is.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScreenHeader(
     title: String,
@@ -220,13 +233,18 @@ fun ScreenHeader(
     subtitle: String = "",
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
             Text(
                 title,
                 style = EnktelType.headline,
                 color = EnktelText,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (subtitle.isNotBlank()) {
@@ -241,7 +259,6 @@ fun ScreenHeader(
             }
         }
         if (trailing != null) {
-            Spacer(Modifier.width(16.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

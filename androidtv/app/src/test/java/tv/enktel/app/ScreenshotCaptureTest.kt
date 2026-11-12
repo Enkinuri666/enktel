@@ -157,6 +157,7 @@ class ScreenshotCaptureTest {
         coil3.SingletonImageLoader.setUnsafe(
             coil3.ImageLoader.Builder(ctx).allowHardware(false).build(),
         )
+        warmNativeGraphics()
         rule.setContent {
             EnktelTheme(lang = lang) {
                 Box(Modifier.fillMaxSize().background(EnktelBg)) { content() }
@@ -217,6 +218,35 @@ class ScreenshotCaptureTest {
     }
 
     // ── the graph, with just enough in it to draw ──────────────────────
+
+    /**
+     * Touch the native graphics runtime from this thread before anything else can.
+     *
+     * Robolectric's native graphics looks up a table of Java classes over JNI
+     * the first time something needs them, and if that first something is an
+     * image decoder on a background thread the lookup fails and the runtime
+     * does not throw — it aborts:
+     *
+     *     JniConstants F  Class not found: java/nio/IntBuffer
+     *     Process 'Gradle Test Executor' finished with non-zero exit value 134
+     *
+     * Which thread gets there first depends on which test the run starts
+     * with. A capture of a screen with artwork, run first, loses the race
+     * about half the time; the same capture after any other test never does.
+     * It took the whole JVM with it and reported no failing test, so it read
+     * as the build machine misbehaving.
+     *
+     * A bitmap made, read back through an NIO buffer and decoded here, on the
+     * test thread, settles the table before a decoder thread exists.
+     */
+    private fun warmNativeGraphics() {
+        val bitmap = android.graphics.Bitmap.createBitmap(2, 2, android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.copyPixelsToBuffer(java.nio.IntBuffer.allocate(4))
+        bitmap.copyPixelsToBuffer(java.nio.ByteBuffer.allocate(16))
+        val png = java.io.ByteArrayOutputStream()
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, png)
+        android.graphics.BitmapFactory.decodeByteArray(png.toByteArray(), 0, png.size())
+    }
 
     private fun graph(): AppGraph =
         AppGraph(ApplicationProvider.getApplicationContext())
@@ -673,9 +703,11 @@ class ScreenshotCaptureTest {
     @Test
     @Config(qualifiers = PHONE)
     fun movieDetails() {
+        // The catalogue with artwork. This used to seed bare rows, so the
+        // poster — the largest thing on the page — was a grey box in the one
+        // capture meant for judging how the page looks on a phone.
         val g = graph()
-        val p = seedProfile(g)
-        seedMovies(g, p)
+        val p = everything(g)
         themed {
             tv.enktel.app.ui.vod.MovieDetailsScreen(
                 g,
@@ -683,7 +715,7 @@ class ScreenshotCaptureTest {
                 key = "$p:m0",
             )
         }
-        settle()
+        settle(steps = ART_STEPS, pauseMs = 40)
         capture("movie-details")
     }
 
@@ -692,8 +724,7 @@ class ScreenshotCaptureTest {
     @Config(qualifiers = PHONE)
     fun seriesDetails() {
         val g = graph()
-        val p = seedProfile(g)
-        seedSeries(g, p)
+        val p = everything(g)
         themed {
             tv.enktel.app.ui.vod.SeriesDetailsScreen(
                 g,
@@ -701,7 +732,7 @@ class ScreenshotCaptureTest {
                 key = "$p:s0",
             )
         }
-        settle()
+        settle(steps = ART_STEPS, pauseMs = 40)
         capture("series-details")
     }
 
