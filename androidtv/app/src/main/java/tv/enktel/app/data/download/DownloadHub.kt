@@ -751,7 +751,18 @@ class DownloadHub(
             }
         }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        ContextCompat.registerReceiver(app, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // EXPORTED, and it has to be. "Not exported" means "from the system or
+        // from me", and this broadcast comes from neither: the platform's
+        // download provider is an app of its own with an ordinary uid, so from
+        // Android 14 a not-exported receiver for it is simply never called.
+        // Downloads still finished — the poll loop notices — but a second or
+        // more late, which is the gap between the file landing and the row
+        // saying so.
+        //
+        // Safe to open: all this receiver does with an id is re-read that
+        // download's status from DownloadManager, and only if the id is one of
+        // ours. A forged broadcast buys a redundant query.
+        ContextCompat.registerReceiver(app, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
     }
 
     private fun ensureNotificationChannel() {

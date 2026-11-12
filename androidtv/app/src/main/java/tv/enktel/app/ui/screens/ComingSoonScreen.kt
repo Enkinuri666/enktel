@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.EnktelFeed
+import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.data.repo.ReleaseCountdown
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
@@ -93,7 +94,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
         failed = false
         val today = EnktelFeed.todayEpochDay()
         val got = try { graph.feed.upcoming(today, limit = 40) } catch (_: Throwable) { null }
-        titles = got.orEmpty()
+        titles = got.orEmpty().uniqueBy { it.listKey() }
         failed = got == null
         loading = false
     }
@@ -162,7 +163,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                         }
                     }
                 }
-                items(titles, key = { it.id }) { t ->
+                items(titles, key = { it.listKey() }) { t ->
                     UpcomingCard(
                         graph = graph,
                         nav = nav,
@@ -179,6 +180,17 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 }
+
+/**
+ * What tells one upcoming film from another in the list.
+ *
+ * Its id, when it has one. The feed's parser turns a missing id into 0, and
+ * keying on the id alone gave every such film the same key — two of them and
+ * the list threw on the way in, closing the screen. A film without an id is
+ * told apart by what it is called and when it is out.
+ */
+private fun EnktelFeed.Upcoming.listKey(): Any =
+    if (id != 0L) id else "untitled-id:$title:$releaseDate"
 
 @Composable
 private fun UpcomingCard(

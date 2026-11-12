@@ -56,6 +56,9 @@ import tv.enktel.app.data.share.LanShare
 import tv.enktel.app.data.share.LanShareFiles
 import tv.enktel.app.data.share.LanShareController
 import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.LocalToaster
+import tv.enktel.app.ui.components.PickerMissing
+import tv.enktel.app.ui.components.launchOr
 import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBg
@@ -89,6 +92,8 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     // anything open — which is every download made before a folder was picked.
     var sealedNotice by remember { mutableStateOf<DownloadLocation.Reveal.Sealed?>(null) }
 
+    val toaster = LocalToaster.current
+
     // The same picker Settings uses. Offered here as well because this is
     // where the viewer actually discovers the problem: they wanted the file
     // and could not have it.
@@ -110,9 +115,10 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             is DownloadLocation.Reveal.Sealed -> sealedNotice = r
             is DownloadLocation.Reveal.Folder -> {
                 // ACTION_VIEW on a tree URI is honoured by some file managers
-                // and ignored by others, so the picker — which every device
-                // has, and which opens *at* the folder — is the fallback
-                // rather than a dead button.
+                // and ignored by others, so the picker — which opens *at* the
+                // folder — is the fallback rather than a dead button. Not
+                // every device has one of those either (a Fire TV stick does
+                // not), so the fallback's own fallback is to say so.
                 val view = android.content.Intent(android.content.Intent.ACTION_VIEW)
                     .setDataAndType(r.treeUri.toUri(), android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
                     .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -120,7 +126,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 if (ctx.packageManager.resolveActivity(view, 0) != null) {
                     runCatching { ctx.startActivity(view) }
                 } else {
-                    runCatching { folderPicker.launch(r.treeUri.toUri()) }
+                    folderPicker.launchOr(r.treeUri.toUri()) { toaster.error(PickerMissing.FOLDER) }
                 }
             }
             is DownloadLocation.Reveal.Path -> {
@@ -338,7 +344,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             title = "Where this file lives",
             message = "${notice.because}\n\n${notice.path}",
             confirmLabel = "Pick a folder",
-            onConfirm = { runCatching { folderPicker.launch(null) } },
+            onConfirm = { folderPicker.launchOr(null) { toaster.error(PickerMissing.FOLDER) } },
             onDismiss = { sealedNotice = null },
         )
     }

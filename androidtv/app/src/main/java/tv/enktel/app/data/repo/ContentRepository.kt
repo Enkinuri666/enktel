@@ -43,6 +43,58 @@ data class EpisodeInfo(
     val poster: String,
 )
 
+/**
+ * A panel's `episodes` node, as seasons of episodes.
+ *
+ * Panels send this three ways — an object keyed by season number, an array of
+ * season arrays, or one flat array of episodes — and the old reader, written
+ * inside `seriesDetails`, handled the first two and quietly mangled the rest:
+ *
+ *  - It *assigned* each batch to its season rather than adding to it. A flat
+ *    array is read one episode at a time, so every episode replaced the one
+ *    before and a twelve-part season arrived as its last episode alone. A
+ *    season split across two keys lost its first half the same way.
+ *  - It kept every id it was given. Panels do list an episode twice, and the
+ *    episode list is keyed on that id — a repeated key in a lazy list throws,
+ *    which closed the series page for that show and only that show.
+ *
+ * Here so both can be tested against JSON instead of against a panel.
+ */
+object SeriesEpisodes {
+    fun parse(node: kotlinx.serialization.json.JsonElement?): java.util.SortedMap<Int, List<EpisodeInfo>> {
+        val bySeason = sortedMapOf<Int, MutableList<EpisodeInfo>>()
+        val seen = HashSet<Long>()
+
+        fun take(e: kotlinx.serialization.json.JsonElement) {
+            val id = e.long("id") ?: return
+            if (!seen.add(id)) return
+            val episode = EpisodeInfo(
+                id = id,
+                season = e.int("season") ?: 1,
+                episode = e.int("episode_num") ?: 0,
+                title = e.str("title") ?: "Episode",
+                ext = e.str("container_extension") ?: "mp4",
+                plot = e.get("info").str("plot").orEmpty(),
+                durationSecs = e.get("info").long("duration_secs") ?: 0,
+                poster = e.get("info").str("movie_image").orEmpty(),
+            )
+            bySeason.getOrPut(episode.season) { ArrayList() } += episode
+        }
+
+        when (node) {
+            is kotlinx.serialization.json.JsonObject ->
+                node.values.forEach { v -> v.arr()?.forEach(::take) }
+            is kotlinx.serialization.json.JsonArray ->
+                node.forEach { v -> v.arr()?.forEach(::take) ?: take(v) }
+            else -> {}
+        }
+        val out = sortedMapOf<Int, List<EpisodeInfo>>()
+        // sortedBy is stable, so episodes sharing a number keep the panel's order.
+        bySeason.forEach { (season, episodes) -> out[season] = episodes.sortedBy { it.episode } }
+        return out
+    }
+}
+
 data class SeriesDetails(
     val plot: String,
     val cast: String,
@@ -163,7 +215,12 @@ class ContentRepository(
     suspend fun movieTitleIndex(profileId: Long): Map<String, String> {
         val out = HashMap<String, String>()
         content.movieTitles(profileId).forEach { row ->
-            out.putIfAbsent(titleKey(row.name), row.key)
+            // Not putIfAbsent: that is a Java 8 method the platform only has
+            // from API 24, and this app runs on 23. It compiles, it passes
+            // every test on a desktop JVM, and it is NoSuchMethodError on an
+            // Android 6 box — lint is the only thing that says so.
+            val title = titleKey(row.name)
+            if (title !in out) out[title] = row.key
         }
         return out
     }
@@ -729,32 +786,7 @@ class ContentRepository(
         val json = xtream.seriesInfo(p, seriesId)
         val info = json.get("info")
         val episodesNode = json.get("episodes")
-        val seasons = sortedMapOf<Int, List<EpisodeInfo>>()
-
-        fun parseEpisodes(list: List<kotlinx.serialization.json.JsonElement>) {
-            val bySeason = list.mapNotNull { e ->
-                val id = e.long("id") ?: return@mapNotNull null
-                EpisodeInfo(
-                    id = id,
-                    season = e.int("season") ?: 1,
-                    episode = e.int("episode_num") ?: 0,
-                    title = e.str("title") ?: "Episode",
-                    ext = e.str("container_extension") ?: "mp4",
-                    plot = e.get("info").str("plot").orEmpty(),
-                    durationSecs = e.get("info").long("duration_secs") ?: 0,
-                    poster = e.get("info").str("movie_image").orEmpty(),
-                )
-            }.groupBy { it.season }
-            bySeason.forEach { (s, eps) -> seasons[s] = eps.sortedBy { it.episode } }
-        }
-
-        when (episodesNode) {
-            is kotlinx.serialization.json.JsonObject ->
-                episodesNode.values.forEach { v -> v.arr()?.let { parseEpisodes(it) } }
-            is kotlinx.serialization.json.JsonArray ->
-                episodesNode.forEach { v -> v.arr()?.let { parseEpisodes(it) } ?: parseEpisodes(listOf(v)) }
-            else -> {}
-        }
+        val seasons = SeriesEpisodes.parse(episodesNode)
 
         SeriesDetails(
             plot = info.str("plot").orEmpty(),

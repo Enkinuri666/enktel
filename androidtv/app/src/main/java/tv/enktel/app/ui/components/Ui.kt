@@ -73,6 +73,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelBorder
 import tv.enktel.app.ui.theme.EnktelFocusGlow
@@ -790,6 +791,13 @@ fun <T> ContentRailIndexed(
     itemContent: @Composable (Int, T) -> Unit,
 ) {
     if (items.isEmpty()) return
+    // Every rail in the app comes through here, so this is where a repeated
+    // key is made impossible rather than at thirty call sites — see uniqueBy
+    // for what a repeated key does to a screen. `key` is deliberately not a
+    // remember key: it is a new lambda on every call and always means the
+    // same thing for a given rail.
+    @Suppress("NAME_SHADOWING")
+    val items = remember(items) { items.uniqueBy(key) }
     // focusGroup() is what makes DOWN work on this screen.
     //
     // Without it, every card in every rail is a flat peer in one focus

@@ -128,6 +128,10 @@ import tv.enktel.app.ui.theme.EnktelType
 
 private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
 
+
+/** Said when Android will not start the recorder — it happens, and "Recording…" would be a lie. */
+private const val RECORD_REFUSED = "Couldn't start recording. Try again in a moment."
+
 @UnstableApi
 @Composable
 fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey: String) {
@@ -547,7 +551,10 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     }
 
     val rootFocus = remember { FocusRequester() }
-    LaunchedEffect(anyOverlay) { if (!anyOverlay) rootFocus.requestFocus() }
+    // runCatching, like every other focus request in the app: requestFocus()
+    // throws when its target is not on screen at that instant, and "the
+    // player did not take focus this once" is not worth the player.
+    LaunchedEffect(anyOverlay) { if (!anyOverlay) runCatching { rootFocus.requestFocus() } }
 
     // Vertical-swipe volume + brightness state. Left half of the screen tunes
     // brightness, right half tunes volume — the standard modern-player convention
@@ -850,7 +857,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                                             channelName = ch.name,
                                             streamUrl = graph.content.liveUrl(p, ch, "ts"),
                                         )
-                                        toaster.success("Recording ${ch.name}")
+                                        if (recordingId != 0L) toaster.success("Recording ${ch.name}")
+                                        else toaster.error(RECORD_REFUSED)
                                     } else {
                                         tv.enktel.app.dvr.RecordScheduler.cancel(context, recordingId); recordingId = 0L
                                         toaster.info("Recording stopped")
@@ -999,7 +1007,8 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                                 streamUrl = graph.content.liveUrl(p, ch, "ts"),
                                 channelLogo = ch.logo,
                             )
-                            toaster.success("Recording ${ch.name}")
+                            if (recordingId != 0L) toaster.success("Recording ${ch.name}")
+                            else toaster.error(RECORD_REFUSED)
                         } else {
                             RecordScheduler.cancel(context, recordingId)
                             recordingId = 0L

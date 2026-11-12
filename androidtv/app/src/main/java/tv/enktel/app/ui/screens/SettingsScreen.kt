@@ -54,6 +54,9 @@ import tv.enktel.app.BuildConfig
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.GlassChip
+import tv.enktel.app.ui.components.LocalToaster
+import tv.enktel.app.ui.components.PickerMissing
+import tv.enktel.app.ui.components.launchOr
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelOk
@@ -90,6 +93,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
     }
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     var status by remember { mutableStateOf("") }
+    val toaster = LocalToaster.current
 
     // Padding follows the viewport, not the build flavour.
     //
@@ -371,12 +375,14 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("Add playlist", icon = Icons.Rounded.Add, onClick = { nav.navigate("onboarding") })
             FocusButton(
                 "Import file", icon = Icons.Rounded.Upload,
-                onClick = { playlistPicker.launch(arrayOf("*/*")) },
+                onClick = {
+                    playlistPicker.launchOr(arrayOf("*/*")) { toaster.error(PickerMissing.IMPORT) }
+                },
             )
             FocusButton("Export", icon = Icons.Rounded.Download, onClick = {
                 val p = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
                 val stem = p?.name?.replace(Regex("[^A-Za-z0-9 _-]"), "")?.trim().orEmpty()
-                exportPicker.launch("${stem.ifBlank { "enktel" }}.m3u")
+                exportPicker.launchOr("${stem.ifBlank { "enktel" }}.m3u") { toaster.error(PickerMissing.EXPORT) }
             })
             FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
             FocusButton("📶 Network Speed Test", onClick = { nav.navigate("speedTest") })
@@ -956,7 +962,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusButton("📁  Pick download folder", onClick = { folderPicker.launch(null) })
+            FocusButton("📁  Pick download folder", onClick = {
+                folderPicker.launchOr(null) { toaster.error(PickerMissing.FOLDER) }
+            })
             if (dlFolderUri.isNotBlank()) {
                 FocusButton("Reset to default", onClick = {
                     scope.launch {

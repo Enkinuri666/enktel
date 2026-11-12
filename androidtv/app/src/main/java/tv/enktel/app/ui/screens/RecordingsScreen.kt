@@ -150,8 +150,13 @@ fun RecordingsScreen(graph: AppGraph, nav: NavHostController) {
             confirmLabel = "Delete",
             onConfirm = {
                 scope.launch {
+                    // Deleting one that is still recording has to stop it
+                    // first. Removing the file and the row left the recorder
+                    // running: still downloading, into a file nothing could
+                    // see, and still holding one of the line's connections.
+                    if (rec.status == "RECORDING") runCatching { RecordScheduler.cancel(context, rec.id) }
                     if (rec.filePath.isNotBlank()) runCatching { File(rec.filePath).delete() }
-                    graph.db.recordingDao().delete(rec)
+                    runCatching { graph.db.recordingDao().delete(rec) }
                 }
                 pendingDelete = null
             },

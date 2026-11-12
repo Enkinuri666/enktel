@@ -570,6 +570,18 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings ORDER BY startMs DESC") fun all(): Flow<List<Recording>>
     @Query("UPDATE recordings SET status = :status WHERE id = :id") suspend fun setStatus(id: Long, status: String)
 
+    /**
+     * Progress, written to one column.
+     *
+     * The recorder used to read the row, copy it with a new size and write the
+     * whole thing back, several times a minute. Anything that changed the row
+     * in between — Stop marking it done, say — was overwritten with the copy,
+     * and a row deleted in between was a null dereference.
+     *
+     * @return rows changed: 0 means the recording is no longer in the list.
+     */
+    @Query("UPDATE recordings SET sizeBytes = :bytes WHERE id = :id") suspend fun setSize(id: Long, bytes: Long): Int
+
     /** Rows still claiming to be recording — used at start-up to clean up after
      *  a process death, which otherwise leaves a permanent "● REC" badge on a
      *  recording that stopped when the app did. */

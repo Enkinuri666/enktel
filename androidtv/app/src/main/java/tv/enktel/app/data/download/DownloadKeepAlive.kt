@@ -43,10 +43,27 @@ class DownloadKeepAlive : Service() {
             return START_NOT_STICKY
         }
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Downloading…"
-        startForeground(NOTIF_ID, notification(text))
+        // Refused (see Foreground): the downloads themselves are coroutines in
+        // the app and carry on. They have simply lost the thing keeping the
+        // process alive while it is off screen, which is where they stood
+        // before this service existed — and better than a crash.
+        if (!tv.enktel.app.data.Foreground.enter(this, NOTIF_ID, notification(text))) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         // NOT_STICKY: a restart with no downloads to keep alive would be a
         // notification for nothing. The hub starts this again when it has work.
         return START_NOT_STICKY
+    }
+
+    /**
+     * The day's foreground allowance is spent (see Foreground). Step down
+     * rather than be killed: the downloads carry on for as long as the app is
+     * on screen, and resume from where they were when it next is.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopForegroundCompat()
+        stopSelf()
     }
 
     private fun stopForegroundCompat() {

@@ -92,6 +92,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
+import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.FollowedTeam
 import tv.enktel.app.data.db.Profile
@@ -303,8 +304,21 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     // same treatment: a followed team first. They are at the top of the
     // screen and they are what gets scanned, so leaving them in the feed's own
     // order is where "I follow Arsenal and nothing changed" came from.
-    val scoreRail = remember(liveScores, teamNames) { pinByTeam(liveScores, teamNames) }
-    val todayRail = remember(todaysFixtures, teamNames) { pinByTeam(todaysFixtures, teamNames) }
+    //
+    // uniqueBy on the same keys the rails below use: both lists are whatever
+    // the feed sent, and a feed that sends a fixture twice — or a double
+    // header, which is two fixtures with one description — would otherwise
+    // close this screen. The keys are functions so that the list and the rail
+    // cannot drift apart.
+    val scoreRail = remember(liveScores, teamNames) {
+        pinByTeam(liveScores, teamNames).uniqueBy(::scoreKey)
+    }
+    val todayRail = remember(todaysFixtures, teamNames) {
+        pinByTeam(todaysFixtures, teamNames).uniqueBy(::fixtureKey)
+    }
+    // The heading counts every fixture today; the rail carries the first forty.
+    val todayShown = remember(todayRail) { todayRail.take(40) }
+    val clipRail = remember(highlightClips) { highlightClips.uniqueBy { it.videoUrl }.take(30) }
 
     // A reminder for a match that has finished is clutter; one for a match
     // already in play is still the answer to "where is it on".
@@ -634,7 +648,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(scoreRail, key = { "${it.home}-${it.away}-${it.league}" }) { s ->
+                    items(scoreRail, key = ::scoreKey) { s ->
                         LiveScoreChip(
                             score = s,
                             // A scoreline we can identify opens the Match Centre;
@@ -687,10 +701,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(
-                        todayRail.take(40),
-                        key = { "${it.eventId}-${it.home}-${it.away}" },
-                    ) { f ->
+                    items(todayShown, key = ::fixtureKey) { f ->
                         val casts = broadcastsByEvent[f.eventId].orEmpty()
                         // The published broadcaster, resolved against this
                         // playlist. Remembered per fixture because it walks
@@ -737,7 +748,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(highlightClips.take(30), key = { it.videoUrl }) { clip ->
+                    items(clipRail, key = { it.videoUrl }) { clip ->
                         HighlightCard(
                             clip = clip,
                             onPlay = { openHighlight(context, nav, toaster, clip.videoUrl, clip.title) },
@@ -852,6 +863,13 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
  * A stable partition, like the rails': within each half the feed keeps its own
  * order, which is the only order it has published.
  */
+/** A live score's place in its rail. The event id leads, so two games between the same sides stay two. */
+private fun scoreKey(s: tv.enktel.app.data.repo.LiveScore): String =
+    "${s.eventId}-${s.home}-${s.away}-${s.league}"
+
+/** A scheduled fixture's place in its rail. */
+private fun fixtureKey(f: tv.enktel.app.data.repo.LiveScore): String = "${f.eventId}-${f.home}-${f.away}"
+
 private fun pinByTeam(
     fixtures: List<tv.enktel.app.data.repo.LiveScore>,
     teams: List<String>,

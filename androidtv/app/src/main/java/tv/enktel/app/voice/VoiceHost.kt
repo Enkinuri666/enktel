@@ -42,6 +42,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.components.LocalToaster
+import tv.enktel.app.ui.components.launchOr
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelSurface
@@ -259,7 +260,9 @@ fun VoiceHost(bus: VoiceCommandBus, wakeWordEnabled: Boolean = false, content: @
             context, Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
         if (ok) beginListening()
-        else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        else permLauncher.launchOr(Manifest.permission.RECORD_AUDIO) {
+            toaster.error(tv.enktel.app.ui.components.PickerMissing.MICROPHONE)
+        }
     }
 
     // Collect nav-bar Mic-tap trigger. Placed here so `toggleListening` is in scope.

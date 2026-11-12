@@ -50,13 +50,21 @@ class LanShareService : Service() {
         }
         acquireMulticastLock()
         val started = LanShareController.current.value
-        startForeground(
+        val entered = tv.enktel.app.data.Foreground.enter(
+            this,
             NOTIF_ID,
             notification(
                 started?.let { "Sharing at ${it.url} · PIN ${it.pin}" }
                     ?: "Sharing downloads on your network",
             ),
         )
+        // Refused (see Foreground). A server with nothing keeping it alive
+        // dies mid-transfer without saying so, which is worse than one that
+        // stops now and shows as stopped.
+        if (!entered) {
+            shutDown()
+            return START_NOT_STICKY
+        }
         // NOT_STICKY: a restart would revive a server with no shares and a
         // stale PIN, which is worse than not coming back.
         return START_NOT_STICKY
@@ -65,6 +73,11 @@ class LanShareService : Service() {
     override fun onDestroy() {
         shutDown()
         super.onDestroy()
+    }
+
+    /** The day's foreground allowance is spent (see Foreground): stop sharing rather than be killed. */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        shutDown()
     }
 
     private fun acquireMulticastLock() {

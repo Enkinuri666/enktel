@@ -15,7 +15,13 @@ import java.util.concurrent.TimeUnit
 
 object RecordScheduler {
 
-    /** Start recording right now; endMs of 0 = record until manually stopped. */
+    /**
+     * Start recording right now; endMs of 0 = record until manually stopped.
+     *
+     * @return the recording's id, or 0 when Android would not start the
+     * recorder — the row is marked failed, and the caller should say so rather
+     * than announce a recording that is not happening.
+     */
     suspend fun recordNow(
         context: Context,
         profileId: Long,
@@ -36,7 +42,10 @@ object RecordScheduler {
                 channelLogo = channelLogo,
             )
         )
-        RecordingService.start(context, id)
+        if (!RecordingService.start(context, id)) {
+            app.graph.db.recordingDao().setStatus(id, "FAILED")
+            return 0L
+        }
         return id
     }
 
@@ -74,16 +83,26 @@ object RecordScheduler {
 
     /** Bytes free on the volume backing the recordings directory. */
     fun freeStorageBytes(context: Context): Long {
-        val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "recordings").apply { mkdirs() }
-        return StatFs(dir.path).availableBytes
+        // StatFs throws on a path it cannot stat — a card pulled out, a volume
+        // still mounting — and this is called while the Recordings screen is
+        // being drawn, where an exception takes the screen with it.
+        return runCatching {
+            val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "recordings").apply { mkdirs() }
+            StatFs(dir.path).availableBytes
+        }.getOrDefault(0L)
     }
 
     suspend fun cancel(context: Context, recordingId: Long) {
         val app = context.applicationContext as EnktelApp
         val dao = app.graph.db.recordingDao()
         val rec = dao.byId(recordingId) ?: return
-        if (rec.status == "RECORDING") RecordingService.stop(context, recordingId)
-        else dao.setStatus(recordingId, "CANCELLED")
+        if (rec.status == "RECORDING") {
+            // If the request cannot even be delivered there is no service to
+            // close the row, so close it here.
+            if (!RecordingService.stop(context, recordingId)) dao.setStatus(recordingId, "DONE")
+        } else {
+            dao.setStatus(recordingId, "CANCELLED")
+        }
     }
 }
 
@@ -94,7 +113,13 @@ class StartRecordingWorker(context: Context, params: WorkerParameters) : Corouti
         val app = applicationContext as EnktelApp
         val rec = app.graph.db.recordingDao().byId(id) ?: return Result.failure()
         if (rec.status != "SCHEDULED") return Result.success()
-        RecordingService.start(applicationContext, id)
-        return Result.success()
+        if (RecordingService.start(applicationContext, id)) return Result.success()
+        return when (RecordingOutcome.afterRefusedStart(rec.endMs, System.currentTimeMillis())) {
+            RecordingOutcome.Refused.RETRY -> Result.retry()
+            RecordingOutcome.Refused.GIVE_UP -> {
+                app.graph.db.recordingDao().setStatus(id, "FAILED")
+                Result.failure()
+            }
+        }
     }
 }
