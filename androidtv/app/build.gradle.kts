@@ -109,6 +109,9 @@ android {
                 it.exclude("**/ScreenshotCaptureTest*")
                 it.exclude("**/SportsHubScreenshotTest*")
             }
+            project.findProperty("enktel.shots.settle")?.let { steps ->
+                it.systemProperty("enktel.shots.settle", steps.toString())
+            }
             it.systemProperty(
                 "enktel.shots.dir",
                 project.findProperty("enktel.shots.dir")?.toString()

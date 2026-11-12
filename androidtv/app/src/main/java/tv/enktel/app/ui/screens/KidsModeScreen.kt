@@ -88,7 +88,7 @@ fun KidsModeScreen(graph: AppGraph, nav: NavHostController) {
                 Modifier.fillMaxWidth().padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🧸 Kids Zone", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                Text("🧸 Kids Zone", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
             }
 

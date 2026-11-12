@@ -289,9 +289,10 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = EnktelSurface,
                             focusedContainerColor = EnktelBlue,
-                            focusedContentColor = Color.White,
-                            contentColor = Color.White,
+                            focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
+                            contentColor = tv.enktel.app.ui.theme.EnktelText,
                         ),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Row(Modifier.padding(horizontal = 10.dp).fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                             Box(
@@ -381,8 +382,8 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                                 ?: EnktelSurfaceHigh
                                         },
                                         focusedContainerColor = EnktelBlue,
-                                        focusedContentColor = Color.White,
-                                        contentColor = if (isPast) EnktelTextDim else Color.White,
+                                        focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
+                                        contentColor = if (isPast) EnktelTextDim else tv.enktel.app.ui.theme.EnktelText,
                                     ),
                                     // Full-width-ish cells have nowhere to grow;
                                     // scaling one inside a tight grid overlaps
@@ -655,7 +656,7 @@ private fun GuideDock(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     prog.title, color = Color.White, fontSize = 23.sp,
-                    fontWeight = FontWeight.Black, maxLines = 1,
+                    fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )

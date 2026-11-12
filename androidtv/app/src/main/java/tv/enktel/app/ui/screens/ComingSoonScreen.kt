@@ -137,7 +137,7 @@ fun ComingSoonScreen(graph: AppGraph, nav: NavHostController) {
                     Column(Modifier.padding(horizontal = pad)) {
                         Text(
                             "Coming Soon", color = Color.White,
-                            fontSize = if (isMobile) 24.sp else 30.sp, fontWeight = FontWeight.Black,
+                            fontSize = if (isMobile) 24.sp else 30.sp, fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "Films with a release date, counting down. Trailers play in EnkTel.",

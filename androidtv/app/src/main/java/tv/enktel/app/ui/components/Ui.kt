@@ -148,6 +148,7 @@ fun FocusButton(
             // Only an icon standing alone needs describing; beside a label it
             // would be read out twice.
             iconDescription = if (parts.text.isEmpty()) parts.mark?.name else null,
+            centred = kind == ButtonKind.Primary,
         )
     }
 }
@@ -175,6 +176,7 @@ fun FocusIconButton(
             icon = icon,
             label = label.orEmpty(),
             iconDescription = if (label == null) contentDescription else null,
+            centred = kind == ButtonKind.Primary,
         )
     }
 }
@@ -588,7 +590,7 @@ fun PosterCard(
                     Text(
                         title.take(2).uppercase(),
                         fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = EnktelTextOnArt.copy(0.7f),
                     )
                 }
@@ -617,7 +619,7 @@ fun PosterCard(
                     "$rank",
                     style = TextStyle(
                         fontSize = if (wide) 44.sp else 54.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White.copy(alpha = 0.92f),
                         drawStyle = Stroke(width = 3f),
                     ),
@@ -698,7 +700,7 @@ fun ThumbBox(label: String, imageUrl: String, modifier: Modifier = Modifier, siz
             Text(
                 label.take(2).uppercase(),
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 color = EnktelText.copy(0.7f),
             )
         }

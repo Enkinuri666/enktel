@@ -453,7 +453,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Sports Hub", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                            Text("Sports Hub", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                             Row(
                                 Modifier.padding(top = 6.dp),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -940,7 +940,7 @@ internal fun SectionHeader(
         Spacer(Modifier.width(10.dp))
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(7.dp))
-        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         if (count != null) {
             Spacer(Modifier.width(8.dp))
             Text("$count", color = color.copy(alpha = 0.65f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -1492,9 +1492,9 @@ internal fun LiveScoreChip(
             // No score exists yet; "– – –" reads as a 0-0 draw, which is wrong.
             Text("vs", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         } else {
-            Text(score.homeScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(score.homeScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Text(" – ", color = EnktelTextDim, fontSize = 12.sp)
-            Text(score.awayScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(score.awayScore, color = accent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.width(8.dp))
         TeamCrest(score.awayBadge)

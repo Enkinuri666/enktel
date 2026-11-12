@@ -742,7 +742,7 @@ private fun VerdictBanner(r: SpeedTestEngine.Result) {
                 fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
             )
             Spacer(Modifier.height(2.dp))
-            Text(headline, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(headline, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -770,7 +770,7 @@ private fun ScoreTile(
         )
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(value, color = c, fontSize = 26.sp, fontWeight = FontWeight.Black)
+            Text(value, color = c, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(3.dp))
             Text(
                 unit, color = c.copy(alpha = 0.75f), fontSize = 11.sp,
@@ -893,7 +893,7 @@ private fun SpeedMeter(sample: SpeedTestEngine.SpeedSample?, history: List<Float
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 "%.1f".format(shown),
-                color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Black,
+                color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.width(6.dp))
             Text(

@@ -171,7 +171,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.recordingSection(
                     .background(accent),
             )
             Spacer(Modifier.width(10.dp))
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 0.3.sp)
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 0.3.sp)
             Spacer(Modifier.width(10.dp))
             Badge(items.size.toString(), accent)
         }

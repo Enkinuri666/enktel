@@ -321,7 +321,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                             Text(
                                 fmt.format(Date(prog.startMs)),
                                 color = if (isPast) EnktelTextDim else Color.White,
-                                fontSize = 14.sp, fontWeight = FontWeight.Black,
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 "→ ${fmt.format(Date(prog.endMs))}",

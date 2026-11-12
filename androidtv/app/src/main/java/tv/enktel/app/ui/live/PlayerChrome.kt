@@ -157,7 +157,7 @@ fun LiveInfoOverlay(
                     } else {
                         Text(
                             channel.name.take(3).uppercase(), color = EnktelTextOnArt,
-                            fontWeight = FontWeight.Black, fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold, fontSize = 20.sp,
                         )
                     }
                 }
@@ -418,7 +418,7 @@ private fun InfoChip(text: String) {
 
 /** One entry in the bottom quick-menu strip. */
 data class QuickAction(
-    val glyph: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val label: String,
     val onClick: () -> Unit,
     val active: Boolean = false,
@@ -517,7 +517,7 @@ private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
                     .clip(CircleShape)
                     .background(
                         when {
-                            focused -> Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))
+                            focused -> Brush.linearGradient(listOf(EnktelBlue, EnktelBlue))
                             a.active -> Brush.linearGradient(
                                 listOf(EnktelBlue.copy(0.30f), EnktelPurple.copy(0.30f)),
                             )
@@ -537,7 +537,16 @@ private fun QuickAction(a: QuickAction, modifier: Modifier = Modifier) {
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(a.glyph, fontSize = 19.sp, color = EnktelTextOnArt)
+                // Drawn, and tinted with the state. These were characters —
+                // 🗓 🔴 🎞 💬 📊 — so on one box the strip was a row of thin
+                // outlines and on the next a row of full-colour stickers, and
+                // on neither did the picture change when its disc lit up.
+                androidx.tv.material3.Icon(
+                    a.icon,
+                    contentDescription = null,
+                    tint = if (focused) tv.enktel.app.ui.theme.inkOn(EnktelBlue) else EnktelTextOnArt,
+                    modifier = Modifier.size(22.dp),
+                )
             }
             Spacer(Modifier.height(6.dp))
             Text(

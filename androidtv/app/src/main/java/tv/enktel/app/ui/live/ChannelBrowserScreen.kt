@@ -419,7 +419,7 @@ private fun ChannelCard(
                 } else {
                     Text(
                         ChannelFilters.initials(channel.name),
-                        color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Black,
+                        color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Bold,
                     )
                 }
                 // Status + favourite markers, top corners.
@@ -544,8 +544,9 @@ private fun OverflowAction(label: String, modifier: Modifier = Modifier, onClick
             containerColor = Color.White.copy(alpha = 0.08f),
             focusedContainerColor = EnktelBlue,
             contentColor = EnktelTextDim,
-            focusedContentColor = Color.White,
+            focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)

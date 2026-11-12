@@ -144,7 +144,7 @@ fun ChannelFinderScreen(graph: AppGraph, nav: NavHostController) {
             Column(Modifier.padding(horizontal = pad)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
-                        Text("Live Sport Finder", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                        Text("Live Sport Finder", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "Every channel carrying sport at this moment — no scrolling required.",
                             color = EnktelTextDim, fontSize = 12.sp,

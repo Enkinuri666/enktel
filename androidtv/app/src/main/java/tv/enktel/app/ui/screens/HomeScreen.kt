@@ -1,5 +1,9 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -202,22 +206,37 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // Sits above the colour wash but below the rails, and no-ops entirely
         // for cards without a TMDB id (continue-watching, live channels).
         tv.enktel.app.ui.components.AutoTrailerLayer(graph)
+    // One left edge for the page. The logo row and the tiles were pinned at
+    // 48 dp, the rails took their gutter from ScreenShape (58 dp on a
+    // television, 16 dp on a phone), and the footer was back at 48 — so on a
+    // handset the logo sat 32 dp to the right of everything under it, and on a
+    // television the rail headings sat 10 dp to the right of the tiles above.
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val gutter = shape.padH
     LazyColumn(
         Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(28.dp),
+        verticalArrangement = Arrangement.spacedBy(if (shape.narrow) 22.dp else 26.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 28.dp),
     ) {
         if (heroItems.isNotEmpty()) {
-            item { HeroBanner(items = heroItems, clock = clock, nav = nav, graph = graph, profile = p) }
+            item(key = "hero", contentType = "hero") {
+                HeroBanner(items = heroItems, clock = clock, nav = nav, graph = graph, profile = p)
+            }
         } else {
-            item {
+            item(key = "masthead", contentType = "masthead") {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 28.dp),
+                    Modifier.fillMaxWidth().padding(start = gutter, end = gutter, top = shape.padV, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Image(painter = painterResource(R.drawable.logo_full), contentDescription = "EnkTel", modifier = Modifier.width(190.dp))
+                    Image(
+                        painter = painterResource(R.drawable.logo_full),
+                        contentDescription = "EnkTel",
+                        modifier = Modifier.width(if (shape.narrow) 132.dp else 170.dp),
+                    )
                     Spacer(Modifier.weight(1f))
-                    Text(clock, color = EnktelTextDim, fontSize = 14.sp)
+                    // A phone has a clock in its status bar, an inch above
+                    // this one. A television has no other.
+                    if (!shape.narrow) Text(clock, color = EnktelTextDim, style = tv.enktel.app.ui.theme.EnktelType.body)
                 }
             }
         }
@@ -227,10 +246,10 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // removed: the rail is six entries now rather than fourteen, so this
         // is no longer a second copy of the menu — and every IPTV app these
         // subscribers came from opens on exactly this.
-        item {
+        item(key = "tiles", contentType = "tiles") {
             val mobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
             CategoryTiles(
-                padHoriz = if (mobile) 16.dp else 48.dp,
+                padHoriz = gutter,
                 compact = mobile,
                 expiry = tv.enktel.app.data.repo.Subscribe.expiryNotice(
                     daysLeft = if (p.expiresAt > 0) {
@@ -644,12 +663,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
         }
-        item {
+        item(key = "footer", contentType = "footer") {
             Text(
-                "Profile: ${p.name} · Synced ${if (p.lastSync > 0) TimeFormat.format("d MMM HH:mm", p.lastSync) else "never"}",
-                color = EnktelTextDim,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 48.dp),
+                "${p.name} · synced ${if (p.lastSync > 0) TimeFormat.format("d MMM HH:mm", p.lastSync) else "never"}",
+                color = tv.enktel.app.ui.theme.EnktelTextFaint,
+                style = tv.enktel.app.ui.theme.EnktelType.caption,
+                modifier = Modifier.padding(horizontal = gutter),
             )
         }
     }
@@ -680,8 +699,21 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
     }
     val current = items.getOrNull(index.coerceIn(0, items.lastIndex)) ?: return
 
-    val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
-    val heroHeight = if (isMobile) 500.dp else 480.dp
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val isMobile = shape.narrow
+    // Sized against the screen it is on, not against a constant.
+    //
+    // It was 480 dp on a television, and a television is 540 dp tall: the
+    // banner took 89 % of the first screen, so Home opened as one picture with
+    // no sign that anything lay below it — the category tiles, Continue
+    // Watching and every rail were a D-pad press away with nothing saying so.
+    // At 62 % the banner still leads, and the top of the next row is in view,
+    // which is the cue that the page goes on.
+    val heroHeight = when {
+        isMobile -> (shape.heightDp * 0.5f).dp.coerceIn(300.dp, 440.dp)
+        else -> (shape.heightDp * 0.62f).dp.coerceIn(300.dp, 520.dp)
+    }
+    val gutter = shape.padH
     Box(Modifier.fillMaxWidth().height(heroHeight)) {
         Crossfade(targetState = current, animationSpec = tween(700), label = "hero") { movie ->
             AsyncImage(
@@ -691,18 +723,19 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        // Netflix-style stacked scrims: darker top/bottom + subtle left readability strip.
+        // Stacked scrims: darker top and bottom, and a readability strip down
+        // the leading edge where the title sits.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.75f),
-                    0.25f to Color.Transparent,
-                    0.55f to Color.Transparent,
+                    0f to Color.Black.copy(alpha = 0.7f),
+                    0.28f to Color.Transparent,
+                    0.5f to Color.Transparent,
                     1f to tv.enktel.app.ui.theme.EnktelBg,
                 )
             ),
         )
-        val scrimStop = if (isMobile) 0.7f else 0.5f
+        val scrimStop = if (isMobile) 0.8f else 0.55f
         Box(
             Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(
@@ -713,190 +746,109 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
         )
 
         Row(
-            Modifier.fillMaxWidth().padding(start = 48.dp, end = 48.dp, top = 24.dp),
+            Modifier.fillMaxWidth().padding(start = gutter, end = gutter, top = shape.padV),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(painter = painterResource(R.drawable.logo_full), contentDescription = "EnkTel", modifier = Modifier.width(150.dp))
+            Image(
+                painter = painterResource(R.drawable.logo_full),
+                contentDescription = "EnkTel",
+                modifier = Modifier.width(if (isMobile) 120.dp else 150.dp),
+            )
             Spacer(Modifier.weight(1f))
-            Text(clock, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+            if (!isMobile) {
+                Text(clock, color = Color.White.copy(alpha = 0.85f), style = tv.enktel.app.ui.theme.EnktelType.body)
+            }
         }
 
-        val heroPad = if (isMobile) 20.dp else 48.dp
-        val contentWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(620.dp)
+        val contentWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(560.dp)
         Column(
-            Modifier.align(Alignment.BottomStart).padding(horizontal = heroPad, vertical = 32.dp).then(contentWidth),
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = gutter, end = gutter, bottom = if (isMobile) 20.dp else 24.dp)
+                .then(contentWidth),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "▶  FEATURED",
-                    fontSize = 11.sp, fontWeight = FontWeight.Black, color = tv.enktel.app.ui.theme.EnktelBlue,
-                    letterSpacing = 2.sp,
+                    "FEATURED",
+                    style = tv.enktel.app.ui.theme.EnktelType.overline,
+                    color = tv.enktel.app.ui.theme.EnktelBlue,
                 )
                 if (index < 3) {
-                    Box(
-                        Modifier.background(tv.enktel.app.ui.theme.EnktelLive, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 1.dp),
-                    ) {
-                        Text("#${index + 1} TOP 10", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                    }
+                    tv.enktel.app.ui.components.Badge(
+                        "#${index + 1} TOP 10",
+                        color = tv.enktel.app.ui.theme.EnktelLive,
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 current.name,
-                fontSize = if (isMobile) 28.sp else 38.sp, fontWeight = FontWeight.Black, color = Color.White,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = if (isMobile) 32.sp else 42.sp,
+                style = tv.enktel.app.ui.theme.EnktelType.display.copy(
+                    fontSize = if (isMobile) 26.sp else 34.sp,
+                    lineHeight = if (isMobile) 30.sp else 38.sp,
+                ),
+                color = tv.enktel.app.ui.theme.EnktelTextOnArt,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             if (current.year > 0 || current.categoryId.isNotBlank() || current.rating > 0) {
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (current.rating > 0) {
-                        Box(
-                            Modifier.background(tv.enktel.app.ui.theme.EnktelOk.copy(0.85f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 5.dp, vertical = 1.dp),
-                        ) {
-                            Text("★ ${"%.1f".format(current.rating)}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (current.year > 0) Text("${current.year}", color = Color.White.copy(0.85f), fontSize = 13.sp)
-                    if (current.categoryId.isNotBlank()) Text(current.categoryId, color = Color.White.copy(0.7f), fontSize = 13.sp)
-                    if (current.genre.isNotBlank()) Text("· ${current.genre.take(28)}", color = Color.White.copy(0.7f), fontSize = 13.sp, maxLines = 1)
-                }
+                Spacer(Modifier.height(6.dp))
+                val meta = buildList {
+                    if (current.rating > 0) add("★ ${"%.1f".format(current.rating)}")
+                    if (current.year > 0) add("${current.year}")
+                    if (current.genre.isNotBlank()) add(current.genre.take(28))
+                }.joinToString("  ·  ")
+                Text(
+                    meta,
+                    style = tv.enktel.app.ui.theme.EnktelType.subtitle,
+                    color = tv.enktel.app.ui.theme.EnktelTextOnArtDim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(if (isMobile) 14.dp else 16.dp))
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            // The three actions were three hand-rolled Surfaces, each with its
+            // own colours and a character for an icon. They are the same
+            // buttons the details page opens with, so they are now literally
+            // the same buttons.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Big Netflix-style Play button
-                androidx.tv.material3.Surface(
-                    onClick = { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = Color.White,
-                        focusedContainerColor = Color.White.copy(0.85f),
-                        contentColor = Color.Black,
-                        focusedContentColor = Color.Black,
-                    ),
-                    scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
-                    modifier = Modifier.tapClick { nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key)) },
-                ) {
-                    Text(
-                        "▶  Play",
-                        color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
-                    )
-                }
-                // Glassmorphism My List (Watchlist) toggle
-                val scope = androidx.compose.runtime.rememberCoroutineScope()
-                androidx.tv.material3.Surface(
-                    onClick = { scope.launch { graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster) } },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.18f),
-                        focusedContainerColor = Color.White.copy(alpha = 0.32f),
-                        contentColor = Color.White,
-                        focusedContentColor = Color.White,
-                    ),
-                    modifier = Modifier.tapClick { scope.launch { graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster) } },
-                ) {
-                    Text(
-                        "＋  My List",
-                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    )
-                }
-                androidx.tv.material3.Surface(
+                tv.enktel.app.ui.components.FocusButton(
+                    "Play",
+                    icon = Icons.Rounded.PlayArrow,
+                    kind = tv.enktel.app.ui.components.ButtonKind.Primary,
+                    onClick = {
+                        nav.navigate(vodPlayerRoute(graph.content.vodUrl(profile, current), current.name, current.key))
+                    },
+                )
+                tv.enktel.app.ui.components.FocusButton(
+                    "My List",
+                    icon = Icons.Rounded.Add,
+                    onClick = {
+                        scope.launch {
+                            graph.watchlist.toggle(profile.id, "vod", current.streamId, current.name, current.poster)
+                        }
+                    },
+                )
+                tv.enktel.app.ui.components.FocusButton(
+                    "Info",
+                    icon = Icons.Rounded.Info,
                     onClick = { nav.navigate("movie/${current.key}") },
-                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.18f),
-                        focusedContainerColor = Color.White.copy(alpha = 0.32f),
-                        contentColor = Color.White,
-                        focusedContentColor = Color.White,
-                    ),
-                    modifier = Modifier.tapClick { nav.navigate("movie/${current.key}") },
-                ) {
-                    Text(
-                        "ⓘ  Info",
-                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    )
-                }
+                )
             }
             if (items.size > 1) {
-                Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items.indices.forEach { i ->
                         Box(
                             Modifier
                                 .height(3.dp)
-                                .width(if (i == index) 28.dp else 14.dp)
+                                .width(if (i == index) 24.dp else 10.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)),
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * Premium glass hub tile — big rounded pill with a leading glyph and the
- * destination label. When [accent] is true it gets a brand-color gradient
- * fill (used for the primary "Live TV" entry); otherwise it renders as a
- * frosted-glass card with a hairline border, matching modern TV OS aesthetics.
- * Focus adds a slight scale + border sheen so a viewer can see which tile
- * they're on from across the room.
- */
-@Composable
-private fun HubTile(glyph: String, label: String, onClick: () -> Unit, accent: Boolean = false) {
-    val brand = tv.enktel.app.ui.theme.EnktelBlue
-    val brandDeep = tv.enktel.app.ui.theme.EnktelBlueDeep
-    val container = if (accent) brand.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f)
-    val focused = if (accent) brand else Color.White.copy(alpha = 0.18f)
-    androidx.tv.material3.Surface(
-        onClick = onClick,
-        modifier = Modifier.tapClick(onClick),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
-        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = container,
-            focusedContainerColor = focused,
-            contentColor = Color.White,
-            focusedContentColor = Color.White,
-        ),
-        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
-            border = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (accent) brand.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.14f),
-                ),
-                shape = RoundedCornerShape(16.dp),
-            ),
-            focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
-                shape = RoundedCornerShape(16.dp),
-            ),
-        ),
-    ) {
-        Box(
-            Modifier
-                .background(
-                    // Subtle diagonal sheen so the tile reads as a "premium
-                    // glass" card rather than a flat pill.
-                    Brush.linearGradient(
-                        colors = if (accent) {
-                            listOf(brand.copy(alpha = 0.35f), brandDeep.copy(alpha = 0.25f))
-                        } else {
-                            listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
-                        }
-                    )
-                )
-                .padding(horizontal = 18.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(glyph, fontSize = 18.sp)
-                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
     }

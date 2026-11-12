@@ -165,6 +165,6 @@ private fun LevelIndicator(label: String, fraction: Float, accent: Color, modifi
             )
         }
         Spacer(Modifier.height(10.dp))
-        Text("$pct%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        Text("$pct%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }

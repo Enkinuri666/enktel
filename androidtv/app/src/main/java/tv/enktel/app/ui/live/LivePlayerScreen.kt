@@ -1,5 +1,27 @@
 package tv.enktel.app.ui.live
 
+import androidx.compose.material.icons.rounded.Cast
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.List
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ClosedCaption
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.PictureInPictureAlt
+import androidx.compose.material.icons.rounded.Replay5
+import androidx.compose.material.icons.rounded.Sensors
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material.icons.rounded.Stop
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -695,7 +717,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             Text(
                 numberBuffer,
                 fontSize = 46.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -738,7 +760,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -858,7 +880,7 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         })
                     }
                     item {
-                        FocusButton("📺 Cast", onClick = {
+                        FocusButton("Cast", icon = androidx.compose.material.icons.Icons.Rounded.Cast, onClick = {
                             val ok = tv.enktel.app.player.CastToTv.open(context)
                             if (!ok) toaster.error("Cast picker not available on this device")
                         })
@@ -1098,7 +1120,7 @@ private fun InfoBar(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (channel.num > 0) {
-                        Text("${channel.num}", color = EnktelBlue, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        Text("${channel.num}", color = EnktelBlue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                     Text(
                         channel.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
@@ -1330,7 +1352,7 @@ private fun ChannelEpgPane(
             Spacer(Modifier.width(10.dp))
             Text(
                 TimeFormat.now("HH:mm"),
-                color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black,
+                color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.width(6.dp))
             Text(
@@ -1340,7 +1362,7 @@ private fun ChannelEpgPane(
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            channel.name, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black,
+            channel.name, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold,
             maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(10.dp))
@@ -1489,7 +1511,7 @@ private fun ChannelRow(
                     // The initial is at least identifying.
                     Text(
                         ch.name.trimStart().firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•",
-                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Black,
+                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -1554,31 +1576,45 @@ private fun QuickMenu(
     // compact info bar and the touch action row that already live there.
     if (tv.enktel.app.BuildConfig.FLAVOR != "mobile") {
         val actions = buildList {
-            add(QuickAction("☰", "Channels", onClose))
-            add(QuickAction("🗓", "TV Guide", onGuide))
-            if (shifted) add(QuickAction("🔴", "Back to live", onBackToLive, active = true))
+            add(QuickAction(Icons.AutoMirrored.Rounded.List, "Channels", onClose))
+            add(QuickAction(Icons.Rounded.CalendarMonth, "TV Guide", onGuide))
+            if (shifted) add(QuickAction(Icons.Rounded.Sensors, "Back to live", onBackToLive, active = true))
             if (canShift) {
-                add(QuickAction("⏮", "Restart", onRestartProgram))
-                add(QuickAction("⏪", "Back 5 min", onRewindLive))
+                add(QuickAction(Icons.Rounded.SkipPrevious, "Restart", onRestartProgram))
+                add(QuickAction(Icons.Rounded.Replay5, "Back 5 min", onRewindLive))
             }
-            add(QuickAction(if (isFav) "★" else "☆", "Favourite", onFavorite, active = isFav))
-            add(QuickAction(if (recording) "■" else "●", if (recording) "Stop rec" else "Record", onRecord, active = recording))
+            add(QuickAction(if (isFav) Icons.Rounded.Star else Icons.Rounded.StarBorder, "Favourite", onFavorite, active = isFav))
+            add(
+                QuickAction(
+                    if (recording) Icons.Rounded.Stop else Icons.Rounded.FiberManualRecord,
+                    if (recording) "Stop rec" else "Record",
+                    onRecord,
+                    active = recording,
+                ),
+            )
             if (tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel)) {
-                add(QuickAction("🗂", "Catch-up", onCatchup))
+                add(QuickAction(Icons.Rounded.History, "Catch-up", onCatchup))
             }
-            add(QuickAction("🎞", "Video", onVideo))
-            add(QuickAction("🔊", "Audio", onAudio))
-            add(QuickAction("💬", "Subtitles", onSubs))
-            add(QuickAction("⛶", "Aspect", onAspect))
-            add(QuickAction("⧉", "PiP", onPip))
-            add(QuickAction("▤", "Multi-view", onMultiView))
-            add(QuickAction("☾", sleepLabel.substringBefore(':').ifBlank { "Sleep" }, onSleep, active = sleepUntil > 0))
-            add(QuickAction("📊", "Stats", onStats, active = showStats))
+            add(QuickAction(Icons.Rounded.HighQuality, "Video", onVideo))
+            add(QuickAction(Icons.AutoMirrored.Rounded.VolumeUp, "Audio", onAudio))
+            add(QuickAction(Icons.Rounded.ClosedCaption, "Subtitles", onSubs))
+            add(QuickAction(Icons.Rounded.AspectRatio, "Aspect", onAspect))
+            add(QuickAction(Icons.Rounded.PictureInPictureAlt, "PiP", onPip))
+            add(QuickAction(Icons.Rounded.GridView, "Multi-view", onMultiView))
+            add(
+                QuickAction(
+                    Icons.Rounded.Bedtime,
+                    sleepLabel.substringBefore(':').ifBlank { "Sleep" },
+                    onSleep,
+                    active = sleepUntil > 0,
+                ),
+            )
+            add(QuickAction(Icons.Rounded.Insights, "Stats", onStats, active = showStats))
             // There was no way out of the player to Settings at all — not from
             // the strip, not from the drawer. On a Firestick, where Back exits
             // playback, that made every player-adjacent setting unreachable
             // without abandoning what you were watching.
-            add(QuickAction("⚙", "Settings", onSettings))
+            add(QuickAction(Icons.Rounded.Settings, "Settings", onSettings))
         }
         Box(Modifier.fillMaxSize()) {
             QuickMenuBar(actions, Modifier.align(Alignment.BottomCenter))
@@ -1598,29 +1634,55 @@ private fun QuickMenu(
                 .verticalScroll(menuScroll),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(channel.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                channel.name,
+                color = tv.enktel.app.ui.theme.EnktelTextOnArt,
+                style = tv.enktel.app.ui.theme.EnktelType.title,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
             Spacer(Modifier.height(4.dp))
-            if (shifted) FocusButton("🔴 Back to LIVE", accent = true, onClick = onBackToLive, modifier = Modifier.fillMaxWidth())
+            // Every row carries an icon. Half of them used to — whichever ones
+            // had been written with a character in front — so the labels
+            // started at two different left edges down the same column.
+            val row = Modifier.fillMaxWidth()
+            if (shifted) {
+                FocusButton("Back to live", icon = Icons.Rounded.Sensors, accent = true, onClick = onBackToLive, modifier = row)
+            }
             if (canShift) {
-                FocusButton("⏮ Restart programme", onClick = onRestartProgram, modifier = Modifier.fillMaxWidth())
-                FocusButton("⏪ Back 5 minutes", onClick = onRewindLive, modifier = Modifier.fillMaxWidth())
+                FocusButton("Restart programme", icon = Icons.Rounded.SkipPrevious, onClick = onRestartProgram, modifier = row)
+                FocusButton("Back 5 minutes", icon = Icons.Rounded.Replay5, onClick = onRewindLive, modifier = row)
             }
-            FocusButton(if (isFav) "★ Remove favorite" else "☆ Add favorite", onClick = onFavorite, modifier = Modifier.fillMaxWidth())
-            FocusButton(if (recording) "■ Stop recording" else "● Record now (DVR)", onClick = onRecord, modifier = Modifier.fillMaxWidth())
+            FocusButton(
+                if (isFav) "Remove favourite" else "Add favourite",
+                icon = if (isFav) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                accent = isFav, onClick = onFavorite, modifier = row,
+            )
+            FocusButton(
+                if (recording) "Stop recording" else "Record now",
+                icon = if (recording) Icons.Rounded.Stop else Icons.Rounded.FiberManualRecord,
+                accent = recording, onClick = onRecord, modifier = row,
+            )
             if (tv.enktel.app.data.catchup.CatchupUrls.isSupported(profile, channel)) {
-                FocusButton("🗂 Catch-up archive", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
+                FocusButton("Catch-up archive", icon = Icons.Rounded.History, onClick = onCatchup, modifier = row)
             }
-            FocusButton(sleepLabel, onClick = onSleep, modifier = Modifier.fillMaxWidth())
-            FocusButton("Video quality", onClick = onVideo, modifier = Modifier.fillMaxWidth())
-            FocusButton("Audio track", onClick = onAudio, modifier = Modifier.fillMaxWidth())
-            FocusButton("Subtitles", onClick = onSubs, modifier = Modifier.fillMaxWidth())
-            FocusButton("Aspect ratio", onClick = onAspect, modifier = Modifier.fillMaxWidth())
-            FocusButton(if (showStats) "Hide stream stats" else "Stream stats", onClick = onStats, modifier = Modifier.fillMaxWidth())
-            FocusButton("⧉ Picture-in-Picture", onClick = onPip, modifier = Modifier.fillMaxWidth())
-            FocusButton("▤▤ Multi-view", onClick = onMultiView, modifier = Modifier.fillMaxWidth())
-            FocusButton("TV Guide", onClick = onGuide, modifier = Modifier.fillMaxWidth())
-            FocusButton("⚙ Settings", onClick = onSettings, modifier = Modifier.fillMaxWidth())
-            FocusButton("Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
+            FocusButton(sleepLabel, icon = Icons.Rounded.Bedtime, accent = sleepUntil > 0, onClick = onSleep, modifier = row)
+            FocusButton("Video quality", icon = Icons.Rounded.HighQuality, onClick = onVideo, modifier = row)
+            FocusButton("Audio track", icon = Icons.AutoMirrored.Rounded.VolumeUp, onClick = onAudio, modifier = row)
+            FocusButton("Subtitles", icon = Icons.Rounded.ClosedCaption, onClick = onSubs, modifier = row)
+            FocusButton("Aspect ratio", icon = Icons.Rounded.AspectRatio, onClick = onAspect, modifier = row)
+            FocusButton(
+                if (showStats) "Hide stream stats" else "Stream stats",
+                icon = Icons.Rounded.Insights, accent = showStats, onClick = onStats, modifier = row,
+            )
+            FocusButton("Picture-in-picture", icon = Icons.Rounded.PictureInPictureAlt, onClick = onPip, modifier = row)
+            FocusButton("Multi-view", icon = Icons.Rounded.GridView, onClick = onMultiView, modifier = row)
+            FocusButton("TV Guide", icon = Icons.Rounded.CalendarMonth, onClick = onGuide, modifier = row)
+            FocusButton("Settings", icon = Icons.Rounded.Settings, onClick = onSettings, modifier = row)
+            FocusButton(
+                "Close", icon = Icons.Rounded.Close,
+                kind = tv.enktel.app.ui.components.ButtonKind.Ghost, onClick = onClose, modifier = row,
+            )
         }
     }
 }
@@ -1726,8 +1788,9 @@ private fun TrackRow(
             containerColor = if (selected) EnktelBlue.copy(alpha = 0.18f) else EnktelSurfaceHigh,
             focusedContainerColor = EnktelBlue,
             contentColor = if (selected) EnktelBlue else EnktelText,
-            focusedContentColor = Color.White,
+            focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),

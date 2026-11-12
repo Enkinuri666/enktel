@@ -163,7 +163,7 @@ fun MatchCenterScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Match Centre", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    Text("Match Centre", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Text(
                         d?.league?.ifBlank { fallbackTitle } ?: fallbackTitle,
                         color = EnktelTextDim, fontSize = 12.sp,
@@ -398,7 +398,7 @@ private fun Scoreboard(d: MatchDetail, pad: androidx.compose.ui.unit.Dp) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "${d.homeScore}  –  ${d.awayScore}",
-                        color = EnktelOk, fontSize = 34.sp, fontWeight = FontWeight.Black,
+                        color = EnktelOk, fontSize = 34.sp, fontWeight = FontWeight.Bold,
                     )
                     if (d.progress.isNotBlank()) {
                         Text(d.progress, color = EnktelTextDim, fontSize = 12.sp)

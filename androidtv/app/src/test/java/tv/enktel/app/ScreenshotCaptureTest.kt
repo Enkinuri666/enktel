@@ -13,6 +13,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
+import coil3.request.allowHardware
 import kotlinx.coroutines.runBlocking
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.DownloadEntry
@@ -73,6 +74,17 @@ class ScreenshotCaptureTest {
          * nothing.
          */
         const val PHONE_LAND = "w891dp-h411dp-land-xhdpi"
+
+        /**
+         * How long a shot with artwork waits for it.
+         *
+         * Posters are decoded on Coil's own threads in real time, and under
+         * Robolectric each one takes the better part of a second. 40 steps is
+         * enough to lay the screen out and is what an iterating run wants;
+         * `-Penktel.shots.settle=200` waits for every poster, for the pass
+         * whose pictures are going to be looked at.
+         */
+        val ART_STEPS: Int = System.getProperty("enktel.shots.settle")?.toIntOrNull() ?: 40
     }
 
     private val outDir: File by lazy {
@@ -104,7 +116,7 @@ class ScreenshotCaptureTest {
      * Stepping the clock and idling between steps gives it somewhere to be
      * resumed.
      */
-    private fun settle(steps: Int = 20, stepMs: Long = 100) {
+    private fun settle(steps: Int = 20, stepMs: Long = 100, pauseMs: Long = 5) {
         repeat(steps) {
             rule.mainClock.advanceTimeBy(stepMs)
             rule.waitForIdle()
@@ -114,7 +126,7 @@ class ScreenshotCaptureTest {
             // about, so without a real pause the capture races it: the live
             // grid photographed its channels with no guide on them about half
             // the time, which looks exactly like a bug in the card.
-            Thread.sleep(5)
+            Thread.sleep(pauseMs)
         }
     }
 
@@ -133,6 +145,18 @@ class ScreenshotCaptureTest {
      * the ones I was about to draw conclusions from.
      */
     private fun themed(lang: String, content: @Composable () -> Unit) {
+        // Software bitmaps, for the camera's sake.
+        //
+        // Coil decodes to Bitmap.Config.HARDWARE by default, and a hardware
+        // bitmap lives on the GPU: the capture here rasterises on the CPU and
+        // draws nothing where one should be. Every poster came out as its
+        // empty plate — except, confusingly, whichever one the Ambilight had
+        // already decoded in software to read its colours, which then turned
+        // up from the memory cache looking like proof that loading worked.
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        coil3.SingletonImageLoader.setUnsafe(
+            coil3.ImageLoader.Builder(ctx).allowHardware(false).build(),
+        )
         rule.setContent {
             EnktelTheme(lang = lang) {
                 Box(Modifier.fillMaxSize().background(EnktelBg)) { content() }
@@ -140,12 +164,69 @@ class ScreenshotCaptureTest {
         }
     }
 
+    // ── artwork ────────────────────────────────────────────────────────
+
+    /**
+     * A poster, painted here and loaded from disk.
+     *
+     * There is no network in this harness, so every title used to draw its
+     * two-letter placeholder — and a streaming app photographed without a
+     * single poster is a photograph of its empty state. It hid the hero banner
+     * completely (Home only shows one for a title that has artwork), and it
+     * made every judgement about how text sits over an image a guess.
+     *
+     * These are not real artwork and are not trying to be. They are the right
+     * shape, they are different from each other, and they are bright in the
+     * places a real poster is bright, which is what the layout needs to be
+     * tested against.
+     */
+    private fun art(seed: Int, wide: Boolean = false): String {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dir = File(ctx.cacheDir, "shot-art").apply { mkdirs() }
+        val f = File(dir, "a$seed${if (wide) "w" else "p"}.png")
+        if (!f.exists()) {
+            val w = if (wide) 640 else 400
+            val h = if (wide) 360 else 600
+            val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            val c = android.graphics.Canvas(bmp)
+            val hue = (seed * 47 % 360).toFloat()
+            fun hsv(hh: Float, sat: Float, v: Float) =
+                android.graphics.Color.HSVToColor(floatArrayOf((hh + 360f) % 360f, sat, v))
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            paint.shader = android.graphics.LinearGradient(
+                0f, 0f, w.toFloat(), h.toFloat(),
+                hsv(hue, 0.55f, 0.85f), hsv(hue + 50f, 0.85f, 0.22f),
+                android.graphics.Shader.TileMode.CLAMP,
+            )
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+            // A light source and a dark mass, so there is a highlight for
+            // captions to fight and a shadow for them to disappear into.
+            paint.shader = android.graphics.RadialGradient(
+                w * 0.7f, h * 0.28f, w * 0.55f,
+                hsv(hue - 25f, 0.25f, 1f), android.graphics.Color.TRANSPARENT,
+                android.graphics.Shader.TileMode.CLAMP,
+            )
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+            paint.shader = null
+            paint.color = hsv(hue + 180f, 0.6f, 0.12f)
+            paint.alpha = 150
+            c.drawCircle(w * 0.25f, h * 0.8f, w * 0.5f, paint)
+            f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        return f.absolutePath
+    }
+
     // ── the graph, with just enough in it to draw ──────────────────────
 
     private fun graph(): AppGraph =
         AppGraph(ApplicationProvider.getApplicationContext())
 
-    private fun seedProfile(g: AppGraph): Long = runBlocking {
+    /**
+     * [synced] marks the catalogue as already fetched. Left false, Home draws
+     * its first-run "Downloading your playlist…" card over everything — which
+     * is correct for a new line and useless for photographing Home.
+     */
+    private fun seedProfile(g: AppGraph, synced: Boolean = false): Long = runBlocking {
         g.db.profileDao().insert(
             Profile(
                 name = "My EnkTel line",
@@ -155,6 +236,7 @@ class ScreenshotCaptureTest {
                 password = "demo",
                 expiresAt = System.currentTimeMillis() + 30L * 86_400_000,
                 maxConnections = 3,
+                lastSync = if (synced) System.currentTimeMillis() - 3_600_000 else 0L,
             ),
         )
     }
@@ -266,7 +348,7 @@ class ScreenshotCaptureTest {
     }
 
     /** A film library, so Movies has posters and categories to lay out. */
-    private fun seedMovies(g: AppGraph, profileId: Long): Unit = runBlocking {
+    private fun seedMovies(g: AppGraph, profileId: Long, withArt: Boolean = false): Unit = runBlocking {
         g.db.contentDao().upsertCategories(
             listOf("Action", "Drama", "Comedy", "Documentary").mapIndexed { i, name ->
                 tv.enktel.app.data.db.Category(
@@ -288,13 +370,21 @@ class ScreenshotCaptureTest {
                     name = name, year = year, categoryId = "v${i % 4}",
                     genre = listOf("Action", "Drama", "Comedy", "Documentary")[i % 4],
                     addedAt = System.currentTimeMillis() - i * 86_400_000L,
+                    poster = if (withArt) art(i) else "",
+                    rating = if (withArt) 6.1 + (i * 7 % 30) / 10.0 else 0.0,
+                    plot = if (withArt) {
+                        "A signalman on the last night train north finds a passenger who was " +
+                            "not on the manifest, and a timetable that no longer matches the line."
+                    } else {
+                        ""
+                    },
                 )
             },
         )
     }
 
     /** Enough of a box set to photograph the page it opens on. */
-    private fun seedSeries(g: AppGraph, profileId: Long): Unit = runBlocking {
+    private fun seedSeries(g: AppGraph, profileId: Long, withArt: Boolean = false): Unit = runBlocking {
         g.db.contentDao().upsertSeries(
             listOf("Harbourlight" to 2023, "Quarry Road" to 2017, "Ninepin" to 2015)
                 .mapIndexed { i, (name, year) ->
@@ -304,6 +394,7 @@ class ScreenshotCaptureTest {
                         genre = listOf("Drama", "Crime", "Comedy")[i % 3],
                         plot = "Three seasons of it, and the third is the one people talk about.",
                         rating = 7.4 + i * 0.3,
+                        poster = if (withArt) art(40 + i) else "",
                     )
                 },
         )
@@ -680,4 +771,132 @@ class ScreenshotCaptureTest {
         }
         capture("downloads-bigscreen")
     }
+
+    // ── the rest of the app ────────────────────────────────────────────
+    //
+    // Added for the redesign. A design pass that is checked against six
+    // screens is a design pass on six screens: everything not photographed
+    // was being restyled blind, through shared components, on the strength
+    // of "it compiles".
+
+    private fun everything(g: AppGraph): Long {
+        val p = seedProfile(g, synced = true)
+        seedChannels(g, p)
+        seedSport(g, p)
+        seedMovies(g, p, withArt = true)
+        seedSeries(g, p, withArt = true)
+        return p
+    }
+
+    private fun shot(name: String, body: @Composable (AppGraph, androidx.navigation.NavHostController) -> Unit) {
+        val g = graph()
+        everything(g)
+        themed { body(g, androidx.navigation.compose.rememberNavController()) }
+        // Longer than the default, and with a real pause: posters are decoded
+        // on Coil's own threads, which the test clock cannot hurry.
+        settle(steps = ART_STEPS, pauseMs = 40)
+        capture(name)
+    }
+
+    @Test @Config(qualifiers = PHONE)
+    fun home() = shot("home") { g, nav -> tv.enktel.app.ui.screens.HomeScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun homeOnTelevision() = shot("home-bigscreen") { g, nav -> tv.enktel.app.ui.screens.HomeScreen(g, nav) }
+
+    /** Home inside the rail it is actually shown in. */
+    @Test @Config(qualifiers = TV)
+    fun shellOnTelevision() = shot("shell-bigscreen") { g, nav ->
+        tv.enktel.app.ui.components.TvNavShell(currentRoute = "home", onSelect = {}) { pad ->
+            Box(Modifier.padding(pad)) { tv.enktel.app.ui.screens.HomeScreen(g, nav) }
+        }
+    }
+
+    /** Home inside the bottom bar it is actually shown in. */
+    @Test @Config(qualifiers = PHONE)
+    fun shell() = shot("shell") { g, nav ->
+        tv.enktel.app.ui.mobile.MobileScaffold(nav = nav, currentRoute = "home") { pad ->
+            Box(Modifier.padding(pad)) { tv.enktel.app.ui.screens.HomeScreen(g, nav) }
+        }
+    }
+
+    @Test @Config(qualifiers = TV)
+    fun guideOnTelevision() = shot("guide-bigscreen") { g, nav -> tv.enktel.app.ui.guide.GuideScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun guide() = shot("guide") { g, nav -> tv.enktel.app.ui.guide.GuideScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun seriesOnTelevision() = shot("series-bigscreen") { g, nav -> tv.enktel.app.ui.vod.SeriesScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun series() = shot("series") { g, nav -> tv.enktel.app.ui.vod.SeriesScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun movieDetailsOnTelevision() {
+        val g = graph()
+        val p = everything(g)
+        themed {
+            tv.enktel.app.ui.vod.MovieDetailsScreen(
+                g, androidx.navigation.compose.rememberNavController(), key = "$p:m0",
+            )
+        }
+        settle(steps = ART_STEPS, pauseMs = 40)
+        capture("movie-details-bigscreen")
+    }
+
+    @Test @Config(qualifiers = TV)
+    fun seriesDetailsOnTelevision() {
+        val g = graph()
+        val p = everything(g)
+        themed {
+            tv.enktel.app.ui.vod.SeriesDetailsScreen(
+                g, androidx.navigation.compose.rememberNavController(), key = "$p:s0",
+            )
+        }
+        settle(steps = ART_STEPS, pauseMs = 40)
+        capture("series-details-bigscreen")
+    }
+
+    @Test @Config(qualifiers = PHONE)
+    fun recordings() = shot("recordings") { g, nav -> tv.enktel.app.ui.screens.RecordingsScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun recordingsOnTelevision() = shot("recordings-bigscreen") { g, nav -> tv.enktel.app.ui.screens.RecordingsScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun catchup() = shot("catchup") { g, nav -> tv.enktel.app.ui.screens.CatchupBrowseScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun catchupOnTelevision() = shot("catchup-bigscreen") { g, nav -> tv.enktel.app.ui.screens.CatchupBrowseScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun watchlist() = shot("watchlist") { g, nav -> tv.enktel.app.ui.watchlist.WatchlistScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun watchlistOnTelevision() = shot("watchlist-bigscreen") { g, nav -> tv.enktel.app.ui.watchlist.WatchlistScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun lists() = shot("lists") { g, nav -> tv.enktel.app.ui.lists.UserListsScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun listsOnTelevision() = shot("lists-bigscreen") { g, nav -> tv.enktel.app.ui.lists.UserListsScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun comingSoon() = shot("coming-soon") { g, nav -> tv.enktel.app.ui.screens.ComingSoonScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun comingSoonOnTelevision() = shot("coming-soon-bigscreen") { g, nav -> tv.enktel.app.ui.screens.ComingSoonScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun speedTest() = shot("speed-test") { g, nav -> tv.enktel.app.ui.screens.SpeedTestScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun speedTestOnTelevision() = shot("speed-test-bigscreen") { g, nav -> tv.enktel.app.ui.screens.SpeedTestScreen(g, nav) }
+
+    @Test @Config(qualifiers = PHONE)
+    fun systemMonitor() = shot("system-monitor") { g, nav -> tv.enktel.app.ui.screens.SystemMonitorScreen(g, nav) }
+
+    @Test @Config(qualifiers = TV)
+    fun systemMonitorOnTelevision() = shot("system-monitor-bigscreen") { g, nav -> tv.enktel.app.ui.screens.SystemMonitorScreen(g, nav) }
 }

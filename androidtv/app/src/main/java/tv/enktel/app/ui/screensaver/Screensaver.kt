@@ -141,7 +141,7 @@ private fun Screensaver(graph: AppGraph, onDismiss: () -> Unit) {
                 Image(painter = painterResource(R.drawable.logo_full), contentDescription = null, modifier = Modifier.width(260.dp))
             }
             Spacer(Modifier.height(16.dp))
-            Text(now, color = Color.White, fontSize = 96.sp, fontWeight = FontWeight.Black)
+            Text(now, color = Color.White, fontSize = 96.sp, fontWeight = FontWeight.Bold)
             Text(
                 TimeFormat.now("EEEE d MMMM yyyy"),
                 color = Color.White.copy(0.7f), fontSize = 16.sp,

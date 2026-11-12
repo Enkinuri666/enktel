@@ -1,5 +1,14 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.SportsSoccer
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1598,12 +1608,12 @@ private fun SettingsNavItem(
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
             RoundedCornerShape(12.dp),
         ),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) EnktelSurfaceHigh else Color.Transparent,
-            focusedContainerColor = EnktelBlue,
-            contentColor = if (selected) EnktelText else EnktelTextDim,
-            focusedContentColor = Color.White,
+        colors = tv.enktel.app.ui.components.RowFocus.colors(
+            container = if (selected) EnktelSurfaceHigh else Color.Transparent,
+            content = if (selected) EnktelText else EnktelTextDim,
         ),
+        border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(12.dp)),
+        scale = tv.enktel.app.ui.components.RowFocus.scale(),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 10.dp),
@@ -1619,7 +1629,12 @@ private fun SettingsNavItem(
                         RoundedCornerShape(4.dp),
                     ),
             )
-            Text(category.glyph, fontSize = 15.sp)
+            androidx.tv.material3.Icon(
+                category.icon,
+                contentDescription = null,
+                tint = if (selected) EnktelBlue else androidx.tv.material3.LocalContentColor.current,
+                modifier = Modifier.size(20.dp),
+            )
             Column(Modifier.weight(1f)) {
                 Text(
                     category.name,
@@ -1651,19 +1666,19 @@ private fun SettingsNavItem(
  */
 internal data class SettingsCategory(
     val name: String,
-    val glyph: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val blurb: String,
 )
 
 internal val SETTINGS_CATEGORIES = listOf(
-    SettingsCategory("Playlists", "📺", "Accounts, sources, catalogue sync"),
-    SettingsCategory("Playback", "▶", "Buffering, decoder, subtitles, audio"),
-    SettingsCategory("Recording", "⏺", "DVR, storage, padding, downloads"),
-    SettingsCategory("Sports & Voice", "⚽", "Scores, teams, Match Center, Enki"),
-    SettingsCategory("Parental", "🔒", "PIN, kids mode, locked categories"),
-    SettingsCategory("Network", "🌐", "Guide offset, user agent, gateways"),
-    SettingsCategory("Appearance", "🎨", "Theme, text size, startup"),
-    SettingsCategory("About", "ⓘ", "Version, diagnostics, support"),
+    SettingsCategory("Playlists", Icons.AutoMirrored.Rounded.PlaylistPlay, "Accounts, sources, catalogue sync"),
+    SettingsCategory("Playback", Icons.Rounded.PlayCircle, "Buffering, decoder, subtitles, audio"),
+    SettingsCategory("Recording", Icons.Rounded.FiberManualRecord, "DVR, storage, padding, downloads"),
+    SettingsCategory("Sports & Voice", Icons.Rounded.SportsSoccer, "Scores, teams, Match Center, Enki"),
+    SettingsCategory("Parental", Icons.Rounded.Lock, "PIN, kids mode, locked categories"),
+    SettingsCategory("Network", Icons.Rounded.Language, "Guide offset, user agent, gateways"),
+    SettingsCategory("Appearance", Icons.Rounded.Palette, "Theme, text size, startup"),
+    SettingsCategory("About", Icons.Rounded.Info, "Version, diagnostics, support"),
 )
 
 internal val CATEGORIES = SETTINGS_CATEGORIES.map { it.name }

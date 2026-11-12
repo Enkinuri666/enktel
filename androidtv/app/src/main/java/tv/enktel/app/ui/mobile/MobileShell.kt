@@ -255,7 +255,7 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
                             .background(Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Box(
@@ -389,7 +389,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                                 "E",
                                 color = Color.White,
                                 fontSize = 22.sp,
-                                fontWeight = FontWeight.Black,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                         Text(
@@ -468,7 +468,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                     .padding(horizontal = 20.dp),
             )
             Text(
-                "Menu", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black,
+                "Menu", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
             )
             listOf(

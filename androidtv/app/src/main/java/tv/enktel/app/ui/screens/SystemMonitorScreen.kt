@@ -126,7 +126,7 @@ fun SystemMonitorScreen(graph: AppGraph, nav: NavHostController) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             sample.verdict, color = accent, fontSize = 20.sp,
-                            fontWeight = FontWeight.Black, modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
                         )
                         Badge(sample.transport.name, EnktelBlue)
                     }

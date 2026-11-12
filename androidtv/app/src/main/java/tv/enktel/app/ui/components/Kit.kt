@@ -159,12 +159,25 @@ internal fun ControlSurface(
     )
 }
 
-/** Icon and label laid out the way every button lays them out. */
+/**
+ * Icon and label laid out the way every button lays them out.
+ *
+ * [centred] matters only when the button has been stretched. A stretched
+ * Primary button is a call to action and reads from its middle; every other
+ * stretched button in the app is a row in a menu — the player's options, a
+ * context menu — and a menu reads down its left edge.
+ */
 @Composable
-internal fun ControlContent(icon: ImageVector?, label: String, iconDescription: String?) {
+internal fun BoxScope.ControlContent(
+    icon: ImageVector?,
+    label: String,
+    iconDescription: String?,
+    centred: Boolean = false,
+) {
     val iconOnly = label.isEmpty()
     Row(
         Modifier
+            .align(if (centred) Alignment.Center else Alignment.CenterStart)
             .height(ControlHeight)
             .padding(
                 start = when {
@@ -297,4 +310,68 @@ fun SectionHeader(
             )
         }
     }
+}
+
+/**
+ * How a row or a card shows that the D-pad is on it: it lifts a shade and
+ * takes a ring. It does not fill.
+ *
+ * ## Two focus treatments, on purpose
+ *
+ * A **control** — a button, a chip, a menu entry — fills with the accent when
+ * focused. It holds one label, the label flips to the ink that reads on the
+ * accent, and nothing else is in it to go wrong.
+ *
+ * A **row or card** holds more than a label: a title, a dimmer line under it,
+ * a time, a badge, sometimes artwork. Those were filling with the accent too,
+ * and every one of them then had the same fault — the title went white on
+ * blue, which is the contrast failure described on `EnktelPalette.onPrimary`,
+ * and the secondary line stayed whatever fixed grey it had been given, which
+ * on a saturated fill is not readable at all. An episode row under focus was
+ * a bright slab with half its text missing.
+ *
+ * Posters never had the problem, because a poster cannot be filled: it takes
+ * a ring. This is the same answer for everything else that carries content.
+ * The contents keep their own colours and stay exactly as legible focused as
+ * not, and focus is the ring — which is also what makes a list of rows and a
+ * rail of posters read as one system instead of two.
+ */
+object RowFocus {
+
+    /** Container and content colours. [container] is the row at rest. */
+    @Composable
+    fun colors(
+        container: Color = EnktelSurfaceHigh.copy(alpha = 0.5f),
+        content: Color = EnktelText,
+    ) = ClickableSurfaceDefaults.colors(
+        containerColor = container,
+        contentColor = content,
+        focusedContainerColor = EnktelSurfaceHigh,
+        focusedContentColor = EnktelText,
+        pressedContainerColor = EnktelSurfaceHigh,
+        pressedContentColor = EnktelText,
+        // A row that cannot be chosen still has to be readable.
+        disabledContainerColor = container,
+        disabledContentColor = content.copy(alpha = 0.5f),
+    )
+
+    /**
+     * The ring. One dp inside the poster ring's width, because a row is
+     * already lifted against its neighbours and a poster is not — but it
+     * follows the palette, so High Contrast still gets its wide one.
+     */
+    @Composable
+    fun border(shape: Shape, rest: BorderStroke? = null) = ClickableSurfaceDefaults.border(
+        border = rest?.let { Border(it, shape = shape) } ?: Border.None,
+        focusedBorder = Border(BorderStroke(ringWidth(), EnktelBlue), shape = shape),
+        pressedBorder = Border(BorderStroke(ringWidth(), EnktelBlue), shape = shape),
+    )
+
+    /** Barely grows. A row in a list has a row above and below it. */
+    @Composable
+    fun scale() = ClickableSurfaceDefaults.scale(focusedScale = 1.015f)
+
+    @Composable
+    private fun ringWidth(): Dp =
+        (tv.enktel.app.ui.theme.EnktelFocusRingWidth - 1.dp).coerceAtLeast(2.dp)
 }

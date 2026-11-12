@@ -1,5 +1,8 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -180,9 +183,10 @@ private fun SidebarRow(text: String, selected: Boolean, onClick: () -> Unit) {
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue.copy(0.18f) else Color.Transparent,
             focusedContainerColor = EnktelBlue,
-            focusedContentColor = Color.White,
-            contentColor = if (selected) Color.White else EnktelTextDim,
+            focusedContentColor = tv.enktel.app.ui.theme.EnktelOnPrimary,
+            contentColor = if (selected) tv.enktel.app.ui.theme.EnktelText else EnktelTextDim,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Left accent stripe mirrors the ContentRail / Recordings section headers.
@@ -655,7 +659,8 @@ private fun FilterBar(
                 modifier = Modifier.fillMaxWidth().padding(bottom = if (expanded) 10.dp else 4.dp),
             ) {
                 FocusButton(
-                    if (activeFilters > 0) "⚙  Filters · $activeFilters" else "⚙  Filters",
+                    if (activeFilters > 0) "Filters · $activeFilters" else "Filters",
+                    icon = androidx.compose.material.icons.Icons.Rounded.Tune,
                     accent = activeFilters > 0,
                     onClick = { expanded = !expanded },
                 )
@@ -663,7 +668,7 @@ private fun FilterBar(
                 Text(
                     if (resultCount == 1) "1 title" else "$resultCount titles",
                     color = tv.enktel.app.ui.theme.EnktelTextDim,
-                    fontSize = 12.sp,
+                    style = tv.enktel.app.ui.theme.EnktelType.caption,
                 )
             }
         }
@@ -682,12 +687,13 @@ private fun FilterBar(
                 tv.enktel.app.ui.components.TvTextField(
                     value = query,
                     onValueChange = onQuery,
-                    label = "🔍 Search titles, cast, or director",
+                    label = "Search titles, cast, or director",
+                    leadingIcon = androidx.compose.material.icons.Icons.Rounded.Search,
                 )
             }
             if (query.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
-                FocusButton("Clear", onClick = { onQuery("") })
+                FocusButton("Clear", kind = tv.enktel.app.ui.components.ButtonKind.Ghost, onClick = { onQuery("") })
             }
         }
         // Sort is a *mode*, not a filter — exactly one applies and it reorders
@@ -719,7 +725,7 @@ private fun FilterBar(
                 Text(
                     if (resultCount == 1) "1 title" else "$resultCount titles",
                     color = tv.enktel.app.ui.theme.EnktelTextDim,
-                    fontSize = 12.sp,
+                    style = tv.enktel.app.ui.theme.EnktelType.caption,
                 )
             }
         }
@@ -734,14 +740,12 @@ private fun FilterBar(
                 item {
                     tv.enktel.app.ui.components.GlassChip(
                         "All", selected = genreFilter == null,
-                        accent = tv.enktel.app.ui.theme.EnktelPurple,
                         onClick = { onGenre(null) },
                     )
                 }
                 items(genres) { g ->
                     tv.enktel.app.ui.components.GlassChip(
                         g, selected = genreFilter == g,
-                        accent = tv.enktel.app.ui.theme.EnktelPurple,
                         onClick = { onGenre(if (genreFilter == g) null else g) },
                     )
                 }
@@ -756,7 +760,6 @@ private fun FilterBar(
             item {
                 tv.enktel.app.ui.components.GlassChip(
                     "Any", selected = decadeFilter == null,
-                    accent = EnktelOk,
                     onClick = { onDecade(null) },
                 )
             }
@@ -767,7 +770,6 @@ private fun FilterBar(
                 tv.enktel.app.ui.components.GlassChip(
                     tv.enktel.app.data.repo.VodFilters.label(d),
                     selected = decadeFilter == d,
-                    accent = EnktelOk,
                     onClick = { onDecade(if (decadeFilter == d) null else d) },
                 )
             }
@@ -814,14 +816,13 @@ private fun CategoryHero(
         ) {
             Text(
                 subtitle.uppercase(),
-                color = EnktelBlue, fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
+                color = EnktelBlue,
+                style = tv.enktel.app.ui.theme.EnktelType.overline,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                title, color = Color.White,
-                fontSize = 26.sp, fontWeight = FontWeight.Black,
+                title, color = tv.enktel.app.ui.theme.EnktelTextOnArt,
+                style = tv.enktel.app.ui.theme.EnktelType.headline,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Row(
@@ -833,7 +834,12 @@ private fun CategoryHero(
                 if (genre.isNotBlank()) Text("· ${genre.take(30)}", color = Color.White.copy(0.65f), fontSize = 13.sp, maxLines = 1)
             }
             Spacer(Modifier.height(14.dp))
-            FocusButton("▶  View", accent = true, onClick = onOpen)
+            FocusButton(
+                "View",
+                icon = androidx.compose.material.icons.Icons.Rounded.PlayArrow,
+                kind = tv.enktel.app.ui.components.ButtonKind.Primary,
+                onClick = onOpen,
+            )
         }
     }
 }

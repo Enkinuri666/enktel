@@ -348,7 +348,7 @@ private fun AnswerCard(answer: VoiceAnswer, onDismiss: () -> Unit, modifier: Mod
             Spacer(Modifier.height(4.dp))
             Text(
                 answer.heading, color = androidx.compose.ui.graphics.Color.White,
-                fontSize = 18.sp, fontWeight = FontWeight.Black,
+                fontSize = 18.sp, fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(12.dp))
             if (answer.lines.isEmpty()) {
@@ -428,7 +428,7 @@ private fun ListeningOverlay(partial: String, onCancel: () -> Unit, modifier: Mo
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.size(10.dp).background(EnktelLive, CircleShape))
-            Text("Listening…", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Text("Listening…", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
         Text(

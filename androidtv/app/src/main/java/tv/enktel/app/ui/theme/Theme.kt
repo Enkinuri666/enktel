@@ -472,6 +472,13 @@ fun EnktelTheme(
         LocalOverlayOpacity provides overlayOpacity.coerceIn(0.6f, 1f),
         LocalDensity provides scaledDensity,
         tv.enktel.app.i18n.LocalStrings provides tv.enktel.app.i18n.stringsFor(lang),
+        // tv-material's LocalContentColor defaults to *black*, and only a
+        // Surface ever replaces it. Every Text or Icon drawn straight onto the
+        // page without naming a colour was therefore black on a near-black
+        // background — the sign-in screen's own heading among them. Nothing
+        // in this app is ever drawn on white, so the page's default ink is
+        // the palette's text colour.
+        androidx.tv.material3.LocalContentColor provides palette.text,
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(

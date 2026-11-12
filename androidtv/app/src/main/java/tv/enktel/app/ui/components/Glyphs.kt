@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -45,6 +46,7 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.NetworkCheck
 import androidx.compose.material.icons.rounded.NewReleases
@@ -52,6 +54,7 @@ import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.NorthWest
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PictureInPicture
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Podcasts
@@ -213,6 +216,10 @@ object Glyphs {
         "▤▤" to Mark(Icons.Rounded.GridView, "Multi-view"),
         "▤" to Mark(Icons.Rounded.PictureInPictureAlt, "Dock"),
         "⛶" to Mark(Icons.Rounded.Fullscreen, "Full screen"),
+        "⧉" to Mark(Icons.Rounded.PictureInPicture, "Picture in picture"),
+        "＋" to Mark(Icons.Rounded.Add, "Add"),
+        "⋯" to Mark(Icons.Rounded.MoreHoriz, "More"),
+        "⟲" to Mark(Icons.Rounded.RestartAlt, "Start over"),
         "🔎" to Mark(Icons.Rounded.Search, "Search"),
         "🔍" to Mark(Icons.Rounded.Search, "Search"),
         "🩺" to Mark(Icons.Rounded.MonitorHeart, "Diagnostics"),

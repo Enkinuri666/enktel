@@ -204,7 +204,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
                 "On your PC, open a browser and go to:",
                 color = EnktelTextDim, fontSize = 12.sp,
             )
-            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
                 "Or open the EnkTel app on your PC — it finds this device on the network by " +

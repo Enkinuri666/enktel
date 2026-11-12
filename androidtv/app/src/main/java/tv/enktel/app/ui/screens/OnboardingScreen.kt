@@ -36,11 +36,19 @@ import tv.enktel.app.data.repo.SetupLink
 import tv.enktel.app.data.repo.SetupLink.Setup
 import tv.enktel.app.i18n.LocalStrings
 import tv.enktel.app.i18n.Strings
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
 import tv.enktel.app.ui.components.AuthBackdrop
+import tv.enktel.app.ui.components.ButtonKind
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.TvTextField
 import tv.enktel.app.ui.theme.EnktelLive
+import tv.enktel.app.ui.theme.EnktelText
 import tv.enktel.app.ui.theme.EnktelTextDim
+import tv.enktel.app.ui.theme.EnktelTextFaint
+import tv.enktel.app.ui.theme.EnktelType
 
 /**
  * First run: sign in.
@@ -139,46 +147,99 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
         }
     }
 
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    // A television is 540 dp tall. The full-size logo, two fields, two
+    // buttons and three lines of small print come to more than that, so the
+    // page scrolled on the one device with nothing to scroll it with and the
+    // last line sat under the bottom edge.
+    val roomy = shape.heightDp >= 700
+
     AuthBackdrop {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
                 // widthIn, not width: a fixed 560dp column on a 411dp handset
                 // overflows by 149dp, and the first casualty is the fields.
                 Modifier
-                    .widthIn(max = 560.dp)
+                    .widthIn(max = 440.dp)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                    .padding(horizontal = 24.dp, vertical = if (roomy) 32.dp else 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Image(
                     painter = painterResource(R.drawable.logo_full),
                     contentDescription = "EnkTel IPTV",
-                    modifier = Modifier.width(360.dp),
+                    modifier = Modifier.width(if (roomy) 300.dp else 220.dp),
                 )
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(if (roomy) 24.dp else 12.dp))
 
                 Text(
                     t.signInTitle,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Black,
+                    style = EnktelType.headline,
+                    color = EnktelText,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
                     t.signInLede,
+                    style = EnktelType.body,
                     color = EnktelTextDim,
-                    fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(if (roomy) 24.dp else 14.dp))
 
-                TvTextField(username, { username = it }, t.username)
+                TvTextField(
+                    username, { username = it }, t.username,
+                    leadingIcon = Icons.Rounded.Person, labelAbove = true,
+                )
                 Spacer(Modifier.height(12.dp))
-                TvTextField(password, { password = it }, t.password, password = true)
+                TvTextField(
+                    password, { password = it }, t.password,
+                    password = true, leadingIcon = Icons.Rounded.Lock, labelAbove = true,
+                )
 
-                Spacer(Modifier.height(14.dp))
+                if (showLink) {
+                    Spacer(Modifier.height(12.dp))
+                    TvTextField(
+                        pasted, { pasted = it }, t.serverOrLink,
+                        leadingIcon = Icons.Rounded.Link,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        t.serverOrLinkHelp,
+                        style = EnktelType.caption,
+                        color = EnktelTextDim,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                if (error.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(error, style = EnktelType.body, color = EnktelLive, textAlign = TextAlign.Center)
+                }
+                if (progress.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(progress, style = EnktelType.body, color = EnktelTextDim)
+                }
+
+                // The thing this screen is for, as wide as the fields it
+                // submits. It was a small tinted button under a larger plain
+                // one, so the eye went to "Different provider" first.
+                Spacer(Modifier.height(18.dp))
+                FocusButton(
+                    if (busy) t.working else t.signIn,
+                    kind = ButtonKind.Primary,
+                    onClick = { connect() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
                 if (!showLink) {
+                    Spacer(Modifier.height(8.dp))
+                    FocusButton(
+                        t.differentProvider,
+                        kind = ButtonKind.Ghost,
+                        onClick = { showLink = true },
+                    )
                     // Stated rather than hidden: someone whose provider is not
                     // ours needs to know the app has assumed one, and this is
                     // the only place that assumption is visible.
@@ -186,59 +247,28 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                         t.connectingTo.format(
                             DefaultLine.server.removePrefix("https://").removePrefix("http://"),
                         ),
-                        color = EnktelTextDim,
-                        fontSize = 11.sp,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    FocusButton(
-                        t.differentProvider,
-                        onClick = { showLink = true },
-                    )
-                } else {
-                    TvTextField(pasted, { pasted = it }, t.serverOrLink)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        t.serverOrLinkHelp,
-                        color = EnktelTextDim,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center,
+                        style = EnktelType.caption,
+                        color = EnktelTextFaint,
                     )
                 }
 
-                if (error.isNotBlank()) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(error, color = EnktelLive, fontSize = 13.sp, textAlign = TextAlign.Center)
-                }
-                if (progress.isNotBlank()) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(progress, color = EnktelTextDim, fontSize = 13.sp)
-                }
-
-                Spacer(Modifier.height(18.dp))
-                FocusButton(
-                    if (busy) t.working else t.signIn,
-                    accent = true,
-                    onClick = { connect() },
+                Spacer(Modifier.height(if (roomy) 24.dp else 12.dp))
+                // For the viewer who has the app and no line yet. Text
+                // rather than a button: a television frequently has no
+                // browser, and the address is short enough to type into
+                // the phone already in hand.
+                Text(
+                    t.noAccountYet.format(tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL),
+                    style = EnktelType.caption,
+                    color = EnktelTextDim,
+                    textAlign = TextAlign.Center,
                 )
-
-                Spacer(Modifier.height(22.dp))
-                Row(horizontalArrangement = Arrangement.Center) {
-                    // For the viewer who has the app and no line yet. Text
-                    // rather than a button: a television frequently has no
-                    // browser, and the address is short enough to type into
-                    // the phone already in hand.
-                    Text(
-                        t.noAccountYet.format(tv.enktel.app.data.repo.Subscribe.SHORT_TRIAL),
-                        color = EnktelTextDim,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     t.detailsStayOnDevice,
-                    color = EnktelTextDim,
-                    fontSize = 12.sp,
+                    style = EnktelType.caption,
+                    color = EnktelTextFaint,
+                    textAlign = TextAlign.Center,
                 )
             }
         }

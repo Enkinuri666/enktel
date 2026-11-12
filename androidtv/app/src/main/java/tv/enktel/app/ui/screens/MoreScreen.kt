@@ -72,7 +72,7 @@ fun MoreScreen(onSelect: (String) -> Unit) {
     // grey tiles on whatever happens to be behind is not a design.
     Column(Modifier.fillMaxSize().background(EnktelBg)) {
         Column(Modifier.padding(start = gutter, top = 28.dp, end = gutter, bottom = 4.dp)) {
-            Text(t.navMore, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(t.navMore, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(4.dp))
             Text(
                 t.moreSubtitle,
@@ -104,12 +104,9 @@ private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
             .onFocusChanged { focused = it.isFocused }
             .tapClick(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = EnktelSurfaceHigh.copy(0.5f),
-            focusedContainerColor = EnktelBlue,
-            contentColor = Color.White,
-            focusedContentColor = Color.White,
-        ),
+        colors = tv.enktel.app.ui.components.RowFocus.colors(),
+        border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(16.dp)),
+        scale = tv.enktel.app.ui.components.RowFocus.scale(),
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(

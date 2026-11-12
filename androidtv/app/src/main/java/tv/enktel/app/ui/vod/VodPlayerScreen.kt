@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.vod
 
+import androidx.compose.material.icons.rounded.Cast
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -844,7 +845,7 @@ fun VodPlayerScreen(
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text("${(frac * 100).toInt()}%", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -1115,7 +1116,7 @@ fun VodPlayerScreen(
                         })
                     }
                     item {
-                        FocusButton("📺 Cast", onClick = {
+                        FocusButton("Cast", icon = androidx.compose.material.icons.Icons.Rounded.Cast, onClick = {
                             tv.enktel.app.player.CastToTv.open(context)
                         })
                     }
