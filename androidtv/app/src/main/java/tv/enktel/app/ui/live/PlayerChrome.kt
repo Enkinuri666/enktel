@@ -146,7 +146,12 @@ fun LiveInfoOverlay(
                 Box(
                     Modifier
                         .size(84.dp)
-                        .glassSurface(shape = RoundedCornerShape(12.dp), alpha = 0.95f),
+                        .clip(RoundedCornerShape(12.dp))
+                        .then(
+                            if (channel.logo.isNotBlank())
+                                Modifier.glassSurface(shape = RoundedCornerShape(12.dp), alpha = 0.95f)
+                            else Modifier
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (channel.logo.isNotBlank()) {
@@ -155,10 +160,11 @@ fun LiveInfoOverlay(
                             modifier = Modifier.fillMaxSize().padding(6.dp),
                         )
                     } else {
-                        Text(
-                            channel.name.take(3).uppercase(), color = EnktelTextOnArt,
-                            fontWeight = FontWeight.Bold, fontSize = 20.sp,
-                        )
+                        // The channel's own colour-keyed plate, the same one
+                        // the grid and every list use — not take(3) of the raw
+                        // name, which made a wall of "AU " over a grey glass
+                        // square on a line whose provider sends few logos.
+                        tv.enktel.app.ui.components.Monogram(channel.name)
                     }
                 }
                 Spacer(Modifier.width(22.dp))
