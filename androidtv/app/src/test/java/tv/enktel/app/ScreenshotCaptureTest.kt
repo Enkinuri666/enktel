@@ -895,6 +895,49 @@ class ScreenshotCaptureTest {
     @Test @Config(qualifiers = TV)
     fun recordingsOnTelevision() = shot("recordings-bigscreen") { g, nav -> tv.enktel.app.ui.screens.RecordingsScreen(g, nav) }
 
+    /**
+     * Recordings with something in it, on a device that has not allowed exact
+     * alarms — the state in which the permission card appears. The screen had
+     * only ever been photographed empty, which is the one state where none of
+     * its rows, sections or actions exist to be looked at.
+     */
+    private fun recordingsInUse(name: String) {
+        org.robolectric.shadows.ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        val g = graph()
+        everything(g)
+        val now = System.currentTimeMillis()
+        fun row(title: String, channel: String, status: String, startMs: Long, endMs: Long, bytes: Long = 0) =
+            tv.enktel.app.data.db.Recording(
+                profileId = 1, title = title, channelName = channel,
+                streamUrl = "http://example.invalid/1.ts", status = status,
+                startMs = startMs, endMs = endMs, sizeBytes = bytes,
+            )
+        runBlocking {
+            // The graph's start-up sweep closes any row marked RECORDING, on
+            // the reasoning that a new process cannot be recording yet. Let it
+            // finish before handing it one, or the "Recording Now" section
+            // this capture exists to show is sometimes empty.
+            g.staleRecordingsClosed.join()
+            val dao = g.db.recordingDao()
+            dao.insert(row("Arsenal v Chelsea", "Sky Sports Main Event", "RECORDING", now - 40 * 60_000, now + 65 * 60_000, 1_300L shl 20))
+            dao.insert(row("Bathurst 1000 — Qualifying", "Fox Sports 501", "SCHEDULED", now + 135 * 60_000, now + 255 * 60_000))
+            dao.insert(row("Seven News at Six", "Channel 7 HD", "SCHEDULED", now + 26 * 3_600_000L, now + 27 * 3_600_000L))
+            dao.insert(row("The Project", "Channel 10 HD", "DONE", now - 26 * 3_600_000L, now - 25 * 3_600_000L, 2_100L shl 20))
+            dao.insert(row("Gold Rush", "Discovery HD", "FAILED", now - 50 * 3_600_000L, now - 49 * 3_600_000L))
+        }
+        themed {
+            tv.enktel.app.ui.screens.RecordingsScreen(g, androidx.navigation.compose.rememberNavController())
+        }
+        settle(steps = ART_STEPS, pauseMs = 40)
+        capture(name)
+    }
+
+    @Test @Config(qualifiers = PHONE)
+    fun recordingsInUse() = recordingsInUse("recordings-in-use")
+
+    @Test @Config(qualifiers = TV)
+    fun recordingsInUseOnTelevision() = recordingsInUse("recordings-in-use-bigscreen")
+
     @Test @Config(qualifiers = PHONE)
     fun catchup() = shot("catchup") { g, nav -> tv.enktel.app.ui.screens.CatchupBrowseScreen(g, nav) }
 

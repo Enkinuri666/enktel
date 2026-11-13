@@ -806,7 +806,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                                 val url = if (p.kind == "m3u") ev.channel.url
                                     else XtreamClient.liveUrl(p, ev.channel.streamId, hls = false)
                                 RecordScheduler.schedule(context, p.id, ev.title, ev.channel.name, url, ev.startMs, ev.endMs)
-                                toaster.success("Recording scheduled")
+                                toaster.success(RecordScheduler.scheduledMessage(context))
                             } catch (t: Throwable) { toaster.error(t.message ?: "Schedule failed") }
                         }
                     },

@@ -582,6 +582,10 @@ interface RecordingDao {
      */
     @Query("UPDATE recordings SET sizeBytes = :bytes WHERE id = :id") suspend fun setSize(id: Long, bytes: Long): Int
 
+    /** Recordings waiting for their start time — the ones that need an alarm standing. */
+    @Query("SELECT * FROM recordings WHERE status = 'SCHEDULED'")
+    suspend fun scheduled(): List<Recording>
+
     /** Rows still claiming to be recording — used at start-up to clean up after
      *  a process death, which otherwise leaves a permanent "● REC" badge on a
      *  recording that stopped when the app did. */

@@ -514,8 +514,19 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             onRecord = {
                 selected = null
                 scope.launch {
-                    val url = if (p.kind == "m3u") ch.url else XtreamClient.liveUrl(p, ch.streamId, hls = false)
-                    RecordScheduler.schedule(context, p.id, prog.title, ch.name, url, prog.startMs, prog.endMs, channelLogo = ch.logo)
+                    // Said out loud, and guarded. This used to schedule in
+                    // silence — the dialog closed and nothing confirmed that
+                    // anything had happened — and an exception from the
+                    // database or the scheduler ended the app from here.
+                    try {
+                        val url = if (p.kind == "m3u") ch.url else XtreamClient.liveUrl(p, ch.streamId, hls = false)
+                        RecordScheduler.schedule(context, p.id, prog.title, ch.name, url, prog.startMs, prog.endMs, channelLogo = ch.logo)
+                        toaster.success(RecordScheduler.scheduledMessage(context))
+                    } catch (ce: kotlinx.coroutines.CancellationException) {
+                        throw ce
+                    } catch (e: Exception) {
+                        toaster.error(e.message ?: "Couldn't schedule that recording")
+                    }
                 }
             },
             onDismiss = { selected = null },

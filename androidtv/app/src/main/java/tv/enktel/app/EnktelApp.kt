@@ -263,6 +263,19 @@ class AppGraph(app: Application) {
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
     )
 
+    /**
+     * The start-up sweep in `init` below, as something that can be waited for.
+     *
+     * The sweep closes every row that says RECORDING, on the reasoning that a
+     * new process cannot be recording anything yet. That stopped being safe
+     * the moment an alarm could *start* the process in order to record: the
+     * recorder marks its row RECORDING within milliseconds of launch, and a
+     * sweep that had not run yet would find that row and mark it failed while
+     * it was being written. The recorder waits for this before it touches the
+     * database, so the sweep only ever sees rows from a process that is gone.
+     */
+    val staleRecordingsClosed: kotlinx.coroutines.Job
+
     init {
         // Modelled on the client that has no StreamHealthInterceptor, so a
         // proxied request differs from a direct one in nothing but its route —
@@ -318,7 +331,7 @@ class AppGraph(app: Application) {
         // A partial recording with real content is still watchable, so anything
         // that got past the service's own 5 MB "worth keeping" threshold is
         // closed as DONE rather than thrown away as FAILED.
-        bgScope.launch {
+        staleRecordingsClosed = bgScope.launch {
             try {
                 val dao = db.recordingDao()
                 dao.inFlight().forEach { rec ->
@@ -333,6 +346,11 @@ class AppGraph(app: Application) {
                     )
                 }
             } catch (_: Throwable) { /* best effort — never block start-up */ }
+            // Alarms do not survive a reboot. Whatever started this process,
+            // put back the ones for recordings still waiting for their time.
+            try {
+                tv.enktel.app.dvr.RecordingAlarms.rearmAll(app, db.recordingDao())
+            } catch (_: Throwable) { /* likewise */ }
         }
     }
 }

@@ -29,8 +29,17 @@ class AppGraphLazinessTest {
     /**
      * Built eagerly, on purpose: `init` uses each of these directly, so
      * deferring them would only move the work a line later.
+     *
+     * `staleRecordingsClosed` is not an object being built at all. It is the
+     * `Job` of the start-up sweep `init` was already launching — the one that
+     * closes recordings a dead process left marked as in progress — kept so
+     * the recorder can wait for it. It became necessary when an alarm could
+     * start the process *in order to* record: the sweep would otherwise find
+     * the recording that had just begun and mark it failed. Holding the handle
+     * costs a field; making it lazy would mean the sweep ran only when
+     * somebody asked whether it had finished.
      */
-    private val expectedEager = setOf("settings", "http", "diagHttp", "appScope")
+    private val expectedEager = setOf("settings", "http", "diagHttp", "appScope", "staleRecordingsClosed")
 
     /** Deferred until a screen asks. Everything expensive lives here. */
     private val expectedLazy = setOf(
@@ -57,7 +66,7 @@ class AppGraphLazinessTest {
 
     @Test
     fun `nothing eager has quietly joined the graph`() {
-        // Any *new* member is either lazy, or one of the four that init needs,
+        // Any *new* member is either lazy, or one of the few that init needs,
         // or a mistake. Failing on the third case is the point: this test is
         // here to make "I added one more eager val" a conversation.
         val lazyNames = lazyPropertyNames()

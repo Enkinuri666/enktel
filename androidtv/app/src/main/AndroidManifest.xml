@@ -25,6 +25,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Starts a scheduled recording at its time with the app closed. An exact
+         alarm is one of the few things Android 12+ lets start a foreground
+         service from the background, and recording is one. Granted at install
+         on Android 12 and 13; from 14 the viewer turns it on under Special app
+         access > Alarms & reminders, and the Recordings screen offers the way
+         there. SCHEDULE_ and not USE_EXACT_ALARM: the latter needs no consent
+         and is reserved for alarm clocks and calendars, which this is not. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Voice commands use the on-device SpeechRecognizer service. On Android 11+
@@ -68,6 +76,17 @@
             android:name=".dvr.RecordingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Where a scheduled recording's alarm lands. Not exported: the alarm
+             is addressed to it by name, and the one broadcast it listens for
+             comes from the system, which a non-exported receiver still hears. -->
+        <receiver
+            android:name=".dvr.RecordingAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Holds the process up while the parallel downloader works. Without
              it, leaving the app lets Android freeze the process and the
