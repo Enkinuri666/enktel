@@ -3,6 +3,7 @@ package tv.enktel.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -67,7 +68,9 @@ fun MoreScreen(onSelect: (String) -> Unit) {
     // own one-line descriptions.
     // The page gutter every screen shares, so the title does not step
     // sideways between destinations.
-    val gutter = tv.enktel.app.ui.components.rememberScreenShape().padH
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    val gutter = shape.padH
+    val narrow = shape.narrow
     // Painted rather than inherited. Every other destination sits on the
     // shell's gradient, but this one is also drawn by the screenshot harness
     // and by anything that hosts it outside the shell, and a grid of light
@@ -82,27 +85,81 @@ fun MoreScreen(onSelect: (String) -> Unit) {
                 fontSize = 13.sp,
             )
         }
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 240.dp),
-            modifier = Modifier.fillMaxSize().tvGridFocus(),
-            contentPadding = PaddingValues(start = gutter, end = gutter, top = 16.dp, bottom = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(items, key = { it.id }) { item ->
-                MoreTile(item, blurb = t.moreBlurb(item.id).orEmpty(), onClick = { onSelect(item.route) })
+        // The tiles fill the page, rather than sitting in the top corner of it.
+        //
+        // Eight tiles in three columns are three rows, and a row was as tall
+        // as its own 16 dp padding plus a 44 dp icon — 76 dp. On a television
+        // that left the bottom two thirds of the screen black while the tiles
+        // themselves were small enough to lean in for. The height each row can
+        // have is simple arithmetic once the viewport is known, so the rows
+        // take it: the same eight destinations, read from a sofa.
+        //
+        // Bounded at both ends. The lower bound is what the tiles were, for a
+        // phone, where eight rows already overflow the screen and are meant
+        // to scroll. The upper bound is so that a short list on a tall screen
+        // does not become three enormous slabs.
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val gap = 12.dp
+            val minTile = 240.dp
+            val top = 16.dp
+            val bottom = 48.dp
+            val cols = (((maxWidth - gutter * 2) + gap) / (minTile + gap)).toInt().coerceAtLeast(1)
+            val rows = (items.size + cols - 1) / cols
+            // Only where there is room going spare. A phone is one column of
+            // eight, which already fills the screen; giving those rows a fixed
+            // height cost two of the blurbs their second line.
+            val rowHeight = if (narrow) {
+                null
+            } else {
+                ((maxHeight - top - bottom - gap * (rows - 1)) / rows)
+                    .coerceIn(MORE_TILE_MIN, MORE_TILE_MAX)
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(cols),
+                modifier = Modifier.fillMaxSize().tvGridFocus(),
+                contentPadding = PaddingValues(start = gutter, end = gutter, top = top, bottom = bottom),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                items(items, key = { it.id }) { item ->
+                    MoreTile(
+                        item,
+                        blurb = t.moreBlurb(item.id).orEmpty(),
+                        height = rowHeight,
+                        onClick = { onSelect(item.route) },
+                    )
+                }
             }
         }
     }
 }
 
+/** What a tile was before it filled the page: padding, icon, padding. */
+private val MORE_TILE_MIN = 76.dp
+
+/** Three slabs is not a menu. */
+private val MORE_TILE_MAX = 148.dp
+
 @Composable
-private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
+private fun MoreTile(
+    item: TvNavItem,
+    blurb: String,
+    /** The row's share of the page, or null to be as tall as its own contents. */
+    height: androidx.compose.ui.unit.Dp?,
+    onClick: () -> Unit,
+) {
     var focused by remember { mutableStateOf(false) }
+    // Everything inside grows with the tile, so a taller tile is a bigger
+    // tile rather than the same small tile with air around it.
+    val grown = height?.let {
+        ((it - MORE_TILE_MIN) / (MORE_TILE_MAX - MORE_TILE_MIN)).coerceIn(0f, 1f)
+    } ?: 0f
+    fun lerp(from: Float, to: Float) = from + (to - from) * grown
     Surface(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (height != null) Modifier.height(height) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .tapClick(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
@@ -110,27 +167,40 @@ private fun MoreTile(item: TvNavItem, blurb: String, onClick: () -> Unit) {
         border = tv.enktel.app.ui.components.RowFocus.border(RoundedCornerShape(16.dp)),
         scale = tv.enktel.app.ui.components.RowFocus.scale(),
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .then(if (height != null) Modifier.fillMaxSize() else Modifier)
+                .padding(lerp(16f, 22f).dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
                 Modifier
-                    .size(44.dp)
+                    .size(lerp(44f, 72f).dp)
                     .background(
                         if (focused) Color.White.copy(alpha = 0.18f) else EnktelBlue.copy(alpha = 0.18f),
-                        RoundedCornerShape(12.dp),
+                        RoundedCornerShape(lerp(12f, 18f).dp),
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp))
+                Icon(item.icon, contentDescription = null, modifier = Modifier.size(lerp(22f, 36f).dp))
             }
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(item.localLabel(), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.width(lerp(14f, 18f).dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.localLabel(),
+                    fontSize = lerp(15f, 20f).sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(lerp(2f, 5f).dp))
                 Text(
                     blurb,
                     color = if (focused) Color.White.copy(alpha = 0.85f) else EnktelTextDim,
-                    fontSize = 11.sp,
+                    fontSize = lerp(11f, 14f).sp,
                     maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }
