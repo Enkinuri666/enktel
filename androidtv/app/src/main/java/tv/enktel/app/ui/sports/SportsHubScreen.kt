@@ -1870,7 +1870,7 @@ internal fun ChannelLogo(url: String, fallback: String) {
                 modifier = Modifier.fillMaxSize().padding(5.dp),
             )
         } else {
-            Text(fallback.take(2).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            tv.enktel.app.ui.components.Monogram(fallback)
         }
     }
 }

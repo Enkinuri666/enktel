@@ -348,10 +348,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                 if (ch.logo.isNotBlank()) {
                                     AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(2.dp))
                                 } else {
-                                    Text(
-                                        ChannelFilters.initials(ch.name), fontSize = 11.sp,
-                                        fontWeight = FontWeight.Black, color = EnktelTextDim,
-                                    )
+                                    tv.enktel.app.ui.components.Monogram(ch.name)
                                 }
                             }
                             Spacer(Modifier.width(9.dp))

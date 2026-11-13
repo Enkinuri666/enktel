@@ -1116,8 +1116,7 @@ private fun InfoBar(
                 if (channel.logo.isNotBlank()) {
                     AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
                 } else {
-                    Text(ChannelFilters.initials(channel.name), color = Color.White,
-                         fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    tv.enktel.app.ui.components.Monogram(channel.name)
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -1355,7 +1354,7 @@ private fun ChannelEpgPane(
                 if (channel.logo.isNotBlank()) {
                     AsyncImage(model = channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize().padding(3.dp))
                 } else {
-                    Text(ChannelFilters.initials(channel.name), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    tv.enktel.app.ui.components.Monogram(channel.name)
                 }
             }
             Spacer(Modifier.width(10.dp))
