@@ -913,6 +913,11 @@ class ScreenshotCaptureTest {
                 startMs = startMs, endMs = endMs, sizeBytes = bytes,
             )
         runBlocking {
+            // The graph's start-up sweep closes any row marked RECORDING, on
+            // the reasoning that a new process cannot be recording yet. Let it
+            // finish before handing it one, or the "Recording Now" section
+            // this capture exists to show is sometimes empty.
+            g.staleRecordingsClosed.join()
             val dao = g.db.recordingDao()
             dao.insert(row("Arsenal v Chelsea", "Sky Sports Main Event", "RECORDING", now - 40 * 60_000, now + 65 * 60_000, 1_300L shl 20))
             dao.insert(row("Bathurst 1000 — Qualifying", "Fox Sports 501", "SCHEDULED", now + 135 * 60_000, now + 255 * 60_000))

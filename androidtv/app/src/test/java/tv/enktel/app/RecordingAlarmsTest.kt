@@ -161,10 +161,25 @@ class RecordingAlarmsTest {
 
     // ---- putting them back ----
 
+    /**
+     * A graph whose start-up work has finished.
+     *
+     * Building an AppGraph starts the same sweep the app runs at launch, on a
+     * background thread, and that sweep ends by re-arming every scheduled
+     * recording — against the real clock. These tests use a fixed "now" in
+     * the future, so a row they call already due is, by the real clock, still
+     * to come. When the sweep happened to run after the rows were inserted it
+     * armed a third alarm and the count below was wrong: green on the machine
+     * this was written on, red twice running on CI. Waiting for the sweep
+     * first leaves nothing in the background to race.
+     */
+    private suspend fun settledGraph(): AppGraph =
+        AppGraph(context as Application).also { it.staleRecordingsClosed.join() }
+
     @Test
     fun `re-arming covers every recording still waiting, and only those`() = runBlocking {
         ShadowAlarmManager.setCanScheduleExactAlarms(true)
-        val dao = AppGraph(context as Application).db.recordingDao()
+        val dao = settledGraph().db.recordingDao()
         fun row(status: String, startMs: Long) = Recording(
             profileId = 1, title = "t", channelName = "c", streamUrl = "http://example.invalid/1.ts",
             status = status, startMs = startMs, endMs = startMs + 3_600_000,
@@ -187,9 +202,28 @@ class RecordingAlarmsTest {
     }
 
     @Test
+    fun `the start-up sweep re-arms what is waiting when the app starts`() = runBlocking {
+        // What a reboot looks like from here: rows in the database, no alarms.
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val first = settledGraph()
+        val soon = System.currentTimeMillis() + 3_600_000
+        first.db.recordingDao().insert(
+            Recording(
+                profileId = 1, title = "t", channelName = "c", streamUrl = "http://example.invalid/1.ts",
+                status = "SCHEDULED", startMs = soon, endMs = soon + 3_600_000,
+            ),
+        )
+        assertTrue("nothing has armed it yet", alarms.scheduledAlarms.isEmpty())
+
+        // The app starts again. Nobody opens Recordings; nobody schedules anything.
+        settledGraph()
+        assertEquals(listOf(soon), alarms.scheduledAlarms.map { it.triggerAtMs })
+    }
+
+    @Test
     fun `re-arming without the permission sets nothing`() = runBlocking {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
-        val dao = AppGraph(context as Application).db.recordingDao()
+        val dao = settledGraph().db.recordingDao()
         dao.insert(
             Recording(
                 profileId = 1, title = "t", channelName = "c", streamUrl = "http://example.invalid/1.ts",

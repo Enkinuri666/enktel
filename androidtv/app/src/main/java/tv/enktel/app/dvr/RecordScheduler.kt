@@ -32,6 +32,12 @@ object RecordScheduler {
         channelLogo: String = "",
     ): Long {
         val app = context.applicationContext as EnktelApp
+        // This row is inserted already marked RECORDING, and the start-up
+        // sweep closes every row so marked. Nobody presses Record in the first
+        // few hundred milliseconds of the app's life — but if they did, the
+        // sweep would close the recording they had just asked for, so it goes
+        // first.
+        app.graph.staleRecordingsClosed.join()
         val now = System.currentTimeMillis()
         val id = app.graph.db.recordingDao().insert(
             Recording(
