@@ -114,6 +114,29 @@ internal fun guideScrollPx(nowMs: Long, dayStartMs: Long, density: Float): Int {
     return (dp * density).toInt().coerceAtLeast(0)
 }
 
+/**
+ * What the dock describes before the viewer has moved anywhere.
+ *
+ * It described nothing: a black box saying "Nothing playing" beside one line
+ * of instructions, in a band a fifth of the screen tall, until focus happened
+ * to land on a programme. The guide is opened to find out what is on, so it
+ * opens on the answer — whatever is airing now on the channel being watched,
+ * or failing that on the first channel that has a programme airing.
+ */
+internal fun guideDefaultHighlight(
+    channels: List<Channel>,
+    programs: Map<String, List<EpgProgram>>,
+    nowMs: Long,
+    playingKey: String?,
+): Pair<Channel, EpgProgram>? {
+    fun airing(ch: Channel): EpgProgram? =
+        programs[ch.epgId]?.firstOrNull { it.startMs <= nowMs && it.endMs > nowMs }
+    val playing = playingKey?.let { key -> channels.firstOrNull { it.key == key } }
+    playing?.let { ch -> airing(ch)?.let { return ch to it } }
+    for (ch in channels) airing(ch)?.let { return ch to it }
+    return null
+}
+
 /** Where [nowMs] is drawn on the timeline, in pixels from its start. */
 internal fun guideNowPx(nowMs: Long, dayStartMs: Long, density: Float): Float =
     DP_PER_HOUR.value * ((nowMs - dayStartMs).toFloat() / HOUR) * density
@@ -269,6 +292,8 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         GuideDock(
             graph = graph,
             highlighted = highlighted,
+            opening = { playingKey -> guideDefaultHighlight(channels, programs, now, playingKey) },
+            openingKey = Triple(channels, programs, now),
             playlistName = p.name,
             modifier = Modifier.padding(horizontal = shape.padH),
         )
@@ -618,12 +643,18 @@ private fun ProgramDialog(
 private fun GuideDock(
     graph: AppGraph,
     highlighted: Pair<Channel, EpgProgram>?,
+    /** What to describe while nothing is highlighted, given the channel being watched. */
+    opening: (playingKey: String?) -> Pair<Channel, EpgProgram>?,
+    /** Whatever [opening] depends on, so its answer is recomputed only when that changes. */
+    openingKey: Any,
     playlistName: String,
     modifier: Modifier = Modifier,
 ) {
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
-    val ch = highlighted?.first
-    val prog = highlighted?.second
+    val playingKey = nowPlaying?.contentId
+    val shown = highlighted ?: remember(openingKey, playingKey) { opening(playingKey) }
+    val ch = shown?.first
+    val prog = shown?.second
 
     // Claim the picture for as long as this dock is composed, so the floating
     // mini window does not draw a second copy over the corner of the guide.
@@ -693,6 +724,10 @@ private fun GuideDock(
                     model = ch.logo, contentDescription = null,
                     modifier = Modifier.fillMaxSize().padding(34.dp),
                 )
+            } else if (ch != null) {
+                // No picture and no logo: the channel's own plate, rather than
+                // a black box announcing that nothing is playing.
+                tv.enktel.app.ui.components.Monogram(ch.name)
             } else {
                 Text("Nothing playing", color = EnktelTextDim, fontSize = 12.sp)
             }

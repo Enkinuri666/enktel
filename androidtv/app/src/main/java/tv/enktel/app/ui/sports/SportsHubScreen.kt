@@ -559,7 +559,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             item {
-                LazyRow(
+                RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -584,7 +584,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             },
                         )
                     }
-                }
+                } }
             }
         }
         when {
@@ -643,7 +643,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         if (scoresEnabled && scoreRail.isNotEmpty()) {
             item { SectionHeader(Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz, count = scoreRail.size) }
             item {
-                LazyRow(
+                RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -680,7 +680,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             },
                         )
                     }
-                }
+                } }
             }
         }
         // Official broadcast guide — the published schedule for today, straight
@@ -696,7 +696,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 )
             }
             item {
-                LazyRow(
+                RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -736,14 +736,14 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             },
                         )
                     }
-                }
+                } }
             }
         }
         // Published highlight packages for fixtures that have already finished.
         if (matchCenterEnabled && highlightClips.isNotEmpty()) {
             item { SectionHeader(Icons.Rounded.Movie, "HIGHLIGHTS", EnktelOk, padHoriz, subtitle = "Latest packages") }
             item {
-                LazyRow(
+                RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -754,7 +754,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                             onPlay = { openHighlight(context, nav, toaster, clip.videoUrl, clip.title) },
                         )
                     }
-                }
+                } }
             }
         }
         if (live.isNotEmpty()) {
@@ -869,6 +869,30 @@ private fun scoreKey(s: tv.enktel.app.data.repo.LiveScore): String =
 
 /** A scheduled fixture's place in its rail. */
 private fun fixtureKey(f: tv.enktel.app.data.repo.LiveScore): String = "${f.eventId}-${f.home}-${f.away}"
+
+/**
+ * Draws a rail of small cards a size up on a wide screen.
+ *
+ * The score chips, fixture cards and highlight tiles were sized for a phone
+ * held at arm's length. On a television the same dp are read from across a
+ * room, and four rails of them huddled in the left third of the screen with
+ * the rest left black. Scaling the density inside the rail enlarges cards,
+ * type and spacing together, so nothing is re-proportioned by hand; a phone
+ * is left exactly as it was.
+ */
+@Composable
+private fun RailScale(content: @Composable () -> Unit) {
+    val shape = tv.enktel.app.ui.components.rememberScreenShape()
+    if (shape.narrow) { content(); return }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides
+            androidx.compose.ui.unit.Density(density.density * RAIL_SCALE_WIDE, density.fontScale),
+        content = content,
+    )
+}
+
+private const val RAIL_SCALE_WIDE = 1.35f
 
 private fun pinByTeam(
     fixtures: List<tv.enktel.app.data.repo.LiveScore>,

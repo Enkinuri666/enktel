@@ -183,7 +183,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         )
         Text(
             if (simpleMenu) t.menuSimpleHelp else t.menuFullHelp,
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         // Language, right beside the menu switch.
@@ -216,7 +216,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             t.diagnosticsHelp,
-            color = EnktelTextDim, fontSize = 11.sp, maxLines = 2,
+            color = EnktelTextDim, fontSize = 13.sp, maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
 
@@ -272,10 +272,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
 
         Column(
             Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
         if (category == "Playlists") {
-        Text("PLAYLISTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Playlists")
         profiles.forEach { p ->
             androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -309,7 +309,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             if (p.expiresAt > 0) {
                 Text(
                     "Expires ${TimeFormat.format("d MMM yyyy", p.expiresAt)} · max ${p.maxConnections} connection(s)",
-                    color = EnktelTextDim, fontSize = 11.sp,
+                    color = EnktelTextDim, fontSize = 13.sp,
                 )
             }
             ProviderUserAgent(graph, p, scope)
@@ -411,7 +411,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             tv.enktel.app.ui.components.ChipRowLabel("Imported files")
             Text(
                 "These add to your channels rather than replacing them. Each one gets its own categories.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
             attachedHere.forEach { file ->
                 Row(
@@ -447,7 +447,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             tv.enktel.app.ui.components.GlassChip("HLS (m3u8)", selected = streamFormat == "hls", onClick = { scope.launch { graph.settings.setStreamFormat("hls") } })
             tv.enktel.app.ui.components.GlassChip("MPEG-TS", selected = streamFormat == "ts", onClick = { scope.launch { graph.settings.setStreamFormat("ts") } })
         }
-        Text("MPEG-TS starts faster on some panels; HLS adapts quality automatically.", color = EnktelTextDim, fontSize = 11.sp)
+        Text("MPEG-TS starts faster on some panels; HLS adapts quality automatically.", color = EnktelTextDim, fontSize = 13.sp)
 
 
         Spacer(Modifier.height(10.dp))
@@ -462,7 +462,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "this network cannot reach the host. It does not grant access to anything your " +
                 "line is not already entitled to.",
             color = EnktelTextDim,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -482,7 +482,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "your own and the app will use it: any endpoint that takes ?u=<stream url> " +
                 "and fetches it, including this app's own /api/stream on a host of yours.",
             color = EnktelTextDim,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -500,7 +500,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "Used only for hosts that have already refused this device, so everything " +
                 "else stays direct and full speed. HTTP or SOCKS.",
             color = EnktelTextDim,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
         )
 
         tv.enktel.app.ui.components.ChipRowLabel("Player buffer")
@@ -522,7 +522,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "opposite things: live has to stay near the broadcast edge and inside the " +
                 "provider's segment window, on-demand wants as much runway as it can hold. " +
                 "Auto scales by device class. Applies next time a player opens.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         // The numbers actually in force, not the ones the profile is named
         // after. A profile is adjusted for live-vs-VOD, device class and
@@ -551,16 +551,16 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     "${liveW.playMs}ms · on-demand holds up to ${vodW.maxMs / 1000}s and starts " +
                     "after ${vodW.playMs}ms" +
                     if (lowRam) " (halved — this device reports low RAM)" else "",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("VOD / LIVE BUFFER TUNING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("VOD / live buffer tuning")
         Text(
             "Separate buffer windows for VOD (stability-first) and Live IPTV (latency-first). " +
                 "Auto uses best-practice defaults. Custom lets you set each value. Applies next player open.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val vodBufProf by graph.settings.vodBufferProfile.collectAsStateWithLifecycle(initialValue = "auto")
         val liveBufProf by graph.settings.liveBufferProfile.collectAsStateWithLifecycle(initialValue = "auto")
@@ -684,7 +684,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text(
             "Larger chunks reduce allocator overhead for 4K and large MKV files. " +
                 "2 MB recommended for 4K content. Leave at default for standard streams.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -702,7 +702,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Bypass container auto-detection and force ExoPlayer to parse every movie / episode strictly as MP4. Turn on if a specific title fails with a codec / container error and the fallback chain doesn't recover.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -718,13 +718,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "How long the on-screen info bar / transport controls stay visible after the last input. \"Never\" keeps them up until you dismiss with Back.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Recording") {
         Spacer(Modifier.height(10.dp))
-        Text("DVR RECORDING PADDING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("DVR recording padding")
         val recPrefix by graph.settings.recPrefixMin.collectAsStateWithLifecycle(initialValue = 2)
         val recSuffix by graph.settings.recSuffixMin.collectAsStateWithLifecycle(initialValue = 5)
         androidx.compose.foundation.layout.FlowRow(
@@ -740,7 +740,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
 
         Spacer(Modifier.height(10.dp))
-        Text("POWER-USER DECODING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Power-user decoding")
         val decMode by graph.settings.decoderMode.collectAsStateWithLifecycle(initialValue = "hwplus")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             tv.enktel.app.ui.components.GlassChip("HW+ (default)", selected = decMode == "hwplus",
@@ -752,7 +752,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "HW+ uses the SoC's own audio decoders and keeps the bundled FFmpeg decoder behind them, so it only steps in for what the box genuinely cannot decode — AC-3, E-AC-3, DTS and TrueHD on hardware that ships without them, the usual cause of a channel with picture but no sound. HW-only drops FFmpeg entirely. Software audio puts FFmpeg first: try it only if a track plays silent on HW+, which means the box advertises a decoder it does not really have. Video decoding is unaffected by all three.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -769,7 +769,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "profile default still under-buffers. Clamped so it can never exceed the maximum " +
                 "for the stream being played — ExoPlayer throws rather than clamps, and that " +
                 "would be a crash on the first frame.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -783,7 +783,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Lifts the 200–3400 Hz voice band via DynamicsProcessing so whisper-quiet dialogue stops getting drowned by explosion-loud action scenes. Requires Android 9+.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         Spacer(Modifier.height(10.dp))
@@ -793,7 +793,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 Text("Background audio (live TV)", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Keep live news / sports / podcasts playing when the screen turns off. Applies to live TV only — VOD keeps the screen on.",
-                    color = EnktelTextDim, fontSize = 11.sp,
+                    color = EnktelTextDim, fontSize = 13.sp,
                 )
             }
             FocusButton(
@@ -819,14 +819,14 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Shifts the XMLTV guide times when the panel's clock doesn't match yours. Negative = programmes appear earlier; positive = later.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         // v1.26.0 — Discord Watch Party section.
         }
         if (category == "Network") {
         Spacer(Modifier.height(10.dp))
-        Text("DISCORD WATCH PARTY", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Discord watch party")
         val discordWebhook by graph.settings.discordWebhook.collectAsStateWithLifecycle(initialValue = "")
         val discordVoice by graph.settings.discordVoiceChannel.collectAsStateWithLifecycle(initialValue = "Richard's Hangout")
         val companionOn by graph.settings.companionMode.collectAsStateWithLifecycle(initialValue = false)
@@ -848,7 +848,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 Text("Streaming Companion Mode", color = androidx.compose.ui.graphics.Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Locks the top bitrate and raises the min buffer to 30 s so Discord screen-share viewers don't see quality flapping or micro-stalls.",
-                    color = EnktelTextDim, fontSize = 11.sp,
+                    color = EnktelTextDim, fontSize = 13.sp,
                 )
             }
             FocusButton(
@@ -867,7 +867,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Network") {
         Spacer(Modifier.height(10.dp))
-        Text("BACKUP GATEWAYS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Backup gateways")
         val backupGw by graph.settings.backupGateways.collectAsStateWithLifecycle(initialValue = emptyList())
         var newGw by remember { mutableStateOf("") }
         Spacer(Modifier.height(4.dp))
@@ -897,7 +897,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     "http://panel.example/live/u/p/1.ts. These are mirrors of your panel, " +
                     "not proxies: a host that does not serve your panel's paths will not " +
                     "help, and a VPN or proxy address belongs in Relay endpoint above.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         } else {
             Spacer(Modifier.height(8.dp))
@@ -917,7 +917,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Recording") {
         Spacer(Modifier.height(10.dp))
-        Text("DOWNLOADS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Downloads")
         val dlEngine by graph.settings.downloadEngine.collectAsStateWithLifecycle(initialValue = "auto")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             tv.enktel.app.ui.components.GlassChip("Auto (fast)", selected = dlEngine == "auto",
@@ -929,7 +929,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Auto/Parallel use a ranged OkHttp downloader — genuinely faster on Xtream VOD panels that support ranges. Stream count follows your line's connection limit, always leaving one free for playback. System uses Android's DownloadManager (OS notification, single-stream). Custom folder = always Parallel (OS can't write SAF).",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val wifiOnly by graph.settings.downloadsWifiOnly.collectAsStateWithLifecycle(
             initialValue = BuildConfig.FLAVOR == "mobile",
@@ -943,7 +943,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Holds downloads back while the connection is metered — a single film can be several GB. " +
                 "Queued downloads say \"Waiting for Wi-Fi\" and start on their own once you're back on an " +
                 "unmetered network. Tethered hotspots count as metered, since that's still your mobile data.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val dlFolderUri by graph.settings.downloadFolderUri.collectAsStateWithLifecycle(initialValue = "")
         val folderPicker = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -977,13 +977,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text(
             if (dlFolderUri.isBlank()) "Default: the app's private Movies dir (uninstall-cleaned)."
             else "Current: ${dlFolderUri.take(80)}…",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Playlists") {
         Spacer(Modifier.height(10.dp))
-        Text("METADATA ENRICHMENT (TMDB)", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Metadata enrichment (TMDB)")
         val tmdbKey by graph.settings.tmdbApiKey.collectAsStateWithLifecycle(initialValue = "")
         var newTmdb by remember { mutableStateOf(tmdbKey) }
         androidx.compose.runtime.LaunchedEffect(tmdbKey) { if (newTmdb.isBlank()) newTmdb = tmdbKey }
@@ -1017,7 +1017,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Free TMDB account → developer.themoviedb.org → API → request access → paste your v3 key or v4 read-only token here. Blank disables enrichment (the themed home rails still work off titles/genres alone).",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val autoTrailers by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = true)
         FocusButton(
@@ -1032,13 +1032,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     "uses your own TMDB quota instead of the shared one."
             else
                 "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Always muted; move off the poster and it stops.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Parental") {
         Spacer(Modifier.height(10.dp))
-        Text("PARENTAL CONTROLS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Parental controls")
         val lockedCats by graph.settings.lockedCategories.collectAsStateWithLifecycle(initialValue = emptySet())
         var newPin by remember { mutableStateOf("") }
         Row(
@@ -1070,7 +1070,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (pinHash.isNotBlank()) {
-            Text("Tap a category to lock/unlock it (🔒 = PIN required):", color = EnktelTextDim, fontSize = 11.sp)
+            Text("Tap a category to lock/unlock it (🔒 = PIN required):", color = EnktelTextDim, fontSize = 13.sp)
             val liveCats by remember(activeId) { graph.content.categories(activeId, "live") }.collectAsStateWithLifecycle(initialValue = emptyList())
             val vodCats by remember(activeId) { graph.content.categories(activeId, "vod") }.collectAsStateWithLifecycle(initialValue = emptyList())
             val seriesCats by remember(activeId) { graph.content.categories(activeId, "series") }.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -1101,12 +1101,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Parental") {
         Spacer(Modifier.height(10.dp))
-        Text("KIDS MODE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Kids mode")
         val kidsModeOn by graph.settings.kidsModeEnabled.collectAsStateWithLifecycle(initialValue = false)
         Text(
             "Simplified, high-contrast Home restricted to family/kids content. " +
                 "Requires a parental PIN above to turn back off.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         FocusButton(
             if (kidsModeOn) "🧸 Kids Mode: ON — tap to turn off" else "🧸 Kids Mode: OFF — tap to turn on",
@@ -1130,7 +1130,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Playback" && BuildConfig.FLAVOR == "tv") {
             Spacer(Modifier.height(10.dp))
-            Text("HARDWARE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            SettingsGroupTitle("Hardware")
             val tunneling by graph.settings.tunneling.collectAsStateWithLifecycle(initialValue = true)
             FocusButton(
                 "Tunneled playback: ${if (tunneling) "ON" else "off"}",
@@ -1144,12 +1144,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     "that differ between the two builds, and whether a given box handles it well " +
                     "for a given codec is not something the app can detect. Takes effect on the " +
                     "next thing you play.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
-        Text("SUBTITLES", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Subtitles")
 
         // ---- Live TV closed captions ----------------------------------------
         val captionMode by graph.settings.captionMode
@@ -1181,7 +1181,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "It cannot create captions. A channel that transmits none will still show none — " +
                 "that would need speech recognition, which is a different feature. Takes effect " +
                 "on the next channel you open.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         Spacer(Modifier.height(10.dp))
 
@@ -1216,7 +1216,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 scope.launch { graph.settings.setSubBgAlpha(when (subBg) { 0 -> 128; 128 -> 200; 200 -> 255; else -> 0 }) }
             })
         }
-        if (extSub.isNotBlank()) Text("External subtitle: $extSub", color = EnktelTextDim, fontSize = 11.sp)
+        if (extSub.isNotBlank()) Text("External subtitle: $extSub", color = EnktelTextDim, fontSize = 13.sp)
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1232,7 +1232,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
-        Text("AUDIO", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Audio")
         val loud by graph.settings.loudnessOn.collectAsStateWithLifecycle(initialValue = false)
         FocusButton("Loudness normalization: ${if (loud) "ON" else "off"}", accent = loud, onClick = {
             scope.launch { graph.settings.setLoudnessOn(!loud) }
@@ -1241,7 +1241,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
-        Text("PLAYBACK", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Playback")
         val autoplay by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
         val skipIntro by graph.settings.skipIntroSec.collectAsStateWithLifecycle(initialValue = 0)
         val pip by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)
@@ -1283,13 +1283,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "(Settings → Apps → EnkTel → Advanced → Picture-in-picture). " +
                 "\"On back\" hands off when you press the back button; \"On home\" hands off " +
                 "when you press Home while a player is on-screen.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Sports & Voice") {
         Spacer(Modifier.height(10.dp))
-        Text("VOICE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Voice")
         val wakeWord by graph.settings.wakeWordEnabled.collectAsStateWithLifecycle(initialValue = false)
         FocusButton(
             "\"Hey Enki\" wake word: ${if (wakeWord) "ON" else "off"}",
@@ -1300,13 +1300,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "When on, EnkTel listens continuously for \"Hey Enki\" (or just \"Enki\") and " +
                 "acts on whatever you say next: \"Hey Enki, turn to Nine HD\", \"Hey Enki, pause\", " +
                 "\"Hey Enki, what live sports is on\". Uses more battery — off by default.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Sports & Voice") {
         Spacer(Modifier.height(10.dp))
-        Text("SPORTS", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Sports")
         val sportsKey by graph.settings.sportsDbKey.collectAsStateWithLifecycle(initialValue = "")
         var newSportsKey by remember { mutableStateOf(sportsKey) }
         androidx.compose.runtime.LaunchedEffect(sportsKey) { if (newSportsKey.isBlank()) newSportsKey = sportsKey }
@@ -1332,7 +1332,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Schedules, highlights and match detail work on the free key. In-play live scores do " +
                 "not — that endpoint is Premium-only, which is why turning Live scores on can look " +
                 "like nothing happened. A Patreon key at thesportsdb.com unlocks it.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)
         FocusButton("Live scores (TheSportsDB): ${if (scoresOn) "ON" else "off"}", accent = scoresOn, onClick = {
@@ -1348,7 +1348,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Adds in-play stats and timelines for a fixture, the official broadcaster list for it, " +
                 "today's published schedule, and highlight packages for matches that have finished. " +
                 "Turn off to stop the Sports Hub making these lookups.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1358,7 +1358,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("🏟  Sports Hub", onClick = { nav.navigate("sports") })
         }
         Spacer(Modifier.height(14.dp))
-        Text("FOLLOWING", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Following")
         // What it does, said once and plainly. Without this the field was a box
         // that swallowed text: no confirmation, no effect anyone could point
         // at, and no statement anywhere of what following was for.
@@ -1367,7 +1367,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "Its fixtures pin to the top of the Live sport finder and the Sports Hub, and the " +
                 "Hub's \"my teams\" filter shows only those. Teams and leagues work; player names " +
                 "do not — nothing broadcasts under a player's name.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         val followed by remember() { graph.db.sportsDao().followed() }.collectAsStateWithLifecycle(initialValue = emptyList())
         var newTeam by remember { mutableStateOf("") }
@@ -1427,7 +1427,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
         }
         if (followNote.isNotBlank()) {
-            Text(followNote, color = EnktelTextDim, fontSize = 11.sp)
+            Text(followNote, color = EnktelTextDim, fontSize = 13.sp)
         }
         // Confirmed candidates, with enough detail to tell two Uniteds apart.
         suggestions.chunked(2).forEach { row ->
@@ -1446,12 +1446,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         if (followed.isEmpty()) {
             Text(
                 "Not following anything yet.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         } else {
             Text(
                 "Following ${followed.size} — press one to stop:",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         }
         followed.chunked(3).forEach { row ->
@@ -1473,7 +1473,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
-        Text("BACK BUTTON IN PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Back button in player")
         val backAction by graph.settings.backAction.collectAsStateWithLifecycle(initialValue = "exit")
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1489,17 +1489,17 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text(
             "Dock & browse shrinks playback into a mini window so you can check downloads, " +
                 "the guide, Movies or the Sports Hub without losing what you're watching.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
         Text(
             "Pressing HOME on your remote / device always tries Picture-in-Picture regardless of this setting.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
-        Text("MINI PLAYER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Mini player")
         val dockSize by graph.settings.dockSizeStep.collectAsStateWithLifecycle(initialValue = 1)
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1528,13 +1528,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "Drag the mini window to move it between corners, or tap it to go full screen."
             else "While docked, ▶ at the top of the side menu returns you to full screen. " +
                 "The remote's play/pause and channel keys keep working.",
-            color = EnktelTextDim, fontSize = 11.sp,
+            color = EnktelTextDim, fontSize = 13.sp,
         )
 
         }
         if (category == "Appearance") {
         Spacer(Modifier.height(10.dp))
-        Text("SCREENSAVER", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Screensaver")
         val ss by graph.settings.screensaverMin.collectAsStateWithLifecycle(initialValue = 5)
         FocusButton(if (ss == 0) "Screensaver: off" else "Screensaver: ${ss} min", onClick = {
             scope.launch { graph.settings.setScreensaverMin(when (ss) { 0 -> 3; 3 -> 5; 5 -> 10; 10 -> 20; else -> 0 }) }
@@ -1543,7 +1543,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Appearance") {
         Spacer(Modifier.height(10.dp))
-        Text("APPEARANCE", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("Appearance")
         val themeId by graph.settings.theme.collectAsStateWithLifecycle(initialValue = "enktel_blue")
         val opacityPct by graph.settings.uiOpacityPct.collectAsStateWithLifecycle(initialValue = 92)
         val textPct by graph.settings.textScalePct.collectAsStateWithLifecycle(initialValue = 100)
@@ -1561,7 +1561,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        Text("Overlay opacity: ${opacityPct}%", color = EnktelTextDim, fontSize = 11.sp)
+        Text("Overlay opacity: ${opacityPct}%", color = EnktelTextDim, fontSize = 13.sp)
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1570,7 +1570,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             FocusButton("+", onClick = { scope.launch { graph.settings.setUiOpacityPct(opacityPct + 5) } })
             FocusButton("Reset", onClick = { scope.launch { graph.settings.setUiOpacityPct(92) } })
         }
-        Text("Text size: ${textPct}%", color = EnktelTextDim, fontSize = 11.sp)
+        Text("Text size: ${textPct}%", color = EnktelTextDim, fontSize = 13.sp)
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1584,7 +1584,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (category == "Appearance") {
             Spacer(Modifier.height(10.dp))
-            Text("STARTUP", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            SettingsGroupTitle("Startup")
             val sob by graph.settings.startOnBoot.collectAsStateWithLifecycle(initialValue = false)
             FocusButton(
                 "Start app on TV boot: ${if (sob) "ON" else "off"}",
@@ -1593,14 +1593,14 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             )
             Text(
                 "When enabled, EnkTel launches automatically after the TV finishes booting. Some Fire TV builds also require enabling 'Allow launch on boot' in device settings.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
         }
 
         }
         if (category == "About") {
         Spacer(Modifier.height(10.dp))
-        Text("ABOUT", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        SettingsGroupTitle("About")
         Text("EnkTel IPTV · Stream Beyond Limits", color = Color.White, fontSize = 13.sp)
         Text("Android TV & Fire TV · Xtream Codes + M3U · EPG · Catch-up · DVR", color = EnktelTextDim, fontSize = 12.sp)
         Text(
@@ -1626,13 +1626,13 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     (if (startupIssues.size == 1) "" else "s") +
                     " did not. The app is usable; the affected feature is not. " +
                     "Please send these lines to t.me/EnkTel.",
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
             Spacer(Modifier.height(6.dp))
             startupIssues.forEach { line ->
                 Text(
                     "• $line",
-                    color = Color.White, fontSize = 10.sp,
+                    color = Color.White, fontSize = 12.sp,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     lineHeight = 14.sp,
                 )
@@ -1661,12 +1661,12 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "The app closed unexpectedly. Send these lines to t.me/EnkTel — " +
                     "the full report is also saved to " +
                     (tv.enktel.app.data.diag.CrashLog.externalPath(ctx) ?: "the app's files folder"),
-                color = EnktelTextDim, fontSize = 11.sp,
+                color = EnktelTextDim, fontSize = 13.sp,
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 report.lineSequence().take(14).joinToString("\n"),
-                color = Color.White, fontSize = 10.sp,
+                color = Color.White, fontSize = 12.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 lineHeight = 14.sp,
             )
@@ -1743,7 +1743,7 @@ private fun SettingsNavItem(
                 )
                 Text(
                     category.blurb,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     color = EnktelTextFaint,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -1825,7 +1825,7 @@ private fun ProviderUserAgent(
         if (current.isBlank()) {
             Text(
                 "Sent as the app default unless a global override is set. Open to change it for this provider only.",
-                color = EnktelTextFaint, fontSize = 10.sp,
+                color = EnktelTextFaint, fontSize = 12.sp,
             )
         }
         return
@@ -1834,7 +1834,7 @@ private fun ProviderUserAgent(
     Text(
         "Sent with every request to this provider. Change it when a line answers 403 " +
             "with credentials that are otherwise fine — that is agent filtering, not a bad password.",
-        color = EnktelTextDim, fontSize = 11.sp,
+        color = EnktelTextDim, fontSize = 13.sp,
     )
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         tv.enktel.app.data.net.UserAgents.SUGGESTIONS.forEach { s ->
@@ -1844,7 +1844,7 @@ private fun ProviderUserAgent(
                 accent = selected,
                 onClick = { scope.launch { graph.playlists.setUserAgent(profile, s.value) } },
             )
-            Text(s.hint, color = EnktelTextFaint, fontSize = 10.sp)
+            Text(s.hint, color = EnktelTextFaint, fontSize = 12.sp)
         }
         FocusButton(
             (if (current.isBlank()) "✓ " else "") + "App default",
@@ -1853,17 +1853,17 @@ private fun ProviderUserAgent(
         )
         Text(
             "Clears the provider's own agent. The global override, if any, applies instead.",
-            color = EnktelTextFaint, fontSize = 10.sp,
+            color = EnktelTextFaint, fontSize = 12.sp,
         )
     }
     if (current.isNotBlank() && chosen == null) {
-        Text("Currently: $current", color = EnktelTextDim, fontSize = 10.sp)
+        Text("Currently: $current", color = EnktelTextDim, fontSize = 12.sp)
     }
     Text(
         "Changing this takes effect on the next request — no re-sync needed. " +
             "If it makes no difference, run Diagnostics: the Panel Doctor reports what the panel " +
             "actually answered for each agent it tried.",
-        color = EnktelTextFaint, fontSize = 10.sp,
+        color = EnktelTextFaint, fontSize = 12.sp,
     )
 }
 
@@ -1902,7 +1902,7 @@ private fun FilmLibrary(
     Text(
         "An on-demand M3U. Its titles are synced into Movies rather than into the channel " +
             "list, and they sit alongside this profile's own catalogue rather than replacing it.",
-        color = EnktelTextDim, fontSize = 11.sp,
+        color = EnktelTextDim, fontSize = 13.sp,
     )
     tv.enktel.app.ui.components.TvTextField(draft, { draft = it }, "Film library M3U URL")
     androidx.compose.foundation.layout.FlowRow(
@@ -1931,7 +1931,7 @@ private fun FilmLibrary(
             })
         }
     }
-    if (note.isNotBlank()) Text(note, color = EnktelTextDim, fontSize = 10.sp)
+    if (note.isNotBlank()) Text(note, color = EnktelTextDim, fontSize = 12.sp)
 }
 
 /**
@@ -1960,7 +1960,7 @@ private fun RealDebridSection(
     var status by remember(stored) { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
-    Text("REAL-DEBRID", color = EnktelTextDim, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    SettingsGroupTitle("Real-Debrid")
     FocusButton(
         "🔗  Real-Debrid: " + if (stored.isBlank()) "Not connected" else "Connected",
         accent = stored.isNotBlank(),
@@ -1972,7 +1972,7 @@ private fun RealDebridSection(
         "Paste the API token from real-debrid.com/apitoken. It stays on this device and is " +
             "only sent to Real-Debrid. Used to play links you already have and what is already " +
             "in your account.",
-        color = EnktelTextDim, fontSize = 11.sp,
+        color = EnktelTextDim, fontSize = 13.sp,
     )
     // Never prefilled with the stored value: see the note above.
     tv.enktel.app.ui.components.TvTextField(
@@ -2037,7 +2037,7 @@ private fun RealDebridSection(
             })
         }
     }
-    if (status.isNotBlank()) Text(status, color = EnktelTextDim, fontSize = 11.sp)
+    if (status.isNotBlank()) Text(status, color = EnktelTextDim, fontSize = 13.sp)
 }
 
 /**
@@ -2084,5 +2084,22 @@ private fun LanguagePicker(graph: AppGraph, scope: kotlinx.coroutines.CoroutineS
             )
         }
     }
-    Text(t.languageNote, color = EnktelTextDim, fontSize = 11.sp)
+    Text(t.languageNote, color = EnktelTextDim, fontSize = 13.sp)
+}
+
+
+/**
+ * The heading over a group of settings.
+ *
+ * These were eleven lines of dim 12 sp capitals — "VOD / LIVE BUFFER TUNING" —
+ * the same weight and colour as the hint text around them, so a page of
+ * settings read as one undivided column. The shared section heading, with air
+ * above it, is what makes a group a group.
+ */
+@Composable
+private fun SettingsGroupTitle(text: String) {
+    tv.enktel.app.ui.components.SectionHeader(
+        title = text,
+        modifier = androidx.compose.ui.Modifier.padding(top = 14.dp, bottom = 2.dp),
+    )
 }
