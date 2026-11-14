@@ -110,6 +110,7 @@ import tv.enktel.app.ui.components.ProgressBarThin
 import tv.enktel.app.ui.components.focusLift
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
@@ -320,6 +321,20 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
     val todayShown = remember(todayRail) { todayRail.take(40) }
     val clipRail = remember(highlightClips) { highlightClips.uniqueBy { it.videoUrl }.take(30) }
 
+    // The spotlight hero. A followed team's live match already floats to the
+    // top of `live`, so the first live fixture is the right thing to lead with;
+    // its scoreline (when the board has one) makes it a proper scoreboard hero.
+    // With nothing live, the next upcoming fixture becomes an "Up next"
+    // countdown so the hub still opens on something, not an empty band.
+    val heroLive = remember(live) { live.firstOrNull() }
+    val heroScore = remember(heroLive, liveScores, scoresEnabled) {
+        heroLive?.let { fx ->
+            try { if (scoresEnabled) graph.scores.matchByTitle(fx.event.title, liveScores) else null }
+            catch (_: Throwable) { null }
+        }
+    }
+    val heroUpcoming = remember(upcoming, heroLive) { if (heroLive == null) upcoming.firstOrNull() else null }
+
     // A reminder for a match that has finished is clutter; one for a match
     // already in play is still the answer to "where is it on".
     val reminders = remember(allReminders, minuteTick) { allReminders.filter { it.endMs > now } }
@@ -486,6 +501,41 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { actions() }
                     }
                 }
+            }
+        }
+        // The spotlight hero — the one match the hub leads with.
+        val heroFx = heroLive ?: heroUpcoming
+        if (heroFx != null) {
+            item(key = "spotlight") {
+                val hev = heroFx.event
+                val heroSides = remember(hev.title) { FixtureTeams.parse(hev.title) }
+                val heroReminded = remember(remindedKeys, hev.channel.key, hev.startMs) {
+                    MatchReminderScheduler.keyFor(hev.channel.key, hev.startMs) in remindedKeys
+                }
+                SportsSpotlight(
+                    ev = hev,
+                    score = if (heroLive != null) heroScore else null,
+                    live = heroLive != null,
+                    now = now,
+                    padHoriz = padHoriz,
+                    isMobile = isMobile,
+                    following = followsAllSides(heroSides),
+                    onFollow = if (heroSides.isEmpty()) null else { { toggleFollow(hev) } },
+                    onWatch = {
+                        if (heroLive != null) {
+                            toaster.info("Tuning to ${hev.channel.name}")
+                            nav.navigate("live?ch=${hev.channel.key}")
+                        } else {
+                            nav.navigate("sportsFinder")
+                        }
+                    },
+                    onReminder = if (heroLive == null) { { toggleReminder(hev) } } else null,
+                    reminded = heroReminded,
+                    onStats = if (heroLive != null) {
+                        heroScore?.eventId?.takeIf { it.isNotBlank() && matchCenterEnabled }
+                            ?.let { id -> { nav.navigate(matchCenterRoute(id, hev.title)) } }
+                    } else null,
+                )
             }
         }
         // Say so when the scan didn't cover the whole playlist, rather than
@@ -1133,6 +1183,172 @@ internal fun LiveEventCard(
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
+        }
+    }
+}
+
+/**
+ * The Sports hub spotlight — the one match the screen leads with.
+ *
+ * A full-width hero for the single most important thing on now: a followed
+ * team's live game floats to the top of the live rail, so the first live
+ * fixture is the hero, with its scoreline when the board has one and a
+ * one-press **Watch now**. When nothing is live it becomes an "Up next"
+ * countdown to the next fixture, with Find channel / Remind me. This is what
+ * gives the hub a focal point instead of opening on a wall of equal rails, and
+ * it fills the width a television gives it.
+ */
+@Composable
+internal fun SportsSpotlight(
+    ev: SportsEvent,
+    score: tv.enktel.app.data.repo.LiveScore?,
+    live: Boolean,
+    now: Long,
+    padHoriz: androidx.compose.ui.unit.Dp,
+    isMobile: Boolean,
+    following: Boolean,
+    onFollow: (() -> Unit)?,
+    onWatch: () -> Unit,
+    onReminder: (() -> Unit)?,
+    reminded: Boolean,
+    onStats: (() -> Unit)?,
+) {
+    val accent = if (live) EnktelLive else EnktelBlue
+    var focused by remember { mutableStateOf(false) }
+    val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "spotlightPulse")
+        .animateFloat(
+            initialValue = 1f, targetValue = 0.35f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable<Float>(
+                androidx.compose.animation.core.tween(900),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "spotlightPulseAlpha",
+        )
+    val inMs = ev.startMs - now
+    val eta = when {
+        inMs < 60 * 60_000L -> "in ${(inMs / 60_000L).coerceAtLeast(0)}m"
+        inMs < 24 * 3600_000L -> "in ${inMs / 3600_000L}h ${inMs / 60_000L % 60}m"
+        else -> "in ${inMs / 86_400_000L}d"
+    }
+    Surface(
+        onClick = onWatch,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = padHoriz)
+            .onFocusChanged { focused = it.isFocused }
+            .sportsCardFocus(focused, accent)
+            .tapClick(onWatch),
+        scale = noGrowScale(),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(24.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = EnktelSurfaceHigh.copy(0.5f),
+            focusedContainerColor = EnktelSurfaceHigh.copy(0.7f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+    ) {
+        Box {
+            // Spectrum wash with an accent glow at the leading edge, so the
+            // hero reads as the brightest, most important surface on the page.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.linearGradient(
+                        listOf(
+                            accent.copy(alpha = 0.22f),
+                            Color.Transparent,
+                            EnktelBrandGradient.last().copy(alpha = 0.16f),
+                        ),
+                    ),
+                ),
+            )
+            Column(Modifier.padding(if (isMobile) 16.dp else 22.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (live) {
+                        // Pulsing LIVE marker + match minute.
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Box(
+                                Modifier.size(9.dp).clip(RoundedCornerShape(percent = 50))
+                                    .background(EnktelLive.copy(alpha = pulse)),
+                            )
+                            Text("LIVE", color = EnktelLive, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                            if (score?.minute?.isNotBlank() == true) {
+                                Text(score.minute, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Badge("UP NEXT", EnktelBlue)
+                        Spacer(Modifier.width(8.dp))
+                        Text(eta, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    SportBadge(ev.sport)
+                    Spacer(Modifier.weight(1f))
+                    FollowStar(following, onFollow)
+                }
+                Spacer(Modifier.height(if (isMobile) 10.dp else 14.dp))
+                if (live && score != null) {
+                    // Scoreboard hero: crest · name · big score · name · crest.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TeamCrest(score.homeBadge)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            score.home, color = Color.White,
+                            fontSize = if (isMobile) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            "${score.homeScore} – ${score.awayScore}",
+                            color = Color.White, fontSize = if (isMobile) 30.sp else 40.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            score.away, color = Color.White,
+                            fontSize = if (isMobile) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        TeamCrest(score.awayBadge)
+                    }
+                } else {
+                    Text(
+                        ev.title, color = Color.White,
+                        fontSize = if (isMobile) 22.sp else 28.sp, fontWeight = FontWeight.Bold,
+                        lineHeight = if (isMobile) 26.sp else 32.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ChannelLogo(ev.channel.logo, ev.channel.name)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        if (live) "${ev.channel.name}  ·  ${(now - ev.startMs) / 60_000}m in"
+                        else "${ev.channel.name}  ·  ${hhmm(ev.startMs)}",
+                        color = EnktelTextDim, fontSize = 12.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(if (isMobile) 14.dp else 16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FocusButton(
+                        if (live) "▶ Watch now" else "Find channel",
+                        kind = tv.enktel.app.ui.components.ButtonKind.Primary,
+                        onClick = onWatch,
+                    )
+                    if (!live && onReminder != null) {
+                        FocusButton(
+                            if (reminded) "Reminder set" else "Remind me",
+                            accent = reminded,
+                            onClick = onReminder,
+                        )
+                    }
+                    if (onStats != null) {
+                        FocusButton("Match stats", onClick = onStats)
+                    }
+                }
+            }
         }
     }
 }

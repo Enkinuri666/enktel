@@ -45,6 +45,7 @@ import tv.enktel.app.ui.sports.LiveEventCard
 import tv.enktel.app.ui.sports.LiveScoreChip
 import tv.enktel.app.ui.sports.ReminderChip
 import tv.enktel.app.ui.sports.SectionHeader
+import tv.enktel.app.ui.sports.SportsSpotlight
 import tv.enktel.app.ui.sports.UpcomingEventCard
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelBg
@@ -143,6 +144,22 @@ class SportsHubScreenshotTest {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
         if (rails) {
+            // The spotlight hero the screen now leads with.
+            SportsSpotlight(
+                ev = event(
+                    "Arsenal v Chelsea — Premier League", "Football", "LIVE",
+                    startMs = NOW - 67 * 60_000L, endMs = NOW + 53 * 60_000L,
+                    channelName = "Sky Sports Main Event",
+                ),
+                score = LiveScore(
+                    eventId = "1", home = "Arsenal", away = "Chelsea",
+                    homeScore = "2", awayScore = "1", minute = "67'",
+                    league = "Premier League", sport = "Football", status = "2H",
+                ),
+                live = true, now = NOW, padHoriz = pad, isMobile = false,
+                following = false, onFollow = {}, onWatch = {}, onReminder = null,
+                reminded = false, onStats = {},
+            )
             SectionHeader(
                 Icons.Rounded.NotificationsActive, "REMINDERS", EnktelPurple, pad,
                 count = 2, subtitle = "5 min before kick-off",
