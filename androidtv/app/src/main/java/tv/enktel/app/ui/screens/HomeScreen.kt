@@ -709,10 +709,19 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
     val gutter = shape.padH
     Box(Modifier.fillMaxWidth().height(heroHeight)) {
         Crossfade(targetState = current, animationSpec = tween(700), label = "hero") { movie ->
+            // The backdrop, not the poster. A hero is a wide 16:9 box and the
+            // poster is 2:3 box art — cropping the poster to fill the banner
+            // keeps only its vertical middle third and routinely slices the
+            // title's head off. The entity documents the split: backdrop is
+            // "16:9 and is what the details page and the ambient glow behind a
+            // rail actually want". Falls back to the poster where there is no
+            // backdrop, biased to the top so the crop keeps the subject.
+            val art = movie.backdrop.ifBlank { movie.poster }
             AsyncImage(
-                model = movie.poster,
+                model = art,
                 contentDescription = movie.name,
                 contentScale = ContentScale.Crop,
+                alignment = if (movie.backdrop.isBlank()) Alignment.TopCenter else Alignment.Center,
                 modifier = Modifier.fillMaxSize(),
             )
         }

@@ -280,7 +280,7 @@ private fun ItemTile(item: UserListItem, onOpen: () -> Unit, onRemove: () -> Uni
                         modifier = Modifier.fillMaxSize().padding(if (item.kind == "live") 6.dp else 0.dp),
                     )
                 } else {
-                    Text(item.name.take(2).uppercase(), color = EnktelTextDim, fontSize = 18.sp)
+                    tv.enktel.app.ui.components.Monogram(item.name)
                 }
             }
             Spacer(Modifier.height(5.dp))

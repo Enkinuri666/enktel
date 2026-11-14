@@ -74,3 +74,51 @@ class GuideScrollTest {
         assertEquals(12 * 220 * 2, b - a)
     }
 }
+
+/**
+ * The guide opens describing something.
+ *
+ * Its top band — a fifth of the screen — said "Nothing playing" beside one
+ * line of instructions until focus happened to land on a programme.
+ */
+class GuideOpeningTest {
+    private val now = 1_800_000_000_000L
+    private fun ch(n: Int, epg: String = "e$n") = tv.enktel.app.data.db.Channel(
+        key = "1:$n", profileId = 1, streamId = n.toLong(), name = "Channel $n", epgId = epg,
+    )
+    private fun prog(epg: String, from: Long, to: Long, title: String) = tv.enktel.app.data.db.EpgProgram(
+        profileId = 1, epgId = epg, startMs = now + from, endMs = now + to, title = title,
+    )
+    private val channels = listOf(ch(1), ch(2), ch(3))
+    private val programs = mapOf(
+        "e1" to listOf(prog("e1", -7_200_000, -3_600_000, "Earlier"), prog("e1", 600_000, 4_200_000, "Later")),
+        "e2" to listOf(prog("e2", -600_000, 1_800_000, "On Two")),
+        "e3" to listOf(prog("e3", -60_000, 3_000_000, "On Three")),
+    )
+    private fun open(playing: String?) =
+        tv.enktel.app.ui.guide.guideDefaultHighlight(channels, programs, now, playing)
+
+    @Test
+    fun `it opens on the first channel with something airing`() {
+        // Channel 1 has a gap right now; it is skipped rather than shown empty.
+        assertEquals("On Two", open(null)?.second?.title)
+        assertEquals("1:2", open(null)?.first?.key)
+    }
+
+    @Test
+    fun `it opens on the channel being watched`() {
+        assertEquals("On Three", open("1:3")?.second?.title)
+    }
+
+    @Test
+    fun `a watched channel with nothing listed falls back to the first that has`() {
+        assertEquals("On Two", open("1:1")?.second?.title)
+        assertEquals("On Two", open("9:99")?.second?.title)
+    }
+
+    @Test
+    fun `no guide data is still no answer, not a crash`() {
+        assertEquals(null, tv.enktel.app.ui.guide.guideDefaultHighlight(channels, emptyMap(), now, null))
+        assertEquals(null, tv.enktel.app.ui.guide.guideDefaultHighlight(emptyList(), programs, now, "1:1"))
+    }
+}

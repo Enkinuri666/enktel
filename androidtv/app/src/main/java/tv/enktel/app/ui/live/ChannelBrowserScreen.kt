@@ -446,10 +446,7 @@ private fun ChannelCard(
                         modifier = Modifier.fillMaxSize().padding(6.dp),
                     )
                 } else {
-                    Text(
-                        ChannelFilters.initials(channel.name),
-                        color = EnktelTextDim, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    )
+                    tv.enktel.app.ui.components.Monogram(channel.name)
                 }
                 // Status + favourite markers, top corners.
                 Row(

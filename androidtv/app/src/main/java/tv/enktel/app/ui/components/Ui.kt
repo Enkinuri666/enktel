@@ -582,19 +582,7 @@ fun PosterCard(
                     onState = { loading = it is coil3.compose.AsyncImagePainter.State.Loading },
                 )
             } else {
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.linearGradient(listOf(EnktelBlue.copy(0.3f), EnktelPurple.copy(0.3f)))
-                    ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        title.take(2).uppercase(),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EnktelTextOnArt.copy(0.7f),
-                    )
-                }
+                Monogram(title)
             }
             Box(
                 Modifier
@@ -698,12 +686,7 @@ fun ThumbBox(label: String, imageUrl: String, modifier: Modifier = Modifier, siz
                 modifier = Modifier.fillMaxSize().padding(4.dp),
             )
         } else {
-            Text(
-                label.take(2).uppercase(),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = EnktelText.copy(0.7f),
-            )
+            Monogram(label)
         }
     }
 }

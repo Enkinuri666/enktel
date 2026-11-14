@@ -275,8 +275,7 @@ private fun FinderRow(
                     if (row.channel.logo.isNotBlank()) {
                         AsyncImage(model = row.channel.logo, contentDescription = null, modifier = Modifier.fillMaxSize())
                     } else {
-                        Text(ChannelFilters.initials(row.channel.name), color = Color.White,
-                            fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        tv.enktel.app.ui.components.Monogram(row.channel.name)
                     }
                 }
                 Spacer(Modifier.width(12.dp))

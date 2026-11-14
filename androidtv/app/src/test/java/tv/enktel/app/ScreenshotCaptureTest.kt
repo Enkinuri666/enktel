@@ -401,6 +401,10 @@ class ScreenshotCaptureTest {
                     genre = listOf("Action", "Drama", "Comedy", "Documentary")[i % 4],
                     addedAt = System.currentTimeMillis() - i * 86_400_000L,
                     poster = if (withArt) art(i) else "",
+                    // A real 16:9 backdrop on the first few, so the Home hero
+                    // capture exercises the wide-art path rather than a
+                    // top-cropped poster.
+                    backdrop = if (withArt && i < 5) art(i, wide = true) else "",
                     rating = if (withArt) 6.1 + (i * 7 % 30) / 10.0 else 0.0,
                     plot = if (withArt) {
                         "A signalman on the last night train north finds a passenger who was " +
