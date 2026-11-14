@@ -54,6 +54,7 @@ import tv.enktel.app.ui.components.cinematicScrim
 import tv.enktel.app.ui.components.glassSurface
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelPurple
@@ -373,7 +374,7 @@ private fun ProgressTrack(frac: Float) {
                 .fillMaxWidth(frac)
                 .height(6.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple))),
+                .background(Brush.horizontalGradient(EnktelBrandGradient)),
         )
         // The playhead. A bare filled bar reads as a loading indicator; a head
         // at the boundary reads as "you are here on a timeline", which is what

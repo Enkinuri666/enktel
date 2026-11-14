@@ -54,7 +54,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
-import tv.enktel.app.ui.theme.EnktelPurple
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
@@ -254,7 +254,7 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
                             .size(44.dp)
                             .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = EnktelBlue, clip = false)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Brush.linearGradient(listOf(EnktelBlue, EnktelPurple))),
+                            .background(Brush.linearGradient(EnktelBrandGradient)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text("E", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -381,9 +381,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                                 )
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(EnktelBlue, EnktelPurple),
-                                    ),
+                                    Brush.linearGradient(EnktelBrandGradient),
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
