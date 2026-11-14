@@ -75,12 +75,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import tv.enktel.app.data.uniqueBy
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelBorder
 import tv.enktel.app.ui.theme.EnktelFocusGlow
 import tv.enktel.app.ui.theme.EnktelFocusGlowRadius
 import tv.enktel.app.ui.theme.EnktelFocusRingWidth
 import tv.enktel.app.ui.theme.EnktelFocusScale
-import tv.enktel.app.ui.theme.EnktelPurple
 import tv.enktel.app.ui.theme.EnktelRadius
 import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
@@ -522,8 +522,15 @@ fun PosterCard(
         // who has picked one of them.
         scale = ClickableSurfaceDefaults.scale(focusedScale = EnktelFocusScale),
         border = ClickableSurfaceDefaults.border(
+            // The focus ring is the most-seen element when navigating a rail
+            // with a remote, so it carries the brand spectrum rather than a
+            // flat accent — the identity reads on every poster you land on,
+            // even under full artwork.
             focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(EnktelFocusRingWidth, EnktelBlue),
+                border = androidx.compose.foundation.BorderStroke(
+                    EnktelFocusRingWidth,
+                    Brush.linearGradient(EnktelBrandGradient),
+                ),
                 shape = RoundedCornerShape(16.dp),
             ),
         ),
@@ -659,7 +666,7 @@ fun PosterCard(
                             .fillMaxWidth(progress.coerceIn(0f, 1f))
                             .height(4.dp)
                             .background(
-                                Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple)),
+                                Brush.horizontalGradient(EnktelBrandGradient),
                             ),
                     )
                 }
@@ -862,7 +869,7 @@ fun ProgressBarThin(fraction: Float, modifier: Modifier = Modifier) {
             Modifier
                 .fillMaxWidth(fraction.coerceIn(0f, 1f))
                 .height(4.dp)
-                .background(Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple))),
+                .background(Brush.horizontalGradient(EnktelBrandGradient)),
         )
     }
 }
