@@ -315,6 +315,34 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             ProviderUserAgent(graph, p, scope)
             FilmLibrary(graph, p, scope)
         }
+
+        // One knob for keeping everything current — the report that asked for
+        // auto-sync asked for this control in the same breath.
+        Spacer(Modifier.height(14.dp))
+        SettingsGroupTitle("Automatic refresh")
+        val autoHours by graph.settings.autoRefreshHours
+            .collectAsStateWithLifecycle(initialValue = tv.enktel.app.data.repo.AutoRefresh.EVERY_OPEN)
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            tv.enktel.app.data.repo.AutoRefresh.CHOICES.forEach { h ->
+                tv.enktel.app.ui.components.GlassChip(
+                    tv.enktel.app.data.repo.AutoRefresh.label(h),
+                    selected = autoHours == h,
+                    onClick = { scope.launch { graph.settings.setAutoRefreshHours(h) } },
+                )
+            }
+        }
+        Text(
+            "How often EnkTel re-syncs your playlist and re-downloads the TV guide on its own, " +
+                "each measured from its last sync. “Every open” refreshes whenever you open the app " +
+                "(never more than once every 30 minutes). “Off” leaves it to the Sync and Refresh " +
+                "buttons above.",
+            color = EnktelTextDim, fontSize = 13.sp,
+        )
+
         val playlistPicker = androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
         ) { uri ->

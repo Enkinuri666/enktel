@@ -441,6 +441,17 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
         tv.enktel.app.data.diag.CrashLog.install(this)
         graph = AppGraph(this)
 
+        // Re-sync the playlist and the guide when the app comes to the front.
+        //
+        // "Each time the app is opened after closing it" is a cold start for a
+        // killed process — but a stick often keeps the process and just brings
+        // the activity back, which to the viewer is the same "opening the app"
+        // and should refresh the same way. One foreground detector covers
+        // both: the first activity to start fires it on a cold launch, and the
+        // 0 -> 1 transition fires it on every return from the background.
+        // AutoRefresh decides whether anything is actually due.
+        registerActivityLifecycleCallbacks(ForegroundWatcher { onAppForegrounded() })
+
         // Everything below is optional infrastructure: thermal monitoring,
         // network classification, the system monitor's context, the EPG
         // refresh schedule and the DVR notification channel. None of it is
@@ -480,7 +491,6 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
             // the System Monitor screen asks it to — see SystemMonitor.start().
             startupStep("system monitor") { tv.enktel.app.data.net.SystemMonitor.install(this) }
             startupStep("epg schedule") { tv.enktel.app.data.epg.EpgRefreshWorker.schedule(this) }
-            startupStep("epg on launch") { refreshGuideIfStale() }
             // Built here rather than left to the Downloads screen.
             //
             // DownloadHub's constructor is not just allocation: it reconciles
@@ -510,44 +520,64 @@ class EnktelApp : Application(), SingletonImageLoader.Factory {
      * see is how a real fault turns into a mystery.
      */
     /**
-     * Fetch the guide when the app opens, if it is old enough to be worth it.
-     *
-     * The guide used to be refreshed on a playlist's very first sync and then
-     * only by WorkManager's twelve-hour job — which a television in standby
-     * between evenings may go days without running — or by the button in
-     * Settings. Viewers were pressing that button, which is the report this
-     * answers. [tv.enktel.app.data.epg.EpgFreshness] holds the decision and
-     * says why it is not simply "every launch".
-     *
-     * Off the first-frame path (this runs from the idle handler) and entirely
-     * best-effort: a guide that fails to refresh leaves the one already
-     * stored, which since EpgRepository.refresh stopped clearing up front is
-     * now actually true.
+     * Last time [onAppForegrounded] launched a refresh attempt. A cheap
+     * in-memory debounce so a flurry of activity transitions does not start a
+     * storm of coroutines; the real floor that bounds network cost lives in
+     * [tv.enktel.app.data.repo.AutoRefresh].
      */
-    private fun refreshGuideIfStale() {
-        graph.appScope.launch {
-            try {
-                val profile = graph.playlists.activeProfile() ?: return@launch
-                val last = graph.settings.epgLastSync()
-                val empty = graph.db.epgDao().count(profile.id) == 0
-                if (!tv.enktel.app.data.epg.EpgFreshness.shouldRefreshOnLaunch(
-                        lastSyncMs = last,
-                        nowMs = System.currentTimeMillis(),
-                        catalogueSynced = profile.lastSync != 0L,
-                        guideEmpty = empty,
-                    )
-                ) {
-                    return@launch
+    @Volatile private var lastForegroundRefreshMs = 0L
+
+    private fun onAppForegrounded() {
+        val now = System.currentTimeMillis()
+        if (now - lastForegroundRefreshMs < 60_000) return
+        lastForegroundRefreshMs = now
+        graph.appScope.launch { autoRefreshOnOpen() }
+    }
+
+    /**
+     * Re-sync the catalogue and the guide if the viewer's interval says they
+     * are due. See [tv.enktel.app.data.repo.AutoRefresh] for the decision and
+     * why "every open" is a safe default.
+     *
+     * Entirely best-effort and off the first-frame path: a panel that cannot
+     * be reached leaves what is already stored, and the next foreground or the
+     * periodic worker tries again.
+     */
+    private suspend fun autoRefreshOnOpen() {
+        try {
+            val profile = graph.playlists.activeProfile() ?: return
+            // The very first sync belongs to onboarding and Home, which show a
+            // progress message; starting a second download behind that one
+            // helps nobody.
+            if (profile.lastSync == 0L) return
+            val interval = graph.settings.autoRefreshHoursNow()
+            if (interval == tv.enktel.app.data.repo.AutoRefresh.OFF) return
+            val now = System.currentTimeMillis()
+
+            val catalogueEmpty = graph.db.contentDao().channelCount(profile.id) == 0
+            if (tv.enktel.app.data.repo.AutoRefresh.due(profile.lastSync, now, interval, catalogueEmpty)) {
+                runCatching {
+                    graph.content.refreshAll(profile)
+                    graph.playlists.markSynced(profile)
                 }
-                graph.epg.refresh(profile)
-                graph.settings.setEpgLastSync(System.currentTimeMillis())
-            } catch (ce: kotlinx.coroutines.CancellationException) {
-                throw ce
-            } catch (_: Throwable) {
-                // A panel that cannot be reached on launch is not an error to
-                // show anyone: the stored guide is still there, and the next
-                // launch or the periodic worker will try again.
             }
+
+            // Re-read the profile before the guide: an M3U sync writes the
+            // playlist's guide URL onto it, so the `profile` captured above may
+            // still carry the blank it was created with.
+            val synced = graph.playlists.byId(profile.id) ?: profile
+            val epgLast = graph.settings.epgLastSync()
+            val epgEmpty = graph.db.epgDao().count(profile.id) == 0
+            if (tv.enktel.app.data.repo.AutoRefresh.due(epgLast, now, interval, epgEmpty)) {
+                runCatching {
+                    graph.epg.refresh(synced)
+                    graph.settings.setEpgLastSync(System.currentTimeMillis())
+                }
+            }
+        } catch (ce: kotlinx.coroutines.CancellationException) {
+            throw ce
+        } catch (_: Throwable) {
+            // Best effort — the next foreground or the periodic worker retries.
         }
     }
 

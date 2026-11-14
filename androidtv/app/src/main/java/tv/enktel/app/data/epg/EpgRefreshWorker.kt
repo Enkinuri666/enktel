@@ -19,6 +19,11 @@ class EpgRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWo
         if (tv.enktel.app.data.net.ThermalGuard.level.value.shouldSkipBackground) {
             return Result.success()
         }
+        // Honour "Off": a viewer who turned automatic refresh off meant it,
+        // and the background job is as automatic as the on-launch one.
+        if (app.graph.settings.autoRefreshHoursNow() == tv.enktel.app.data.repo.AutoRefresh.OFF) {
+            return Result.success()
+        }
         val profile = app.graph.playlists.activeProfile() ?: return Result.success()
         return try {
             app.graph.epg.refresh(profile)
