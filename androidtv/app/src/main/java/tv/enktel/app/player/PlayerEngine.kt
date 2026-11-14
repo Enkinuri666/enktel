@@ -8,7 +8,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -1669,24 +1668,43 @@ class PlayerEngine(
      *  to the AdaptiveTrackSelection factory. For video specifically,
      *  `choice == null` means "let ExoPlayer pick adaptively" (does NOT
      *  disable video); text tracks are actually disabled when null. */
-    fun selectTrack(type: Int, choice: TrackChoice?) {
-        val params = player.trackSelectionParameters.buildUpon()
+    fun selectTrack(type: Int, choice: TrackChoice?): Boolean {
+        // Build from the DefaultTrackSelector's own parameters, not the
+        // player's base TrackSelectionParameters. The selector carries
+        // DefaultTrackSelector-specific state — the "force highest bitrate"
+        // lock and video size/bitrate caps — that a base buildUpon() would
+        // silently drop, and that same state is what can quietly re-steer
+        // video away from a manual pick. Mutate it in place so the override
+        // and the constraints are reconciled in one object.
+        val builder = trackSelector.parameters.buildUpon()
         if (choice == null) {
             if (type == C.TRACK_TYPE_VIDEO) {
-                // Clear any prior override and unlock adaptive selection —
-                // this is how the "Auto (adaptive)" row in the quality
-                // dialog returns the player to normal ABR behaviour.
-                params.clearOverridesOfType(C.TRACK_TYPE_VIDEO)
-                params.setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+                // "Auto (adaptive)" row: clear the override and hand video
+                // back to the AdaptiveTrackSelection factory, dropping any
+                // cap a previous fixed-quality pick imposed.
+                builder.clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+                    .clearVideoSizeConstraints()
+                    .setMaxVideoBitrate(Int.MAX_VALUE)
             } else {
-                params.setTrackTypeDisabled(type, true)
+                builder.setTrackTypeDisabled(type, true)
             }
         } else {
-            val group: Tracks.Group = player.currentTracks.groups[choice.groupIndex]
-            params.setTrackTypeDisabled(type, false)
-            params.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, choice.trackIndex))
+            val group = player.currentTracks.groups.getOrNull(choice.groupIndex) ?: return false
+            builder.setTrackTypeDisabled(type, false)
+            if (type == C.TRACK_TYPE_VIDEO) {
+                // A manual quality pick must win outright. Overrides already
+                // take precedence over the adaptive caps and the force-highest
+                // lock, but clearing them removes any ambiguity and stops the
+                // picture snapping back on the next selection pass.
+                builder.clearVideoSizeConstraints()
+                    .setMaxVideoBitrate(Int.MAX_VALUE)
+                    .setForceHighestSupportedBitrate(false)
+            }
+            builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, choice.trackIndex))
         }
-        player.trackSelectionParameters = params.build()
+        trackSelector.parameters = builder.build()
+        return true
     }
 
     /**

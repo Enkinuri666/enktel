@@ -1154,7 +1154,17 @@ fun VodPlayerScreen(
                 allowOff = trackMenu == "subs" || trackMenu == "video",
                 offLabel = if (trackMenu == "video") "Auto (adaptive)" else "Off",
                 tracks = engine.tracksOf(type),
-                onPick = { choice -> engine.selectTrack(type, choice); trackMenu = "" },
+                onPick = { choice ->
+                    engine.selectTrack(type, choice)
+                    toaster.info(
+                        when (type) {
+                            C.TRACK_TYPE_VIDEO -> "Quality · ${choice?.name ?: "Auto"}"
+                            C.TRACK_TYPE_AUDIO -> "Audio · ${choice?.name ?: "Off"}"
+                            else -> "Subtitles · ${choice?.name ?: "Off"}"
+                        },
+                    )
+                    trackMenu = ""
+                },
                 onClose = { trackMenu = "" },
             )
         }

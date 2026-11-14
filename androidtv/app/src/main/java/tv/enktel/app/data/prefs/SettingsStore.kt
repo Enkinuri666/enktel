@@ -330,7 +330,15 @@ class SettingsStore(private val context: Context) {
     val subStyle: Flow<String> = context.dataStore.data.map { it[SUB_STYLE] ?: "default" } // default|outlined|shadow|box
     val recPrefixMin: Flow<Int> = context.dataStore.data.map { it[REC_PREFIX_MIN] ?: 2 }
     val recSuffixMin: Flow<Int> = context.dataStore.data.map { it[REC_SUFFIX_MIN] ?: 5 }
-    val autoEpgHours: Flow<Int> = context.dataStore.data.map { it[AUTO_EPG_HOURS] ?: 12 }
+    /**
+     * How often the app re-syncs the playlist and re-fetches the guide on its
+     * own. One [tv.enktel.app.data.repo.AutoRefresh.EVERY_OPEN] / hours /
+     * [tv.enktel.app.data.repo.AutoRefresh.OFF] value governs both. Defaults
+     * to every open — the behaviour the report asked for; the thirty-minute
+     * floor in AutoRefresh keeps that from thrashing.
+     */
+    val autoRefreshHours: Flow<Int> =
+        context.dataStore.data.map { it[AUTO_EPG_HOURS] ?: tv.enktel.app.data.repo.AutoRefresh.EVERY_OPEN }
     val hiddenChannels: Flow<Set<String>> = context.dataStore.data.map { it[HIDDEN_CHANNELS] ?: emptySet() }
     /**
      * How Movies and Series are ordered until the user says otherwise.
@@ -636,7 +644,8 @@ class SettingsStore(private val context: Context) {
     suspend fun setSubStyle(v: String) = context.dataStore.edit { it[SUB_STYLE] = v }
     suspend fun setRecPrefixMin(v: Int) = context.dataStore.edit { it[REC_PREFIX_MIN] = v }
     suspend fun setRecSuffixMin(v: Int) = context.dataStore.edit { it[REC_SUFFIX_MIN] = v }
-    suspend fun setAutoEpgHours(v: Int) = context.dataStore.edit { it[AUTO_EPG_HOURS] = v }
+    suspend fun setAutoRefreshHours(v: Int) = context.dataStore.edit { it[AUTO_EPG_HOURS] = v }
+    suspend fun autoRefreshHoursNow(): Int = autoRefreshHours.first()
     suspend fun setHiddenChannels(set: Set<String>) = context.dataStore.edit { it[HIDDEN_CHANNELS] = set }
 
     /**
