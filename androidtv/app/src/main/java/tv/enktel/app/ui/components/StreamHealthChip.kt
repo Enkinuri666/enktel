@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import tv.enktel.app.data.net.StreamHealth
+import tv.enktel.app.player.PlaybackTelemetry
 
 /**
  * Small floating chip surfacing the current stream-health snapshot on
@@ -37,13 +38,30 @@ import tv.enktel.app.data.net.StreamHealth
  *
  * Legend:
  *   POOR       — sustained high latency or ≥3 timeouts (yellow)
- *   BLOCKED    — one or more 403s in the current window (red)
+ *   BLOCKED    — 403s in the current window *and* nothing is playing (red)
  *   FAIL-OVER  — an active backup gateway is in use (blue)
+ *
+ * ## Why BLOCKED is gated on playback
+ *
+ * `StreamHealth` counts 403s process-wide, and a 403 is routine even on a
+ * working line: tuning a channel often tries a couple of alternate URLs that
+ * refuse before it lands on the one that plays, and background probes and
+ * artwork fetches draw their own. A single such 403 used to flip the chip to
+ * "BLOCKED" and paint it over a stream that was rendering perfectly — the exact
+ * thing a viewer reads as "the app says this is blocked but it's clearly on".
+ *
+ * A stream that is putting frames on the screen is, by definition, not blocked.
+ * So BLOCKED is suppressed while [PlaybackTelemetry] is fresh (the player has
+ * pushed stats within the last few seconds). If playback actually stalls, the
+ * freshness lapses within ~15 s and a real block surfaces then.
  */
 @Composable
 fun StreamHealthChip(modifier: Modifier = Modifier) {
     val snap by StreamHealth.state.collectAsStateWithLifecycle(
         initialValue = StreamHealth.Snapshot(),
+    )
+    val playback by PlaybackTelemetry.state.collectAsStateWithLifecycle(
+        initialValue = PlaybackTelemetry.Snapshot(),
     )
     // Age the window while the chip is on screen.
     //
@@ -67,7 +85,10 @@ fun StreamHealthChip(modifier: Modifier = Modifier) {
             label = "BACKUP · ${snap.activeGateway}"
             color = EnktelBlue
         }
-        snap.quality == StreamHealth.Quality.BLOCKED -> {
+        // A playing stream cannot be blocked, whatever the 403 counter says —
+        // those 403s came from tune-in fallbacks or background fetches, not
+        // from the picture that is currently on screen.
+        snap.quality == StreamHealth.Quality.BLOCKED && !playback.isFresh() -> {
             label = "BLOCKED · ${snap.blocked403} × 403"
             color = EnktelLive
         }
