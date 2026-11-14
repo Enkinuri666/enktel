@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
-import tv.enktel.app.ui.theme.EnktelPurple
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 
@@ -103,7 +103,7 @@ fun RefreshSplash(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(
-                                    Brush.horizontalGradient(listOf(EnktelBlue, EnktelPurple)),
+                                    Brush.horizontalGradient(EnktelBrandGradient),
                                 ),
                         )
                     }

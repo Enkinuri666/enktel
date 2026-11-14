@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive-icon background (v1.84 "Aurora" identity).
+
+    The full 108dp layer is the brand spectrum sweep — azure → indigo → magenta,
+    the same three stops as PaletteAurora.brandGradient — run corner to corner so
+    whichever mask the launcher applies (circle, squircle, rounded square,
+    teardrop) still shows the full gradient. A faint radial lift in the
+    upper-left keeps it from looking like a flat ramp at large sizes.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="6" android:startY="6"
+                android:endX="102" android:endY="102">
+                <item android:offset="0.0" android:color="#FF3AA0FF" />
+                <item android:offset="0.5" android:color="#FF6B57E8" />
+                <item android:offset="1.0" android:color="#FFC56BFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Centre vignette: seats the EnkTel wolf logo so it stands out boldly
+         against the bright gradient instead of blending into the azure stop.
+         Dark at the middle, fading to clear so the spectrum still glows at the
+         edges and under every mask. -->
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54" android:centerY="55" android:gradientRadius="60">
+                <item android:offset="0.0" android:color="#D9000000" />
+                <item android:offset="0.55" android:color="#73000000" />
+                <item android:offset="1.0" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- A touch of top highlight for depth. -->
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="30" android:centerY="22" android:gradientRadius="70">
+                <item android:offset="0.0" android:color="#30FFFFFF" />
+                <item android:offset="0.7" android:color="#00FFFFFF" />
+                <item android:offset="1.0" android:color="#00FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

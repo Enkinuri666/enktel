@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +68,7 @@ import tv.enktel.app.ui.components.LocalToaster
 import tv.enktel.app.ui.components.SectionTitle
 import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelGenre
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
@@ -457,6 +459,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                     // its neighbours. Focus is the fill.
                                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 ) {
+                                    Box(Modifier.fillMaxSize()) {
                                     Row(Modifier.fillMaxSize()) {
                                         // Live marker on the leading edge, so
                                         // "what's on now" is findable by shape
@@ -501,6 +504,23 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                                                 )
                                             }
                                         }
+                                    }
+                                    // How far through the airing programme we
+                                    // are: a brand-gradient line along the foot
+                                    // of the live cell, so the grid shows time
+                                    // passing, not just which cell is on.
+                                    if (isNow) {
+                                        val frac = ((now - prog.startMs).toFloat() /
+                                            (prog.endMs - prog.startMs).coerceAtLeast(1))
+                                            .coerceIn(0f, 1f)
+                                        Box(
+                                            Modifier
+                                                .align(Alignment.BottomStart)
+                                                .fillMaxWidth(frac)
+                                                .height(3.dp)
+                                                .background(Brush.horizontalGradient(EnktelBrandGradient)),
+                                        )
+                                    }
                                     }
                                 }
                                 cursor = end
@@ -771,14 +791,14 @@ private fun GuideDock(
                     (prog.endMs - prog.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier.width(260.dp).height(5.dp)
+                        Modifier.width(260.dp).height(6.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(Color.White.copy(0.18f)),
                     ) {
                         Box(
-                            Modifier.fillMaxWidth(frac).height(5.dp)
+                            Modifier.fillMaxWidth(frac).height(6.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(EnktelBlue),
+                                .background(Brush.horizontalGradient(EnktelBrandGradient)),
                         )
                     }
                     Spacer(Modifier.width(12.dp))

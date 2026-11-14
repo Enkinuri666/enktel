@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -68,6 +69,7 @@ import tv.enktel.app.ui.components.tapClick
 import tv.enktel.app.ui.components.tvGridFocus
 import tv.enktel.app.ui.components.tvRailFocus
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOk
 import tv.enktel.app.ui.theme.EnktelSurface
@@ -423,8 +425,13 @@ private fun ChannelCard(
             focusedContentColor = Color.White,
         ),
         border = ClickableSurfaceDefaults.border(
+            // Brand-gradient focus ring, matching the posters — the identity
+            // reads on every channel you land on.
             focusedBorder = Border(
-                border = androidx.compose.foundation.BorderStroke(2.dp, EnktelBlue),
+                border = androidx.compose.foundation.BorderStroke(
+                    2.dp,
+                    Brush.linearGradient(EnktelBrandGradient),
+                ),
                 shape = RoundedCornerShape(12.dp),
             ),
         ),
@@ -508,7 +515,7 @@ private fun ChannelCard(
                             .fillMaxHeight()
                             .fillMaxWidth(progress)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(EnktelBlue),
+                            .background(Brush.horizontalGradient(EnktelBrandGradient)),
                     )
                 }
                 NowPlaying.remaining(now.endMs, nowMs)?.let { left ->

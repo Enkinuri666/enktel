@@ -71,7 +71,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
-import tv.enktel.app.ui.theme.EnktelPurple
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
@@ -540,10 +540,9 @@ private fun NavRailItem(
                 )
                 .background(
                     Brush.horizontalGradient(
-                        listOf(
-                            EnktelBlue.copy(alpha = 0.55f * fillAlpha),
-                            EnktelPurple.copy(alpha = 0.30f * fillAlpha),
-                        ),
+                        EnktelBrandGradient.mapIndexed { i, c ->
+                            c.copy(alpha = (0.55f - 0.12f * i) * fillAlpha)
+                        },
                     ),
                 )
                 .padding(vertical = 10.dp, horizontal = 8.dp),
@@ -557,7 +556,7 @@ private fun NavRailItem(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         if (selected) {
-                            Brush.verticalGradient(listOf(EnktelBlue, EnktelPurple))
+                            Brush.verticalGradient(EnktelBrandGradient)
                         } else {
                             Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                         },

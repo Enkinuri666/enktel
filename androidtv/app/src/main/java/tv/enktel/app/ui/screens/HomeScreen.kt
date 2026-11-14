@@ -8,6 +8,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -676,6 +677,38 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
 
 
 /**
+ * A single hero metadata pill (rating, year, genre). The rating pill is drawn
+ * with a brand-gradient outline so the headline fact carries the identity;
+ * the rest are quiet glass.
+ */
+@Composable
+private fun HeroPill(text: String, accent: Boolean = false) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .then(
+                if (accent) {
+                    Modifier.border(
+                        1.dp,
+                        Brush.horizontalGradient(tv.enktel.app.ui.theme.EnktelBrandGradient),
+                        RoundedCornerShape(8.dp),
+                    )
+                } else {
+                    Modifier.background(Color.White.copy(alpha = 0.14f))
+                },
+            )
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text,
+            style = tv.enktel.app.ui.theme.EnktelType.caption,
+            color = Color.White,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
  * Full-width rotating hero banner (Netflix-style): large backdrop art with a readability
  * scrim, title/logo overlay, and Play / More Info actions. Auto-advances through up to
  * 5 featured titles (favorites first, then latest additions).
@@ -794,19 +827,14 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 overflow = TextOverflow.Ellipsis,
             )
             if (current.year > 0 || current.categoryId.isNotBlank() || current.rating > 0) {
-                Spacer(Modifier.height(6.dp))
-                val meta = buildList {
-                    if (current.rating > 0) add("★ ${"%.1f".format(current.rating)}")
-                    if (current.year > 0) add("${current.year}")
-                    if (current.genre.isNotBlank()) add(current.genre.take(28))
-                }.joinToString("  ·  ")
-                Text(
-                    meta,
-                    style = tv.enktel.app.ui.theme.EnktelType.subtitle,
-                    color = tv.enktel.app.ui.theme.EnktelTextOnArtDim,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Spacer(Modifier.height(10.dp))
+                // Metadata as pills rather than a dotted text line: the same
+                // facts, but they read as a premium hero rather than a caption.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (current.rating > 0) HeroPill("★ ${"%.1f".format(current.rating)}", accent = true)
+                    if (current.year > 0) HeroPill("${current.year}")
+                    if (current.genre.isNotBlank()) HeroPill(current.genre.take(22))
+                }
             }
             Spacer(Modifier.height(if (isMobile) 14.dp else 16.dp))
             val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -847,7 +875,13 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                                 .height(3.dp)
                                 .width(if (i == index) 24.dp else 10.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)),
+                                .then(
+                                    if (i == index) {
+                                        Modifier.background(Brush.horizontalGradient(tv.enktel.app.ui.theme.EnktelBrandGradient))
+                                    } else {
+                                        Modifier.background(Color.White.copy(alpha = 0.35f))
+                                    },
+                                ),
                         )
                     }
                 }

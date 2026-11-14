@@ -1505,6 +1505,18 @@ internal fun LiveScoreChip(
             ),
         ),
     ) {
+    Box {
+        if (score.inPlay) {
+            // A live match glows: a soft wash of the live colour across the
+            // card so an in-play game reads as special in the ticker.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(listOf(EnktelOk.copy(alpha = 0.16f), Color.Transparent)),
+                    ),
+            )
+        }
     Row(
         Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1557,6 +1569,7 @@ internal fun LiveScoreChip(
             Spacer(Modifier.width(10.dp))
             FocusIconButton(Icons.Rounded.Insights, "Match statistics", onClick = onStats)
         }
+    }
     }
     }
 }

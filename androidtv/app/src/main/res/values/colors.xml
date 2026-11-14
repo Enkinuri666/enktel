@@ -10,12 +10,13 @@
   So these track the *default* palette (EnkTel Neon), not any one theme.
 -->
 <resources>
-    <!-- True black — keep in sync with PaletteEnktelNeon.bg. On OLED this is
-         the pixel switched off, so the cold-start window is genuinely dark
-         rather than a dark grey that flashes when Compose paints over it. -->
-    <color name="enktel_background">#000000</color>
-    <!-- Primary Brand Accent — PaletteEnktelNeon.primary. -->
-    <color name="enktel_blue">#29B6FF</color>
-    <!-- Secondary Brand Accent — PaletteEnktelNeon.secondary. -->
-    <color name="enktel_purple">#B14DFF</color>
+    <!-- Indigo-black — keep in sync with PaletteAurora.bg (the v1.84 default).
+         Near-black with a faint indigo cast so the cold-start window matches
+         the first Compose frame of the new flagship theme rather than flashing
+         a colder black under it. -->
+    <color name="enktel_background">#060814</color>
+    <!-- Primary Brand Accent — PaletteAurora.primary (electric periwinkle). -->
+    <color name="enktel_blue">#5E8BFF</color>
+    <!-- Secondary Brand Accent — PaletteAurora.secondary (violet, the gradient's far stop). -->
+    <color name="enktel_purple">#C56BFF</color>
 </resources>

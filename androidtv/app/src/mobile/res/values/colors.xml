@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="enktel_launcher_bg">#0A0E17</color>
+    <!-- Fallback flat background for launchers that can't render the gradient
+         adaptive background (and the legacy round icon). Aurora's indigo-black. -->
+    <color name="enktel_launcher_bg">#0A0F20</color>
 </resources>
