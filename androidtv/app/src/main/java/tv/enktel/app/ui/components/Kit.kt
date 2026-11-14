@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,6 +33,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBlue
+import tv.enktel.app.ui.theme.EnktelBrandGradient
 import tv.enktel.app.ui.theme.EnktelLive
 import tv.enktel.app.ui.theme.EnktelOnLive
 import tv.enktel.app.ui.theme.EnktelOnPrimary
@@ -103,12 +105,18 @@ internal fun ControlSurface(
     val accent = EnktelBlue
     val onAccent = EnktelOnPrimary
     val text = EnktelText
+    val brand = EnktelBrandGradient
 
     val container: Color
     val ink: Color
     val focusedContainer: Color
     val focusedInk: Color
     val outline: Color?
+    // The Primary call-to-action is the one surface that wears the full brand
+    // spectrum rather than a flat accent — the signature of the v1.84 identity.
+    // Its fill is painted as a gradient over a transparent container; every
+    // other kind stays a flat tint so the CTA is the thing that stands out.
+    val gradientFace = kind == ButtonKind.Primary
     when (kind) {
         ButtonKind.Neutral -> {
             container = EnktelSurfaceHigh; ink = text
@@ -120,8 +128,9 @@ internal fun ControlSurface(
             outline = accent.copy(alpha = 0.55f)
         }
         ButtonKind.Primary -> {
-            container = accent; ink = onAccent
-            focusedContainer = accent; focusedInk = onAccent; outline = null
+            // Container transparent; the gradient Box below is the real fill.
+            container = Color.Transparent; ink = onAccent
+            focusedContainer = Color.Transparent; focusedInk = onAccent; outline = null
         }
         ButtonKind.Ghost -> {
             container = Color.Transparent; ink = EnktelTextDim
@@ -149,16 +158,25 @@ internal fun ControlSurface(
         scale = ClickableSurfaceDefaults.scale(focusedScale = CONTROL_FOCUS_SCALE, pressedScale = 0.98f),
         border = ClickableSurfaceDefaults.border(
             border = if (outline != null) Border(BorderStroke(1.dp, outline), shape = shape) else Border.None,
-            // A Primary button is already the accent at rest, so filling it
-            // on focus changes nothing. The ring is what says "you are here".
+            // A Primary button already carries the brand gradient at rest, so
+            // filling it on focus changes nothing. The ring is what says
+            // "you are here".
             focusedBorder = if (kind == ButtonKind.Primary) {
                 Border(BorderStroke(2.dp, text), shape = shape)
             } else {
                 Border.None
             },
         ),
-        content = content,
-    )
+    ) {
+        if (gradientFace) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(Brush.horizontalGradient(brand)),
+            )
+        }
+        content()
+    }
 }
 
 /**
@@ -292,13 +310,23 @@ fun SectionHeader(
     accent: Color = EnktelBlue,
     icon: ImageVector? = null,
 ) {
+    // The default accent-bar wears the brand spectrum; a header given a
+    // meaningful accent (the live red over what's on air) keeps that flat
+    // colour so its meaning is not diluted into the gradient.
+    val defaultAccent = accent == EnktelBlue
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
-                .width(3.dp)
-                .height(18.dp)
+                .width(4.dp)
+                .height(20.dp)
                 .clip(EnktelRadius.shapeXs)
-                .background(accent),
+                .then(
+                    if (defaultAccent) {
+                        Modifier.background(Brush.verticalGradient(EnktelBrandGradient))
+                    } else {
+                        Modifier.background(accent)
+                    },
+                ),
         )
         Spacer(Modifier.width(10.dp))
         if (icon != null) {

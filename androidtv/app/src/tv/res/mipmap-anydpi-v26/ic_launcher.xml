@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Adaptive launcher icon (API 26+).
+    Adaptive launcher icon (API 26+) — v1.84 "Aurora" identity.
 
-    The legacy PNG is full-bleed square art, so every masked launcher either
-    clipped the wolf's ears or dropped the whole thing onto a stock white
-    squircle. Here the brand near-black is the background layer and the emblem
-    is inset into the 72dp safe zone, which survives every mask shape the
-    launcher can apply — circle, squircle, rounded square, teardrop.
+    The EnkTel wolf logo is kept exactly as it was; what's new is the plate
+    behind it — the brand spectrum gradient (azure → indigo → magenta) in place
+    of the old flat near-black. Background is a vector gradient, foreground is
+    the inset wolf, so the icon is crisp at every launcher density.
 
-    mipmap-*/ic_launcher.png stays as the pre-26 fallback.
+    mipmap-*/ic_launcher.png stays as the pre-26 raster fallback.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/enktel_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@drawable/ic_launcher_gradient" />
+    <foreground android:drawable="@drawable/ic_launcher_logo_inset" />
 </adaptive-icon>

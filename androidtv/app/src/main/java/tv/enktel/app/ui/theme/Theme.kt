@@ -67,7 +67,22 @@ data class EnktelPalette(
      * merely redundant, and forcing it elsewhere would cost more than it buys.
      */
     val warn: Color = Color(0xFFFBBF24),
+    /**
+     * The signature multi-stop brand gradient — the single most visible mark
+     * of the v1.84 visual identity. It paints the splash wash, the focused
+     * primary button, the nav rail's active indicator and the hero scrim, so a
+     * theme's whole personality reads in one sweep rather than one flat accent.
+     *
+     * `null` means "this palette has no bespoke sweep", and [brandGradientOrDefault]
+     * falls back to a straight [primary]→[secondary] ramp — so every one of the
+     * older eleven palettes gets a coherent gradient for free without having to
+     * hand-tune three stops each.
+     */
+    val brandGradient: List<Color>? = null,
 ) {
+    /** The brand gradient to actually draw: the bespoke sweep, or a primary→secondary fallback. */
+    val brandGradientOrDefault: List<Color>
+        get() = brandGradient ?: listOf(primary, secondary)
     /**
      * The ink drawn *on* [primary]: a focused button's label, a selected
      * segment's text, the glyph inside a filled accent control.
@@ -119,6 +134,72 @@ internal fun contrastWith(a: Color, b: Color): Double {
     val lb = relativeLuminance(b)
     return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
 }
+
+/**
+ * v1.84.0 — **"Aurora"**, the new flagship and the default for fresh installs.
+ *
+ * This is the face of the redesign: where every earlier default settled on one
+ * flat accent against the dark, Aurora is built around a three-stop spectrum —
+ * azure → indigo → magenta — carried in [brandGradient] and painted across the
+ * splash, the focused primary control, the nav rail and the hero scrim. One
+ * sweep, everywhere, so the app reads as a single designed thing rather than a
+ * dark page with a highlight colour.
+ *
+ * The base is a near-black with a faint indigo cast (`#060814`), not pure
+ * black. That is a deliberate step away from EnkTel Neon's true-black OLED
+ * brief: a hair of blue in the ink is what lets the violet surfaces above it
+ * read as *tinted deep* rather than as grey boxes on an off panel, and it is
+ * what makes the magenta end of the gradient look like it belongs to the same
+ * world as the azure end. The surface ramp (`#0F1528` → `#1B2440`) carries the
+ * same cast upward.
+ *
+ * The accent is an electric periwinkle-indigo (`#5E8BFF`), chosen over the old
+ * cyan precisely so the new default cannot be mistaken for the old one at a
+ * glance. It clears 6.28:1 on the base — comfortably findable as a focus ring
+ * at sofa distance — and its hue sits 126° from the rose alert, far past the
+ * 40° the focus/live collision rule demands. The violet secondary (`#C56BFF`)
+ * is the gradient's far stop, so [brandGradientOrDefault] and the hand-tuned
+ * sweep stay in the same family.
+ *
+ * Every value here is pinned by PaletteContrastTest; the numbers above were
+ * computed against its floors before the colours were chosen, not after.
+ */
+private val PaletteAurora = EnktelPalette(
+    id = "aurora", label = "Aurora (Spectrum)",
+    bg = Color(0xFF060814), surface = Color(0xFF0F1528), surfaceHigh = Color(0xFF1B2440),
+    text = Color(0xFFF4F7FF), textDim = Color(0xFF9AA7CC),
+    primary = Color(0xFF5E8BFF), primaryDeep = Color(0xFF2E5BE0), secondary = Color(0xFFC56BFF),
+    live = Color(0xFFFF4D6D), ok = Color(0xFF2CE6B0), border = Color(0xFF26324F),
+    // Wide, confident focus treatment: the periwinkle glow bleeding into the
+    // indigo-black base is the same "the halo is free on a dark panel" logic
+    // Neon used, and it ties the focused card into the gradient world.
+    focusRingWidth = 4.dp, focusGlowRadius = 20.dp, focusGlowAlpha = 0.5f, focusScale = 1.06f,
+    textFaint = Color(0xFF5E6E96),
+    brandGradient = listOf(Color(0xFF3AA0FF), Color(0xFF7B6BFF), Color(0xFFC56BFF)),
+)
+
+/**
+ * v1.84.0 — **"Sunset"**, the warm half of the new identity.
+ *
+ * Aurora's cool counterpart and the bold alternative in the picker: a
+ * magenta → coral → gold sweep over a deep plum-black (`#0D0710`). Where a warm
+ * theme usually trips is the alert colour — a red LIVE badge vanishes into a
+ * warm accent and collapses entirely under red-green colour blindness — so
+ * `live` is a cyan (`#22D3EE`) sitting 147° from the magenta accent, the same
+ * move Crimson Wolf makes for the same reason. The surface ramp is tinted a few
+ * points toward magenta so the warmth reads as the theme's own rather than as
+ * an accent pasted onto neutral greys.
+ */
+private val PaletteSunset = EnktelPalette(
+    id = "sunset", label = "Sunset (Warm)",
+    bg = Color(0xFF0D0710), surface = Color(0xFF1B0F1A), surfaceHigh = Color(0xFF281626),
+    text = Color(0xFFFDF2F8), textDim = Color(0xFFC6A3B4),
+    primary = Color(0xFFFF5DA2), primaryDeep = Color(0xFFC42E72), secondary = Color(0xFFFF8A4D),
+    live = Color(0xFF22D3EE), ok = Color(0xFF3DD68C), border = Color(0xFF3A2233),
+    focusRingWidth = 4.dp, focusGlowRadius = 18.dp, focusGlowAlpha = 0.45f, focusScale = 1.06f,
+    textFaint = Color(0xFF8A6577),
+    brandGradient = listOf(Color(0xFFFF5DA2), Color(0xFFFF8A4D), Color(0xFFFFC24D)),
+)
 
 /**
  * v1.35.0 — "Deep Space" theme, and the new default for fresh installs.
@@ -383,12 +464,13 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
 )
 
 val ALL_PALETTES = listOf(
+    PaletteAurora, PaletteSunset,
     PaletteEnktelNeon, PaletteDeepSpace, PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald,
     PaletteAmber, PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteEnktelNeon
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteAurora
 
-private val LocalPalette = compositionLocalOf { PaletteEnktelNeon }
+private val LocalPalette = compositionLocalOf { PaletteAurora }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 
@@ -425,6 +507,14 @@ val EnktelWarn: Color @Composable get() = LocalPalette.current.warn
 /** Ink for anything drawn on a fill of the accent. See [EnktelPalette.onPrimary]. */
 val EnktelOnPrimary: Color @Composable get() = LocalPalette.current.onPrimary
 
+/**
+ * The active theme's signature brand gradient (2–3 stops), for the splash, the
+ * focused primary control, the nav rail indicator and the hero scrim. Always
+ * non-empty — falls back to a primary→secondary ramp for palettes that don't
+ * declare a bespoke sweep. See [EnktelPalette.brandGradient].
+ */
+val EnktelBrandGradient: List<Color> @Composable get() = LocalPalette.current.brandGradientOrDefault
+
 /** Ink for anything drawn on a fill of the alert colour. */
 val EnktelOnLive: Color @Composable get() = LocalPalette.current.onLive
 
@@ -450,7 +540,7 @@ val EnktelFocusGlow: Color
 
 @Composable
 fun EnktelTheme(
-    themeId: String = "enktel_neon",
+    themeId: String = "aurora",
     overlayOpacity: Float = 0.92f,
     textScalePct: Int = 100,
     /**
