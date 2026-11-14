@@ -121,6 +121,16 @@ import tv.enktel.app.vodPlayerRoute
 import tv.enktel.app.ui.components.rememberRailPosition
 import tv.enktel.app.ui.components.tvRailFocus
 
+/**
+ * How often the live scoreboard re-pulls itself while the hub is open.
+ *
+ * 45 s is a ticker, not a stopwatch: a goal shows up within a sensible window
+ * without hammering TheSportsDB's rate-limited free tier (forty-plus fixtures
+ * share one account), and it is long enough that the poll never competes with
+ * the stream the viewer is about to start.
+ */
+private const val SCORE_REFRESH_MS = 45_000L
+
 @Suppress("ProduceStateDoesNotAssignValue")
 @Composable
 fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
@@ -219,6 +229,27 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         // "live scores are on and I see no difference" had no explanation
         // anywhere in the UI. Say which it is.
         scoresStatus = if (scoresEnabled && liveScores.isEmpty()) graph.scores.lastStatus else ""
+    }
+    // Auto-updating ticker: a score you are watching should change on its own,
+    // not when you remember to press Refresh. While the hub is open and scores
+    // are enabled, the live feed is re-pulled on a timer so the scoreboard, the
+    // LIVE NOW cards and the spotlight all stay current. Only the live feed is
+    // polled — the day's schedule and highlight packages change by the hour,
+    // not the minute, and they carry a heavier free-tier cost. The effect is
+    // keyed on `scoresEnabled` alone, so it cancels the moment the viewer
+    // leaves the screen; nothing polls in the background.
+    LaunchedEffect(scoresEnabled) {
+        if (!scoresEnabled) return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(SCORE_REFRESH_MS)
+            val fresh = try { graph.scores.live() }
+            catch (ce: kotlinx.coroutines.CancellationException) { throw ce }
+            catch (_: Throwable) { null }
+            if (fresh != null) {
+                liveScores = fresh
+                scoresStatus = if (fresh.isEmpty()) graph.scores.lastStatus else ""
+            }
+        }
     }
     LaunchedEffect(matchCenterEnabled, sportFilter, refreshTick) {
         if (!matchCenterEnabled) {
@@ -452,7 +483,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         FocusIconButton(
                             Icons.Rounded.Star,
                             if (teamFilterOn) "Show every match" else "Show only my teams",
-                            label = if (teamFilterOn) "My teams" else null,
+                            label = if (teamFilterOn) "My teams · ${followed.size}" else null,
                             accent = teamFilterOn,
                             onClick = { teamFilterOn = !teamFilterOn },
                         )
@@ -654,6 +685,25 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                     Text("Scanning EPG for sports events…", color = EnktelTextDim, fontSize = 14.sp)
                 }
             }
+            // Following filter on, but none of the viewer's teams are on. There
+            // ARE events — they're just filtered out — so the generic "nothing
+            // found" would be a lie and the Refresh buttons the wrong answer.
+            // The fix is to drop the filter, not to rescan.
+            teamFilterOn && live.isEmpty() && upcoming.isEmpty() && finished.isEmpty() -> item {
+                GlassCard(padHoriz = padHoriz) {
+                    Column(Modifier.padding(20.dp)) {
+                        Text("None of your teams are on right now.", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "You're following ${teamNames.size} team${if (teamNames.size == 1) "" else "s"}. " +
+                                "Show every match to see what else is on, or star more teams from any fixture.",
+                            color = EnktelTextDim, fontSize = 12.sp,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        FocusButton("Show every match", accent = true, onClick = { teamFilterOn = false })
+                    }
+                }
+            }
             live.isEmpty() && upcoming.isEmpty() && finished.isEmpty() -> item {
                 GlassCard(padHoriz = padHoriz) {
                     Column(Modifier.padding(20.dp)) {
@@ -691,7 +741,12 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
             }
         }
         if (scoresEnabled && scoreRail.isNotEmpty()) {
-            item { SectionHeader(Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz, count = scoreRail.size) }
+            item {
+                SectionHeader(
+                    Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz,
+                    count = scoreRail.size, subtitle = "Updating live",
+                )
+            }
             item {
                 RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
