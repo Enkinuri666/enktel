@@ -1750,6 +1750,27 @@ internal fun LiveScoreChip(
             label = "livePulseAlpha",
         )
 
+    // Goal flash: when an in-play score changes between auto-refreshes, the
+    // card pulses so a goal catches the eye instead of quietly ticking over.
+    // The item key (scoreKey) excludes the score, so this card instance — and
+    // this remembered state — survives the update that carries the new score.
+    val scoreSig = "${score.homeScore}-${score.awayScore}"
+    var prevSig by remember(score.eventId) { mutableStateOf(scoreSig) }
+    var flash by remember(score.eventId) { mutableStateOf(false) }
+    LaunchedEffect(scoreSig) {
+        if (score.inPlay && prevSig != scoreSig) {
+            flash = true
+            kotlinx.coroutines.delay(1800)
+            flash = false
+        }
+        prevSig = scoreSig
+    }
+    val flashAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (flash) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (flash) 180 else 1000),
+        label = "goalFlash",
+    )
+
     var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onTap,
@@ -1785,6 +1806,22 @@ internal fun LiveScoreChip(
                     .matchParentSize()
                     .background(
                         Brush.horizontalGradient(listOf(EnktelOk.copy(alpha = 0.16f), Color.Transparent)),
+                    ),
+            )
+        }
+        // The goal flash itself: a bright wash over the whole card that fades
+        // back out, drawn above the resting glow so a score change is obvious.
+        if (flashAlpha > 0.01f) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                EnktelOk.copy(alpha = 0.42f * flashAlpha),
+                                EnktelOk.copy(alpha = 0.10f * flashAlpha),
+                            ),
+                        ),
                     ),
             )
         }
