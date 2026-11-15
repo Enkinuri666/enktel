@@ -51,6 +51,7 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.repo.Broadcast
 import tv.enktel.app.data.repo.MatchDetail
 import tv.enktel.app.data.repo.MatchEvent
+import tv.enktel.app.data.repo.MatchLineupPlayer
 import tv.enktel.app.data.repo.MatchStat
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.FocusButton
@@ -106,6 +107,7 @@ fun MatchCenterScreen(
     var detail by remember(eventId) { mutableStateOf<MatchDetail?>(null) }
     var stats by remember(eventId) { mutableStateOf<List<MatchStat>>(emptyList()) }
     var timeline by remember(eventId) { mutableStateOf<List<MatchEvent>>(emptyList()) }
+    var lineups by remember(eventId) { mutableStateOf<List<MatchLineupPlayer>>(emptyList()) }
     var broadcasters by remember(eventId) { mutableStateOf<List<Broadcast>>(emptyList()) }
     var loading by remember(eventId) { mutableStateOf(true) }
     var tick by remember(eventId) { mutableIntStateOf(0) }
@@ -135,6 +137,7 @@ fun MatchCenterScreen(
             detail = graph.scores.matchDetail(eventId)
             stats = graph.scores.matchStats(eventId)
             timeline = graph.scores.matchTimeline(eventId)
+            lineups = graph.scores.matchLineups(eventId)
             broadcasters = graph.scores.broadcasts(eventId)
         } catch (ce: kotlinx.coroutines.CancellationException) { throw ce
         } catch (_: Throwable) { /* leave whatever we already have on screen */ }
@@ -246,6 +249,28 @@ fun MatchCenterScreen(
                             SubHeader("TIMELINE")
                             Spacer(Modifier.height(8.dp))
                             timeline.forEach { TimelineRow(it) }
+                        }
+                    }
+                }
+            }
+
+            // Published team sheets, home XI beside away XI with the bench
+            // underneath. TheSportsDB fills these for the major soccer
+            // competitions and leaves them empty elsewhere, so the section
+            // simply doesn't appear when there's nothing to show.
+            if (lineups.isNotEmpty()) {
+                val homeXi = lineups.filter { it.home }
+                val awayXi = lineups.filter { !it.home }
+                item {
+                    MatchCard(pad) {
+                        Column(Modifier.padding(14.dp)) {
+                            SubHeader("LINE-UPS")
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth()) {
+                                LineupColumn(d.home, homeXi, Modifier.weight(1f))
+                                Spacer(Modifier.width(14.dp))
+                                LineupColumn(d.away, awayXi, Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -565,5 +590,48 @@ private fun InfoLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(label, color = EnktelTextDim, fontSize = 12.sp, modifier = Modifier.width(90.dp))
         Text(value, color = Color.White, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** One side's team sheet: the starting XI, then the bench beneath it. */
+@Composable
+private fun LineupColumn(team: String, players: List<MatchLineupPlayer>, modifier: Modifier = Modifier) {
+    val starters = players.filter { !it.substitute }
+    val subs = players.filter { it.substitute }
+    Column(modifier) {
+        Text(
+            team.ifBlank { "—" }, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(6.dp))
+        (if (starters.isNotEmpty()) starters else players).forEach { LineupRow(it) }
+        if (subs.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text("SUBSTITUTES", color = EnktelTextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            Spacer(Modifier.height(2.dp))
+            subs.forEach { LineupRow(it) }
+        }
+    }
+}
+
+@Composable
+private fun LineupRow(p: MatchLineupPlayer) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (p.number.isNotBlank()) {
+            Text(
+                p.number, color = EnktelBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(22.dp),
+            )
+        } else {
+            Spacer(Modifier.width(22.dp))
+        }
+        Text(
+            p.player, color = Color.White, fontSize = 12.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+        )
+        if (p.position.isNotBlank()) {
+            Spacer(Modifier.width(6.dp))
+            Text(p.position.take(3).uppercase(), color = EnktelTextDim, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }

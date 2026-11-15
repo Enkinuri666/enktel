@@ -78,6 +78,18 @@ data class MatchEvent(
     val assist: String,
 )
 
+/** One player in a published team sheet. */
+data class MatchLineupPlayer(
+    val player: String,
+    val team: String,
+    val position: String,
+    /** True for the home side, false for the away side. */
+    val home: Boolean,
+    /** True when named on the bench rather than in the starting XI. */
+    val substitute: Boolean,
+    val number: String,
+)
+
 /** An official broadcaster carrying a fixture. */
 data class Broadcast(
     val channel: String,
@@ -142,6 +154,7 @@ class ScoresRepository(
         const val ROOT_TIMELINE = "timeline"
         const val ROOT_EVENTSTATS = "eventstats"
         const val ROOT_TVEVENT = "tvevent"
+        const val ROOT_LINEUP = "lineup"
     }
 
     private val base: String get() = "https://www.thesportsdb.com/api/v1/json/${apiKey().ifBlank { FREE_KEY }}"
@@ -282,6 +295,28 @@ class ScoresRepository(
                 assist = t.str("strAssist").orEmpty(),
             )
         }.sortedBy { it.minute.toIntOrNull() ?: Int.MAX_VALUE }
+    }
+
+    /**
+     * Published team sheets — the starting XI and the bench for each side.
+     *
+     * Soccer only in practice (it is what TheSportsDB fills), and empty for a
+     * fixture it has no sheet for, which the Match Centre treats as "drop the
+     * section" rather than an error.
+     */
+    suspend fun matchLineups(eventId: String): List<MatchLineupPlayer> = withContext(Dispatchers.IO) {
+        if (eventId.isBlank()) return@withContext emptyList()
+        fetchArray("$base/lookuplineup.php?id=$eventId", ROOT_LINEUP).mapNotNull { l ->
+            MatchLineupPlayer(
+                player = l.str("strPlayer")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null,
+                team = l.str("strTeam").orEmpty(),
+                position = l.str("strPosition").orEmpty(),
+                // TheSportsDB marks the side with "Yes"/"No" on strHome.
+                home = l.str("strHome").equals("Yes", ignoreCase = true),
+                substitute = l.str("strSubstitute").equals("Yes", ignoreCase = true),
+                number = l.str("intSquadNumber").orEmpty(),
+            )
+        }
     }
 
     // ---- Following ---------------------------------------------------------
