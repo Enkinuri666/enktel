@@ -227,21 +227,17 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
         sharing?.let { live ->
             Spacer(Modifier.height(8.dp))
             Text(
-                "On your PC, open a browser and go to:",
+                "On any PC, Mac, phone or tablet on the same Wi-Fi, open a web browser and go to:",
                 color = EnktelTextDim, fontSize = 12.sp,
             )
             Text(live.url, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text("PIN ${live.pin}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Or open the EnkTel app on your PC — it finds this device on the network by " +
-                    "itself, saves straight to a folder you pick, and can pause or cancel " +
-                    "downloads from there.",
-                color = EnktelTextDim, fontSize = 11.sp,
-            )
-            Text(
-                "The PIN is new each time you start sending. Both devices have to be on the same " +
-                    "Wi-Fi. This keeps running while you use the rest of the app — stop it " +
-                    "here, or from the notification, when you are done.",
+                "No app or program to install — just a web browser. Enter the PIN once and your " +
+                    "downloads show up as a list to save. Both devices have to be on the same " +
+                    "Wi-Fi, and the PIN is new each time you start sending. This keeps running " +
+                    "while you use the rest of the app — stop it here, or from the notification, " +
+                    "when you are done.",
                 color = EnktelTextDim, fontSize = 11.sp,
             )
         }
