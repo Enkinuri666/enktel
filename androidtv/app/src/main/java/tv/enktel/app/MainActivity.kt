@@ -1113,6 +1113,7 @@ private fun MainNav(
             LivePlayerScreen(graph, nav, initialChannelKey = back.arguments?.getString("ch").orEmpty())
         }
         composable("guide") { GuideScreen(graph, nav) }
+        composable("discover") { tv.enktel.app.ui.discover.DiscoverScreen(graph, nav) }
         composable("movies") { MoviesScreen(graph, nav) }
         composable("movie/{key}") { back ->
             MovieDetailsScreen(graph, nav, key = back.arguments?.getString("key").orEmpty())

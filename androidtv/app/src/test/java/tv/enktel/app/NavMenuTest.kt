@@ -60,7 +60,7 @@ class NavMenuTest {
         // These six are the claim simple mode makes. Changing the claim is
         // fine; changing it by accident is not.
         val ids = SIMPLE_ITEMS.map { it.id }
-        assertEquals(listOf("home", "live", "movies", "series", "sports", "search"), ids)
+        assertEquals(listOf("home", "discover", "live", "movies", "series", "sports", "search"), ids)
     }
 
     @Test
