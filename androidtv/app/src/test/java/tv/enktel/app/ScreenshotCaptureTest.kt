@@ -839,6 +839,70 @@ class ScreenshotCaptureTest {
     @Test @Config(qualifiers = TV)
     fun homeOnTelevision() = shot("home-bigscreen") { g, nav -> tv.enktel.app.ui.screens.HomeScreen(g, nav) }
 
+    @Test @Config(qualifiers = PHONE)
+    fun discover() = discoverShot("discover")
+
+    @Test @Config(qualifiers = TV)
+    fun discoverOnTelevision() = discoverShot("discover-bigscreen")
+
+    /**
+     * Discover is defined by how it stacks a catalogue into rows per
+     * streaming service, so a screenshot that exercises it has to seed
+     * categories whose names the badge registry recognises — the generic
+     * Movies seed uses plain "Action/Drama/Comedy" labels and would leave
+     * the brand rails empty on the capture.
+     */
+    private fun discoverShot(name: String) {
+        val g = graph()
+        val p = seedProfile(g, synced = true)
+        seedDiscoverCatalogue(g, p)
+        themed { tv.enktel.app.ui.discover.DiscoverScreen(g, androidx.navigation.compose.rememberNavController()) }
+        settle(steps = ART_STEPS, pauseMs = 40)
+        capture(name)
+    }
+
+    private fun seedDiscoverCatalogue(g: AppGraph, profileId: Long): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        // Platform-flavoured categories, in the panel-labelling style that
+        // real Xtream lines use — StreamingBadges picks the platform out of
+        // these names by case-insensitive substring.
+        val cats = listOf(
+            "VOD | NETFLIX", "VOD | DISNEY+", "VOD | HULU", "VOD | PRIME VIDEO",
+            "VOD | PARAMOUNT+", "VOD | HBO MAX", "VOD | APPLE TV+",
+        )
+        g.db.contentDao().upsertCategories(
+            cats.mapIndexed { i, name ->
+                tv.enktel.app.data.db.Category(
+                    key = "$profileId:vod:d$i", profileId = profileId, kind = "vod",
+                    categoryId = "d$i", name = name, sortIdx = i,
+                )
+            },
+        )
+        val titles = listOf(
+            "The Northern Line", "Ridgeline", "Harbourlight", "Ashgrove", "The Long Weekend",
+            "Saltmarsh", "Winterfold", "Quarry Road", "The Cold Coast", "Brightwater",
+            "Ninepin", "Low Country", "Signal Hill", "Tideline", "Hollowmere",
+            "Riverstone", "Blue Hour", "Headland", "Last Ferry", "Mapleford",
+            "Driftwood", "Starboard", "Polar Night", "Keeper's Light", "Watchtower",
+            "Fjordlight", "Coldstream", "Hawthorne", "Wayfarer",
+        )
+        val genres = listOf("Action", "Drama", "Comedy", "Documentary", "Sci-Fi", "Thriller")
+        g.db.contentDao().upsertMovies(
+            titles.mapIndexed { i, name ->
+                tv.enktel.app.data.db.Movie(
+                    key = "$profileId:m$i", profileId = profileId, streamId = (3000 + i).toLong(),
+                    name = name, year = 2016 + (i % 10),
+                    categoryId = "d${i % cats.size}",
+                    genre = genres[i % genres.size],
+                    addedAt = (now - i * 86_400_000L) / 1000L,
+                    firstSeenAt = now - i * 86_400_000L,
+                    rating = 6.3 + (i * 7 % 30) / 10.0,
+                    poster = art(i),
+                )
+            },
+        )
+    }
+
     /** Home inside the rail it is actually shown in. */
     @Test @Config(qualifiers = TV)
     fun shellOnTelevision() = shot("shell-bigscreen") { g, nav ->

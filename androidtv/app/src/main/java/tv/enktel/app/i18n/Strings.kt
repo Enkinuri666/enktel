@@ -88,6 +88,7 @@ data class Strings(
 
     // ---- menu ----------------------------------------------------------
     val navHome: String,
+    val navDiscover: String,
     val navLive: String,
     val navGuide: String,
     val navMovies: String,
@@ -238,6 +239,7 @@ data class Strings(
      */
     fun navLabel(id: String): String? = when (id) {
         "home" -> navHome
+        "discover" -> navDiscover
         "live" -> navLive
         "guide" -> navGuide
         "movies" -> navMovies
@@ -328,6 +330,7 @@ val EnglishStrings = Strings(
     plural = PluralRule.ENGLISH,
 
     navHome = "Home",
+    navDiscover = "Discover",
     navLive = "Live TV",
     navGuide = "TV Guide",
     navMovies = "Movies",
@@ -462,6 +465,7 @@ val SerboCroatianStrings = Strings(
     plural = PluralRule.SLAVIC,
 
     navHome = "Početna",
+    navDiscover = "Otkrij",
     navLive = "TV uživo",
     navGuide = "TV vodič",
     navMovies = "Filmovi",

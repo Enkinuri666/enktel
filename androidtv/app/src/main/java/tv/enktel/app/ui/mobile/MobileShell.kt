@@ -314,7 +314,7 @@ internal fun activeTabRoute(route: String): String = when {
 
 /** Everything reachable from the More sheet, including its detail sub-routes. */
 private val MORE_ROUTES = listOf(
-    "guide", "watchlist", "downloads", "recordings", "catchup", "settings",
+    "discover", "guide", "watchlist", "downloads", "recordings", "catchup", "settings",
     "lists", "speedTest", "manageCategories", "systemMonitor", "search",
     "comingSoon",
 )
@@ -483,7 +483,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
             // Series, and a thing people reach for often belongs at the top
             // of the sheet rather than in the middle of it.
             val order = listOf(
-                "search", "comingSoon", "guide", "catchup", "watchlist",
+                "search", "discover", "comingSoon", "guide", "catchup", "watchlist",
                 "lists", "downloads", "recordings", "settings",
             )
             val entries = order.mapNotNull { route ->

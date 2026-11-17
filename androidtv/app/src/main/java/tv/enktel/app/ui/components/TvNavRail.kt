@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.automirrored.rounded.Dvr
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
@@ -164,6 +165,7 @@ private const val FOCUS_HANDOFF_FRAMES = 12
  */
 val FULL_ITEMS = listOf(
     TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
+    TvNavItem("discover", "Discover", Icons.Rounded.Explore, "discover"),
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
     TvNavItem("guide", "TV Guide", Icons.Rounded.CalendarMonth, "guide"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
@@ -199,6 +201,7 @@ val FULL_ITEMS = listOf(
  */
 val SIMPLE_ITEMS = listOf(
     TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
+    TvNavItem("discover", "Discover", Icons.Rounded.Explore, "discover"),
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
     TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
