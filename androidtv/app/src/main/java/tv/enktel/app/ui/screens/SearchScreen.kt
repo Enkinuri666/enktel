@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -206,10 +208,13 @@ fun SearchScreen(
                     // overflow a 360 dp landscape phone, and a non-scrolling
                     // Row clips the last few rather than letting the viewer
                     // scroll to them.
-                    androidx.compose.foundation.lazy.LazyRow(
+                    LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        androidx.compose.foundation.lazy.items(history.take(8), key = { it.query }) { h ->
+                        items(
+                            items = history.take(8),
+                            key = { h: SearchHistoryItem -> h.query },
+                        ) { h ->
                             GlassChip(h.query, selected = false, onClick = { query = h.query })
                         }
                     }
