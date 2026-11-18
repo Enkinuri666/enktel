@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -163,6 +164,7 @@ fun OnboardingScreen(graph: AppGraph, onDone: () -> Unit) {
                     .widthIn(max = 440.dp)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
+                    .imePadding()
                     .padding(horizontal = 24.dp, vertical = if (roomy) 32.dp else 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

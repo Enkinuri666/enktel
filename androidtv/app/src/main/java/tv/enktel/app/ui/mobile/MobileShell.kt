@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -235,6 +237,7 @@ private fun SideNavRail(current: String, onTab: (MobileTab) -> Unit) {
             .width(84.dp)
             .background(EnktelSurface)
             .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -489,6 +492,14 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
             val entries = order.mapNotNull { route ->
                 tv.enktel.app.ui.components.FULL_ITEMS.firstOrNull { it.route == route }
             }
+            // Landscape phones have ~180dp of sheet height after the status bar
+            // and handle — not enough for ten rows. Wrap in a weighted scroll
+            // so the sheet shrinks to the viewport and the overflow scrolls.
+            Column(
+                Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+            ) {
             entries.forEach { item ->
                 val route = item.route
                 Row(
@@ -541,6 +552,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                         modifier = Modifier.size(20.dp),
                     )
                 }
+            }
             }
             // Small tail spacer so the last row never kisses the sheet edge visually.
             androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))

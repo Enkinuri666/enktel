@@ -38,13 +38,20 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     var kind by remember { mutableStateOf("all") }
-    val items by remember(p.id, kind) {
+    // Collect the whole list once so the filter chips can show per-kind
+    // counts without three separate Flows — the chips used to say
+    // "All (12) · Movies · Series" with only the first count filled in,
+    // which made the other two read as section labels rather than counts.
+    val all by remember(p.id) { graph.watchlist.all(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val movieCount = remember(all) { all.count { it.kind == "vod" } }
+    val seriesCount = remember(all) { all.count { it.kind == "series" } }
+    val items = remember(all, kind) {
         when (kind) {
-            "vod" -> graph.watchlist.ofKind(p.id, "vod")
-            "series" -> graph.watchlist.ofKind(p.id, "series")
-            else -> graph.watchlist.all(p.id)
+            "vod" -> all.filter { it.kind == "vod" }
+            "series" -> all.filter { it.kind == "series" }
+            else -> all
         }
-    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    }
 
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
     Column(Modifier.fillMaxSize().padding(top = shape.padV)) {
@@ -61,13 +68,23 @@ fun WatchlistScreen(graph: AppGraph, nav: NavHostController) {
             Modifier.padding(start = shape.padH, end = shape.padH, top = 12.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            GlassChip("All (${items.size})", selected = kind == "all", onClick = { kind = "all" })
-            GlassChip("Movies", selected = kind == "vod", onClick = { kind = "vod" })
-            GlassChip("Series", selected = kind == "series", onClick = { kind = "series" })
+            GlassChip("All (${all.size})", selected = kind == "all", onClick = { kind = "all" })
+            GlassChip("Movies ($movieCount)", selected = kind == "vod", onClick = { kind = "vod" })
+            GlassChip("Series ($seriesCount)", selected = kind == "series", onClick = { kind = "series" })
         }
         if (items.isEmpty()) {
+            // Tells the viewer *which* list is empty, so the two cases read
+            // differently: nothing saved anywhere → the onboarding message,
+            // but nothing of the current kind → an invitation to see the
+            // other kind instead of a repeat of the first-run copy.
+            val msg = when {
+                all.isEmpty() -> "Nothing saved yet. Choose Watchlist on a movie or series to keep it here."
+                kind == "vod" -> "No movies in your watchlist yet."
+                kind == "series" -> "No series in your watchlist yet."
+                else -> "Nothing saved yet."
+            }
             CenterMessage(
-                "Nothing saved yet. Choose Watchlist on a movie or series to keep it here.",
+                msg,
                 icon = androidx.compose.material.icons.Icons.Rounded.BookmarkBorder,
             )
             return
