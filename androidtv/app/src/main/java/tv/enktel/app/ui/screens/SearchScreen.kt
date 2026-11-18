@@ -202,8 +202,14 @@ fun SearchScreen(
                         FocusButton(t.clear, onClick = { scope.launch { graph.db.searchDao().clear() } })
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        history.take(8).forEach { h ->
+                    // LazyRow, not a plain Row: eight chips at 80–140 dp each
+                    // overflow a 360 dp landscape phone, and a non-scrolling
+                    // Row clips the last few rather than letting the viewer
+                    // scroll to them.
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        androidx.compose.foundation.lazy.items(history.take(8), key = { it.query }) { h ->
                             GlassChip(h.query, selected = false, onClick = { query = h.query })
                         }
                     }
