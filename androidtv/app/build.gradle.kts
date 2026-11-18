@@ -26,8 +26,8 @@ android {
         applicationId = "tv.enktel.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 200
-        versionName = "1.84.2"
+        versionCode = 201
+        versionName = "1.85.0"
         vectorDrawables { useSupportLibrary = true }
 
         // These must be the host *this* Next.js app deploys to, which is
