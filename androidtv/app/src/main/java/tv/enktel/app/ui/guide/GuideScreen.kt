@@ -341,6 +341,18 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         }
         Spacer(Modifier.height(6.dp))
 
+        // Grid + full-height "now" vertical line.
+        //
+        // The timeline header above already draws a short red dash at the
+        // current time. Extending it into a full-height line across the grid
+        // tells the viewer at a glance which programme on every channel is
+        // the one playing right now — the question most people have when
+        // they open the Guide. The overlay shares the same horizontal scroll
+        // state as the rows, so a scroll of the grid carries the line with
+        // it; the first 216 dp (channel column + gap) is a fixed anchor, and
+        // the line is positioned at 216 dp + nowOffset relative to the scroll
+        // viewport. A 1-dp inset keeps the 2-dp line centred on the moment.
+        Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
             items(channels, key = { it.key }) { ch ->
                 Row(Modifier.fillMaxWidth().height(56.dp).padding(vertical = 2.dp)) {
@@ -530,6 +542,23 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                     }
                 }
             }
+        }
+        nowOffsetDp?.let { off ->
+            Row(
+                Modifier
+                    .matchParentSize()
+                    .horizontalScroll(hScroll, enabled = false),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Spacer(Modifier.width(216.dp + off - 1.dp))
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(EnktelLive.copy(alpha = 0.55f)),
+                )
+            }
+        }
         }
     }
 
