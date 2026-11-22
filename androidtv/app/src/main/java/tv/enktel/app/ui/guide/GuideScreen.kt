@@ -329,6 +329,20 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // Backward chips for catch-up: -2 and -1 (Yesterday). The dock's
+            // dialog gates catch-up playback per-programme (CatchupUrls
+            // checks the per-channel window), so the chips always show; a
+            // past programme on a channel without catch-up just opens the
+            // programme detail dialog without a Catch-Up button, same as
+            // today's behaviour.
+            items(listOf(-2, -1)) { d ->
+                val label = if (d == -1) "Yesterday" else TimeFormat.format(
+                    "EEE d", System.currentTimeMillis() + d * 86_400_000L, dayLocale,
+                )
+                tv.enktel.app.ui.components.GlassChip(
+                    label, selected = dayOffset == d, onClick = { dayOffset = d },
+                )
+            }
             item {
                 tv.enktel.app.ui.components.GlassChip(
                     "Today", selected = dayOffset == 0, onClick = { dayOffset = 0 },

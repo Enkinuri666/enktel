@@ -1270,6 +1270,55 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         if (category == "Playback") {
         Spacer(Modifier.height(10.dp))
         SettingsGroupTitle("Playback")
+        val preferredAudio by graph.settings.preferredAudioLang.collectAsStateWithLifecycle(initialValue = "")
+        val preferredSub by graph.settings.preferredSubLang.collectAsStateWithLifecycle(initialValue = "")
+        // Audio + subtitle language hints. Common two-letter ISO codes the
+        // app sees on real catalogues; "Default" clears the hint and leaves
+        // Media3 to its own picking. The player reads these constructor-time,
+        // so switching takes effect on the next tune — stated on the row.
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "Preferred audio language",
+                color = tv.enktel.app.ui.theme.EnktelTextDim, fontSize = 12.sp,
+            )
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val langs = listOf("" to "Default", "en" to "EN", "es" to "ES", "fr" to "FR",
+                    "de" to "DE", "it" to "IT", "pt" to "PT", "ru" to "RU", "ar" to "AR",
+                    "tr" to "TR", "hi" to "HI", "ro" to "RO")
+                langs.forEach { (code, label) ->
+                    tv.enktel.app.ui.components.GlassChip(
+                        label, selected = preferredAudio == code,
+                        onClick = { scope.launch { graph.settings.setPreferredAudioLang(code) } },
+                    )
+                }
+            }
+            Text(
+                "Preferred subtitle language (VOD and live when CC is off)",
+                color = tv.enktel.app.ui.theme.EnktelTextDim, fontSize = 12.sp,
+            )
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val langs = listOf("" to "Default", "en" to "EN", "es" to "ES", "fr" to "FR",
+                    "de" to "DE", "it" to "IT", "pt" to "PT", "ru" to "RU", "ar" to "AR",
+                    "tr" to "TR", "hi" to "HI", "ro" to "RO")
+                langs.forEach { (code, label) ->
+                    tv.enktel.app.ui.components.GlassChip(
+                        label, selected = preferredSub == code,
+                        onClick = { scope.launch { graph.settings.setPreferredSubLang(code) } },
+                    )
+                }
+            }
+            Text(
+                "Takes effect on the next stream you tune.",
+                color = tv.enktel.app.ui.theme.EnktelTextFaint, fontSize = 11.sp,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         val autoplay by graph.settings.autoplayNextEp.collectAsStateWithLifecycle(initialValue = true)
         val skipIntro by graph.settings.skipIntroSec.collectAsStateWithLifecycle(initialValue = 0)
         val pip by graph.settings.pipEnabled.collectAsStateWithLifecycle(initialValue = true)

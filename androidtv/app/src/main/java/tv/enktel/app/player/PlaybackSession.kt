@@ -101,6 +101,8 @@ class PlaybackSession(
         val allocatorSizeBytes: Int = 0,
         val tunneling: Boolean = true,
         val captionMode: String = ClosedCaptions.OFF,
+        val preferredAudioLang: String = "",
+        val preferredSubLang: String = "",
     )
 
     @Volatile
@@ -172,9 +174,22 @@ class PlaybackSession(
             ) { profile, min, max, play, rebuf ->
                 if (profile == "custom") BufferConfig(min, max, play, rebuf) else null
             }
-            // Paired because combine tops out at five typed flows and this is
-            // the sixth setting to reach the engine.
-            val playbackFlow = combine(settings.tunneling, settings.captionMode) { t, c -> t to c }
+            // Four-way combine keeps everything the engine builder reads
+             // out of settings on one dispatch tick. combine's 5-flow limit
+             // is why these are packed into one record rather than passed
+             // individually.
+            data class PlaybackBag(
+                val tunneling: Boolean,
+                val captionMode: String,
+                val audioLang: String,
+                val subLang: String,
+            )
+            val playbackFlow = combine(
+                settings.tunneling,
+                settings.captionMode,
+                settings.preferredAudioLang,
+                settings.preferredSubLang,
+            ) { t, c, a, s -> PlaybackBag(t, c, a, s) }
             combine(
                 baseFlow, vodBufFlow, liveBufFlow, settings.allocatorSizeKb, playbackFlow,
             ) { base, vod, live, allocKb, playback ->
@@ -182,8 +197,10 @@ class PlaybackSession(
                     vodBuffer = vod,
                     liveBuffer = live,
                     allocatorSizeBytes = allocKb * 1024,
-                    tunneling = playback.first,
-                    captionMode = playback.second,
+                    tunneling = playback.tunneling,
+                    captionMode = playback.captionMode,
+                    preferredAudioLang = playback.audioLang,
+                    preferredSubLang = playback.subLang,
                 )
             }.collect { next ->
                 val prev = config
@@ -251,6 +268,8 @@ class PlaybackSession(
             allocatorSizeBytes = c.allocatorSizeBytes,
             tunneling = c.tunneling,
             captionMode = c.captionMode,
+            preferredAudioLang = c.preferredAudioLang,
+            preferredSubLang = c.preferredSubLang,
         )
         created.setDialogueBoost(c.dialogueBoost)
         tv.enktel.app.voice.ActivePlayerRef.register(created.player)
