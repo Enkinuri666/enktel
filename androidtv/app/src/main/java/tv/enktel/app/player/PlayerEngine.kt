@@ -121,6 +121,21 @@ class PlayerEngine(
      * untagged text track may be auto-selected.
      */
     captionMode: String = ClosedCaptions.OFF,
+    /**
+     * Preferred audio and subtitle languages, two-letter ISO codes, as set in
+     * Settings → Playback. Empty leaves pre-1.88 behaviour: Media3 falls back
+     * to the device locale for audio, and subtitles are not auto-selected
+     * unless closed captions are on.
+     *
+     * When set, the player asks Media3 to prefer a track in this language if
+     * the stream carries it — the common case of a Spanish subscriber whose
+     * playlist serves every film with English by default and one Spanish
+     * track somewhere further down the list. The hint is a *preference*, not
+     * a filter: if no track matches, playback still starts on whatever the
+     * stream offers rather than falling silent.
+     */
+    preferredAudioLang: String = "",
+    preferredSubLang: String = "",
 ) {
     private var streamHttpFactory: OkHttpDataSource.Factory? = null
 
@@ -655,6 +670,22 @@ class PlayerEngine(
                     setPreferredTextLanguages(*langs.toTypedArray())
                     setSelectUndeterminedTextLanguage(ClosedCaptions.allowUndetermined(captionMode))
                     setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                }
+                // Preferred audio language, when the viewer has set one.
+                // A playlist that defaults to English and buries the Spanish
+                // track lower in the manifest used to need a manual track
+                // picker every time; now the hint rides through to Media3's
+                // DefaultTrackSelector, which selects a matching track if one
+                // exists and falls back to the stream default otherwise.
+                if (preferredAudioLang.isNotBlank()) {
+                    setPreferredAudioLanguage(preferredAudioLang)
+                }
+                // Preferred subtitle language — only applied when CC is off
+                // and a user has explicitly asked, to keep the "VOD subtitle
+                // picker still works" promise above. When CC is on, its own
+                // language list has already won.
+                if (preferredSubLang.isNotBlank() && !ClosedCaptions.enabled(captionMode)) {
+                    setPreferredTextLanguage(preferredSubLang)
                 }
             }
             .build()

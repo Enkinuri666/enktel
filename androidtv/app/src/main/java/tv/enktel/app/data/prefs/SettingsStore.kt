@@ -18,6 +18,12 @@ private val Context.dataStore by preferencesDataStore("enktel_settings")
 class SettingsStore(private val context: Context) {
     private val ACTIVE_PROFILE = longPreferencesKey("active_profile")
     private val STREAM_FORMAT = stringPreferencesKey("stream_format")
+    // Two-letter ISO language code the player prefers for audio and
+    // subtitles. Empty = "let the stream decide / fall back to device
+    // locale", which keeps the pre-1.88 behaviour for anyone who has
+    // never touched the setting.
+    private val PREFERRED_AUDIO_LANG = stringPreferencesKey("preferred_audio_lang")
+    private val PREFERRED_SUB_LANG = stringPreferencesKey("preferred_sub_lang")
     private val BUFFER_PROFILE = stringPreferencesKey("buffer_profile")
     private val LAST_CHANNEL = stringPreferencesKey("last_channel")
     private val EPG_LAST_SYNC = longPreferencesKey("epg_last_sync")
@@ -319,6 +325,8 @@ class SettingsStore(private val context: Context) {
 
     val activeProfileId: Flow<Long> = context.dataStore.data.map { it[ACTIVE_PROFILE] ?: 0L }
     val streamFormat: Flow<String> = context.dataStore.data.map { it[STREAM_FORMAT] ?: "hls" }
+    val preferredAudioLang: Flow<String> = context.dataStore.data.map { it[PREFERRED_AUDIO_LANG] ?: "" }
+    val preferredSubLang: Flow<String> = context.dataStore.data.map { it[PREFERRED_SUB_LANG] ?: "" }
     val bufferProfile: Flow<String> = context.dataStore.data.map { it[BUFFER_PROFILE] ?: "balanced" }
     val lastChannel: Flow<String> = context.dataStore.data.map { it[LAST_CHANNEL] ?: "" }
     val autoplayLast: Flow<Boolean> = context.dataStore.data.map { it[AUTOPLAY_LAST] ?: true }
@@ -631,6 +639,8 @@ class SettingsStore(private val context: Context) {
     suspend fun activeProfileIdNow(): Long = activeProfileId.first()
     suspend fun setActiveProfile(id: Long) = context.dataStore.edit { it[ACTIVE_PROFILE] = id }
     suspend fun setStreamFormat(v: String) = context.dataStore.edit { it[STREAM_FORMAT] = v }
+    suspend fun setPreferredAudioLang(v: String) = context.dataStore.edit { it[PREFERRED_AUDIO_LANG] = v.trim().lowercase() }
+    suspend fun setPreferredSubLang(v: String) = context.dataStore.edit { it[PREFERRED_SUB_LANG] = v.trim().lowercase() }
     suspend fun setBufferProfile(v: String) = context.dataStore.edit { it[BUFFER_PROFILE] = v }
     suspend fun setLastChannel(key: String) = context.dataStore.edit { it[LAST_CHANNEL] = key }
     suspend fun setAutoplayLast(v: Boolean) = context.dataStore.edit { it[AUTOPLAY_LAST] = v }
