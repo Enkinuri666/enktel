@@ -143,6 +143,13 @@ fun DiscoverScreen(graph: AppGraph, nav: NavHostController) {
     var mood: String by rememberSaveable(stateSaver = MOOD_SAVER) { mutableStateOf(Mood.ALL) }
     val filtered = remember(plan, mood) { plan.filteredBy(mood) }
 
+    // "Continue Watching" sits above the platform grouping, because someone
+    // who walked away mid-film does not want to re-discover; they want the
+    // row they left. Comes from the same shared Flow Home uses, so a resume
+    // written there shows up here instantly.
+    val continueWatching by remember(p.id) { graph.content.continueWatching(p.id) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+
     val shape = rememberScreenShape()
     val padHoriz = shape.padH
     val isMobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
@@ -165,6 +172,47 @@ fun DiscoverScreen(graph: AppGraph, nav: NavHostController) {
                         }
                     },
                 )
+            }
+
+            // Continue Watching — one rail of the unfinished films and
+            // episodes, taken straight from the user flow so Home and
+            // Discover never disagree about where the viewer is up to.
+            if (continueWatching.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "Continue Watching",
+                        note = "pick up where you left off",
+                        modifier = Modifier.fillMaxWidth().padding(start = padHoriz, end = padHoriz, top = 10.dp, bottom = 4.dp),
+                    )
+                }
+                item {
+                    LazyRow(
+                        Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = padHoriz),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(continueWatching, key = { it.key }) { cw ->
+                            val frac = tv.enktel.app.data.repo.ResumePolicy
+                                .percent(cw.positionMs, cw.durationMs)
+                                ?.let { it / 100f } ?: 0f
+                            PosterCard(
+                                title = cw.name, imageUrl = cw.poster,
+                                subtitle = "Resume",
+                                wide = true, progress = frac,
+                                onClick = {
+                                    nav.navigate(
+                                        tv.enktel.app.vodPlayerRoute(
+                                            cw.url, cw.name, cw.key, poster = cw.poster,
+                                            seriesId = cw.seriesId,
+                                            episodeId = if (cw.seriesId != 0L) cw.refId else 0L,
+                                            seriesName = cw.seriesName,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
             // Mood chip row — single-word genre filter. "All" clears it.

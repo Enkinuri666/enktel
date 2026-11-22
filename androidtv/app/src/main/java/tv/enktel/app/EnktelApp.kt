@@ -215,6 +215,7 @@ class AppGraph(app: Application) {
     val scores by lazy { ScoresRepository(http) { sportsDbKeySnapshot } }
     val trailers by lazy { tv.enktel.app.data.repo.TrailerRepository(http, settings) }
     val feed by lazy { tv.enktel.app.data.repo.EnktelFeed(http) }
+    val updates by lazy { tv.enktel.app.data.update.UpdateChecker(http) }
     val downloads by lazy { DownloadHub(app, db.downloadDao(), db.profileDao(), settings, http) }
 
     /**
