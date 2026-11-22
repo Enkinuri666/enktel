@@ -224,6 +224,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     val categories by remember(p.id) { graph.content.categories(p.id, "live") }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var current by remember { mutableStateOf<Channel?>(null) }
+    // Previous channel for STB-style "last channel" swap. Written when a new
+    // channel is tuned, so a one-press swap returns whichever stream was on
+    // before — the common remote dance of flipping between two matches on
+    // different networks without walking the whole channel list.
+    var prevChannel by remember { mutableStateOf<Channel?>(null) }
     var nowNext by remember { mutableStateOf(NowNext(null, null)) }
     // Deliberately not collected here.
     //
@@ -272,6 +277,11 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     }
 
     fun tune(ch: Channel) {
+        // Record the stream the viewer is leaving — but only when actually
+        // switching away from a real previous one, so a re-tune of the same
+        // channel (a retry, say) does not overwrite the swap target with
+        // itself.
+        current?.takeIf { it.key != ch.key }?.let { prevChannel = it }
         current = ch
         showChannels = false
         showInfo = true
@@ -629,6 +639,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                         true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { showChannels = true; true }
+                    // STB-style previous-channel swap. KEYCODE_LAST_CHANNEL
+                    // (229) is on most remotes; the red PROG key stands in
+                    // for the many handsets that don't carry it.
+                    AndroidKeyEvent.KEYCODE_LAST_CHANNEL,
+                    AndroidKeyEvent.KEYCODE_PROG_RED -> {
+                        prevChannel?.let { tune(it) }
+                        true
+                    }
                     AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MENU -> { showQuickMenu = true; true }
                     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                         if (engine.player.isPlaying) engine.player.pause() else engine.player.play(); true

@@ -181,7 +181,28 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val toaster = LocalToaster.current
 
-    val channels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val channels0 by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Category filter — a line usually carries hundreds of channels and the
+    // Guide is unreadable at that scale. A chip row lets the viewer narrow
+    // to Sport, Movies, News, etc., without leaving the screen. Empty means
+    // "All", which is the default and the cheapest render.
+    var categoryFilter by remember { mutableStateOf("") }
+    val channels = remember(channels0, categoryFilter) {
+        if (categoryFilter.isBlank()) channels0
+        else channels0.filter { it.categoryName.equals(categoryFilter, ignoreCase = true) }
+    }
+    // Which categories the line actually carries, sorted by how many
+    // channels sit under each. Capped so a line with sixty niche categories
+    // doesn't paint a scroll bar's worth of chips.
+    val categoryChips = remember(channels0) {
+        channels0.asSequence()
+            .map { it.categoryName }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }.eachCount()
+            .entries.sortedByDescending { it.value }
+            .take(12)
+            .map { it.key }
+    }
     var dayOffset by remember { mutableIntStateOf(0) }
     var programs by remember { mutableStateOf<Map<String, List<EpgProgram>>>(emptyMap()) }
     var selected by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
@@ -257,8 +278,50 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 accent = true,
                 onClick = { dayOffset = 0; scope.launch { scrollToNow() } },
             )
+            // "Tonight" — jump to today 20:00, which is when prime-time
+            // programming lands on most lines. A viewer opening the Guide
+            // after dinner is usually asking that question, and reaching
+            // 20:00 from NOW on a late-afternoon open took a lot of
+            // horizontal scrolling.
+            FocusButton(
+                "Tonight",
+                onClick = {
+                    dayOffset = 0
+                    scope.launch {
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+                        val eveningMs = todayStart + 20L * HOUR
+                        hScroll.scrollTo(guideScrollPx(eveningMs, todayStart, density))
+                    }
+                },
+            )
         }
         Spacer(Modifier.height(shape.headerGap))
+        // Channel category filter — appears only when the line carries more
+        // than one named category, which is every real subscription.
+        if (categoryChips.isNotEmpty()) {
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.tvRailFocus(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item {
+                    tv.enktel.app.ui.components.GlassChip(
+                        "All", selected = categoryFilter.isBlank(),
+                        onClick = { categoryFilter = "" },
+                    )
+                }
+                items(categoryChips) { cat ->
+                    tv.enktel.app.ui.components.GlassChip(
+                        cat, selected = categoryFilter.equals(cat, ignoreCase = true),
+                        onClick = { categoryFilter = cat },
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
         // a single click instead of six D-pad presses.
         androidx.compose.foundation.lazy.LazyRow(
@@ -341,6 +404,18 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
         }
         Spacer(Modifier.height(6.dp))
 
+        // Grid + full-height "now" vertical line.
+        //
+        // The timeline header above already draws a short red dash at the
+        // current time. Extending it into a full-height line across the grid
+        // tells the viewer at a glance which programme on every channel is
+        // the one playing right now — the question most people have when
+        // they open the Guide. The overlay shares the same horizontal scroll
+        // state as the rows, so a scroll of the grid carries the line with
+        // it; the first 216 dp (channel column + gap) is a fixed anchor, and
+        // the line is positioned at 216 dp + nowOffset relative to the scroll
+        // viewport. A 1-dp inset keeps the 2-dp line centred on the moment.
+        Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
             items(channels, key = { it.key }) { ch ->
                 Row(Modifier.fillMaxWidth().height(56.dp).padding(vertical = 2.dp)) {
@@ -530,6 +605,23 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                     }
                 }
             }
+        }
+        nowOffsetDp?.let { off ->
+            Row(
+                Modifier
+                    .matchParentSize()
+                    .horizontalScroll(hScroll, enabled = false),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Spacer(Modifier.width(216.dp + off - 1.dp))
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(EnktelLive.copy(alpha = 0.55f)),
+                )
+            }
+        }
         }
     }
 
