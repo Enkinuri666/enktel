@@ -848,8 +848,12 @@ class ContentRepository(
             t = BRACKETED.replace(t, " ")
             t = SEASON_EPISODE.replace(t, " ")
             t = RELEASE_NOISE.replace(t, " ")
-            // Collapse runs of whitespace and punctuation left by the strip.
-            t = t.replace(Regex("[\\s._·-]+"), " ").trim()
+            // Collapse runs of whitespace and panel punctuation left by the
+            // strip. `+` is in the set so an HDR10+ that left a stranded `+`
+            // dies with the surrounding whitespace rather than hanging on
+            // (the `\b` at the end of the HDR rule refuses to anchor past
+            // the `+`, so the plus is left behind by RELEASE_NOISE).
+            t = t.replace(Regex("[\\s._·+-]+"), " ").trim()
             return t.lowercase()
         }
 
