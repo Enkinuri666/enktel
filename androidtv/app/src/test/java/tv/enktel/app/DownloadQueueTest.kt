@@ -92,8 +92,19 @@ class DownloadQueueTest {
         title = "Film $n", sourceUrl = url, addedAt = n.toLong(),
     )
 
-    /** Polls until [predicate] holds, or gives up — these run on real threads. */
-    private fun awaitUntil(what: String, timeoutMs: Long = 20_000, predicate: () -> Boolean) {
+    /**
+     * Polls until [predicate] holds, or gives up — these run on real threads.
+     *
+     * 60s rather than 20s: the wait sits on top of Robolectric + Room + a
+     * coroutine scope with a 60 ms pacing delay per enqueue, and a CI runner
+     * under memory pressure can take longer than 20 s to turn five enqueues
+     * into "five rows plus one RUNNING". That timed out on two consecutive
+     * releases (#258, #259), each cleared by a rerun — i.e. a flake, not a
+     * deadlock, and the right fix is more slack. A real stuck queue still
+     * fails well under 60 s, since every pump tick either starts or skips a
+     * row and there is nothing that waits minutes to make progress.
+     */
+    private fun awaitUntil(what: String, timeoutMs: Long = 60_000, predicate: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             if (predicate()) return
