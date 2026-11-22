@@ -825,8 +825,53 @@ class ContentRepository(
         }
 
         /** Normalize a messy panel genre string into clean tags. */
-        /** How a title is keyed in [movieTitleIndex]. Callers must key the same way. */
-        fun titleKey(title: String): String = title.trim().lowercase()
+        /**
+         * How a title is keyed in [movieTitleIndex].
+         *
+         * Panels tag films in the file name — "Dune (2021) [4K] MULTI",
+         * "The Batman FR 1080p HEVC", "Avengers: Endgame 2019 BluRay" — and
+         * a bare trim+lowercase keyed each variant as its own film, so
+         * ComingSoonScreen's "is this already on the line?" check and
+         * Discover's platform grouping both missed titles they should have
+         * matched.
+         *
+         * The scrubbing walks the surface noise panels actually use (year
+         * tags, resolution/codec markers, language flags, S01E01 pairs) and
+         * leaves the plain title. Every caller goes through this function,
+         * so both sides of a lookup stay consistent; a film with nothing to
+         * strip is unaffected.
+         */
+        fun titleKey(title: String): String {
+            // Remove bracketed noise first — [4K], (2021), {MULTI} — the
+            // inner matcher then has less to chew through.
+            var t = title
+            t = BRACKETED.replace(t, " ")
+            t = SEASON_EPISODE.replace(t, " ")
+            t = RELEASE_NOISE.replace(t, " ")
+            // Collapse runs of whitespace and punctuation left by the strip.
+            t = t.replace(Regex("[\\s._·-]+"), " ").trim()
+            return t.lowercase()
+        }
+
+        // Private so the matchers compile once and share across calls.
+        private val BRACKETED = Regex("""[\[({][^\])}]{1,24}[\])}]""")
+        private val SEASON_EPISODE = Regex("""(?i)\bS\d{1,2}\s?E\d{1,3}\b""")
+        private val RELEASE_NOISE = Regex(
+            """(?i)\b(""" +
+                // Years, standalone — "Dune 2021" → "Dune".
+                """19\d{2}|20\d{2}|""" +
+                // Resolution + codec tags.
+                """4k|8k|uhd|hdr(?:10\+?)?|dolby|dv|hevc|h?265|h?264|avc|x265|x264|""" +
+                """720p|1080p|1440p|2160p|fhd|sd|""" +
+                // Source + rip tags.
+                """bluray|blu-ray|bdrip|brrip|webrip|web-?dl|hdrip|dvdrip|cam|""" +
+                // Audio / language flags common in European panels.
+                """multi|multisub|dubbed|dub|sub|subbed|atmos|dts|aac|ac3|""" +
+                """en|us|uk|au|fr|es|it|de|pt|br|ru|tr|ar|hi|ro|""" +
+                // Season-only tag without the paired episode (series rows).
+                """s\d{1,2}""" +
+                """)\b""",
+        )
 
         fun splitGenres(genre: String): List<String> =
             genre.split(',', '/', '|', ';')
