@@ -1632,9 +1632,55 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         Text("EnkTel IPTV · Stream Beyond Limits", color = Color.White, fontSize = 13.sp)
         Text("Android TV & Fire TV · Xtream Codes + M3U · EPG · Catch-up · DVR", color = EnktelTextDim, fontSize = 12.sp)
         Text(
-            "Version ${tv.enktel.app.BuildConfig.VERSION_NAME} (${tv.enktel.app.BuildConfig.VERSION_CODE})",
+            "Version ${tv.enktel.app.BuildConfig.VERSION_NAME} (${tv.enktel.app.BuildConfig.VERSION_CODE}) · " +
+                "${tv.enktel.app.BuildConfig.FLAVOR} · build ${tv.enktel.app.BuildConfig.GIT_SHA}",
             color = EnktelTextDim, fontSize = 12.sp,
         )
+
+        // Is there a newer APK on GitHub than this build? Sideloaded users
+        // have no Play Store to tell them, so the About section asks on their
+        // behalf — once per visit, swallowing any network failure quietly.
+        // The button opens the release page in a browser; we deliberately
+        // don't PackageInstaller-hand off here because that needs
+        // REQUEST_INSTALL_PACKAGES, which is a Settings trip for every user,
+        // every reinstall.
+        var update by remember { mutableStateOf<tv.enktel.app.data.update.UpdateChecker.UpdateInfo?>(null) }
+        var updateChecking by remember { mutableStateOf(true) }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            update = graph.updates.check(
+                currentVersion = tv.enktel.app.BuildConfig.VERSION_NAME,
+                flavor = tv.enktel.app.BuildConfig.FLAVOR,
+            )
+            updateChecking = false
+        }
+        update?.let { info ->
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Update available: ${info.latestVersion}",
+                    color = tv.enktel.app.ui.theme.EnktelOk,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                FocusButton(
+                    "View release",
+                    onClick = {
+                        val url = info.assetUrl ?: info.releaseUrl
+                        runCatching {
+                            ctx.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(url),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
+                )
+            }
+        }
 
         // Startup steps that failed and were survived.
         //

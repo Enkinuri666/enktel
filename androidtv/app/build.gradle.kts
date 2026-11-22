@@ -80,6 +80,23 @@ android {
         buildConfigField("String", "DEFAULT_USERNAME", "\"$defaultUser\"")
         buildConfigField("String", "DEFAULT_PASSWORD", "\"$defaultPass\"")
 
+        // Short commit hash the APK was built from. Written to BuildConfig so
+        // the About screen can tell a user which build they are running —
+        // useful when a bug report says "1.85.0 is broken" and the fix was
+        // yesterday's commit that has not been released.
+        //
+        // Read from GIT_COMMIT first (what CI sets), then from `git` on the
+        // host, then an explicit "unknown" if neither works — a missing SHA
+        // must not fail the build.
+        val gitSha = (System.getenv("GIT_COMMIT")?.take(7))
+            ?: runCatching {
+                val proc = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+                    .directory(rootDir).redirectErrorStream(true).start()
+                if (proc.waitFor() == 0) proc.inputStream.bufferedReader().readText().trim() else null
+            }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: "unknown"
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
+
         // The free-to-air fallback used to be configured here — three build
         // properties, three BuildConfig fields and the gradle plumbing to read
         // them. Nothing has consumed any of it since the sign-in screen
