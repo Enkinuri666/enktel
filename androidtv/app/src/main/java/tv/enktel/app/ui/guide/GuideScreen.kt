@@ -181,7 +181,28 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val toaster = LocalToaster.current
 
-    val channels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val channels0 by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Category filter — a line usually carries hundreds of channels and the
+    // Guide is unreadable at that scale. A chip row lets the viewer narrow
+    // to Sport, Movies, News, etc., without leaving the screen. Empty means
+    // "All", which is the default and the cheapest render.
+    var categoryFilter by remember { mutableStateOf("") }
+    val channels = remember(channels0, categoryFilter) {
+        if (categoryFilter.isBlank()) channels0
+        else channels0.filter { it.categoryName.equals(categoryFilter, ignoreCase = true) }
+    }
+    // Which categories the line actually carries, sorted by how many
+    // channels sit under each. Capped so a line with sixty niche categories
+    // doesn't paint a scroll bar's worth of chips.
+    val categoryChips = remember(channels0) {
+        channels0.asSequence()
+            .map { it.categoryName }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }.eachCount()
+            .entries.sortedByDescending { it.value }
+            .take(12)
+            .map { it.key }
+    }
     var dayOffset by remember { mutableIntStateOf(0) }
     var programs by remember { mutableStateOf<Map<String, List<EpgProgram>>>(emptyMap()) }
     var selected by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
@@ -257,8 +278,50 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                 accent = true,
                 onClick = { dayOffset = 0; scope.launch { scrollToNow() } },
             )
+            // "Tonight" — jump to today 20:00, which is when prime-time
+            // programming lands on most lines. A viewer opening the Guide
+            // after dinner is usually asking that question, and reaching
+            // 20:00 from NOW on a late-afternoon open took a lot of
+            // horizontal scrolling.
+            FocusButton(
+                "Tonight",
+                onClick = {
+                    dayOffset = 0
+                    scope.launch {
+                        val todayStart = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+                        val eveningMs = todayStart + 20L * HOUR
+                        hScroll.scrollTo(guideScrollPx(eveningMs, todayStart, density))
+                    }
+                },
+            )
         }
         Spacer(Modifier.height(shape.headerGap))
+        // Channel category filter — appears only when the line carries more
+        // than one named category, which is every real subscription.
+        if (categoryChips.isNotEmpty()) {
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.tvRailFocus(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item {
+                    tv.enktel.app.ui.components.GlassChip(
+                        "All", selected = categoryFilter.isBlank(),
+                        onClick = { categoryFilter = "" },
+                    )
+                }
+                items(categoryChips) { cat ->
+                    tv.enktel.app.ui.components.GlassChip(
+                        cat, selected = categoryFilter.equals(cat, ignoreCase = true),
+                        onClick = { categoryFilter = cat },
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
         // a single click instead of six D-pad presses.
         androidx.compose.foundation.lazy.LazyRow(
