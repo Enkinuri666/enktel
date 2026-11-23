@@ -141,11 +141,15 @@ class DownloadQueueTest {
                 assertTrue("$running in flight on a 2-connection line: $s", running <= 1)
                 Thread.sleep(25)
             }
-            assertEquals(
-                "the rest should be waiting, not running",
-                4,
-                statuses(g).count { it == "QUEUED" },
-            )
+            // Wait rather than assert-now: the pump may still be writing
+            // the last QUEUED row at this point on a CI runner, and a
+            // one-shot check right after the hot loop had the pump racing
+            // the test. The first awaitUntil above uses the same pattern
+            // for the same reason.
+            awaitUntil("four rows waiting, one of them running") {
+                val s = statuses(g)
+                s.count { it == "QUEUED" } == 4 && s.count { it == "RUNNING" } == 1
+            }
         }
     }
 
