@@ -1210,6 +1210,7 @@ private fun MainNav(
         }
         composable("comingSoon") { tv.enktel.app.ui.screens.ComingSoonScreen(graph, nav) }
         composable("systemMonitor") { tv.enktel.app.ui.screens.SystemMonitorScreen(graph, nav) }
+        composable("epgFinder") { tv.enktel.app.ui.screens.EpgFinderScreen(graph, nav) }
         composable("watchlist") { WatchlistScreen(graph, nav) }
         composable("multi?left={left}&right={right}") { back ->
             MultiViewScreen(

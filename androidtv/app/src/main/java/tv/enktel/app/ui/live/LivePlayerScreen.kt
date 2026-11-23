@@ -1259,6 +1259,23 @@ private fun StatsOverlay(
         )
         Text("Dropped frames  ${s.droppedFrames}", color = Color.White, fontSize = 12.sp)
         Text("Decoder  ${s.decoder.ifBlank { "—" }}  ·  ${format.uppercase()}", color = Color.White, fontSize = 12.sp)
+        // Network health, surfaced straight from the shared OkHttp
+        // interceptor's rolling 60-s window: mean fetch latency and any
+        // 403/timeout counts in that window. Answers the "is it the Wi-Fi
+        // or the upstream?" question at a glance, without opening the
+        // Diagnostics screen. [tv.enktel.app.data.net.StreamHealth].
+        val health by tv.enktel.app.data.net.StreamHealth.state.collectAsStateWithLifecycle()
+        val latency = if (health.meanLatencyMs > 0) "${health.meanLatencyMs} ms" else "—"
+        Text("HTTP latency  $latency (last 60s)", color = Color.White, fontSize = 12.sp)
+        if (health.blocked403 > 0 || health.timeouts > 0) {
+            Text(
+                "HTTP errors  ${health.blocked403}× 403  ·  ${health.timeouts}× timeout",
+                color = tv.enktel.app.ui.theme.EnktelLive, fontSize = 12.sp,
+            )
+            health.lastError?.takeIf { it.isNotBlank() }?.let { err ->
+                Text("Last error  $err", color = tv.enktel.app.ui.theme.EnktelTextDim, fontSize = 11.sp)
+            }
+        }
     }
 }
 
