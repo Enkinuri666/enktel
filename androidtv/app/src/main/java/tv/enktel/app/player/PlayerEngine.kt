@@ -243,6 +243,21 @@ class PlayerEngine(
     private var liveReconnects = 0
     private var playingSinceMs = 0L
     private var bufferingSinceMs = 0L
+    /**
+     * Wall clock at the moment the pacer first dropped below 1.0× on the
+     * current stretch; 0 while the pacer is at normal speed. Checked each
+     * pacer tick: a sustained slow stretch past
+     * [LiveRecovery.LONG_PACED_SLOW_MS] triggers an invisible reconnect,
+     * which is what the viewer was already doing by hand when their
+     * stream drifted into the slow-death state after 20–60 minutes.
+     */
+    private var pacedSlowSinceMs = 0L
+    /**
+     * Last scheduled preventive refresh for the active live session, so a
+     * re-prepare that happened for some other reason doesn't leave a
+     * second one pending. Cleared on every real reconnect and on tune.
+     */
+    private var lastPreventiveRefreshAtMs = 0L
     private val playerHandler by lazy { android.os.Handler(player.applicationLooper) }
 
     /**
@@ -303,6 +318,7 @@ class PlayerEngine(
         liveReconnects++
         reconnecting.value = true
         playingSinceMs = 0L
+        pacedSlowSinceMs = 0L
         // Read the position now, on the player's own thread, while the player
         // still has one: the postDelayed below runs up to sixteen seconds
         // later and `prepare()` on a failed player can reset it.
@@ -441,6 +457,44 @@ class PlayerEngine(
         if (want != pacedSpeed) {
             pacedSpeed = want
             player.setPlaybackSpeed(want)
+        }
+        // Slow-death watchdog. 0.97× is right for a brief dip; sustained,
+        // audio drifts and the session dies with a black screen the user
+        // clears by zapping away and back. Record when the slow stretch
+        // started, clear it the moment the pacer snaps back to 1.0×, and
+        // force a reconnect once the slow stretch exceeds the threshold.
+        // Only applies to live streams — a VOD title wouldn't be paced
+        // slow by this code, but checking isLiveStream guards the future.
+        val nowMs = System.currentTimeMillis()
+        if (isLiveStream && LiveBufferPacer.isRebuilding(pacedSpeed)) {
+            if (pacedSlowSinceMs == 0L) pacedSlowSinceMs = nowMs
+            if (nowMs - pacedSlowSinceMs >= LiveRecovery.LONG_PACED_SLOW_MS) {
+                pacedSlowSinceMs = 0L
+                reconnectStream()
+                return
+            }
+        } else {
+            pacedSlowSinceMs = 0L
+        }
+        // Preventive refresh. Residential CDNs / ISPs / NATs drop
+        // long-lived HTTP sockets after 60–120 min idle, and the panel is
+        // fine but the connection is dead. A half-second re-prepare is
+        // cheap insurance against the eventual hour of frozen frame. Uses
+        // the same reconnectStream path so a reset is invisible and the
+        // retry budget still counts.
+        if (isLiveStream && playingSinceMs > 0L) {
+            val playedMs = nowMs - playingSinceMs
+            val sinceLastRefresh = if (lastPreventiveRefreshAtMs == 0L) {
+                playedMs
+            } else {
+                nowMs - lastPreventiveRefreshAtMs
+            }
+            if (playedMs >= LiveRecovery.PREVENTIVE_REFRESH_MS &&
+                sinceLastRefresh >= LiveRecovery.PREVENTIVE_REFRESH_MS
+            ) {
+                lastPreventiveRefreshAtMs = nowMs
+                reconnectStream()
+            }
         }
     }
 
@@ -1390,6 +1444,8 @@ class PlayerEngine(
         isLiveStream = live
         playingSinceMs = 0L
         bufferingSinceMs = 0L
+        pacedSlowSinceMs = 0L
+        lastPreventiveRefreshAtMs = 0L
         resetPacing()
         val builder = MediaItem.Builder().setUri(url).apply {
             // Pin the MIME type when the caller asked us to skip container

@@ -250,6 +250,40 @@ object LiveRecovery {
     const val VOD_STALL_MS = 40_000L
 
     /**
+     * The slow-death pattern.
+     *
+     * A live stream whose panel delivers segments *slightly* more slowly than
+     * real time never fully stalls — the buffer pacer eases playback to 0.97×
+     * and keeps the picture up. That is right for a brief dip and wrong for
+     * a sustained one: audio decoded at 0.97× over an hour drifts noticeably
+     * against the video clock, dropped frames accumulate as decoders fight
+     * the tiny pitch shift, and the whole session eventually gives up with
+     * a black screen the user clears by switching channels and back.
+     *
+     * Reconnecting at ten minutes of sustained slow playback automates that
+     * recovery before the drift becomes audible. It is the same operation
+     * the user was already doing, decided for them.
+     */
+    const val LONG_PACED_SLOW_MS = 10L * 60L * 1000L
+
+    /**
+     * The network-side slow death.
+     *
+     * Residential CDNs, ISPs and intermediate NATs drop long-lived HTTP
+     * connections after about 60–120 minutes of idle TCP keepalive. The
+     * panel is still healthy, but the socket is dead; ExoPlayer sees
+     * whatever stale bytes are still in the receive buffer and slowly
+     * grinds to BUFFERING. A proactive re-prepare of the current channel
+     * every 90 minutes refreshes the socket invisibly — a half-second blip
+     * against an eventual hour of black screen.
+     *
+     * Only applies to live, and only when the current session has been
+     * playing continuously; a session that reconnected recently resets the
+     * clock. Measured against playingSinceMs, not session uptime.
+     */
+    const val PREVENTIVE_REFRESH_MS = 90L * 60L * 1000L
+
+    /**
      * Retry a failed load patiently, because a file is not going anywhere.
      *
      * VOD got Media3's default — three attempts, backing off to five seconds —
