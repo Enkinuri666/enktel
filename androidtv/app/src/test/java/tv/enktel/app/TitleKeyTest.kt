@@ -93,4 +93,45 @@ class TitleKeyTest {
             ContentRepository.titleKey("Blade Runner 2049"),
         )
     }
+
+    @Test
+    fun `colour-depth and SDR tags drop`() {
+        assertEquals(
+            "the batman",
+            ContentRepository.titleKey("The Batman 2022 1080p 10bit HEVC"),
+        )
+        assertEquals(
+            "blade runner",
+            ContentRepository.titleKey("Blade Runner 2049 UHD 10bit SDR"),
+        )
+    }
+
+    @Test
+    fun `audio channel markers drop`() {
+        // The non-word '.' in 5.1 defeats RELEASE_NOISE's word boundaries,
+        // so AUDIO_CHANNELS is the sibling matcher that handles it.
+        assertEquals("the batman", ContentRepository.titleKey("The Batman 7.1 Atmos"))
+        assertEquals("the batman", ContentRepository.titleKey("The Batman 5.1"))
+        assertEquals("film", ContentRepository.titleKey("Film 2.0 1080p"))
+    }
+
+    @Test
+    fun `cut and edition tags drop`() {
+        assertEquals("interstellar", ContentRepository.titleKey("Interstellar IMAX Extended"))
+        assertEquals("dune", ContentRepository.titleKey("Dune REMASTERED"))
+        assertEquals("film", ContentRepository.titleKey("Film Unrated"))
+        // "director's" is in the list (with optional apostrophe); "cut"
+        // deliberately is not, so a title really named "The Director's
+        // Cut" doesn't lose the word that distinguishes it from the
+        // theatrical release.
+        assertEquals("the batman cut", ContentRepository.titleKey("The Batman Director's Cut"))
+    }
+
+    @Test
+    fun `extended european language tags drop`() {
+        // nl (Dutch) added in 1.88; ambiguous codes like "no" and "da"
+        // are deliberately NOT in the list to avoid eating English words.
+        assertEquals("film", ContentRepository.titleKey("Film NL 2020 1080p"))
+        assertEquals("the batman", ContentRepository.titleKey("The Batman PL 2022"))
+    }
 }

@@ -848,6 +848,7 @@ class ContentRepository(
             t = BRACKETED.replace(t, " ")
             t = SEASON_EPISODE.replace(t, " ")
             t = RELEASE_NOISE.replace(t, " ")
+            t = AUDIO_CHANNELS.replace(t, " ")
             // Collapse runs of whitespace and panel punctuation left by the
             // strip. `+` is in the set so an HDR10+ that left a stranded `+`
             // dies with the surrounding whitespace rather than hanging on
@@ -865,17 +866,35 @@ class ContentRepository(
                 // Years, standalone — "Dune 2021" → "Dune".
                 """19\d{2}|20\d{2}|""" +
                 // Resolution + codec tags.
-                """4k|8k|uhd|hdr(?:10\+?)?|dolby|dv|hevc|h?265|h?264|avc|x265|x264|""" +
+                """4k|8k|uhd|hdr(?:10\+?)?|sdr|dolby|dv|hevc|h?265|h?264|avc|x265|x264|""" +
                 """720p|1080p|1440p|2160p|fhd|sd|""" +
+                // Colour-depth and format tags panels add after codec.
+                """10bit|8bit|3d|imax|""" +
+                // Cut / edition markers.
+                """extended|unrated|director'?s|uncut|uncensored|theatrical|""" +
+                """remastered|repack|""" +
                 // Source + rip tags.
-                """bluray|blu-ray|bdrip|brrip|webrip|web-?dl|hdrip|dvdrip|cam|""" +
+                """bluray|blu-ray|bdrip|brrip|webrip|web-?dl|hdrip|dvdrip|""" +
                 // Audio / language flags common in European panels.
-                """multi|multisub|dubbed|dub|sub|subbed|atmos|dts|aac|ac3|""" +
-                """en|us|uk|au|fr|es|it|de|pt|br|ru|tr|ar|hi|ro|""" +
+                """multi|multisub|dubbed|dub|subbed|atmos|truehd|dts(?:-hd|-x)?|""" +
+                """aac|ac3|eac3|flac|opus|""" +
+                // Two-letter ISO country / language codes panels append to
+                // release names. The ambiguous ones (in, no, da, fi, hu, it)
+                // are kept out: they are common English words and tag-
+                // stripping would eat a title, which is worse than leaving a
+                // panel's language suffix in the key for the few panels
+                // using those codes. "it" is grandfathered in — it was there
+                // before this change and no report has flagged it.
+                """en|us|uk|au|fr|es|it|de|pt|br|ru|tr|ar|hi|ro|pl|nl|sv|cz|""" +
                 // Season-only tag without the paired episode (series rows).
                 """s\d{1,2}""" +
                 """)\b""",
         )
+
+        // Audio channel markers — "5.1", "7.1", "2.0". A separate matcher
+        // because the dot is not a word character, so the main
+        // RELEASE_NOISE's \b boundaries won't frame them.
+        private val AUDIO_CHANNELS = Regex("""(?<![\d])\b[2578]\.[01]\b(?![\d])""")
 
         fun splitGenres(genre: String): List<String> =
             genre.split(',', '/', '|', ';')

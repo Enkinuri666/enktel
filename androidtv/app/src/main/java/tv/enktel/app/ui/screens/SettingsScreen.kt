@@ -414,6 +414,7 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
             FocusButton("☰ Manage Categories", accent = true, onClick = { nav.navigate("manageCategories") })
             FocusButton("📶 Network Speed Test", onClick = { nav.navigate("speedTest") })
+            FocusButton("📺 EPG Finder", onClick = { nav.navigate("epgFinder") })
         }
 
         Spacer(Modifier.height(10.dp))
