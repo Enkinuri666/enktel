@@ -2284,7 +2284,7 @@ private fun ScoreboardCard(
     Column(
         Modifier
             .width(380.dp)
-            .frostedGlass(corner = 18.dp)
+            .frostedGlass(corner = 16.dp)
             .padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -2312,8 +2312,8 @@ private fun ScoreboardCard(
                 Text(
                     "$matchedNum", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .border(1.dp, EnktelOk.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, EnktelOk.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 2.dp),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -2366,9 +2366,9 @@ private fun MultiGridTile(label: String, onClick: () -> Unit, quad: Boolean = tr
                         repeat(2) {
                             Box(
                                 Modifier.weight(1f).fillMaxHeight()
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(EnktelOk.copy(alpha = 0.18f))
-                                    .border(1.dp, EnktelOk.copy(alpha = 0.35f), RoundedCornerShape(6.dp)),
+                                    .border(1.dp, EnktelOk.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Box(

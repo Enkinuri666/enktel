@@ -332,7 +332,7 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
         modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .frostedGlass(corner = 26.dp, alpha = 0.86f),
+            .frostedGlass(corner = 24.dp, alpha = 0.86f),
     ) {
         Row(
             Modifier.fillMaxWidth().height(71.dp),

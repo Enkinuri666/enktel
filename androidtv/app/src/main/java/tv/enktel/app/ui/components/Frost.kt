@@ -50,7 +50,7 @@ import tv.enktel.app.ui.theme.EnktelTextDim
  * outlined format chips, and the live-channel card with its red progress bar.
  */
 
-private val FrostCorner = 14.dp
+private val FrostCorner = 16.dp
 private val Gold = Color(0xFFE9C46A)
 
 /** A frosted glass slab: translucent surface fill and a hairline top-lit edge. */
@@ -100,8 +100,8 @@ fun QualityBadges(tags: FormatTags.Tags, modifier: Modifier = Modifier) {
         if (tags.uhd || tags.hdr != null) {
             Row(
                 Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .border(1.dp, Gold.copy(alpha = 0.85f), RoundedCornerShape(6.dp)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, Gold.copy(alpha = 0.85f), RoundedCornerShape(8.dp)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (tags.uhd) {
@@ -124,9 +124,9 @@ fun QualityBadges(tags: FormatTags.Tags, modifier: Modifier = Modifier) {
             Text(
                 "Dolby Atmos", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(Color.Black.copy(alpha = 0.45f))
-                    .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 3.dp),
             )
         }
@@ -239,7 +239,7 @@ fun LiveNowCard(
                 }
                 Spacer(Modifier.height(6.dp))
                 Box(
-                    Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp))
+                    Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp))
                         .background(Color.White.copy(alpha = 0.18f)),
                 ) {
                     Box(
@@ -256,7 +256,7 @@ fun LiveNowCard(
 @Composable
 fun FrostProgress(fraction: Float, modifier: Modifier = Modifier, color: Color = EnktelBlue) {
     Box(
-        modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
+        modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(4.dp))
             .background(Color.White.copy(alpha = 0.14f)),
     ) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(4.dp).background(color))

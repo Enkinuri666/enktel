@@ -364,7 +364,7 @@ fun TvNavShell(
                 // rounded trailing edge and a hairline highlight, as in the
                 // redesign, rather than a gradient that fades into the art.
                 .padding(vertical = 8.dp)
-                .clip(RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp))
+                .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
                 .background(
                     Brush.verticalGradient(
                         listOf(
@@ -378,7 +378,7 @@ fun TvNavShell(
                     Brush.verticalGradient(
                         listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f)),
                     ),
-                    RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+                    RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                 )
                 // `hasFocus` on the outer Column covers any descendant, so the
                 // rail flips open the moment D-Pad-Left brings focus onto any

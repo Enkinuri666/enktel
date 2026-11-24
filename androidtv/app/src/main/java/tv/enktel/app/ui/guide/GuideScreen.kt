@@ -971,7 +971,7 @@ private fun GuideCategoryColumn(
 private fun GuideCategoryItem(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) EnktelBlue else Color.Transparent,
             contentColor = if (selected) tv.enktel.app.ui.theme.EnktelOnPrimary else tv.enktel.app.ui.theme.EnktelText,

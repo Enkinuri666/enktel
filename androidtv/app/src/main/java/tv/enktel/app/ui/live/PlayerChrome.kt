@@ -143,7 +143,7 @@ fun LiveInfoOverlay(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 40.dp, vertical = 24.dp)
-                .frostedGlass(corner = 22.dp, alpha = 0.78f)
+                .frostedGlass(corner = 24.dp, alpha = 0.78f)
                 .padding(horizontal = 22.dp, vertical = 16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -274,9 +274,9 @@ private fun ActionPill(text: String, highlighted: Boolean = false) {
         color = if (highlighted) Color(0xFF0A1317) else Color.White,
         fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(if (highlighted) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.10f))
-            .border(1.dp, Color.White.copy(alpha = if (highlighted) 0f else 0.18f), RoundedCornerShape(10.dp))
+            .border(1.dp, Color.White.copy(alpha = if (highlighted) 0f else 0.18f), RoundedCornerShape(12.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
 }

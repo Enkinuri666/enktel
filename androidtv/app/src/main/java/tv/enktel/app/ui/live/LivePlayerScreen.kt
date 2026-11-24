@@ -1350,7 +1350,7 @@ private fun ChannelPanel(
                 .width(380.dp)
                 .fillMaxHeight()
                 .padding(vertical = 20.dp, horizontal = 12.dp)
-                .frostedGlass(corner = 18.dp, alpha = 0.80f)
+                .frostedGlass(corner = 24.dp, alpha = 0.80f)
                 .padding(vertical = 14.dp),
         ) {
             Text("QUICK CHANNEL SURF", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(horizontal = 16.dp))
@@ -1567,7 +1567,7 @@ private fun ChannelRow(
                         Text(
                             "${ch.num}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.align(Alignment.BottomStart)
-                                .background(Color.Black.copy(0.6f), RoundedCornerShape(topEnd = 6.dp))
+                                .background(Color.Black.copy(0.6f), RoundedCornerShape(topEnd = 8.dp))
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                         )
                     }

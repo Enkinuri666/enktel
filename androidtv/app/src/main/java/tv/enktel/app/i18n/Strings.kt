@@ -114,6 +114,8 @@ data class Strings(
     val blurbRecordings: String,
     val blurbCatchup: String,
     val blurbSettings: String,
+    val blurbPlatforms: String,
+    val blurbSearch: String,
 
     // ---- signing in ----------------------------------------------------
     val signInTitle: String,
@@ -267,6 +269,8 @@ data class Strings(
         "recordings" -> blurbRecordings
         "catchup" -> blurbCatchup
         "settings" -> blurbSettings
+        "discover" -> blurbPlatforms
+        "search" -> blurbSearch
         else -> null
     }
 
@@ -355,6 +359,8 @@ val EnglishStrings = Strings(
     blurbRecordings = "Shows you set the app to record",
     blurbCatchup = "Replay something that has already aired",
     blurbSettings = "Playback, account, diagnostics",
+    blurbPlatforms = "Streaming apps and services, in one place",
+    blurbSearch = "Find a channel, film or show by name",
 
     signInTitle = "Sign in to EnkTel",
     signInLede = "Use the username and password from your welcome email.",
@@ -490,6 +496,8 @@ val SerboCroatianStrings = Strings(
     blurbRecordings = "Emisije koje ste zakazali za snimanje",
     blurbCatchup = "Pogledajte ponovo ono što je već emitovano",
     blurbSettings = "Reprodukcija, nalog, dijagnostika",
+    blurbPlatforms = "Striming aplikacije i usluge, na jednom mestu",
+    blurbSearch = "Pronađite kanal, film ili seriju po imenu",
 
     signInTitle = "Prijavite se na EnkTel",
     signInLede = "Unesite korisničko ime i lozinku iz e-poruke dobrodošlice.",
