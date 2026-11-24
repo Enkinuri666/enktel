@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.downloads
 
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
@@ -84,6 +85,10 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
     val speeds by graph.downloads.speeds.collectAsStateWithLifecycle()
 
     var confirmDelete by remember { mutableStateOf<DownloadEntry?>(null) }
+    // v1.89 Downloads & DVR: scheduled recordings sit at the top of this
+    // screen, each cancellable in place.
+    val recordings by remember { graph.db.recordingDao().all() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val scheduledRecs = remember(recordings) { recordings.filter { it.status == "SCHEDULED" }.sortedBy { it.startMs } }
 
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -153,7 +158,7 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             .padding(start = shape.padH, end = shape.padH, top = shape.padV),
     ) {
         tv.enktel.app.ui.components.ScreenHeader(
-            title = "Downloads",
+            title = "Downloads & DVR",
             subtitle = "${totalBytes.humanBytes()} on this device",
         )
         Spacer(Modifier.height(8.dp))
@@ -248,6 +253,38 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
 
         Spacer(Modifier.height(14.dp))
 
+        if (scheduledRecs.isNotEmpty()) {
+            Text(
+                "Scheduled DVR Recordings", color = EnktelTextDim, fontSize = 20.sp,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            scheduledRecs.take(6).forEach { rec ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${rec.title} (${rec.channelName}, ${tv.enktel.app.data.TimeFormat.format("dd/MM HH:mm", rec.startMs)})",
+                        color = Color.White, fontSize = 18.sp, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    tv.enktel.app.ui.components.FocusButton(
+                        "Cancel Recording",
+                        icon = androidx.compose.material.icons.Icons.Rounded.Close,
+                        onClick = {
+                            scope.launch {
+                                tv.enktel.app.dvr.RecordingAlarms.cancel(ctx, rec.id)
+                                runCatching { graph.db.recordingDao().delete(rec) }
+                            }
+                        },
+                    )
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
+            }
+            Spacer(Modifier.height(18.dp))
+        }
+
         if (entries.isEmpty()) {
             CenterMessage(
                 "Nothing downloaded yet. Open a movie or episode and choose Download.",
@@ -267,6 +304,22 @@ fun DownloadsScreen(graph: AppGraph, nav: NavHostController) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = shape.padV + 8.dp),
         ) {
+            if (done.isNotEmpty()) {
+                item(key = "downloadedCards") {
+                    Column {
+                        Text("Downloaded Content", color = EnktelTextDim, fontSize = 20.sp)
+                        Spacer(Modifier.height(10.dp))
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+                        ) {
+                            items(done, key = { "card-" + it.id }) { entry ->
+                                DownloadedCard(entry, onPlay = playAction(entry, nav))
+                            }
+                        }
+                    }
+                }
+            }
             if (running.isNotEmpty()) {
                 item { GroupHeader("In progress", running.size) }
                 items(running, key = { it.id }) { entry ->
@@ -526,5 +579,36 @@ private fun DownloadRow(
                 onClick = onDelete,
             )
         }
+    }
+}
+
+
+/** v1.89 downloaded-content card: artwork, title and what it is. */
+@Composable
+private fun DownloadedCard(entry: DownloadEntry, onPlay: (() -> Unit)?) {
+    Column(Modifier.width(300.dp)) {
+        tv.enktel.app.ui.components.FrostCard(
+            onClick = { onPlay?.invoke() },
+            width = 300.dp, height = 168.dp,
+        ) { _ ->
+            Box(Modifier.fillMaxSize()) {
+                if (entry.poster.isNotBlank()) {
+                    coil3.compose.AsyncImage(
+                        model = entry.poster, contentDescription = entry.title,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    tv.enktel.app.ui.components.Monogram(entry.title)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(entry.title, color = Color.White, fontSize = 18.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Text(
+            if (entry.kind == "episode") "S${entry.season}:E${entry.episode} (Episode)" else "(Movie)",
+            color = EnktelTextDim, fontSize = 14.sp,
+        )
     }
 }
