@@ -1,6 +1,8 @@
 package tv.enktel.app.ui.guide
 
 import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.foundation.background
@@ -254,7 +256,7 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            SectionTitle("TV Guide")
+            SectionTitle("EPG")
             Spacer(Modifier.weight(1f))
             tv.enktel.app.ui.components.FocusIconButton(
                 androidx.compose.material.icons.Icons.Rounded.ChevronLeft, "Previous day",
@@ -299,29 +301,22 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             )
         }
         Spacer(Modifier.height(shape.headerGap))
-        // Channel category filter — appears only when the line carries more
-        // than one named category, which is every real subscription.
-        if (categoryChips.isNotEmpty()) {
-            androidx.compose.foundation.lazy.LazyRow(
-                modifier = Modifier.tvRailFocus(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = shape.padH),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                item {
-                    tv.enktel.app.ui.components.GlassChip(
-                        "All", selected = categoryFilter.isBlank(),
-                        onClick = { categoryFilter = "" },
-                    )
-                }
-                items(categoryChips) { cat ->
-                    tv.enktel.app.ui.components.GlassChip(
-                        cat, selected = categoryFilter.equals(cat, ignoreCase = true),
-                        onClick = { categoryFilter = cat },
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
+        // The dock: a live preview and the highlighted programme's detail,
+        // above the grid. Without it the guide is a wall of two-line blocks
+        // and the only way to read a synopsis is to open a dialog, which
+        // means losing your place in the grid to find out whether a
+        // programme is worth stopping on.
+        if (channels.isNotEmpty()) GuideDock(
+            graph = graph,
+            highlighted = highlighted,
+            opening = { playingKey -> guideDefaultHighlight(channels, programs, now, playingKey) },
+            openingKey = Triple(channels, programs, now),
+            playlistName = p.name,
+            onOpen = { c, pr -> selected = c to pr },
+            modifier = Modifier.padding(horizontal = shape.padH),
+        )
+        Spacer(Modifier.height(14.dp))
+
         // Quick-jump chip strip: Today, +1, +2, ... makes navigating a week's worth of EPG
         // a single click instead of six D-pad presses.
         androidx.compose.foundation.lazy.LazyRow(
@@ -364,21 +359,18 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             return
         }
 
-        // The dock: a live preview and the highlighted programme's detail,
-        // above the grid. Without it the guide is a wall of two-line blocks
-        // and the only way to read a synopsis is to open a dialog, which
-        // means losing your place in the grid to find out whether a
-        // programme is worth stopping on.
-        GuideDock(
-            graph = graph,
-            highlighted = highlighted,
-            opening = { playingKey -> guideDefaultHighlight(channels, programs, now, playingKey) },
-            openingKey = Triple(channels, programs, now),
-            playlistName = p.name,
-            modifier = Modifier.padding(horizontal = shape.padH),
-        )
-        Spacer(Modifier.height(14.dp))
-
+        // v1.89 layout: categories as a column down the left of the grid,
+        // the way the redesign has it, instead of a chip strip above it.
+        Row(Modifier.fillMaxSize()) {
+        if (categoryChips.isNotEmpty()) {
+            GuideCategoryColumn(
+                categories = categoryChips,
+                selected = categoryFilter,
+                onSelect = { categoryFilter = it },
+                modifier = Modifier.padding(start = shape.padH, end = 12.dp).width(170.dp).fillMaxHeight(),
+            )
+        }
+        Column(Modifier.weight(1f).fillMaxHeight()) {
         // Timeline header with a live NOW marker: red vertical line at current time
         // if we're viewing today. Scrolls with hScroll so it always aligns.
         val nowOffsetDp = if (dayOffset == 0 && now in dayStart..dayEnd) {
@@ -406,11 +398,10 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                             .height(24.dp),
                         contentAlignment = Alignment.CenterEnd,
                     ) {
-                        Box(
-                            Modifier
-                                .width(3.dp)
-                                .height(20.dp)
-                                .background(EnktelLive, RoundedCornerShape(4.dp)),
+                        Text(
+                            "NOW",
+                            color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(end = 0.dp),
                         )
                     }
                 }
@@ -632,9 +623,11 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                     Modifier
                         .width(2.dp)
                         .fillMaxHeight()
-                        .background(EnktelLive.copy(alpha = 0.55f)),
+                        .background(EnktelBlue.copy(alpha = 0.85f)),
                 )
             }
+        }
+        }
         }
         }
     }
@@ -776,6 +769,8 @@ private fun GuideDock(
     /** Whatever [opening] depends on, so its answer is recomputed only when that changes. */
     openingKey: Any,
     playlistName: String,
+    /** Opens the programme dialog (record, catch-up, watch). */
+    onOpen: (Channel, EpgProgram) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
@@ -800,67 +795,6 @@ private fun GuideDock(
     val dockHeight = if (shape.short) 116.dp else 184.dp
     val previewWidth = if (shape.short) 202.dp else 320.dp
     Row(modifier.fillMaxWidth().height(dockHeight)) {
-        Box(
-            Modifier
-                .width(previewWidth)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.Black),
-            contentAlignment = Alignment.Center,
-        ) {
-            val engine = graph.playback.engineOrNull()
-            if (nowPlaying != null && engine != null) {
-                // First migrated surface that shares the session's engine.
-                //
-                // No bind/unbind here any more. Those exist because a
-                // PlayerView has to be handed the player explicitly, and two
-                // hosts mounting in an unpredictable order could leave the
-                // wrong one holding it. PlayerSurface attaches and detaches
-                // with the composition instead, so the ordering problem the
-                // hand-off was solving does not arise for this host.
-                //
-                // What still matters is that only one surface targets the
-                // engine at a time — two would fight and one would go black.
-                // That is already guaranteed: this dock claims inlinePreview
-                // for as long as it is composed (see the DisposableEffect
-                // above) and the floating mini window stands down while
-                // anything is claiming.
-                //
-                // TEXTURE_VIEW, despite this being a single static panel where
-                // SURFACE_VIEW would be cheaper: the dock is clipped to a
-                // 10 dp rounded rectangle, and a SurfaceView is a separate
-                // window layer that ignores its parent's clip. It would draw
-                // square corners over a rounded frame. A TextureView is an
-                // ordinary view and clips normally.
-                //
-                // ContentFrame rather than a bare PlayerSurface because the
-                // PlayerView this replaces letterboxed (RESIZE_MODE_FIT, its
-                // default) and kept the last frame across a player reset.
-                // PlayerSurface on its own does neither: it fills whatever box
-                // it is given, so a 4:3 channel would come out stretched, and
-                // it goes black the moment the engine re-prepares. ContentFrame
-                // is the composable that carries both behaviours.
-                ContentFrame(
-                    player = engine.player,
-                    surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-                    contentScale = ContentScale.Fit,
-                    keepContentOnReset = true,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (ch != null && ch.logo.isNotBlank()) {
-                AsyncImage(
-                    model = ch.logo, contentDescription = null,
-                    modifier = Modifier.fillMaxSize().padding(34.dp),
-                )
-            } else if (ch != null) {
-                // No picture and no logo: the channel's own plate, rather than
-                // a black box announcing that nothing is playing.
-                tv.enktel.app.ui.components.Monogram(ch.name)
-            } else {
-                Text("Nothing playing", color = EnktelTextDim, fontSize = 12.sp)
-            }
-        }
-        Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f).fillMaxHeight()) {
             if (prog == null || ch == null) {
                 Text(
@@ -921,6 +855,27 @@ private fun GuideDock(
                 Text(prog.genre, color = EnktelTextDim, fontSize = 11.sp, maxLines = 1)
                 Spacer(Modifier.height(4.dp))
             }
+            // The redesign's action chips: format (when the channel name says
+            // so), Catch-Up when the channel archives, and Record. Both actions
+            // open the programme dialog, which owns record and catch-up.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                val tags = remember(ch.key) { tv.enktel.app.ui.components.FormatTags.of(ch.name, ch.categoryName) }
+                val fps = if (Regex("""\b(50|60) ?FPS\b""", RegexOption.IGNORE_CASE).containsMatchIn(ch.name)) " 60FPS" else ""
+                if (tags.uhd) tv.enktel.app.ui.components.InfoChip("4K$fps")
+                if (ch.hasArchive) {
+                    tv.enktel.app.ui.components.FocusButton(
+                        "Catch-Up",
+                        icon = androidx.compose.material.icons.Icons.Rounded.History,
+                        onClick = { onOpen(ch, prog) },
+                    )
+                }
+                tv.enktel.app.ui.components.FocusButton(
+                    "Record",
+                    icon = androidx.compose.material.icons.Icons.Rounded.FiberManualRecord,
+                    onClick = { onOpen(ch, prog) },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             if (prog.desc.isNotBlank()) {
                 Text(
                     prog.desc, color = Color.White.copy(0.78f), fontSize = 12.sp,
@@ -928,5 +883,113 @@ private fun GuideDock(
                 )
             }
         }
+        Spacer(Modifier.width(18.dp))
+        Box(
+            Modifier
+                .width(previewWidth)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            val engine = graph.playback.engineOrNull()
+            if (nowPlaying != null && engine != null) {
+                // First migrated surface that shares the session's engine.
+                //
+                // No bind/unbind here any more. Those exist because a
+                // PlayerView has to be handed the player explicitly, and two
+                // hosts mounting in an unpredictable order could leave the
+                // wrong one holding it. PlayerSurface attaches and detaches
+                // with the composition instead, so the ordering problem the
+                // hand-off was solving does not arise for this host.
+                //
+                // What still matters is that only one surface targets the
+                // engine at a time — two would fight and one would go black.
+                // That is already guaranteed: this dock claims inlinePreview
+                // for as long as it is composed (see the DisposableEffect
+                // above) and the floating mini window stands down while
+                // anything is claiming.
+                //
+                // TEXTURE_VIEW, despite this being a single static panel where
+                // SURFACE_VIEW would be cheaper: the dock is clipped to a
+                // 10 dp rounded rectangle, and a SurfaceView is a separate
+                // window layer that ignores its parent's clip. It would draw
+                // square corners over a rounded frame. A TextureView is an
+                // ordinary view and clips normally.
+                //
+                // ContentFrame rather than a bare PlayerSurface because the
+                // PlayerView this replaces letterboxed (RESIZE_MODE_FIT, its
+                // default) and kept the last frame across a player reset.
+                // PlayerSurface on its own does neither: it fills whatever box
+                // it is given, so a 4:3 channel would come out stretched, and
+                // it goes black the moment the engine re-prepares. ContentFrame
+                // is the composable that carries both behaviours.
+                ContentFrame(
+                    player = engine.player,
+                    surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                    contentScale = ContentScale.Fit,
+                    keepContentOnReset = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (ch != null && ch.logo.isNotBlank()) {
+                AsyncImage(
+                    model = ch.logo, contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(34.dp),
+                )
+            } else if (ch != null) {
+                // No picture and no logo: the channel's own plate, rather than
+                // a black box announcing that nothing is playing.
+                tv.enktel.app.ui.components.Monogram(ch.name)
+            } else {
+                Text("Nothing playing", color = EnktelTextDim, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+
+/**
+ * The redesign's category column: "All Channels" then each group, the
+ * selected one filled with the accent.
+ */
+@Composable
+private fun GuideCategoryColumn(
+    categories: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        item { GuideCategoryItem("All Channels", selected.isBlank()) { onSelect("") } }
+        items(categories) { cat ->
+            GuideCategoryItem(cat, selected.equals(cat, ignoreCase = true)) { onSelect(cat) }
+        }
+    }
+}
+
+@Composable
+private fun GuideCategoryItem(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) EnktelBlue else Color.Transparent,
+            contentColor = if (selected) tv.enktel.app.ui.theme.EnktelOnPrimary else tv.enktel.app.ui.theme.EnktelText,
+            focusedContainerColor = if (selected) EnktelBlue else EnktelSurfaceHigh,
+            focusedContentColor = if (selected) tv.enktel.app.ui.theme.EnktelOnPrimary else tv.enktel.app.ui.theme.EnktelText,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                androidx.compose.foundation.BorderStroke(2.dp, EnktelBlue),
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            label, fontSize = 17.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+        )
     }
 }

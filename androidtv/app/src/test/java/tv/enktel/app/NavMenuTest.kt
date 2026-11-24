@@ -40,7 +40,7 @@ class NavMenuTest {
         // the same list and the mode stops meaning anything.
         assertTrue(
             "simple menu has ${navItemsFor(true).size} entries against ${FULL_ITEMS.size}",
-            navItemsFor(true).size <= FULL_ITEMS.size / 2 + 1,
+            navItemsFor(true).size <= FULL_ITEMS.size * 2 / 3,
         )
     }
 
@@ -57,10 +57,13 @@ class NavMenuTest {
 
     @Test
     fun `the essentials stay on the rail`() {
-        // These six are the claim simple mode makes. Changing the claim is
-        // fine; changing it by accident is not.
+        // The v1.89 redesign's rail. Changing the claim is fine; changing it
+        // by accident is not.
         val ids = SIMPLE_ITEMS.map { it.id }
-        assertEquals(listOf("home", "discover", "live", "movies", "series", "sports", "search"), ids)
+        assertEquals(
+            listOf("home", "live", "guide", "sports", "movies", "series", "downloads", "settings"),
+            ids,
+        )
     }
 
     @Test
