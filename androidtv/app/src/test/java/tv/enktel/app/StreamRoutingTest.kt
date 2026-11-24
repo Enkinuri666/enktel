@@ -36,11 +36,32 @@ class StreamRoutingTest {
         assertEquals(MimeTypes.VIDEO_MP4, e.containerMimeFor("/a/b.m4v"))
     }
 
-    @Test fun `ts and extensionless stay unpinned`() {
-        // A .ts URL is routinely answered with an HLS playlist by Xtream
-        // panels, so it must keep sniffing and keep its HLS retry.
+    @Test fun `xtream live ts shapes are pinned to MP2T`() {
+        // containerMimeFor stays about VOD containers only…
         assertNull(e.containerMimeFor("/live/u/p/99.ts"))
-        assertNull(e.containerMimeFor("/live/u/p/99"))
+        // …but the live candidate pins MPEG-TS so header sniffing is skipped.
+        listOf(
+            "http://x-api.cc/live/u/p/99.ts",
+            "http://x-api.cc/live/u/p/99",
+            "http://x-api.cc/u/p/99",
+            "http://x-api.cc:8080/u/p/99.ts?token=1",
+        ).forEach {
+            assertEquals(it, MimeTypes.VIDEO_MP2T, e.initialCandidate(it).mimeType)
+        }
+    }
+
+    @Test fun `only the raw root shape is flagged for the VLC fallback`() {
+        assertEquals(true, e.isRawRootTs("http://x-api.cc/u/p/99"))
+        assertEquals(false, e.isRawRootTs("http://x-api.cc/live/u/p/99"))
+        assertEquals(false, e.isRawRootTs("http://x-api.cc/live/u/p/99.ts"))
+        assertEquals(false, e.isRawRootTs("http://x-api.cc/movie/u/p/99"))
+    }
+
+    @Test fun `a pinned ts still reaches HLS after unpinning`() {
+        val ts = e.initialCandidate("http://x-api.cc/live/u/p/99.ts")
+        val unpinned = e.reinterpret(ts)
+        assertEquals("", unpinned?.mimeType)
+        assertEquals(MimeTypes.APPLICATION_M3U8, e.reinterpret(unpinned!!)?.mimeType)
     }
 
     @Test fun `m3u8 routes to HLS up front`() {
@@ -107,9 +128,11 @@ class StreamRoutingTest {
     }
 
     @Test fun `an extensionless URL is still read as HLS`() {
-        // Unchanged behaviour: nothing to unpin, so the HLS reading applies.
+        // The MP2T pin comes off first; the second reinterpretation is HLS.
         val bare = e.initialCandidate("http://x-api.cc/live/u/p/99")
-        assertEquals(MimeTypes.APPLICATION_M3U8, e.reinterpret(bare)?.mimeType)
+        val sniffed = e.reinterpret(bare)
+        assertEquals("", sniffed?.mimeType)
+        assertEquals(MimeTypes.APPLICATION_M3U8, e.reinterpret(sniffed!!)?.mimeType)
     }
 
     @Test fun `reinterpretation terminates`() {

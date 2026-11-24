@@ -1208,8 +1208,28 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                 "automatically. Croatian is matched on hr, hrv and the withdrawn scr code that " +
                 "ex-Yugoslav muxes still emit.\n\n" +
                 "It cannot create captions. A channel that transmits none will still show none — " +
-                "that would need speech recognition, which is a different feature. Takes effect " +
+                "that would need speech recognition — see Live Caption below. Takes effect " +
                 "on the next channel you open.",
+            color = EnktelTextDim, fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+
+        // ---- Generated captions: Android Live Caption -----------------------
+        val captionCtx = androidx.compose.ui.platform.LocalContext.current
+        Text(
+            "Captions for streams that have none",
+            color = EnktelText, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+        )
+        FocusButton(
+            "Open Live Caption / caption settings",
+            onClick = { tv.enktel.app.player.LiveCaption.openSettings(captionCtx) },
+        )
+        Text(
+            "Android's Live Caption transcribes any audio the app plays, on the device, with " +
+                "nothing sent anywhere. Apps are not allowed to switch it on themselves, so " +
+                "this opens the system page where you can. Where the device has no Live " +
+                "Caption (Fire OS, most Android TV boxes) it opens the system caption " +
+                "settings instead.",
             color = EnktelTextDim, fontSize = 13.sp,
         )
         Spacer(Modifier.height(10.dp))

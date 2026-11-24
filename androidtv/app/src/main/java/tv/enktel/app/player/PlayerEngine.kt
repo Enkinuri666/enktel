@@ -159,7 +159,40 @@ class PlayerEngine(
      * from one channel onto the next.
      */
     fun setStreamUserAgent(ua: String) {
-        streamHttpFactory?.setUserAgent(ua.ifBlank { tv.enktel.app.DEFAULT_UA })
+        streamUserAgent = ua.ifBlank { tv.enktel.app.DEFAULT_UA }
+        streamHttpFactory?.setUserAgent(streamUserAgent)
+    }
+
+    @Volatile
+    private var streamUserAgent: String = tv.enktel.app.DEFAULT_UA
+
+    /**
+     * Non-null while LibVLC is playing this stream instead of Media3. The
+     * player screens compose [VlcFallbackSurface] for it; see [VlcFallback]
+     * for when the hand-off happens and why Media3 stays primary.
+     */
+    val vlcFallbackUrl = MutableStateFlow<String?>(null)
+
+    /** The UA LibVLC should present — the same one Media3 was using. */
+    val vlcUserAgent: String get() = streamUserAgent
+
+    /** Hand the current stream to LibVLC. False when it cannot help (DRM,
+     *  non-HTTP scheme) so the caller reports the Media3 error instead. */
+    private fun handOffToVlc(url: String?): Boolean {
+        if (url == null || pendingDrm != null) return false
+        if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) return false
+        android.util.Log.i("PlayerEngine", "Media3 gave up; handing off to LibVLC")
+        player.stop()
+        error.value = null
+        vlcFallbackUrl.value = url
+        return true
+    }
+
+    /** Called by the VLC surface when LibVLC fails as well. */
+    fun onVlcFailed() {
+        vlcFallbackUrl.value = null
+        error.value = "Stream could not be opened by Media3 or LibVLC"
+        diagnose(lastUrl)
     }
 
 
@@ -542,6 +575,10 @@ class PlayerEngine(
      *  via [play]'s `forceMimeType` (used by the "Force MP4 fallback (VOD)"
      *  setting). Cleared automatically at the top of every new [play] call. */
     private var forcedMimeType: String = ""
+    /** The screen-level "Force MP4 fallback" pin, kept apart from the per-candidate
+     *  pin so an unpinned retry really is unpinned (it used to inherit the
+     *  previous candidate's pin, which made the sniff retry a no-op). */
+    private var screenForcedMimeType: String = ""
 
     val player: ExoPlayer
 
@@ -625,7 +662,30 @@ class PlayerEngine(
         // The factory reads its UA when it creates each data source, so setting
         // it here changes the next stream without rebuilding the player.
         streamHttpFactory = httpFactory
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
+        // VOD: multi-connection range fetching behind a disk cache.
+        //
+        // ParallelRangeDataSource splits a large progressive file across four
+        // OkHttp connections to get past per-connection bandwidth caps on
+        // Xtream panels and CDNs; anything small or range-less degrades to a
+        // single connection on its own. VodCache keeps what has been fetched
+        // so backward seeks and re-buffers do not re-download it. Live keeps
+        // the plain OkHttp source: segments are small, the window rolls, and
+        // nothing about a channel is worth keeping on disk.
+        val upstream: androidx.media3.datasource.DataSource.Factory = if (live) {
+            httpFactory
+        } else {
+            VodCache.wrap(
+                context,
+                ParallelRangeDataSource.Factory(
+                    http,
+                    userAgent = { streamUserAgent },
+                    connections = if (lowRam) 2 else ParallelRangeDataSource.DEFAULT_CONNECTIONS,
+                    chunkBytes = if (lowRam) 2 * 1024 * 1024 else ParallelRangeDataSource.DEFAULT_CHUNK_BYTES,
+                ),
+                lowRam,
+            )
+        }
+        val dataSourceFactory = DefaultDataSource.Factory(context, upstream)
 
         val extMode = AudioDecoding.extensionRendererMode(decoderMode)
         val renderers = DefaultRenderersFactory(context)
@@ -1050,6 +1110,14 @@ class PlayerEngine(
                 // chain is walked: drop a wrong extension-derived pin so the
                 // bytes get sniffed, or read an extensionless URL as HLS. See
                 // Routing.reinterpret.
+                // Raw root-path MPEG-TS (`/user/pass/1234`, no /live/, no
+                // extension) that TsExtractor cannot parse — typically a
+                // malformed PAT/PMT. Reinterpreting it will not help; LibVLC's
+                // demuxer tolerates these, so hot-swap straight away.
+                if (err.errorCode in CONTAINER_ERRORS && isLiveStream &&
+                    lastUrl?.let { Routing.isRawRootTs(it) } == true &&
+                    handOffToVlc(lastUrl)
+                ) return
                 val hlsRetry = if (err.errorCode in CONTAINER_ERRORS) {
                     currentCandidate?.let { Routing.reinterpret(it) }
                 } else null
@@ -1101,6 +1169,10 @@ class PlayerEngine(
                     // diagnose() cannot help — it speaks HTTP, and would throw
                     // on the scheme before reaching the panel.
                     error.value = "RTMP streams are not supported by this build"
+                } else if (handOffToVlc(currentCandidate?.url ?: lastUrl)) {
+                    // Every Media3 reading failed; LibVLC gets one go before
+                    // the viewer sees an error. onVlcFailed reports if it
+                    // fails too.
                 } else {
                     error.value = err.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ')
                     // Every shape failed. Ask the panel what it is actually
@@ -1325,6 +1397,7 @@ class PlayerEngine(
         candidateQueue = mutableListOf()
         triedFallback.value = false
         forcedMimeType = forceMimeType
+        screenForcedMimeType = forceMimeType
         liveReconnects = 0
         pendingDrm = drm?.takeUnless { it.isEmpty }
         pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
@@ -1411,6 +1484,7 @@ class PlayerEngine(
         if (urls.isEmpty()) return
         pendingDrm = drm?.takeUnless { it.isEmpty }
         pendingMetadata = buildMetadata(title, subtitle, artworkUrl)
+        screenForcedMimeType = ""
         val expanded = urls.distinct().map { initialCandidate(it) }
         candidateQueue = expanded.drop(1).toMutableList()
         candidateLive = live
@@ -1424,10 +1498,11 @@ class PlayerEngine(
     private fun playInternal(candidate: Candidate, live: Boolean, startPositionMs: Long = 0, externalSubUrl: String = "") {
         val url = candidate.url
         lastUrl = url
+        vlcFallbackUrl.value = null
         currentCandidate = candidate
         // A candidate's own hint wins over the screen-level force (which only
         // the "Force MP4 fallback (VOD)" setting sets).
-        if (candidate.mimeType.isNotBlank()) forcedMimeType = candidate.mimeType
+        forcedMimeType = candidate.mimeType.ifBlank { screenForcedMimeType }
         retries = 0
         dropped = 0
         // A new stream is a new measurement. Carrying the old frame rate over
@@ -1949,14 +2024,51 @@ class PlayerEngine(
             else -> null
         }
 
+        /**
+         * True for the two Xtream live MPEG-TS URL shapes:
+         *   `…/live/user/pass/1234.ts` (and `…/user/pass/1234.ts`), and
+         *   `…/user/pass/1234` / `…/live/user/pass/1234` with no extension.
+         * VOD (`/movie/`, `/series/`) is excluded — those carry real container
+         * extensions and are routed by [containerMimeFor].
+         */
+        internal fun isXtreamLiveTs(path: String): Boolean {
+            val segs = path.substringAfter("://", path).substringAfter('/', "")
+                .split('/').filter { it.isNotEmpty() }
+            if (segs.size < 3) return false
+            if (segs.any { it.equals("movie", true) || it.equals("series", true) }) return false
+            val last = segs.last()
+            if (last.endsWith(".ts", ignoreCase = true)) return true
+            return last.isNotEmpty() && last.all { it.isDigit() }
+        }
+
+        /** True when [url] is the raw root-path Xtream shape (no `/live/`, no
+         *  extension) — the shape most likely to carry malformed PAT/PMT tables
+         *  and therefore the first to be handed to LibVLC on failure. */
+        internal fun isRawRootTs(url: String): Boolean {
+            val path = url.substringBefore('?').substringBefore('#')
+            return isXtreamLiveTs(path) && !path.contains("/live/", ignoreCase = true) &&
+                !path.endsWith(".ts", ignoreCase = true)
+        }
+
         internal fun initialCandidate(url: String): Candidate {
             val path = url.substringBefore('?').substringBefore('#')
             return when {
                 path.endsWith(".m3u8", ignoreCase = true) ->
                     Candidate(url, androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-                // Deliberately not applied to `.ts`: plenty of panels answer a .ts
-                // URL with an HLS playlist, so that extension has to stay sniffed
-                // and keep its HLS retry.
+                // Xtream live MPEG-TS — `/live/u/p/1234.ts` and the extensionless
+                // root shape `/u/p/1234` — is pinned to VIDEO_MP2T so ExoPlayer
+                // skips content sniffing. Panels routinely answer these with
+                // `application/octet-stream` or `text/html` before a redirect,
+                // and the sniff chain then burns several extractor passes (or
+                // picks the wrong one) before reaching TsExtractor.
+                //
+                // This used to be left unpinned because some panels answer a .ts
+                // URL with an HLS playlist. That case is still covered: a
+                // container failure goes through Routing.reinterpret, which first
+                // removes this pin (sniff) and on a second failure reads the same
+                // URL as HLS — one extra fast failure on a rare panel, in exchange
+                // for a faster, deterministic start on the common one.
+                isXtreamLiveTs(path) -> Candidate(url, androidx.media3.common.MimeTypes.VIDEO_MP2T)
                 else -> containerMimeFor(path)?.let { Candidate(url, it) } ?: Candidate(url)
             }
         }

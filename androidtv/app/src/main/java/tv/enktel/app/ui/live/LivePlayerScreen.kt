@@ -690,6 +690,17 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
             keepContentOnReset = true,
             modifier = Modifier.fillMaxSize(),
         )
+        // LibVLC fallback: drawn over Media3's surface while the engine has
+        // handed this stream off. Media3 is stopped underneath. See VlcFallback.
+        val vlcUrl by engine.vlcFallbackUrl.collectAsStateWithLifecycle()
+        vlcUrl?.let { url ->
+            tv.enktel.app.player.VlcFallbackSurface(
+                url = url,
+                userAgent = engine.vlcUserAgent,
+                onError = { engine.onVlcFailed() },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         // Captions, which PlayerView used to draw for free.
         //

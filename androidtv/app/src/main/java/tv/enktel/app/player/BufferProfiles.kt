@@ -169,9 +169,9 @@ object BufferProfiles {
     /** VOD: hoard while the network is good, start without a long spinner. */
     private fun vodWindow(profile: String, isTv: Boolean): Window = when (profile) {
         "low" -> Window(minMs = 10_000, maxMs = 30_000, playMs = 1_500, rebufMs = 3_000)
-        "large" -> Window(minMs = 30_000, maxMs = 180_000, playMs = 2_500, rebufMs = 5_000)
+        "large" -> Window(minMs = 60_000, maxMs = 180_000, playMs = 2_500, rebufMs = 5_000)
         else -> if (isTv) {
-            Window(minMs = 25_000, maxMs = 120_000, playMs = 2_000, rebufMs = 5_000)
+            Window(minMs = 30_000, maxMs = 120_000, playMs = 2_000, rebufMs = 5_000)
         } else {
             Window(minMs = 20_000, maxMs = 90_000, playMs = 2_000, rebufMs = 4_000)
         }

@@ -742,6 +742,17 @@ fun VodPlayerScreen(
             keepContentOnReset = true,
             modifier = Modifier.fillMaxSize(),
         )
+        // LibVLC fallback: drawn over Media3's surface while the engine has
+        // handed this stream off. Media3 is stopped underneath. See VlcFallback.
+        val vlcUrl by engine.vlcFallbackUrl.collectAsStateWithLifecycle()
+        vlcUrl?.let { url ->
+            tv.enktel.app.player.VlcFallbackSurface(
+                url = url,
+                userAgent = engine.vlcUserAgent,
+                onError = { engine.onVlcFailed() },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         // Captions. PlayerView built its own SubtitleView and this screen
         // reached into it to style it; SubtitleOverlay is the same SubtitleView
