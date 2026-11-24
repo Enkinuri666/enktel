@@ -32,3 +32,7 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# LibVLC: JNI calls back into these classes by name.
+-keep class org.videolan.libvlc.** { *; }
+-dontwarn org.videolan.libvlc.**

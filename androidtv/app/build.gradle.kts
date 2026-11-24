@@ -270,6 +270,9 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.ui.compose)
     implementation(libs.media3.datasource.okhttp)
+    // SimpleCache (VodCache) needs both; named rather than relied on transitively.
+    implementation(libs.media3.datasource)
+    implementation(libs.media3.database)
     // No media3-datasource-rtmp, deliberately.
     //
     // Its librtmp-jni.so ships from Google's AAR with 4 KB ELF segment
@@ -287,11 +290,17 @@ dependencies {
     // container error.
     // Software AC-3 / E-AC-3 / DTS / TrueHD audio, for the Fire TV hardware
     // that decodes none of them and plays those streams silently. Built by
-    // build-ffmpeg-extension.yml from androidx/media 1.11.0 — Google ships
+    // build-ffmpeg-extension.yml from androidx/media 1.11.1 — Google ships
     // this decoder as source, not to Maven (#121), so it is a checked-in
     // binary rather than a coordinate. Its version must track the media3
     // version above; a mismatch fails at runtime, not at build time.
-    implementation(files("libs/media3-decoder-ffmpeg-1.11.0.aar"))
+    implementation(files("libs/media3-decoder-ffmpeg-1.11.1.aar"))
+    // LibVLC — automatic fallback engine. Media3 stays primary for everything;
+    // VlcFallback takes over only when ExoPlayer has exhausted its own recovery
+    // on a stream (malformed PAT/PMT on raw root-path MPEG-TS, DVB/Teletext
+    // bitmap subtitles it will not render). 3.7.x native libraries are 16 KB
+    // page aligned, so this does not regress the arm64 16 KB work above.
+    implementation(libs.libvlc.all)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
