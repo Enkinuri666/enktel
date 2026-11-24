@@ -1212,11 +1212,15 @@ private fun MainNav(
         composable("systemMonitor") { tv.enktel.app.ui.screens.SystemMonitorScreen(graph, nav) }
         composable("epgFinder") { tv.enktel.app.ui.screens.EpgFinderScreen(graph, nav) }
         composable("watchlist") { WatchlistScreen(graph, nav) }
-        composable("multi?left={left}&right={right}") { back ->
+        composable("multi?left={left}&right={right}&more={more}&quad={quad}") { back ->
+            val more = back.arguments?.getString("more").orEmpty()
+                .split(',').map { it.trim() }.filter { it.isNotBlank() }
             MultiViewScreen(
                 graph, nav,
                 leftKey = back.arguments?.getString("left").orEmpty(),
                 rightKey = back.arguments?.getString("right").orEmpty(),
+                moreKeys = more,
+                quad = more.isNotEmpty() || back.arguments?.getString("quad") == "1",
             )
         }
     }

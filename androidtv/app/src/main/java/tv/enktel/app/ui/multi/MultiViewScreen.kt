@@ -3,6 +3,8 @@ package tv.enktel.app.ui.multi
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,14 +59,30 @@ import tv.enktel.app.ui.theme.EnktelSurface
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
- * Two-pane live view — the "multi-view" feature typical of premium sports apps. The primary
- * pane owns audio; DPAD-swap flips which side is primary. Perfect for watching two matches
- * side-by-side without leaving one to check the other.
+ * Multi-view: two panes side by side, or a 2x2 grid of four (v1.89).
+ *
+ * One pane owns the audio. On the two-pane layout LEFT/RIGHT pick the audio
+ * side and UP/DOWN step its channel, as before. On the grid the D-pad moves the
+ * audio focus between tiles and CH+/CH− step that tile's channel. OK takes the
+ * audio tile full screen.
+ *
+ * Four live streams is four connections to the panel: a line limited to fewer
+ * will refuse the extra tiles, which then show their channel plate and the
+ * panel's error rather than a picture.
  */
 @Suppress("ProduceStateDoesNotAssignValue")
 @UnstableApi
 @Composable
-fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, rightKey: String) {
+fun MultiViewScreen(
+    graph: AppGraph,
+    nav: NavHostController,
+    leftKey: String,
+    rightKey: String,
+    /** Extra channel keys for the 2x2 grid (third and fourth tiles). */
+    moreKeys: List<String> = emptyList(),
+    /** Ask for a 2x2 grid even if fewer than four keys were given. */
+    quad: Boolean = moreKeys.isNotEmpty(),
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
@@ -74,62 +92,66 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
     val bufferProfile by graph.settings.bufferProfile.collectAsStateWithLifecycle(initialValue = "balanced")
     val streamFormat by graph.settings.streamFormat.collectAsStateWithLifecycle(initialValue = "hls")
 
-    var leftCh by remember { mutableStateOf<Channel?>(null) }
-    var rightCh by remember { mutableStateOf<Channel?>(null) }
-    var primary by remember { mutableIntStateOf(0) } // 0 = left, 1 = right
+    val paneCount = if (quad) 4 else 2
+    var chans by remember { mutableStateOf<List<Channel>?>(null) }
+    var primary by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(leftKey, rightKey) {
-        leftCh = leftKey.takeIf { it.isNotBlank() }?.let { graph.content.channel(it) }
-        rightCh = rightKey.takeIf { it.isNotBlank() }?.let { graph.content.channel(it) }
-        // Sensible fallbacks: if only one side is set, pick the next channel of the same category.
-        if (leftCh != null && rightCh == null) {
+    LaunchedEffect(leftKey, rightKey, moreKeys, paneCount) {
+        val requested = (listOf(leftKey, rightKey) + moreKeys)
+            .filter { it.isNotBlank() }
+            .mapNotNull { graph.content.channel(it) }
+            .distinctBy { it.key }
+        // Fill any empty tiles with the channels that follow the first one.
+        val filled = requested.toMutableList()
+        if (filled.size < paneCount) {
             val list = graph.content.channels(p.id).first()
-            val idx = list.indexOfFirst { it.key == leftCh?.key }
-            if (idx >= 0) rightCh = list.getOrNull((idx + 1) % list.size)
+            val start = filled.firstOrNull()?.let { f -> list.indexOfFirst { it.key == f.key } } ?: -1
+            var i = start + 1
+            while (filled.size < paneCount && list.isNotEmpty() && i < start + 1 + list.size) {
+                val c = list[((i % list.size) + list.size) % list.size]
+                if (filled.none { it.key == c.key }) filled += c
+                i++
+            }
         }
+        chans = filled.take(paneCount)
     }
 
-    // Captured, not re-read.
-    //
-    // The guard below protected this composition pass and nothing else, while
-    // six `!!` reads of the same two state vars happened *later* — inside
-    // LaunchedEffect coroutines and inside the key handler. Both are null
-    // again the moment `graph.content.channel(key)` fails to resolve, which
-    // is what a catalogue re-sync or a stale deep link does to a channel key,
-    // and a `!!` inside a coroutine is an uncaught NullPointerException
-    // rather than a blank pane.
-    //
-    // Local vals cannot change underneath those callbacks: a swap recomposes
-    // and the callbacks are rebuilt around the new pair.
-    val leftChannel = leftCh
-    val rightChannel = rightCh
-    if (leftChannel == null || rightChannel == null) {
+    // Captured once per composition so callbacks never see a half-updated list.
+    val channels = chans
+    if (channels == null || channels.size < paneCount) {
         CenterMessage("Loading multi-view…")
         return
     }
 
-    // Both panes on the playback client: two engines on one panel is
-    // exactly the case the shared five-per-host budget could not serve.
-    val left = remember(p.id, "L") { PlayerEngine(context, graph.streamHttp, bufferProfile) }
-    val right = remember(p.id, "R") { PlayerEngine(context, graph.streamHttp, bufferProfile) }
-    DisposableEffect(left, right) {
-        onDispose { left.release(); right.release() }
+    val engines = remember(p.id, paneCount) {
+        List(paneCount) { PlayerEngine(context, graph.streamHttp, if (paneCount == 4) "low" else bufferProfile) }
     }
-    LaunchedEffect(leftChannel.key) {
-        left.play(graph.content.liveUrl(p, leftChannel, streamFormat), live = true)
+    DisposableEffect(engines) { onDispose { engines.forEach { it.release() } } }
+    channels.forEachIndexed { i, ch ->
+        LaunchedEffect(i, ch.key) { engines[i].play(graph.content.liveUrl(p, ch, streamFormat), live = true) }
     }
-    LaunchedEffect(rightChannel.key) {
-        right.play(graph.content.liveUrl(p, rightChannel, streamFormat), live = true)
+    LaunchedEffect(primary, engines) {
+        engines.forEachIndexed { i, e -> e.player.volume = if (i == primary) 1f else 0f }
     }
-    // Only primary pane produces audio.
-    LaunchedEffect(primary) {
-        left.player.volume = if (primary == 0) 1f else 0f
-        right.player.volume = if (primary == 1) 1f else 0f
+
+    fun step(delta: Int) {
+        scope.launch {
+            val list = graph.content.channels(p.id).first()
+            val cur = channels[primary]
+            val idx = list.indexOfFirst { it.key == cur.key }
+            if (idx < 0 || list.isEmpty()) return@launch
+            val next = list[((idx + delta) % list.size + list.size) % list.size]
+            chans = channels.toMutableList().also { it[primary] = next }
+        }
+    }
+    fun focusTo(i: Int) {
+        if (i !in channels.indices || i == primary) return
+        primary = i
+        toaster.info("Audio: ${channels[i].name}")
     }
 
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
-
     BackHandler { nav.popBackStack() }
 
     Box(
@@ -140,30 +162,37 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
             .focusable()
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val col = primary % 2
+                val row = primary / 2
                 when (ev.key.nativeKeyCode) {
-                    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { primary = 0; toaster.info("Audio: ${leftChannel.name}"); true }
-                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { primary = 1; toaster.info("Audio: ${rightChannel.name}"); true }
-                    AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_CHANNEL_UP -> {
-                        scope.launch { swap(graph, p.id, primary, leftChannel, rightChannel, +1) { l, r -> leftCh = l; rightCh = r } }
-                        true
-                    }
-                    AndroidKeyEvent.KEYCODE_DPAD_DOWN, AndroidKeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                        scope.launch { swap(graph, p.id, primary, leftChannel, rightChannel, -1) { l, r -> leftCh = l; rightCh = r } }
-                        true
-                    }
+                    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { focusTo(row * 2); true }
+                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { focusTo(row * 2 + 1); true }
+                    AndroidKeyEvent.KEYCODE_DPAD_UP ->
+                        { if (paneCount == 4) focusTo(col) else step(+1); true }
+                    AndroidKeyEvent.KEYCODE_DPAD_DOWN ->
+                        { if (paneCount == 4) focusTo(2 + col) else step(-1); true }
+                    AndroidKeyEvent.KEYCODE_CHANNEL_UP -> { step(+1); true }
+                    AndroidKeyEvent.KEYCODE_CHANNEL_DOWN -> { step(-1); true }
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
-                        // Fullscreen the primary side by dropping the other pane and returning to Live.
-                        val target = if (primary == 0) leftChannel else rightChannel
-                        nav.navigate("live?ch=${target.key}") { popUpTo("home") }
+                        nav.navigate("live?ch=${channels[primary].key}") { popUpTo("home") }
                         true
                     }
                     else -> false
                 }
             },
     ) {
-        Row(Modifier.fillMaxSize()) {
-            Pane(engine = left, isPrimary = primary == 0, channel = leftChannel, modifier = Modifier.weight(1f).fillMaxHeight())
-            Pane(engine = right, isPrimary = primary == 1, channel = rightChannel, modifier = Modifier.weight(1f).fillMaxHeight())
+        Column(Modifier.fillMaxSize()) {
+            channels.chunked(2).forEachIndexed { r, rowChans ->
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    rowChans.forEachIndexed { c, ch ->
+                        val i = r * 2 + c
+                        Pane(
+                            engine = engines[i], isPrimary = primary == i, channel = ch,
+                            modifier = Modifier.weight(1f).fillMaxHeight().padding(if (paneCount == 4) 3.dp else 0.dp),
+                        )
+                    }
+                }
+            }
         }
         Column(
             Modifier
@@ -172,12 +201,11 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
                 .background(Color.Black.copy(0.7f))
                 .padding(horizontal = 16.dp, vertical = 6.dp),
         ) {
-            Row {
-                Text(
-                    "◀▶ audio · ▲▼ swap channel · OK fullscreen · BACK exit",
-                    color = EnktelTextDim, fontSize = 11.sp,
-                )
-            }
+            Text(
+                if (paneCount == 4) "D-pad: audio tile · CH+/− change channel · OK fullscreen · BACK exit"
+                else "◀▶ audio · ▲▼ swap channel · OK fullscreen · BACK exit",
+                color = EnktelTextDim, fontSize = 11.sp,
+            )
         }
     }
 }
@@ -185,28 +213,17 @@ fun MultiViewScreen(graph: AppGraph, nav: NavHostController, leftKey: String, ri
 @UnstableApi
 @Composable
 private fun Pane(engine: PlayerEngine, isPrimary: Boolean, channel: Channel, modifier: Modifier) {
-    Box(modifier.background(EnktelSurface)) {
-        // TEXTURE_VIEW here, unlike the welcome splash's SURFACE_VIEW.
-        //
-        // Multi-view puts up to four of these on screen at once. A SurfaceView
-        // is composited by the display hardware, and a device has a small fixed
-        // number of overlay planes to composite with — a Fire TV Stick has very
-        // few. Ask for more than it has and the surplus surfaces fall back
-        // unpredictably, which shows up as tiles that flicker or stay black
-        // while the others play. A TextureView is drawn through the GPU like
-        // any other view, so four of them compose without contending for a
-        // scarce hardware resource.
-        //
-        // The cost is real — a texture round-trip per frame per pane — but four
-        // simultaneous streams is already the most expensive thing this app
-        // does, and correctness beats a saving that only materialises if the
-        // surfaces render at all.
-        // ContentFrame, not a bare PlayerSurface: PlayerSurface fills the box
-        // it is given, so a channel that is not 16:9 comes out stretched in a
-        // tile — which the PlayerView this replaced never did, because
-        // RESIZE_MODE_FIT is its default. keepContentOnReset likewise restores
-        // setKeepContentOnPlayerReset(true): swapping the channel in one pane
-        // re-prepares that engine, and without it the tile blinks black.
+    Box(
+        modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .background(EnktelSurface)
+            .then(
+                if (isPrimary) Modifier.border(3.dp, EnktelBlue, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                else Modifier,
+            ),
+    ) {
+        // TEXTURE_VIEW: up to four of these on screen; see the v1.88 note —
+        // hardware overlay planes are scarce on Fire TV, TextureViews are not.
         ContentFrame(
             player = engine.player,
             surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
@@ -214,27 +231,8 @@ private fun Pane(engine: PlayerEngine, isPrimary: Boolean, channel: Channel, mod
             keepContentOnReset = true,
             modifier = Modifier.fillMaxSize(),
         )
-        Row(
-            Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Badge(if (isPrimary) "🔊 ${channel.name}" else "🔇 ${channel.name}", if (isPrimary) EnktelBlue else EnktelLive.copy(0.6f))
         }
     }
-}
-
-private suspend fun swap(
-    graph: AppGraph, profileId: Long, primary: Int,
-    left: Channel, right: Channel, delta: Int,
-    apply: (Channel, Channel) -> Unit,
-) {
-    val list = graph.content.channels(profileId).first()
-    val current = if (primary == 0) left else right
-    val idx = list.indexOfFirst { it.key == current.key }
-    if (idx < 0 || list.isEmpty()) return
-    val next = list[((idx + delta) % list.size + list.size) % list.size]
-    apply(
-        if (primary == 0) next else left,
-        if (primary == 1) next else right,
-    )
 }

@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.mobile
 
+import tv.enktel.app.ui.components.frostedGlass
 import androidx.compose.material.icons.rounded.ChevronRight
 import tv.enktel.app.ui.components.localLabel
 import androidx.compose.foundation.background
@@ -104,11 +105,11 @@ data class MobileTab(
  * than being buried in it.
  */
 val MOBILE_TABS = listOf(
-    MobileTab("Home", Icons.Filled.Home, "home"),
+    MobileTab("Discover", Icons.Filled.Home, "home"),
     MobileTab("Live TV", Icons.Filled.LiveTv, "channels"),
     MobileTab("Movies", Icons.Filled.Movie, "movies"),
     MobileTab("Series", Icons.Filled.Tv, "series"),
-    MobileTab("Sports", Icons.Filled.SportsSoccer, "sports"),
+    MobileTab("Sports Hub", Icons.Filled.SportsSoccer, "sports"),
     MobileTab("More", Icons.Filled.Menu, "__more"),
 )
 
@@ -325,19 +326,14 @@ private val MORE_ROUTES = listOf(
 @Composable
 private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: Modifier) {
     val active = activeTabRoute(current)
+    // v1.89 mobile: a floating frosted-glass pill over the content, the
+    // phone-sized version of the TV rail's glass panel.
     Column(
         modifier
             .fillMaxWidth()
-            .background(
-                // A flat surface with no separation read as part of the page.
-                // A hairline plus a short lift gradient is what makes the bar
-                // sit above the content instead of in it.
-                Brush.verticalGradient(
-                    listOf(Color.Black.copy(0.35f), EnktelSurface, EnktelSurface),
-                ),
-            ),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .frostedGlass(corner = 24.dp, alpha = 0.86f),
     ) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(0.07f)))
         Row(
             Modifier.fillMaxWidth().height(71.dp),
             verticalAlignment = Alignment.CenterVertically,

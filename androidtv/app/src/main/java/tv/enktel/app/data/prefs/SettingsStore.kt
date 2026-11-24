@@ -441,7 +441,7 @@ class SettingsStore(private val context: Context) {
     // v1.84.0 moves the fresh-install default to "aurora", the new flagship
     // spectrum identity; existing users who never touched the setting move with
     // it, anyone who chose a theme stays where they are.
-    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "aurora" }
+    val theme: Flow<String> = context.dataStore.data.map { it[THEME] ?: "frost" }
     val uiOpacityPct: Flow<Int> = context.dataStore.data.map { it[UI_OPACITY_PCT] ?: 92 }
     val textScalePct: Flow<Int> = context.dataStore.data.map { it[TEXT_SCALE_PCT] ?: 100 }
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { it[START_ON_BOOT] ?: false }

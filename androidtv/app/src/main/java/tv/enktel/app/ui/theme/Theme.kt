@@ -463,14 +463,34 @@ private val PaletteHighContrast = PaletteEnktelBlue.copy(
     textFaint = Color(0xFFBBBBBB),
 )
 
+/**
+ * v1.89.0 — "Frost", the redesign default.
+ *
+ * Deep teal-navy page, frosted-glass panels and a single electric-cyan accent,
+ * as in the 1.89 design mockups. Cyan carries focus and primary actions only;
+ * live/alert stays red so the two never read as the same signal. The focus ring
+ * is a touch thinner than the 4 dp default because Frost pairs it with a wide,
+ * bright glow — together they read better at ten feet than a heavy outline.
+ */
+private val PaletteFrost = EnktelPalette(
+    id = "frost", label = "Frost (Glass)",
+    bg = Color(0xFF0A1317), surface = Color(0xFF14222A), surfaceHigh = Color(0xFF1C2D36),
+    text = Color(0xFFF1F6F8), textDim = Color(0xFF9AAAB3),
+    primary = Color(0xFF19E3F2), primaryDeep = Color(0xFF0BAFC0), secondary = Color(0xFF5EEAD4),
+    live = Color(0xFFE53935), ok = Color(0xFF2DD4BF), border = Color(0xFF2A3B44),
+    focusRingWidth = 3.dp, focusGlowRadius = 22.dp, focusGlowAlpha = 0.55f, focusScale = 1.06f,
+    textFaint = Color(0xFF66777F),
+    brandGradient = listOf(Color(0xFF19E3F2), Color(0xFF22D3EE), Color(0xFF5EEAD4)),
+)
+
 val ALL_PALETTES = listOf(
-    PaletteAurora, PaletteSunset,
+    PaletteFrost, PaletteAurora, PaletteSunset,
     PaletteEnktelNeon, PaletteDeepSpace, PaletteCinematic, PaletteObsidian, PaletteEnktelBlue, PaletteCrimson, PaletteEmerald,
     PaletteAmber, PaletteMidnight, PaletteMonochrome, PaletteHighContrast,
 )
-fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteAurora
+fun paletteFor(id: String): EnktelPalette = ALL_PALETTES.firstOrNull { it.id == id } ?: PaletteFrost
 
-private val LocalPalette = compositionLocalOf { PaletteAurora }
+private val LocalPalette = compositionLocalOf { PaletteFrost }
 /** Alpha multiplier (0-1) for overlay surfaces — dialogs, info bars, panels. */
 val LocalOverlayOpacity = compositionLocalOf { 0.92f }
 

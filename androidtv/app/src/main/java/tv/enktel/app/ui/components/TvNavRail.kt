@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -73,6 +74,8 @@ import androidx.tv.material3.Text
 import tv.enktel.app.ui.theme.EnktelBg
 import tv.enktel.app.ui.theme.EnktelBlue
 import tv.enktel.app.ui.theme.EnktelBrandGradient
+import tv.enktel.app.ui.theme.EnktelSurface
+import tv.enktel.app.ui.theme.EnktelSurfaceHigh
 import tv.enktel.app.ui.theme.EnktelTextDim
 
 /**
@@ -164,21 +167,23 @@ private const val FOCUS_HANDOFF_FRAMES = 12
  * stripe) now moves together between the dim, selected and focused states.
  */
 val FULL_ITEMS = listOf(
-    TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
-    TvNavItem("discover", "Discover", Icons.Rounded.Explore, "discover"),
+    // v1.89 order, as in the redesign: the eight primary destinations first,
+    // in the mockup's order, then everything else.
+    TvNavItem("home", "Discover", Icons.Rounded.Explore, "home"),
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
-    TvNavItem("guide", "TV Guide", Icons.Rounded.CalendarMonth, "guide"),
+    TvNavItem("guide", "EPG", Icons.Rounded.CalendarMonth, "guide"),
+    TvNavItem("sports", "Sports Hub", Icons.Rounded.SportsSoccer, "sports"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
     TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
-    TvNavItem("sports", "Sports", Icons.Rounded.SportsSoccer, "sports"),
+    TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
+    TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
+    TvNavItem("discover", "Platforms", Icons.Rounded.Apps, "discover"),
+    TvNavItem("recordings", "Recordings", Icons.AutoMirrored.Rounded.Dvr, "recordings"),
+    TvNavItem("catchup", "Catch-Up", Icons.Rounded.History, "catchup"),
     TvNavItem("comingSoon", "Coming Soon", Icons.Rounded.NewReleases, "comingSoon"),
     TvNavItem("watchlist", "Watchlist", Icons.Rounded.BookmarkBorder, "watchlist"),
     TvNavItem("lists", "My Lists", Icons.AutoMirrored.Rounded.PlaylistPlay, "lists"),
-    TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
-    TvNavItem("recordings", "Recordings", Icons.AutoMirrored.Rounded.Dvr, "recordings"),
-    TvNavItem("catchup", "Catch-Up", Icons.Rounded.History, "catchup"),
     TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
-    TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
 )
 
 /**
@@ -200,13 +205,17 @@ val FULL_ITEMS = listOf(
  * still resolves; the difference is only what the rail offers first.
  */
 val SIMPLE_ITEMS = listOf(
-    TvNavItem("home", "Home", Icons.Rounded.Home, "home"),
-    TvNavItem("discover", "Discover", Icons.Rounded.Explore, "discover"),
+    // v1.89: exactly the eight the redesign puts on the rail, in its order.
+    // "Discover" is the hero home screen (route "home"); the streaming-platform
+    // browser that used to be called Discover is "Platforms", behind More.
+    TvNavItem("home", "Discover", Icons.Rounded.Explore, "home"),
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
+    TvNavItem("guide", "EPG", Icons.Rounded.CalendarMonth, "guide"),
+    TvNavItem("sports", "Sports Hub", Icons.Rounded.SportsSoccer, "sports"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
     TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
-    TvNavItem("sports", "Sports", Icons.Rounded.SportsSoccer, "sports"),
-    TvNavItem("search", "Search", Icons.Rounded.Search, "search"),
+    TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
+    TvNavItem("settings", "Settings", Icons.Rounded.Settings, "settings"),
 )
 
 /** Where the other eight went. Appended to [SIMPLE_ITEMS] by [navItemsFor]. */
@@ -351,12 +360,25 @@ fun TvNavShell(
                 // rather than part of the screen. Opaque where the labels sit,
                 // fading out over the last stretch so the edge dissolves into
                 // whatever is behind it.
+                // v1.89 frosted-glass panel: a tinted translucent slab with a
+                // rounded trailing edge and a hairline highlight, as in the
+                // redesign, rather than a gradient that fades into the art.
+                .padding(vertical = 8.dp)
+                .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
                 .background(
-                    Brush.horizontalGradient(
-                        0f to EnktelBg.copy(alpha = 0.95f),
-                        0.70f to EnktelBg.copy(alpha = 0.90f),
-                        1f to EnktelBg.copy(alpha = 0f),
+                    Brush.verticalGradient(
+                        listOf(
+                            EnktelSurfaceHigh.copy(alpha = 0.86f),
+                            EnktelSurface.copy(alpha = 0.92f),
+                        ),
                     ),
+                )
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.04f)),
+                    ),
+                    RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                 )
                 // `hasFocus` on the outer Column covers any descendant, so the
                 // rail flips open the moment D-Pad-Left brings focus onto any
@@ -532,21 +554,21 @@ private fun NavRailItem(
                 // Selected sits under focus rather than beside it, so a row
                 // that is both does not double up — the focus gradient simply
                 // covers the quieter selected wash.
+                // Selected: a frosted light pill with a hairline edge.
+                // Focused: the accent fills in on top and the edge turns cyan.
                 .background(
-                    if (selected) {
-                        Brush.horizontalGradient(
-                            listOf(EnktelBlue.copy(alpha = 0.16f), Color.Transparent),
-                        )
-                    } else {
-                        Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-                    },
+                    if (selected) Color.White.copy(alpha = 0.10f) else Color.Transparent,
+                    RoundedCornerShape(12.dp),
                 )
-                .background(
-                    Brush.horizontalGradient(
-                        EnktelBrandGradient.mapIndexed { i, c ->
-                            c.copy(alpha = (0.55f - 0.12f * i) * fillAlpha)
-                        },
-                    ),
+                .background(EnktelBlue.copy(alpha = 0.22f * fillAlpha), RoundedCornerShape(12.dp))
+                .border(
+                    width = if (focused) 1.5.dp else 1.dp,
+                    color = when {
+                        focused -> EnktelBlue.copy(alpha = fillAlpha)
+                        selected -> Color.White.copy(alpha = 0.22f)
+                        else -> Color.Transparent
+                    },
+                    shape = RoundedCornerShape(12.dp),
                 )
                 .padding(vertical = 10.dp, horizontal = 8.dp),
         ) {
@@ -570,14 +592,14 @@ private fun NavRailItem(
                 // No explicit tint: the Surface's contentColor already carries
                 // dim / selected / focused, so the icon tracks the label instead
                 // of staying a fixed colour the way an emoji had to.
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(21.dp))
+                Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp))
             }
             if (showLabel) {
                 Spacer(Modifier.width(12.dp))
                 Text(
                     item.localLabel(),
-                    fontSize = 13.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,

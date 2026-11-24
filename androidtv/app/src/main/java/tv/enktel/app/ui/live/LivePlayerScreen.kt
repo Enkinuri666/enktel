@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.live
 
+import tv.enktel.app.ui.components.frostedGlass
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
@@ -1324,7 +1325,7 @@ private fun ChannelPanel(
             Modifier
                 .width(168.dp)
                 .fillMaxHeight()
-                .background(Color.Black.copy(0.92f))
+                .background(Color.Black.copy(0.80f))
                 .padding(vertical = 16.dp),
         ) {
             Text("CATEGORIES", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp))
@@ -1346,12 +1347,13 @@ private fun ChannelPanel(
         }
         Column(
             Modifier
-                .width(320.dp)
+                .width(380.dp)
                 .fillMaxHeight()
-                .background(Color.Black.copy(0.85f))
-                .padding(vertical = 16.dp),
+                .padding(vertical = 20.dp, horizontal = 12.dp)
+                .frostedGlass(corner = 24.dp, alpha = 0.80f)
+                .padding(vertical = 14.dp),
         ) {
-            Text("CHANNELS", color = EnktelTextDim, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp))
+            Text("QUICK CHANNEL SURF", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(Modifier.height(10.dp))
             LazyColumn(state = listState) {
                 items(filtered, key = { it.key }) { ch ->
@@ -1517,83 +1519,85 @@ private fun ChannelRow(
     onFocused: () -> Unit = {},
     onClick: () -> Unit,
 ) {
-    var nowTitle by remember(ch.key) { mutableStateOf("") }
+    var nowProg by remember(ch.key) { mutableStateOf<tv.enktel.app.data.db.EpgProgram?>(null) }
     LaunchedEffect(ch.key) {
-        nowTitle = graph.epg.nowNext(profileId, ch.epgId).now?.title.orEmpty()
+        nowProg = graph.epg.nowNext(profileId, ch.epgId).now
     }
     androidx.tv.material3.Surface(
         onClick = onClick,
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = if (active) EnktelBlue.copy(0.2f) else Color.Transparent,
-            // Was a fully saturated EnktelBlue fill. The channel number below is
-            // painted EnktelBlue too, so a focused row rendered the number
-            // blue-on-blue and it effectively vanished — on the one row the user
-            // is actually looking at. A translucent fill plus a ring reads as
-            // focus just as strongly and keeps every element legible.
-            focusedContainerColor = EnktelBlue.copy(0.32f),
+            containerColor = if (active) Color.White.copy(0.10f) else Color.Transparent,
+            focusedContainerColor = Color.White.copy(0.16f),
             focusedContentColor = Color.White,
             contentColor = Color.White,
         ),
         border = androidx.tv.material3.ClickableSurfaceDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, EnktelBlue),
-                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(2.dp, EnktelBlue),
+                shape = RoundedCornerShape(12.dp),
             ),
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 2.dp)
             .onFocusChanged { if (it.isFocused) onFocused() }
             .tapClick(onClick),
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                if (ch.num > 0) "${ch.num}" else "·",
-                color = EnktelBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(38.dp),
-            )
-            Box(
-                Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(EnktelSurface),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (ch.logo.isNotBlank()) {
-                    AsyncImage(
-                        model = ch.logo,
-                        contentDescription = null,
-                        // Logos arrive at wildly different aspect ratios. Fit with a
-                        // little breathing room stops wide wordmarks being cropped
-                        // to an unreadable middle slice.
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize().padding(2.dp),
-                    )
-                } else {
-                    // Plenty of channels ship no logo at all, and an empty grey
-                    // square repeated down the list looked like a loading failure.
-                    // The initial is at least identifying.
-                    Text(
-                        ch.name.trimStart().firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•",
-                        color = EnktelTextDim, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            Column(Modifier.width(104.dp)) {
+                Box(
+                    Modifier.fillMaxWidth().height(58.dp).clip(RoundedCornerShape(8.dp))
+                        .background(EnktelSurface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (ch.logo.isNotBlank()) {
+                        AsyncImage(
+                            model = ch.logo, contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(6.dp),
+                        )
+                    } else {
+                        tv.enktel.app.ui.components.Monogram(ch.name)
+                    }
+                    if (ch.num > 0) {
+                        Text(
+                            "${ch.num}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.align(Alignment.BottomStart)
+                                .background(Color.Black.copy(0.6f), RoundedCornerShape(topEnd = 8.dp))
+                                .padding(horizontal = 5.dp, vertical = 1.dp),
+                        )
+                    }
+                }
+                nowProg?.let { pr ->
+                    val t = System.currentTimeMillis()
+                    Spacer(Modifier.height(4.dp))
+                    tv.enktel.app.ui.components.FrostProgress(
+                        tv.enktel.app.data.epg.NowPlaying.progress(pr.startMs, pr.endMs, t),
+                        color = if (active) EnktelBlue else Color(0xFF2DD4BF),
                     )
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Column {
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    ch.name, fontSize = 13.sp, maxLines = 1,
+                    ch.name + if (nowProg != null) ":" else "",
+                    fontSize = 14.sp, color = EnktelTextDim, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                 )
-                if (nowTitle.isNotBlank()) {
-                    Text(
-                        nowTitle, fontSize = 11.sp, color = EnktelTextDim, maxLines = 1,
-                        // Without this a long programme title was chopped through
-                        // the middle of a glyph rather than ellipsised.
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    nowProg?.title ?: "No listing",
+                    fontSize = 16.sp, maxLines = 1,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    if (active) "Playing" else "Current",
+                    fontSize = 12.sp, color = if (active) EnktelBlue else EnktelTextDim, maxLines = 1,
+                )
             }
         }
     }

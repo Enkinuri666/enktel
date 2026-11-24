@@ -174,6 +174,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     // three rows further down. The rails dedupe against each other, but the hero
     // is built separately, so nothing used to stop it repeating itself.
     val heroKeys = remember(heroItems) { heroItems.map { it.key }.toHashSet() }
+    val liveNow = remember(favChannels, allChannels) { favChannels.ifEmpty { allChannels }.take(12) }
 
     // Rails are built from the panel's own VOD data — titles, years,
     // ratings and the provider's `added` timestamp all arrive with the
@@ -228,7 +229,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     ) {
         if (heroItems.isNotEmpty()) {
             item(key = "hero", contentType = "hero") {
-                HeroBanner(items = heroItems, clock = clock, nav = nav, graph = graph, profile = p)
+                HeroBanner(
+                    items = heroItems, clock = clock, nav = nav, graph = graph, profile = p,
+                    resumeKeys = remember(continueWatching) {
+                        continueWatching.filter { it.kind == "vod" }.map { "${it.profileId}:${it.refId}" }.toHashSet()
+                    },
+                )
             }
         } else {
             item(key = "masthead", contentType = "masthead") {
@@ -254,8 +260,10 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // removed: the rail is six entries now rather than fourteen, so this
         // is no longer a second copy of the menu — and every IPTV app these
         // subscribers came from opens on exactly this.
-        item(key = "tiles", contentType = "tiles") {
-            val mobile = tv.enktel.app.BuildConfig.FLAVOR == "mobile"
+        // v1.89: the redesign goes hero → Live Now → Continue Watching on TV,
+        // so the category tiles stay on mobile only.
+        if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") item(key = "tiles", contentType = "tiles") {
+            val mobile = true
             CategoryTiles(
                 padHoriz = gutter,
                 compact = mobile,
@@ -287,6 +295,36 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // screen, not just this one) and two things are gained: Home starts on
         // Continue Watching, and a screenful of vertical space comes back —
         // which is most of what made Home feel cramped in landscape.
+        // Live Now — Trending Channels: favourites first, otherwise the head of
+        // the lineup, each with what is on and how far through it is.
+        if (liveNow.isNotEmpty()) {
+            item(key = "liveNow", contentType = "liveNow") {
+                var nowByEpg by remember { mutableStateOf<Map<String, tv.enktel.app.data.db.EpgProgram>>(emptyMap()) }
+                LaunchedEffect(liveNow, p.id) {
+                    val ids = liveNow.map { it.epgId }.filter { it.isNotBlank() }.distinct()
+                    if (ids.isEmpty()) return@LaunchedEffect
+                    val t = System.currentTimeMillis()
+                    nowByEpg = runCatching {
+                        graph.epg.window(p.id, ids, t - 4 * 3_600_000L, t + 3_600_000L)
+                            .mapNotNull { (id, list) -> list.firstOrNull { t in it.startMs..it.endMs }?.let { id to it } }
+                            .toMap()
+                    }.getOrDefault(emptyMap())
+                }
+                val nowMs = System.currentTimeMillis()
+                ContentRail("Live Now — Trending Channels", liveNow, key = { it.key }) { ch ->
+                    val prog = nowByEpg[ch.epgId]
+                    tv.enktel.app.ui.components.LiveNowCard(
+                        name = ch.name,
+                        logo = ch.logo,
+                        nowTitle = prog?.title,
+                        progress = prog?.let {
+                            tv.enktel.app.data.epg.NowPlaying.progress(it.startMs, it.endMs, nowMs)
+                        },
+                        onClick = { nav.navigate("live?ch=${ch.key}") },
+                    )
+                }
+            }
+        }
         if (continueWatching.isNotEmpty()) {
             item {
                 ContentRail(
@@ -714,7 +752,10 @@ private fun HeroPill(text: String, accent: Boolean = false) {
  * 5 featured titles (favorites first, then latest additions).
  */
 @Composable
-private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController, graph: AppGraph, profile: Profile) {
+private fun HeroBanner(
+    items: List<Movie>, clock: String, nav: NavHostController, graph: AppGraph, profile: Profile,
+    resumeKeys: Set<String> = emptySet(),
+) {
     var index by remember { mutableIntStateOf(0) }
     LaunchedEffect(items) {
         index = 0
@@ -724,6 +765,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
         }
     }
     val current = items.getOrNull(index.coerceIn(0, items.lastIndex)) ?: return
+    val resumable = current.key in resumeKeys
 
     val shape = tv.enktel.app.ui.components.rememberScreenShape()
     val isMobile = shape.narrow
@@ -795,6 +837,14 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
             }
         }
 
+        // Format badges, top right, from what the listing itself says.
+        val tags = remember(current.key) {
+            tv.enktel.app.ui.components.FormatTags.of(current.name, current.categoryId, current.genre)
+        }
+        tv.enktel.app.ui.components.QualityBadges(
+            tags,
+            Modifier.align(Alignment.TopEnd).padding(top = shape.padV + 36.dp, end = gutter),
+        )
         val contentWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(560.dp)
         Column(
             Modifier
@@ -826,6 +876,15 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (current.genre.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    current.genre.split(',', '/').take(2).joinToString(" ") { it.trim() }.replaceFirstChar { it.uppercase() },
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = if (isMobile) 15.sp else 19.sp,
+                    maxLines = 1,
+                )
+            }
             if (current.year > 0 || current.categoryId.isNotBlank() || current.rating > 0) {
                 Spacer(Modifier.height(10.dp))
                 // Metadata as pills rather than a dotted text line: the same
@@ -844,7 +903,7 @@ private fun HeroBanner(items: List<Movie>, clock: String, nav: NavHostController
             // the same buttons.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 tv.enktel.app.ui.components.FocusButton(
-                    "Play",
+                    if (resumable) "Resume" else "Play",
                     icon = Icons.Rounded.PlayArrow,
                     kind = tv.enktel.app.ui.components.ButtonKind.Primary,
                     onClick = {

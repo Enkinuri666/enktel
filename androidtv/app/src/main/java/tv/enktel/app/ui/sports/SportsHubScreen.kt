@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -97,6 +98,7 @@ import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.FollowedTeam
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.FixtureTeams
+import tv.enktel.app.ui.components.frostedGlass
 import tv.enktel.app.data.repo.SportsEvent
 import tv.enktel.app.data.repo.SportsRepository
 import tv.enktel.app.data.repo.SportsRepository.SportsFixture
@@ -743,7 +745,7 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
         if (scoresEnabled && scoreRail.isNotEmpty()) {
             item {
                 SectionHeader(
-                    Icons.Rounded.Scoreboard, "LIVE SCORES", EnktelOk, padHoriz,
+                    Icons.Rounded.Scoreboard, "Live Matches & Scoreboards", EnktelOk, padHoriz,
                     count = scoreRail.size, subtitle = "Updating live",
                 )
             }
@@ -751,11 +753,20 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                 RailScale { LazyRow(
                     modifier = Modifier.tvRailFocus(),
                     contentPadding = PaddingValues(horizontal = padHoriz),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     items(scoreRail, key = ::scoreKey) { s ->
-                        LiveScoreChip(
+                        val matched = remember(s.home, s.away, allChannelsForMatch) {
+                            allChannelsForMatch.firstOrNull { ch ->
+                                FixtureTeams.mentions(ch.name, s.home) || FixtureTeams.mentions(ch.name, s.away)
+                            }
+                        }
+                        ScoreboardCard(
                             score = s,
+                            matchedNum = matched?.num ?: 0,
+                            matchedUhd = matched?.let {
+                                tv.enktel.app.ui.components.FormatTags.of(it.name, it.categoryName).uhd
+                            } == true,
                             // A scoreline we can identify opens the Match Centre;
                             // one we can't still tunes to a matching channel.
                             onStats = s.eventId.takeIf { it.isNotBlank() && matchCenterEnabled }?.let { id ->
@@ -786,6 +797,40 @@ fun SportsHubScreen(graph: AppGraph, nav: NavHostController) {
                         )
                     }
                 } }
+            }
+        }
+        // v1.89 Multi-View Live Grid: the channels matched to live matches,
+        // four at once. Falls back to the lineup when fewer are matched.
+        item(key = "multiGrid") {
+            val gridKeys = remember(scoreRail, allChannelsForMatch) {
+                scoreRail.mapNotNull { sc ->
+                    allChannelsForMatch.firstOrNull { ch ->
+                        FixtureTeams.mentions(ch.name, sc.home) || FixtureTeams.mentions(ch.name, sc.away)
+                    }?.key
+                }.distinct().take(4)
+            }
+            Column(Modifier.padding(horizontal = padHoriz, vertical = 8.dp)) {
+                tv.enktel.app.ui.components.FrostSectionTitle("Multi-View Live Grid (2x2)")
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    MultiGridTile(
+                        label = if (gridKeys.isNotEmpty()) "${gridKeys.size} matched match" + (if (gridKeys.size == 1) "" else "es") else "Open 2x2 grid",
+                        onClick = {
+                            val first = gridKeys.getOrElse(0) { allChannelsForMatch.firstOrNull()?.key.orEmpty() }
+                            val second = gridKeys.getOrElse(1) { "" }
+                            val more = gridKeys.drop(2).joinToString(",")
+                            nav.navigate("multi?left=$first&right=$second&more=$more&quad=1")
+                        },
+                    )
+                    MultiGridTile(
+                        label = "Side by side (2)",
+                        quad = false,
+                        onClick = {
+                            val first = gridKeys.getOrElse(0) { allChannelsForMatch.firstOrNull()?.key.orEmpty() }
+                            nav.navigate("multi?left=$first&right=${gridKeys.getOrElse(1) { "" }}")
+                        },
+                    )
+                }
             }
         }
         // Official broadcast guide — the published schedule for today, straight
@@ -2221,3 +2266,122 @@ internal fun ChannelLogo(url: String, fallback: String) {
 }
 
 private fun hhmm(ms: Long): String = TimeFormat.format("HH:mm", ms)
+
+
+/**
+ * v1.89 scoreboard card: both crests, a big scoreline, LIVE/minute, the
+ * matched channel's number and a 4K tag when that channel is UHD, and a launch
+ * button that tunes to it. The card body opens the Match Centre.
+ */
+@Composable
+private fun ScoreboardCard(
+    score: tv.enktel.app.data.repo.LiveScore,
+    matchedNum: Int,
+    matchedUhd: Boolean,
+    onStats: (() -> Unit)?,
+    onTap: () -> Unit,
+) {
+    Column(
+        Modifier
+            .width(380.dp)
+            .frostedGlass(corner = 16.dp)
+            .padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            CrestOrName(score.homeBadge, score.home)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    if (score.notStarted) score.minute else "${score.homeScore} - ${score.awayScore}",
+                    color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                )
+                Text(
+                    when {
+                        score.inPlay -> "LIVE" + if (score.minute.isNotBlank()) " · ${score.minute}" else ""
+                        score.finished -> "FT"
+                        else -> "Kick-off"
+                    },
+                    color = if (score.inPlay) tv.enktel.app.ui.theme.EnktelLive else EnktelTextDim,
+                    fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
+            CrestOrName(score.awayBadge, score.away)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (matchedNum > 0) {
+                Text(
+                    "$matchedNum", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, EnktelOk.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Matched channel", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+            } else {
+                Text(score.league, color = EnktelTextDim, fontSize = 14.sp, maxLines = 1)
+            }
+            if (matchedUhd) {
+                Spacer(Modifier.width(8.dp))
+                tv.enktel.app.ui.components.QualityBadges(
+                    tv.enktel.app.ui.components.FormatTags.Tags(uhd = true, hdr = null, atmos = false),
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        tv.enktel.app.ui.components.FocusButton(
+            if (matchedUhd) "Launch 4K Stream" else "Launch Stream",
+            kind = tv.enktel.app.ui.components.ButtonKind.Primary,
+            onClick = onTap,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (onStats != null) {
+            Spacer(Modifier.height(8.dp))
+            tv.enktel.app.ui.components.FocusButton("Match Centre", onClick = onStats, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun CrestOrName(badge: String, name: String) {
+    Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+        if (badge.isNotBlank()) {
+            coil3.compose.AsyncImage(model = badge, contentDescription = name, modifier = Modifier.fillMaxSize())
+        } else {
+            tv.enktel.app.ui.components.Monogram(name)
+        }
+    }
+}
+
+
+/** A preview tile for the multi-view grid: a 2x2 (or 1x2) block pattern. */
+@Composable
+private fun MultiGridTile(label: String, onClick: () -> Unit, quad: Boolean = true) {
+    tv.enktel.app.ui.components.FrostCard(onClick = onClick, width = 280.dp, height = 158.dp) { _ ->
+        Column(Modifier.fillMaxSize().padding(10.dp)) {
+            val rows = if (quad) 2 else 1
+            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(rows) {
+                    Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        repeat(2) {
+                            Box(
+                                Modifier.weight(1f).fillMaxHeight()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(EnktelOk.copy(alpha = 0.18f))
+                                    .border(1.dp, EnktelOk.copy(alpha = 0.35f), RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(
+                                    Modifier.size(width = 26.dp, height = 16.dp).clip(RoundedCornerShape(4.dp))
+                                        .background(EnktelOk.copy(alpha = 0.55f)),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(label, color = Color.White, fontSize = 13.sp, maxLines = 1)
+        }
+    }
+}
