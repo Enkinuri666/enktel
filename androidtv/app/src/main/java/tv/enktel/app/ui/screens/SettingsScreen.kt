@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.screens
 
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Upload
@@ -274,6 +275,10 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+        if (category == "Accounts") {
+            val activeProfile = profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
+            AccountsPanel(graph, activeProfile, nav)
+        }
         if (category == "Playlists") {
         SettingsGroupTitle("Playlists")
         profiles.forEach { p ->
@@ -1913,6 +1918,7 @@ internal data class SettingsCategory(
 )
 
 internal val SETTINGS_CATEGORIES = listOf(
+    SettingsCategory("Accounts", Icons.Rounded.AccountCircle, "Portal, status, expiry, devices"),
     SettingsCategory("Playlists", Icons.AutoMirrored.Rounded.PlaylistPlay, "Accounts, sources, catalogue sync"),
     SettingsCategory("Playback", Icons.Rounded.PlayCircle, "Buffering, decoder, subtitles, audio"),
     SettingsCategory("Recording", Icons.Rounded.FiberManualRecord, "DVR, storage, padding, downloads"),
