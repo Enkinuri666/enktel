@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.ui.components.ConfirmDialog
