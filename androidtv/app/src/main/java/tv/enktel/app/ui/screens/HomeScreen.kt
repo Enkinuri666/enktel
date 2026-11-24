@@ -174,6 +174,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     // three rows further down. The rails dedupe against each other, but the hero
     // is built separately, so nothing used to stop it repeating itself.
     val heroKeys = remember(heroItems) { heroItems.map { it.key }.toHashSet() }
+    val liveNow = remember(favChannels, allChannels) { favChannels.ifEmpty { allChannels }.take(12) }
 
     // Rails are built from the panel's own VOD data — titles, years,
     // ratings and the provider's `added` timestamp all arrive with the
@@ -296,9 +297,6 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         // which is most of what made Home feel cramped in landscape.
         // Live Now — Trending Channels: favourites first, otherwise the head of
         // the lineup, each with what is on and how far through it is.
-        val liveNow = remember(favChannels, allChannels) {
-            favChannels.ifEmpty { allChannels }.take(12)
-        }
         if (liveNow.isNotEmpty()) {
             item(key = "liveNow", contentType = "liveNow") {
                 var nowByEpg by remember { mutableStateOf<Map<String, tv.enktel.app.data.db.EpgProgram>>(emptyMap()) }
