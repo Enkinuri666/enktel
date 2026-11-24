@@ -1,5 +1,6 @@
 package tv.enktel.app.ui.live
 
+import tv.enktel.app.ui.components.frostedGlass
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -135,190 +136,149 @@ fun LiveInfoOverlay(
             )
         }
 
+        // v1.89 floating glass info bar: round channel mark, headline, format
+        // chips on the right, a timeline, and the actions the ▼ menu offers.
         Column(
             Modifier
-                .align(Alignment.BottomStart)
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .cinematicScrim(maxAlpha = 0.94f)
-                .padding(start = 44.dp, end = 44.dp, top = 60.dp, bottom = 22.dp),
+                .padding(horizontal = 40.dp, vertical = 24.dp)
+                .frostedGlass(corner = 22.dp, alpha = 0.78f)
+                .padding(horizontal = 22.dp, vertical = 16.dp),
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                // Channel mark, bottom-left, at a size that reads from a sofa.
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
-                        .size(84.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .then(
-                            if (channel.logo.isNotBlank())
-                                Modifier.glassSurface(shape = RoundedCornerShape(12.dp), alpha = 0.95f)
-                            else Modifier
-                        ),
+                        .size(96.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                listOf(Color(0xFF1B4B8F), Color(0xFF0B1C3A)),
+                            ),
+                        )
+                        .border(2.dp, EnktelBlue.copy(alpha = 0.6f), androidx.compose.foundation.shape.CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (channel.logo.isNotBlank()) {
                         AsyncImage(
                             model = channel.logo, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().padding(6.dp),
+                            modifier = Modifier.fillMaxSize().padding(14.dp),
                         )
                     } else {
-                        // The channel's own colour-keyed plate, the same one
-                        // the grid and every list use — not take(3) of the raw
-                        // name, which made a wall of "AU " over a grey glass
-                        // square on a line whose provider sends few logos.
                         tv.enktel.app.ui.components.Monogram(channel.name)
                     }
                 }
                 Spacer(Modifier.width(22.dp))
                 Column(Modifier.weight(1f)) {
-                    // Channel identity is the *supporting* line, not the
-                    // headline.
-                    //
-                    // It used to be 30 sp Black — larger and heavier than the
-                    // programme title underneath it — so the biggest thing on
-                    // screen was the name of the channel you had just chosen
-                    // and already knew, while the thing you actually wanted to
-                    // read sat below it in a smaller, lighter weight. There is
-                    // an 84 dp logo immediately to the left saying the same
-                    // thing. One eyebrow row carries number, name, group and
-                    // status; the programme gets the headline.
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (channel.num > 0) {
-                            Text(
-                                "${channel.num}",
-                                color = EnktelBlue, style = EnktelType.subtitle,
-                                fontWeight = FontWeight.Black, letterSpacing = 0.5.sp,
-                            )
-                            Dot()
-                        }
                         Text(
-                            channel.name.uppercase(),
-                            color = EnktelTextOnArt, style = EnktelType.subtitle,
-                            letterSpacing = 0.8.sp, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        // Playlist and group belong with the channel's identity,
-                        // not in the chip row beside the resolution readout —
-                        // mixing editorial with telemetry at one weight is what
-                        // made that row read as chip soup.
-                        val provenance = listOfNotNull(
-                            playlistName.takeIf { it.isNotBlank() },
-                            channel.categoryName.takeIf { it.isNotBlank() },
-                        ).joinToString(" · ")
-                        if (provenance.isNotBlank()) {
-                            Dot()
-                            Text(
-                                provenance, color = EnktelTextFaint, style = EnktelType.label,
-                                fontWeight = FontWeight.Medium, maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        if (recording) StatusPill("● REC", EnktelLive)
-                        if (shiftedFrom > 0) StatusPill("⏪ ${hhmm(shiftedFrom)}", EnktelLive)
-                        if (sleepUntil > 0) {
-                            val mins = ((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
-                            StatusPill("☾ ${mins}m", EnktelPurple)
-                        }
-                        if (channel.hasArchive) StatusPill("CATCH-UP", EnktelOk)
-                    }
-                    if (now != null) {
-                        Spacer(Modifier.height(7.dp))
-                        Text(
-                            now.title, color = EnktelTextOnArt, style = EnktelType.display,
+                            (if (shiftedFrom > 0) "" else "LIVE: ") + (now?.title ?: channel.name),
+                            color = EnktelTextOnArt, fontSize = 30.sp, fontWeight = FontWeight.Medium,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
                         )
-                        Spacer(Modifier.height(12.dp))
-                        val span = (now.endMs - now.startMs).coerceAtLeast(1)
-                        val frac = ((System.currentTimeMillis() - now.startMs).toFloat() / span)
-                            .coerceIn(0f, 1f)
-                        // The programme's actual clock times, which the overlay
-                        // never showed — it offered a progress bar and a
-                        // countdown and left "what time is this on?" unanswered.
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "${hhmm(now.startMs)} – ${hhmm(now.endMs)}",
-                                color = EnktelTextOnArt, style = EnktelType.subtitle,
-                            )
-                            Spacer(Modifier.width(14.dp))
-                            // A full-width timeline rather than a fixed 300 dp
-                            // stub floating in the middle of a 960 dp row.
-                            Box(Modifier.weight(1f)) { ProgressTrack(frac) }
-                            Spacer(Modifier.width(14.dp))
-                            Text(
-                                remainingLabel(now.endMs),
-                                color = EnktelBlue, style = EnktelType.label,
-                                fontWeight = FontWeight.Bold,
-                            )
+                        Spacer(Modifier.width(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (recording) tv.enktel.app.ui.components.InfoChip("● REC", accent = EnktelLive)
+                            if (shiftedFrom > 0) tv.enktel.app.ui.components.InfoChip("⏪ ${hhmm(shiftedFrom)}")
+                            else tv.enktel.app.ui.components.InfoChip("LIVE", accent = EnktelLive)
+                            val res = if (stats.width > 0 && stats.height > 0) {
+                                "${stats.width}x${stats.height}" +
+                                    if (stats.frameRate > 0f) " %.0ffps".format(stats.frameRate) else ""
+                            } else ""
+                            if (res.isNotBlank()) tv.enktel.app.ui.components.InfoChip(res)
+                            codecLabel(stats.videoCodec)?.let { tv.enktel.app.ui.components.InfoChip(it) }
+                            codecLabel(stats.audioCodec)?.let { tv.enktel.app.ui.components.InfoChip(it) }
+                            if (sleepUntil > 0) {
+                                val mins = ((sleepUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
+                                tv.enktel.app.ui.components.InfoChip("☾ ${mins}m")
+                            }
                         }
-                        if (now.desc.isNotBlank()) {
-                            Spacer(Modifier.height(11.dp))
-                            Text(
-                                now.desc, color = EnktelTextDim, style = EnktelType.body,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    val ident = listOfNotNull(
+                        channel.num.takeIf { it > 0 }?.toString(),
+                        channel.name,
+                        channel.categoryName.takeIf { it.isNotBlank() },
+                        playlistName.takeIf { it.isNotBlank() },
+                    ).joinToString("  ·  ")
+                    Text(ident, color = EnktelTextDim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(12.dp))
+                    if (now != null) {
+                        val span = (now.endMs - now.startMs).coerceAtLeast(1)
+                        val frac = ((System.currentTimeMillis() - now.startMs).toFloat() / span).coerceIn(0f, 1f)
+                        Box(Modifier.fillMaxWidth()) { ProgressTrack(frac) }
+                        Spacer(Modifier.height(6.dp))
+                        Row(Modifier.fillMaxWidth()) {
+                            Text("${hhmm(now.startMs)} – ${hhmm(now.endMs)}", color = EnktelTextDim, fontSize = 14.sp)
+                            Spacer(Modifier.weight(1f))
+                            if (next != null) {
+                                Text(
+                                    "Next ${hhmm(next.startMs)}  ${next.title}",
+                                    color = EnktelTextDim, fontSize = 14.sp, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                                )
+                                Spacer(Modifier.width(16.dp))
+                            }
+                            Text(remainingLabel(now.endMs), color = EnktelBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
-                        Spacer(Modifier.height(7.dp))
-                        Text(
-                            channel.name,
-                            color = EnktelTextOnArt, style = EnktelType.display,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "No guide listing for this channel",
-                            color = EnktelTextFaint, style = EnktelType.body,
-                        )
+                        Text("No guide listing for this channel", color = EnktelTextFaint, fontSize = 14.sp)
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
+            // The actions themselves live in the ▼ quick menu (the overlay is
+            // display-only so it never steals the D-pad from zapping); these
+            // pills say what is there, in the redesign's places.
             Row(
                 Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (next != null) {
-                    Text(
-                        "NEXT",
-                        color = EnktelTextFaint, style = EnktelType.overline,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        hhmm(next.startMs),
-                        color = EnktelTextDim, style = EnktelType.label,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        next.title, color = EnktelTextOnArt.copy(0.9f), style = EnktelType.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                // Stream telemetry lives here, away from the programme.
-                //
-                // Resolution and frame rate were chips in the middle of the
-                // programme row, styled identically to the playlist name beside
-                // them — five interchangeable grey pills, which is what made the
-                // overlay look cheap. They are readouts, not labels: quiet,
-                // monospaced-feeling, and grouped at the far end where a viewer
-                // checking "am I really getting HD?" will look for them.
-                resolutionLabel(stats.width, stats.height).takeIf { it.isNotBlank() }?.let {
-                    Readout(it)
-                }
-                if (stats.frameRate > 0f) Readout("%.0f fps".format(stats.frameRate))
-                Spacer(Modifier.width(14.dp))
-                Text(
-                    "▼  Menu",
-                    color = EnktelTextFaint, style = EnktelType.caption,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text("▼ Menu", color = EnktelTextFaint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(4.dp))
+                if (channel.hasArchive) ActionPill("WATCH FROM START", highlighted = true)
+                ActionPill("MULTI-VIEW")
+                ActionPill("AUDIO / SUBTITLES")
+                ActionPill("EPG")
             }
         }
     }
+}
+
+/** "H264"/"HEVC"/"AAC"/"E-AC-3" from a MIME-ish codec string, or null. */
+private fun codecLabel(codec: String): String? {
+    val c = codec.lowercase()
+    return when {
+        c.isBlank() -> null
+        "hevc" in c || "h265" in c || "hvc" in c -> "HEVC"
+        "avc" in c || "h264" in c -> "H.264"
+        "av01" in c || "av1" in c -> "AV1"
+        "vp9" in c -> "VP9"
+        "eac3" in c || "e-ac-3" in c || "ec-3" in c -> "E-AC-3"
+        "ac3" in c || "ac-3" in c -> "AC-3"
+        "dts" in c -> "DTS"
+        "truehd" in c -> "TrueHD"
+        "aac" in c || "mp4a" in c -> "AAC"
+        "opus" in c -> "Opus"
+        "mpeg" in c || "mp2" in c || "mp3" in c -> "MPEG"
+        else -> null
+    }
+}
+
+@Composable
+private fun ActionPill(text: String, highlighted: Boolean = false) {
+    Text(
+        text,
+        color = if (highlighted) Color(0xFF0A1317) else Color.White,
+        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (highlighted) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.10f))
+            .border(1.dp, Color.White.copy(alpha = if (highlighted) 0f else 0.18f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
 }
 
 /** "· " separator between eyebrow fields, at the faint weight. */
