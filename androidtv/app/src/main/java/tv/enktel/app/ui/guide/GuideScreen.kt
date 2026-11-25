@@ -2,6 +2,7 @@ package tv.enktel.app.ui.guide
 
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -312,7 +313,9 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
             opening = { playingKey -> guideDefaultHighlight(channels, programs, now, playingKey) },
             openingKey = Triple(channels, programs, now),
             playlistName = p.name,
+            profileId = p.id,
             onOpen = { c, pr -> selected = c to pr },
+            onWatchVod = { route -> nav.navigate(route) },
             modifier = Modifier.padding(horizontal = shape.padH),
         )
         Spacer(Modifier.height(14.dp))
@@ -769,8 +772,11 @@ private fun GuideDock(
     /** Whatever [opening] depends on, so its answer is recomputed only when that changes. */
     openingKey: Any,
     playlistName: String,
+    profileId: Long,
     /** Opens the programme dialog (record, catch-up, watch). */
     onOpen: (Channel, EpgProgram) -> Unit = { _, _ -> },
+    /** Opens an on-demand route (`movie/…` or `seriesDetails/…`) for a matched programme. */
+    onWatchVod: (route: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val nowPlaying by graph.playback.now.collectAsStateWithLifecycle()
@@ -858,10 +864,27 @@ private fun GuideDock(
             // The redesign's action chips: format (when the channel name says
             // so), Catch-Up when the channel archives, and Record. Both actions
             // open the programme dialog, which owns record and catch-up.
+            // Discovery enrichment: is this live programme also in the library
+            // on demand? Match on the highlighted programme (title + year +
+            // type) and, when found, offer a jump straight to it.
+            var vodMatch by remember(ch.key, prog.title) {
+                mutableStateOf<tv.enktel.app.data.hub.MediaHubRepository.Match?>(null)
+            }
+            LaunchedEffect(ch.key, prog.title) {
+                vodMatch = runCatching { graph.mediaHub.match(profileId, prog) }.getOrNull()
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 val tags = remember(ch.key) { tv.enktel.app.ui.components.FormatTags.of(ch.name, ch.categoryName) }
                 val fps = if (Regex("""\b(50|60) ?FPS\b""", RegexOption.IGNORE_CASE).containsMatchIn(ch.name)) " 60FPS" else ""
                 if (tags.uhd) tv.enktel.app.ui.components.InfoChip("4K$fps")
+                vodMatch?.let { m ->
+                    tv.enktel.app.ui.components.FocusButton(
+                        "Watch on demand",
+                        icon = androidx.compose.material.icons.Icons.Rounded.PlayArrow,
+                        accent = true,
+                        onClick = { onWatchVod(m.key) },
+                    )
+                }
                 if (ch.hasArchive) {
                     tv.enktel.app.ui.components.FocusButton(
                         "Catch-Up",

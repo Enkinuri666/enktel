@@ -106,6 +106,11 @@ fun LiveInfoOverlay(
     shiftedFrom: Long,
     sleepUntil: Long,
     modifier: Modifier = Modifier,
+    /** Null hides "Watch from start" — the channel carries no catch-up archive. */
+    onWatchFromStart: (() -> Unit)? = null,
+    onMultiView: (() -> Unit)? = null,
+    onAudioSubtitles: (() -> Unit)? = null,
+    onEpg: (() -> Unit)? = null,
 ) {
     // Collected here, not by the live player. See the note where the flow is
     // passed in: this overlay only exists while the OSD is up, so binding the
@@ -238,10 +243,10 @@ fun LiveInfoOverlay(
             ) {
                 Text("▼ Menu", color = EnktelTextFaint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(4.dp))
-                if (channel.hasArchive) ActionPill("WATCH FROM START", highlighted = true)
-                ActionPill("MULTI-VIEW")
-                ActionPill("AUDIO / SUBTITLES")
-                ActionPill("EPG")
+                onWatchFromStart?.let { ActionPill("WATCH FROM START", highlighted = true, onClick = it) }
+                onMultiView?.let { ActionPill("MULTI-VIEW", onClick = it) }
+                onAudioSubtitles?.let { ActionPill("AUDIO / SUBTITLES", onClick = it) }
+                onEpg?.let { ActionPill("EPG", onClick = it) }
             }
         }
     }
@@ -268,17 +273,29 @@ private fun codecLabel(codec: String): String? {
 }
 
 @Composable
-private fun ActionPill(text: String, highlighted: Boolean = false) {
-    Text(
-        text,
-        color = if (highlighted) Color(0xFF0A1317) else Color.White,
-        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (highlighted) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.10f))
-            .border(1.dp, Color.White.copy(alpha = if (highlighted) 0f else 0.18f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    )
+private fun ActionPill(text: String, highlighted: Boolean = false, onClick: () -> Unit) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = if (highlighted) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.10f),
+            focusedContainerColor = if (highlighted) Color.White else EnktelBlue,
+            contentColor = if (highlighted) Color(0xFF0A1317) else Color.White,
+            focusedContentColor = Color(0xFF0A1317),
+        ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                androidx.compose.foundation.BorderStroke(2.dp, EnktelBlue),
+            ),
+        ),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+    ) {
+        Text(
+            text,
+            fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        )
+    }
 }
 
 /** "· " separator between eyebrow fields, at the faint weight. */

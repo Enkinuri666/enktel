@@ -211,6 +211,7 @@ class AppGraph(app: Application) {
     val sports by lazy { SportsRepository(content, epg) }
     val watchlist by lazy { WatchlistRepository(db.watchlistDao()) }
     val recommendations by lazy { RecommendationsRepository(content) }
+    val mediaHub by lazy { tv.enktel.app.data.hub.MediaHubRepository(content, epg) }
     @Volatile private var sportsDbKeySnapshot: String = ScoresRepository.FREE_KEY
     val scores by lazy { ScoresRepository(http) { sportsDbKeySnapshot } }
     val trailers by lazy { tv.enktel.app.data.repo.TrailerRepository(http, settings) }

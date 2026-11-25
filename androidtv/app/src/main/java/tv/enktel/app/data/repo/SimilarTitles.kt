@@ -37,6 +37,12 @@ object SimilarTitles {
         val genres: List<String>,
         val cast: List<String>,
         val director: String,
+        /** TMDb keywords (the enriched `tags` column): "time-travel", "heist".
+         *  The sharpest "like this" signal the catalogue carries — two shows
+         *  that share "dystopian" + "cloning" are alike in a way a genre never
+         *  proves — so a keyword match is worth more than a genre one. Empty for
+         *  an un-enriched row, which simply falls back to genre/people. */
+        val keywords: List<String>,
         val year: Int,
         val rating: Double,
         /** False for a row with no poster — a rail of blank cards is not a rail. */
@@ -44,6 +50,8 @@ object SimilarTitles {
     )
 
     private const val GENRE = 10
+    private const val KEYWORD = 7
+    private const val MAX_KEYWORD_MATCHES = 4
     private const val DIRECTOR = 14
     private const val CAST = 6
     private const val MAX_CAST_MATCHES = 3
@@ -66,6 +74,7 @@ object SimilarTitles {
     private class Seed(val facets: Facets) {
         val genres: Set<String> = facets.genres.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
         val cast: Set<String> = facets.cast.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val keywords: Set<String> = facets.keywords.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
         val director: String = facets.director.trim()
     }
 
@@ -83,11 +92,16 @@ object SimilarTitles {
         val sameDirector = seed.facets.director.isNotBlank() &&
             seed.director.equals(other.director.trim(), ignoreCase = true)
 
+        val sharedKeywords = other.keywords
+            .map { it.trim().lowercase() }
+            .count { it.isNotBlank() && it in seed.keywords }
+            .coerceAtMost(MAX_KEYWORD_MATCHES)
+
         // Nothing in common with the title on screen. Era and rating are not
         // evidence of resemblance on their own — half the catalogue shares them.
-        if (sharedGenres == 0 && sharedCast == 0 && !sameDirector) return 0
+        if (sharedGenres == 0 && sharedCast == 0 && sharedKeywords == 0 && !sameDirector) return 0
 
-        var total = sharedGenres * GENRE + sharedCast * CAST
+        var total = sharedGenres * GENRE + sharedCast * CAST + sharedKeywords * KEYWORD
         if (sameDirector) total += DIRECTOR
         if (seed.facets.year > 0 && other.year > 0) {
             val gap = abs(seed.facets.year - other.year)
@@ -131,6 +145,7 @@ object SimilarTitles {
         genres = ContentRepository.splitGenres(t.genre),
         cast = splitPeople(t.cast),
         director = t.director,
+        keywords = emptyList(),
         year = t.year,
         rating = t.rating,
         hasArt = t.poster.isNotBlank(),
@@ -142,6 +157,7 @@ object SimilarTitles {
         genres = ContentRepository.splitGenres(m.genre),
         cast = splitPeople(m.cast),
         director = m.director,
+        keywords = splitKeywords(m.tags),
         year = m.year,
         rating = m.rating,
         hasArt = m.poster.isNotBlank(),
@@ -153,10 +169,15 @@ object SimilarTitles {
         genres = ContentRepository.splitGenres(s.genre),
         cast = splitPeople(s.cast),
         director = s.director,
+        keywords = splitKeywords(s.tags),
         year = s.year,
         rating = s.rating,
         hasArt = s.poster.isNotBlank(),
     )
+
+    /** Enriched keywords are stored comma-separated in the `tags` column. */
+    fun splitKeywords(raw: String): List<String> =
+        raw.split(',', ';', '|').map { it.trim().lowercase() }.filter { it.isNotBlank() }
 
     /** Panels write cast lists comma-separated, occasionally with a stray "and". */
     fun splitPeople(raw: String): List<String> =

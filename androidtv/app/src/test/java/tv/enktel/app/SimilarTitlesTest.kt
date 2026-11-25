@@ -17,15 +17,28 @@ import tv.enktel.app.data.repo.SimilarTitles.Facets
  */
 class SimilarTitlesTest {
 
+    @org.junit.Test
+    fun `shared keywords lift a title with no other overlap`() {
+        val seedK = f("s", genres = listOf("Drama"), keywords = listOf("time-travel", "dystopian"))
+        val keywordMatch = f("a", genres = listOf("Comedy"), keywords = listOf("time-travel", "dystopian"))
+        val genreOnly = f("b", genres = listOf("Drama"))
+        // Two shared keywords (2*7=14) beats a single shared genre (10).
+        org.junit.Assert.assertTrue(
+            SimilarTitles.score(seedK, keywordMatch) > SimilarTitles.score(seedK, genreOnly),
+        )
+    }
+
+
     private fun f(
         key: String,
         genres: List<String> = emptyList(),
         cast: List<String> = emptyList(),
         director: String = "",
+        keywords: List<String> = emptyList(),
         year: Int = 0,
         rating: Double = 0.0,
         hasArt: Boolean = true,
-    ) = Facets(key, genres, cast, director, year, rating, hasArt)
+    ) = Facets(key, genres, cast, director, keywords, year, rating, hasArt)
 
     private val seed = f(
         key = "1:100",
