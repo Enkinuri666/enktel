@@ -62,10 +62,10 @@ object LiveVodMatch {
      *  catalogue name and never clears the threshold. */
     internal fun tokens(raw: String): Set<String> {
         val stripped = raw.lowercase()
-            .replace(Regex("\([^)]*\)"), " ")        // (New Episode), (Live)
-            .replace(Regex("\[[^\]]*\]"), " ")
-            .replace(Regex("s\d{1,2}\s*e\d{1,3}"), " ") // s03e05 / s3 e5
-            .replace(Regex("\bep(isode)?\s*\d+"), " ")  // episode 5 / ep 5
+            .replace(Regex("""\([^)]*\)"""), " ")        // (New Episode), (Live)
+            .replace(Regex("""\[[^\]]*\]"""), " ")
+            .replace(Regex("""s\d{1,2}\s*e\d{1,3}"""), " ") // s03e05 / s3 e5
+            .replace(Regex("""\bep(isode)?\s*\d+"""), " ")  // episode 5 / ep 5
         return TitleSanitizer.clean(stripped)
             .lowercase()
             .split(Regex("[^a-z0-9]+"))
