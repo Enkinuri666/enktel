@@ -35,7 +35,9 @@ import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.Subscribe
+import tv.enktel.app.data.bool
 import tv.enktel.app.data.get
+import tv.enktel.app.data.str
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
 import tv.enktel.app.ui.theme.EnktelBlue
@@ -85,7 +87,16 @@ fun AccountBanner(graph: AppGraph, profile: Profile?, modifier: Modifier = Modif
             maxConns = ui.int("max_connections") ?: p.maxConnections
             expiresAt = (ui.long("exp_date") ?: 0L) * 1000L
             trial = (ui.int("is_trial") ?: 0) == 1
-            reachable = (ui.int("auth") ?: 0) == 1
+            // The panel answered with a user_info block, so it is reachable.
+            // `auth` arrives as 1, "1" or a JSON boolean depending on the panel;
+            // bool() handles all three where int()==1 failed on the boolean form
+            // and painted a healthy line as "UNREACHABLE". `status` is the
+            // authoritative account state and a second, independent signal.
+            reachable = ui != null && (
+                ui.bool("auth") ||
+                    ui.str("status").equals("Active", ignoreCase = true) ||
+                    expiresAt > System.currentTimeMillis()
+                )
         }.onFailure { reachable = false }
     }
 

@@ -31,9 +31,17 @@ class ScoresEndpointTest {
         assertEquals("tvevent", ScoresRepository.ROOT_TVEVENT)
     }
 
-    @Test fun `the free key is the documented shared key`() {
-        // Live scores work on this key; the feature must not be gated on a
-        // paid upgrade that isn't actually required.
-        assertEquals("3", ScoresRepository.FREE_KEY)
+    @Test fun `the whole-day broadcast endpoint uses the plural root`() {
+        // eventstv.php returns `tvevents`, not `tvevent`; asking for the
+        // singular left every "ON TODAY" broadcaster line blank.
+        assertEquals("tvevents", ScoresRepository.ROOT_TVEVENTS_DAY)
+    }
+
+    @Test fun `the free key is the current public test key`() {
+        // The old "3" key was permanently disabled by TheSportsDB (HTTP 403 on
+        // every endpoint), which silently emptied the entire Sports Hub. "123"
+        // is the live replacement test key and serves livescore.php. The
+        // feature must not be gated on a paid upgrade that isn't required.
+        assertEquals("123", ScoresRepository.FREE_KEY)
     }
 }

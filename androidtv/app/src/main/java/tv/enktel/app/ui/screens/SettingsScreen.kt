@@ -1053,19 +1053,19 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             "Free TMDB account → developer.themoviedb.org → API → request access → paste your v3 key or v4 read-only token here. Blank disables enrichment (the themed home rails still work off titles/genres alone).",
             color = EnktelTextDim, fontSize = 13.sp,
         )
-        val autoTrailers by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = true)
+        val autoTrailers by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = false)
         FocusButton(
             "Auto-play trailers on hover: ${if (autoTrailers) "ON" else "off"}",
             accent = autoTrailers,
             onClick = { scope.launch { graph.settings.setAutoTrailersEnabled(!autoTrailers) } },
         )
         Text(
-            if (tmdbKey.isBlank())
-                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. " +
-                    "Trailer lookups go through enktel.tv, so no key is needed — adding one above just " +
-                    "uses your own TMDB quota instead of the shared one."
-            else
-                "Rest on a poster in Movies or Series and its trailer plays silently behind the grid. Always muted; move off the poster and it stops.",
+            "Off by default. When on, resting on a poster in Movies or Series plays its trailer " +
+                "silently behind the grid (always muted; move off and it stops), which means a " +
+                "trailer lookup every time focus lands on a poster. Leave it off and open a title to " +
+                "play its trailer on demand with the Trailer button on the details screen — no " +
+                "background loading." +
+                if (tmdbKey.isBlank()) " Trailer lookups go through enktel.tv, so no key is needed." else "",
             color = EnktelTextDim, fontSize = 13.sp,
         )
 
@@ -1432,9 +1432,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
         }
         Text(
-            "Schedules, highlights and match detail work on the free key. In-play live scores do " +
-                "not — that endpoint is Premium-only, which is why turning Live scores on can look " +
-                "like nothing happened. A Patreon key at thesportsdb.com unlocks it.",
+            "Live scores, schedules, highlights and match detail all work on the built-in free " +
+                "key. It's shared and rate-limited, so on a busy day a feed can come back empty for " +
+                "a while. A personal key from thesportsdb.com raises that limit.",
             color = EnktelTextDim, fontSize = 13.sp,
         )
         val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)

@@ -55,11 +55,13 @@ class BufferProfilesTest {
     }
 
     @Test
-    fun `live never buffers past the provider's segment window`() {
-        // The whole point. A live HLS server publishes a sliding window of a
-        // handful of segments; asking for more than it retains is a request
-        // for a deleted file, and the answer is 404 — so a bigger buffer makes
-        // live playback less reliable, not more.
+    fun `live buffer stays within the memory-and-latency ceiling`() {
+        // The ceiling bounds how much buffer the LoadControl may HOLD — a
+        // memory and latency bound. It is not a segment-window bound: a sliding
+        // HLS playlist only ever hands over the segments it retains whatever the
+        // cap is (the 404 risk is the live-edge offset, LIVE_TARGET_OFFSET_MS,
+        // not the buffer size), and raw MPEG-TS has no playlist to overrun. The
+        // cap just keeps a 1 GB stick from holding more than it can afford.
         for (p in profiles) for (tv in listOf(true, false)) {
             val w = BufferProfiles.window(p, live = true, isTv = tv)
             assertTrue(

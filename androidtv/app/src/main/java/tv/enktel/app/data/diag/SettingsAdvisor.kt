@@ -38,6 +38,11 @@ object SettingsAdvisor {
             "MPEG-TS" -> "ts"
             else -> current.streamFormat
         }
+        // Always emit the opinion when the panel's format is known, even when
+        // it already matches: SettingChange.differs (current != suggested) is
+        // what the apply layer filters on (DiagReport.suggestedChanges) and the
+        // Panel Doctor shows a matching one as a green "already correct" row.
+        // Gating the emission on a mismatch dropped that confirmation entirely.
         if (liveDetected == "HLS" || liveDetected == "MPEG-TS") {
             out += SettingChange(
                 key = "streamFormat",
@@ -110,9 +115,14 @@ object SettingsAdvisor {
         // instinct it provokes (raise the buffer) makes it worse.
         live?.hls?.let { pl ->
             val retentionMs = pl.targetDurationSec * pl.segmentCount * 1000
-            if (retentionMs in 1 until tv.enktel.app.player.BufferProfiles.LIVE_MAX_CEILING_MS &&
-                current.bufferProfile != "low"
-            ) {
+            // Compare the playlist's retention to how much the *current*
+            // profile would actually try to hold, not to the global ceiling:
+            // only when the profile would buffer past what the provider keeps
+            // does "low" help. Tying this to LIVE_MAX_CEILING_MS meant raising
+            // that cap silently widened this rule to every short-ish playlist.
+            val profileMaxMs = tv.enktel.app.player.BufferProfiles
+                .window(current.bufferProfile, live = true, isTv = true).maxMs
+            if (retentionMs in 1 until profileMaxMs && current.bufferProfile != "low") {
                 out += SettingChange(
                     key = "bufferProfile",
                     label = "Buffer profile",

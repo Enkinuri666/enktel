@@ -31,9 +31,11 @@ import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
 import tv.enktel.app.data.db.Profile
+import tv.enktel.app.data.bool
 import tv.enktel.app.data.get
 import tv.enktel.app.data.int
 import tv.enktel.app.data.long
+import tv.enktel.app.data.str
 import tv.enktel.app.ui.components.ConfirmDialog
 import tv.enktel.app.ui.components.FocusButton
 import tv.enktel.app.ui.components.LocalToaster
@@ -61,20 +63,60 @@ fun AccountsPanel(graph: AppGraph, profile: Profile?, nav: NavHostController) {
     var active by remember(p.id) { mutableIntStateOf(-1) }
     var max by remember(p.id) { mutableIntStateOf(p.maxConnections) }
     var expires by remember(p.id) { mutableLongStateOf(p.expiresAt) }
-    var online by remember(p.id) { mutableStateOf<Boolean?>(null) }
+    // null = still checking. Reachability is "did the panel answer", which is
+    // what "Check Connection" actually asks — kept apart from whether the
+    // credentials authorised, so a valid account that answers never reads as
+    // "Unreachable".
+    var reachable by remember(p.id) { mutableStateOf<Boolean?>(null) }
+    var authorized by remember(p.id) { mutableStateOf(false) }
+    // The panel's own account state: "Active", "Expired", "Banned", "Disabled".
+    var statusLabel by remember(p.id) { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
 
     LaunchedEffect(p.id, checkTick) {
         if (p.kind != "xtream") return@LaunchedEffect
-        online = null
+        reachable = null
         runCatching {
             val ui = graph.xtream.login(p).get("user_info")
-            active = ui.int("active_cons") ?: -1
-            max = ui.int("max_connections") ?: p.maxConnections
-            expires = (ui.long("exp_date") ?: 0L) * 1000L
-            online = (ui.int("auth") ?: 0) == 1
-        }.onFailure { online = false }
+            if (ui == null) {
+                // The panel answered, but not with a user_info block — an HTML
+                // error page or a login rejection. Reachable, not authorised.
+                reachable = true
+                authorized = false
+                statusLabel = ""
+                return@runCatching
+            }
+            // The panel responded with account data: it is reachable.
+            reachable = true
+            ui.int("active_cons")?.let { active = it }
+            ui.int("max_connections")?.let { max = it }
+            ui.long("exp_date")?.let { expires = it * 1000L }
+            // `auth` comes back as 1, "1" or even a JSON boolean `true`
+            // depending on the panel — bool() handles all three, where the old
+            // int()==1 silently failed on the boolean form and showed
+            // "Unreachable" for a perfectly good account. `status` is the
+            // authoritative account state and a second, independent signal.
+            statusLabel = ui.str("status").orEmpty()
+            authorized = ui.bool("auth") ||
+                statusLabel.equals("Active", ignoreCase = true) ||
+                expires > System.currentTimeMillis()
+        }.onFailure { reachable = false }
+    }
+
+    val statusText = when {
+        p.kind != "xtream" -> "Not reported by M3U"
+        reachable == null -> "Checking…"
+        reachable == false -> "Unreachable"
+        authorized || statusLabel.equals("Active", ignoreCase = true) -> "Online"
+        statusLabel.isNotBlank() -> statusLabel
+        else -> "Credentials rejected"
+    }
+    val statusColor = when {
+        reachable == null -> Color.White
+        reachable == false -> EnktelLive
+        authorized || statusLabel.equals("Active", ignoreCase = true) -> EnktelOk
+        else -> tv.enktel.app.ui.theme.EnktelWarn
     }
 
     Column(Modifier.fillMaxWidth()) {
@@ -82,16 +124,7 @@ fun AccountsPanel(graph: AppGraph, profile: Profile?, nav: NavHostController) {
         Spacer(Modifier.height(14.dp))
         AccountRow("Active Portal", "${p.name} (${if (p.kind == "xtream") "Xtream Codes API" else "M3U"})")
         AccountRow("Username", p.username.ifBlank { "—" })
-        AccountRow(
-            "Status",
-            when {
-                p.kind != "xtream" -> "Not reported by M3U"
-                online == null -> "Checking…"
-                online == true -> "Online"
-                else -> "Unreachable"
-            },
-            valueColor = when (online) { true -> EnktelOk; false -> EnktelLive; null -> Color.White },
-        )
+        AccountRow("Status", statusText, valueColor = statusColor)
         AccountRow(
             "Subscription Expiry",
             if (expires > 0) TimeFormat.format("dd/MM/yyyy", expires) else "Unlimited / not reported",

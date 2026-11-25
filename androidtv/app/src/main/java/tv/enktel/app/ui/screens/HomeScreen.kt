@@ -390,7 +390,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "⚡  Just Added", justAdded.filterNot { it.key in heroKeys },
-                    subtitle = "new since your last sync",
+                    subtitle = "new to your line since the last sync",
                     key = { it.key },
                 ) { m ->
                     val ageDays = ((System.currentTimeMillis() - m.firstSeenAt) / 86_400_000L)
@@ -413,7 +413,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
             item {
                 ContentRail(
                     "🆕  Latest Releases", latestReleases.filterNot { it.key in heroKeys },
-                    subtitle = "newest on your line",
+                    subtitle = "newest by release year",
                     key = { it.key },
                 ) { m ->
                     val ageDays = ((System.currentTimeMillis() / 1000 - m.addedAt) / 86_400).coerceAtLeast(0)
@@ -498,31 +498,14 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
                 }
             }
         }
-        // Newest additions lead the page.
-        //
-        // This rail existed all along as "Latest Movies", ninth down the
-        // screen under three other rails — so the single most common reason to
-        // open the app, "what's new since last time", required scrolling past
-        // everything else to answer. It is sorted by addedAt DESC, which is
-        // exactly the question being asked; it just wasn't where anyone would
-        // look, and "Latest" read as a genre rather than a recency.
-        if (recentMovies.isNotEmpty()) {
-            item {
-                ContentRail(
-                    "Recently Added",
-                    recentMovies,
-                    key = { it.key },
-                    subtitle = "new in your playlist",
-                ) { m ->
-                    PosterCard(
-                        title = m.name,
-                        imageUrl = m.poster,
-                        onClick = { nav.navigate("movie/${m.key}") },
-                        tmdbId = m.tmdbId,
-                    )
-                }
-            }
-        }
+        // "Recently Added" (recentMovies, by the provider's addedAt) used to
+        // sit here. It was a fourth recency rail next to Just Added, Latest
+        // Releases and New This Week, built from a separate query that was never
+        // deduped against the others — so it repeated the same titles under a
+        // near-identical name, which is the "same films throughout the lists"
+        // report. Removed: Just Added already answers "new to your line", and
+        // recentMovies still feeds the hero. One recency rail of each distinct
+        // meaning, no overlaps.
         if (becauseYouWatched.isNotEmpty()) {
             item {
                 ContentRail("Because You Watched", becauseYouWatched, key = { it.key }) { m ->
@@ -567,7 +550,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         }
         if (newThisWeek.isNotEmpty()) {
             item {
-                ContentRail("New This Week", newThisWeek, key = { it.key }) { m ->
+                ContentRail("New This Week", newThisWeek, subtitle = "flagged new by your provider", key = { it.key }) { m ->
                     PosterCard(m.name, m.poster, subtitle = "New",
                         onClick = { nav.navigate("movie/${m.key}") }, tmdbId = m.tmdbId)
                 }

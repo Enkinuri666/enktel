@@ -49,12 +49,18 @@ object BufferProfiles {
     /**
      * Live windows are capped here regardless of profile.
      *
-     * Fifteen seconds is the top of the range that stays inside a typical
-     * provider's segment window. A user who picks "Large" for VOD should not
-     * silently get a live configuration that 404s, so the cap is applied after
-     * the profile rather than being the profile's responsibility.
+     * This is the *amount of buffer the LoadControl may hold*, which is a
+     * memory-and-latency bound, not a segment-window one. The old 15s value
+     * conflated the two: a sliding HLS playlist can only hand over the segments
+     * it still retains no matter how large this cap is (Media3 never requests a
+     * rolled-off file — that risk belongs to [LIVE_TARGET_OFFSET_MS], the live
+     * *edge* offset, not to the buffer size), and a raw MPEG-TS stream has no
+     * playlist at all and can be buffered as far ahead as memory allows. So the
+     * cap starved exactly the format — progressive TS over one throttled HTTP
+     * connection — that most needs runway to ride out a dip. Forty seconds
+     * gives that runway while staying well inside what a 1 GB stick can hold.
      */
-    const val LIVE_MAX_CEILING_MS = 15_000
+    const val LIVE_MAX_CEILING_MS = 40_000
 
     /**
      * How far behind the live edge a live stream plays — **on HLS and DASH
@@ -154,15 +160,26 @@ object BufferProfiles {
     private fun liveWindow(profile: String, isTv: Boolean): Window = when (profile) {
         // Lowest latency. For sport, and for the users who complain about
         // being behind the broadcast.
-        "low" -> Window(minMs = 2_000, maxMs = 8_000, playMs = 500, rebufMs = 2_000)
-        // Most tolerant of a bad line, still inside the segment window.
-        "large" -> Window(minMs = 6_000, maxMs = 15_000, playMs = 1_500, rebufMs = 6_000)
+        // Lowest latency, for sport and anyone who complains about being
+        // behind the broadcast. Kept small on purpose — a little cushion, not
+        // much, so it stays close to the edge.
+        "low" -> Window(minMs = 3_000, maxMs = 10_000, playMs = 1_000, rebufMs = 3_000)
+        // Most tolerant of a bad line: a deep cushion for a flaky raw-TS feed.
+        // rebufMs is the whole of minMs (see the class note on resuming), and
+        // playMs stays small so a channel zap is still instant despite the deep
+        // steady-state buffer.
+        "large" -> Window(minMs = 10_000, maxMs = 40_000, playMs = 1_500, rebufMs = 10_000)
         else -> if (isTv) {
-            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_000, rebufMs = 4_000)
+            // Balanced: enough runway that a throttled single-connection TS
+            // stream rides out a dip without the pacer having to slow playback,
+            // while playback still starts in ~1.5s on a channel change. Resumes
+            // from a stall with the full minMs cushion (rebufMs == minMs).
+            Window(minMs = 6_000, maxMs = 24_000, playMs = 1_500, rebufMs = 6_000)
         } else {
             // A phone changes networks mid-stream in a way a set-top box does
-            // not, so it starts a little more conservatively.
-            Window(minMs = 4_000, maxMs = 12_000, playMs = 1_200, rebufMs = 4_000)
+            // not, so it keeps a shallower steady-state cushion (4s) that the
+            // LiveBufferPacer rebuilds from more readily on a mobile link.
+            Window(minMs = 4_000, maxMs = 24_000, playMs = 1_500, rebufMs = 4_000)
         }
     }
 

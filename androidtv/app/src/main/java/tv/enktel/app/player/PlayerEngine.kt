@@ -216,6 +216,15 @@ class PlayerEngine(
 
     val stats = MutableStateFlow(StreamStats())
     val error = MutableStateFlow<String?>(null)
+
+    /**
+     * The container actually being played right now — "HLS", "MPEG-TS", "MP4",
+     * "MKV", "WebM" or "AUTO" — as opposed to the format the viewer *asked* for.
+     * The two differ whenever the resolver falls back (HLS preferred but the
+     * panel only serves raw TS, say), so the stats overlay reads this rather
+     * than the setting and stops claiming HLS over a TS stream.
+     */
+    val activeContainer = MutableStateFlow("")
     /** true while ExoPlayer is in BUFFERING state — surfaced so the UI can show
      *  the branded animated loader over the video pane. */
     val buffering = MutableStateFlow(false)
@@ -1500,6 +1509,7 @@ class PlayerEngine(
         lastUrl = url
         vlcFallbackUrl.value = null
         currentCandidate = candidate
+        activeContainer.value = containerLabel(url, candidate.mimeType.ifBlank { screenForcedMimeType })
         // A candidate's own hint wins over the screen-level force (which only
         // the "Force MP4 fallback (VOD)" setting sets).
         forcedMimeType = candidate.mimeType.ifBlank { screenForcedMimeType }
@@ -1901,6 +1911,21 @@ class PlayerEngine(
      * connections there would slow every zap to fix a problem those lines do
      * not have.
      */
+    /** A short, honest label for what container [url]/[mime] will play as. */
+    private fun containerLabel(url: String, mime: String): String {
+        val m = mime.lowercase()
+        val path = url.substringBefore('?').substringBefore('#').lowercase()
+        return when {
+            m.contains("mpegurl") || path.endsWith(".m3u8") -> "HLS"
+            m.contains("mp2t") || path.endsWith(".ts") -> "MPEG-TS"
+            m.contains("matroska") || path.endsWith(".mkv") -> "MKV"
+            m.contains("webm") || path.endsWith(".webm") -> "WebM"
+            m.contains("mp4") || path.endsWith(".mp4") || path.endsWith(".m4v") -> "MP4"
+            m.contains("dash") || path.endsWith(".mpd") -> "DASH"
+            else -> "AUTO"
+        }
+    }
+
     fun releaseStreamAndConnections() {
         runCatching {
             player.stop()
