@@ -38,9 +38,12 @@ object SettingsAdvisor {
             "MPEG-TS" -> "ts"
             else -> current.streamFormat
         }
-        if ((liveDetected == "HLS" || liveDetected == "MPEG-TS") &&
-            current.streamFormat != suggestedFormat
-        ) {
+        // Always emit the opinion when the panel's format is known, even when
+        // it already matches: SettingChange.differs (current != suggested) is
+        // what the apply layer filters on (DiagReport.suggestedChanges) and the
+        // Panel Doctor shows a matching one as a green "already correct" row.
+        // Gating the emission on a mismatch dropped that confirmation entirely.
+        if (liveDetected == "HLS" || liveDetected == "MPEG-TS") {
             out += SettingChange(
                 key = "streamFormat",
                 label = "Stream format",

@@ -165,16 +165,21 @@ object BufferProfiles {
         // much, so it stays close to the edge.
         "low" -> Window(minMs = 3_000, maxMs = 10_000, playMs = 1_000, rebufMs = 3_000)
         // Most tolerant of a bad line: a deep cushion for a flaky raw-TS feed.
-        "large" -> Window(minMs = 10_000, maxMs = 40_000, playMs = 2_500, rebufMs = 6_000)
+        // rebufMs is the whole of minMs (see the class note on resuming), and
+        // playMs stays small so a channel zap is still instant despite the deep
+        // steady-state buffer.
+        "large" -> Window(minMs = 10_000, maxMs = 40_000, playMs = 1_500, rebufMs = 10_000)
         else -> if (isTv) {
             // Balanced: enough runway that a throttled single-connection TS
             // stream rides out a dip without the pacer having to slow playback,
-            // while playback still starts in ~1.5s on a channel change.
-            Window(minMs = 6_000, maxMs = 24_000, playMs = 1_500, rebufMs = 4_000)
+            // while playback still starts in ~1.5s on a channel change. Resumes
+            // from a stall with the full minMs cushion (rebufMs == minMs).
+            Window(minMs = 6_000, maxMs = 24_000, playMs = 1_500, rebufMs = 6_000)
         } else {
             // A phone changes networks mid-stream in a way a set-top box does
-            // not, so it starts a little more conservatively.
-            Window(minMs = 6_000, maxMs = 24_000, playMs = 2_000, rebufMs = 4_000)
+            // not, so it keeps a shallower steady-state cushion (4s) that the
+            // LiveBufferPacer rebuilds from more readily on a mobile link.
+            Window(minMs = 4_000, maxMs = 24_000, playMs = 1_500, rebufMs = 4_000)
         }
     }
 
