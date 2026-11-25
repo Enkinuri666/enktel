@@ -587,7 +587,7 @@ class SettingsStore(private val context: Context) {
     val downloadFolderUri: Flow<String> = context.dataStore.data.map { it[DOWNLOAD_FOLDER_URI].orEmpty() }
     suspend fun setDownloadFolderUri(v: String) = context.dataStore.edit { it[DOWNLOAD_FOLDER_URI] = v.trim() }
     suspend fun downloadFolderUriNow(): String = downloadFolderUri.first()
-    val autoTrailersEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTO_TRAILERS] ?: true }
+    val autoTrailersEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTO_TRAILERS] ?: false }
     suspend fun setAutoTrailersEnabled(v: Boolean) = context.dataStore.edit { it[AUTO_TRAILERS] = v }
     val matchCenterEnabled: Flow<Boolean> = context.dataStore.data.map { it[MATCH_CENTER] ?: true }
     suspend fun setMatchCenterEnabled(v: Boolean) = context.dataStore.edit { it[MATCH_CENTER] = v }

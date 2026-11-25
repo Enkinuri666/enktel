@@ -54,7 +54,7 @@ fun AutoTrailerLayer(
     /** Dim applied over the video so foreground text stays readable. */
     scrimAlpha: Float = 0.55f,
 ) {
-    val enabled by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val enabled by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = false)
     val focused = LocalFocusedPoster.current
     val target = focused?.trailerTarget
 
