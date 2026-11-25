@@ -94,6 +94,7 @@ data class Strings(
     val navMovies: String,
     val navSeries: String,
     val navSports: String,
+    val navHub: String,
     val navComingSoon: String,
     val navWatchlist: String,
     val navLists: String,
@@ -116,6 +117,7 @@ data class Strings(
     val blurbSettings: String,
     val blurbPlatforms: String,
     val blurbSearch: String,
+    val blurbHub: String,
 
     // ---- signing in ----------------------------------------------------
     val signInTitle: String,
@@ -247,6 +249,7 @@ data class Strings(
         "movies" -> navMovies
         "series" -> navSeries
         "sports" -> navSports
+        "hub" -> navHub
         "comingSoon" -> navComingSoon
         "watchlist" -> navWatchlist
         "lists" -> navLists
@@ -271,6 +274,7 @@ data class Strings(
         "settings" -> blurbSettings
         "discover" -> blurbPlatforms
         "search" -> blurbSearch
+        "hub" -> blurbHub
         else -> null
     }
 
@@ -340,6 +344,7 @@ val EnglishStrings = Strings(
     navMovies = "Movies",
     navSeries = "Series",
     navSports = "Sports Hub",
+    navHub = "Media Hub",
     navComingSoon = "Coming Soon",
     navWatchlist = "Watchlist",
     navLists = "My Lists",
@@ -361,6 +366,7 @@ val EnglishStrings = Strings(
     blurbSettings = "Playback, account, diagnostics",
     blurbPlatforms = "Streaming apps and services, in one place",
     blurbSearch = "Find a channel, film or show by name",
+    blurbHub = "Live TV matched to films and shows on demand",
 
     signInTitle = "Sign in to EnkTel",
     signInLede = "Use the username and password from your welcome email.",
@@ -477,6 +483,7 @@ val SerboCroatianStrings = Strings(
     navMovies = "Filmovi",
     navSeries = "Serije",
     navSports = "Sportski centar",
+    navHub = "Medijski centar",
     navComingSoon = "Uskoro",
     navWatchlist = "Za gledanje",
     navLists = "Moje liste",
@@ -498,6 +505,7 @@ val SerboCroatianStrings = Strings(
     blurbSettings = "Reprodukcija, nalog, dijagnostika",
     blurbPlatforms = "Striming aplikacije i usluge, na jednom mestu",
     blurbSearch = "Pronađite kanal, film ili seriju po imenu",
+    blurbHub = "Živa TV povezana sa filmovima i serijama na zahtev",
 
     signInTitle = "Prijavite se na EnkTel",
     signInLede = "Unesite korisničko ime i lozinku iz e-poruke dobrodošlice.",

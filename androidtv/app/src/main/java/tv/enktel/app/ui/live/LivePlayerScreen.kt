@@ -829,6 +829,19 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
                 shiftedFrom = shiftedFrom,
                 sleepUntil = sleepUntil,
                 modifier = Modifier.align(Alignment.BottomCenter),
+                // The same actions the ⋯ / MENU quick menu offers, surfaced as
+                // the overlay pills from the redesign. "Watch from start" only
+                // shows when the channel actually carries a catch-up archive.
+                onWatchFromStart = if (tv.enktel.app.data.catchup.CatchupUrls.isSupported(p, current!!)) {
+                    {
+                        val start = nowNext.now?.startMs
+                        if (start != null) playShifted(start)
+                        else toaster.error("No EPG data for this programme")
+                    }
+                } else null,
+                onMultiView = { nav.navigate("multi?left=${current?.key.orEmpty()}&right=") },
+                onAudioSubtitles = { trackMenu = "audio" },
+                onEpg = { nav.navigate("guide") },
             )
         }
         if (showInfo && current != null && tv.enktel.app.BuildConfig.FLAVOR == "mobile") {

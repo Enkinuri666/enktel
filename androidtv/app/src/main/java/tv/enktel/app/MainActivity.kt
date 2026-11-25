@@ -1191,6 +1191,7 @@ private fun MainNav(
             )
         }
         composable("sports") { SportsHubScreen(graph, nav) }
+        composable("mediaHub") { tv.enktel.app.ui.hub.MediaHubScreen(graph, nav) }
         composable("sportsFinder") { tv.enktel.app.ui.sports.ChannelFinderScreen(graph, nav) }
         composable("matchCenter?event={event}&title={title}") { back ->
             tv.enktel.app.ui.sports.MatchCenterScreen(

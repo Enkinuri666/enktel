@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.automirrored.rounded.Dvr
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.NewReleases
@@ -173,6 +174,7 @@ val FULL_ITEMS = listOf(
     TvNavItem("live", "Live TV", Icons.Rounded.LiveTv, "channels"),
     TvNavItem("guide", "EPG", Icons.Rounded.CalendarMonth, "guide"),
     TvNavItem("sports", "Sports Hub", Icons.Rounded.SportsSoccer, "sports"),
+    TvNavItem("hub", "Media Hub", Icons.Rounded.Hub, "mediaHub"),
     TvNavItem("movies", "Movies", Icons.Rounded.Movie, "movies"),
     TvNavItem("series", "Series", Icons.Rounded.Theaters, "series"),
     TvNavItem("downloads", "Downloads", Icons.Rounded.Download, "downloads"),
