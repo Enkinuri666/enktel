@@ -392,6 +392,20 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         tune(next)
     }
 
+    // Re-tune when the stream-format preference changes while a channel is
+    // playing. Without this, flipping HLS⇄MPEG-TS in Settings did nothing
+    // visible until the next channel change — the resolver's ordering only runs
+    // inside tune() — which is exactly the "switching formats makes no
+    // difference" report. Skips the first value (the one the channel already
+    // opened with) so arriving on the screen does not double-tune.
+    var lastFormat by remember { mutableStateOf(streamFormat) }
+    LaunchedEffect(streamFormat) {
+        if (streamFormat != lastFormat) {
+            lastFormat = streamFormat
+            current?.let { tune(it) }
+        }
+    }
+
     // v1.30.0 — expose channel zap + favorite-toggle to the global
     // hardware-key router in MainActivity.dispatchKeyEvent. Cleared on
     // dispose so keys pass through to the OS when the live screen exits.
@@ -765,7 +779,14 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
         }
 
         if (showStats) {
-            StatsOverlay(engine.stats, streamFormat, Modifier.align(Alignment.TopStart).padding(24.dp))
+            val actualContainer by engine.activeContainer.collectAsStateWithLifecycle()
+            StatsOverlay(
+                engine.stats,
+                // The container actually playing, not just the setting — they
+                // differ whenever the resolver falls back from the chosen format.
+                actualContainer.ifBlank { if (streamFormat == "ts") "MPEG-TS" else "HLS" },
+                Modifier.align(Alignment.TopStart).padding(24.dp),
+            )
         }
 
         // Volume / brightness on-screen indicator (auto-hides after 900ms).

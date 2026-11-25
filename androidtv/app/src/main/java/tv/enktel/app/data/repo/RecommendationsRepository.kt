@@ -192,12 +192,13 @@ class RecommendationsRepository(private val content: ContentRepository) {
             .sortedWith(compareByDescending<Movie> { it.firstSeenAt }.thenByDescending { it.year })
             .take(24)
 
-        val latest = MovieRails.latestReleases(withPoster).take(24)
-
-        val used = HashSet<String>().apply {
-            addAll(justAdded.map { it.key })
-            addAll(latest.map { it.key })
-        }
+        // Dedup is cumulative from here: a title placed on an earlier rail is
+        // excluded from every later one, so the home page never shows the same
+        // film twice. Just Added is seeded first because "new to your line" is
+        // the most specific claim; Latest Releases then takes the newest *by
+        // release year* that Just Added did not already cover, which is what
+        // stops the two rails being near-identical on a freshly synced line.
+        val used = HashSet<String>().apply { addAll(justAdded.map { it.key }) }
 
         fun pick(list: List<Movie>, limit: Int): List<Movie> {
             val out = ArrayList<Movie>(limit)
@@ -209,6 +210,16 @@ class RecommendationsRepository(private val content: ContentRepository) {
             }
             return out
         }
+
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        // Latest Releases means *recently released*, not "the newest row we
+        // happen to hold". Prefer titles from the last three years; only if too
+        // few qualify (a classics-heavy line) fall back to newest-by-year so the
+        // rail is not needlessly empty.
+        val latestRecent = MovieRails.latestReleases(withPoster)
+            .filter { it.year >= currentYear - 2 }
+        val latestPool = if (latestRecent.size >= 8) latestRecent else MovieRails.latestReleases(withPoster)
+        val latest = pick(latestPool, 24)
 
         // Coming Soon is deliberately absent here. It used to be built from
         // this same catalogue filtered to `year >= currentYear`, which cannot

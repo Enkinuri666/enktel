@@ -38,7 +38,9 @@ object SettingsAdvisor {
             "MPEG-TS" -> "ts"
             else -> current.streamFormat
         }
-        if (liveDetected == "HLS" || liveDetected == "MPEG-TS") {
+        if ((liveDetected == "HLS" || liveDetected == "MPEG-TS") &&
+            current.streamFormat != suggestedFormat
+        ) {
             out += SettingChange(
                 key = "streamFormat",
                 label = "Stream format",
@@ -110,9 +112,14 @@ object SettingsAdvisor {
         // instinct it provokes (raise the buffer) makes it worse.
         live?.hls?.let { pl ->
             val retentionMs = pl.targetDurationSec * pl.segmentCount * 1000
-            if (retentionMs in 1 until tv.enktel.app.player.BufferProfiles.LIVE_MAX_CEILING_MS &&
-                current.bufferProfile != "low"
-            ) {
+            // Compare the playlist's retention to how much the *current*
+            // profile would actually try to hold, not to the global ceiling:
+            // only when the profile would buffer past what the provider keeps
+            // does "low" help. Tying this to LIVE_MAX_CEILING_MS meant raising
+            // that cap silently widened this rule to every short-ish playlist.
+            val profileMaxMs = tv.enktel.app.player.BufferProfiles
+                .window(current.bufferProfile, live = true, isTv = true).maxMs
+            if (retentionMs in 1 until profileMaxMs && current.bufferProfile != "low") {
                 out += SettingChange(
                     key = "bufferProfile",
                     label = "Buffer profile",
