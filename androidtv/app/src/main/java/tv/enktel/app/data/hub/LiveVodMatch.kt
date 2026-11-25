@@ -53,13 +53,25 @@ object LiveVodMatch {
     private const val TYPE_BONUS = 0.10
     private const val TYPE_PENALTY = 0.22
 
-    /** Significant tokens of a cleaned title — words of two letters or more. */
-    internal fun tokens(raw: String): Set<String> =
-        TitleSanitizer.clean(raw)
+    /** Significant tokens of a title — words of two letters or more, after the
+     *  episode scaffolding EPG feeds carry is stripped.
+     *
+     *  [TitleSanitizer.clean] tidies accents and case but leaves "S03E05" and a
+     *  "(New Episode)" tag in place, so those are removed here first — otherwise
+     *  "Game of Thrones S03E05" shares only half its tokens with the clean
+     *  catalogue name and never clears the threshold. */
+    internal fun tokens(raw: String): Set<String> {
+        val stripped = raw.lowercase()
+            .replace(Regex("\([^)]*\)"), " ")        // (New Episode), (Live)
+            .replace(Regex("\[[^\]]*\]"), " ")
+            .replace(Regex("s\d{1,2}\s*e\d{1,3}"), " ") // s03e05 / s3 e5
+            .replace(Regex("\bep(isode)?\s*\d+"), " ")  // episode 5 / ep 5
+        return TitleSanitizer.clean(stripped)
             .lowercase()
             .split(Regex("[^a-z0-9]+"))
             .filter { it.length >= 2 }
             .toSet()
+    }
 
     /** Jaccard overlap of the two token sets, 0.0..1.0. */
     internal fun titleSimilarity(a: String, b: String): Double {
