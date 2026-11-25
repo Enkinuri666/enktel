@@ -1432,9 +1432,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
             })
         }
         Text(
-            "Schedules, highlights and match detail work on the free key. In-play live scores do " +
-                "not — that endpoint is Premium-only, which is why turning Live scores on can look " +
-                "like nothing happened. A Patreon key at thesportsdb.com unlocks it.",
+            "Live scores, schedules, highlights and match detail all work on the built-in free " +
+                "key. It's shared and rate-limited, so on a busy day a feed can come back empty for " +
+                "a while. A personal key from thesportsdb.com raises that limit.",
             color = EnktelTextDim, fontSize = 13.sp,
         )
         val scoresOn by graph.settings.scoresEnabled.collectAsStateWithLifecycle(initialValue = false)

@@ -130,15 +130,24 @@ data class HighlightClip(
 class ScoresRepository(
     private val http: OkHttpClient,
     /**
-     * TheSportsDB key. "3" is the public test key — no signup needed, but it
-     * does **not** include `livescore.php`, which is the endpoint the in-play
-     * scoreboard is built on. Users with a Patreon key can enter it in
-     * Settings and get real live scores.
+     * TheSportsDB key. "123" is the current public test key — no signup
+     * needed, and it does serve `livescore.php`, the in-play scoreboard
+     * endpoint. Users with a Patreon key can enter it in Settings for a
+     * higher rate limit.
+     *
+     * The old "3" test key was **permanently disabled** by TheSportsDB: every
+     * endpoint answers HTTP 403 ("The old '3' Free Sports API key is
+     * permanently disabled, Please use the new test key \"123\""). That 403
+     * is swallowed by [fetchArray] like any other failure, so the whole Sports
+     * Hub — scores, schedule, broadcasters, highlights — quietly came back
+     * empty and every crest fell to its monogram placeholder. Bumping the
+     * default key is the whole fix; a user who saved a working personal key is
+     * untouched.
      */
     private val apiKey: () -> String = { FREE_KEY },
 ) {
     companion object {
-        const val FREE_KEY = "3"
+        const val FREE_KEY = "123"
 
         /**
          * JSON root keys per endpoint.
@@ -154,6 +163,16 @@ class ScoresRepository(
         const val ROOT_TIMELINE = "timeline"
         const val ROOT_EVENTSTATS = "eventstats"
         const val ROOT_TVEVENT = "tvevent"
+
+        /**
+         * The whole-day broadcast endpoint (`eventstv.php`) returns its rows
+         * under `tvevents` (plural), while the single-fixture `lookuptv.php`
+         * still answers under `tvevent` (singular). They are genuinely
+         * different keys on the same data, and asking the day endpoint for
+         * `tvevent` is the same silent-empty trap [ROOT_LIVESCORE] documents —
+         * it left every "ON TODAY" broadcaster line blank.
+         */
+        const val ROOT_TVEVENTS_DAY = "tvevents"
         const val ROOT_LINEUP = "lineup"
     }
 
@@ -429,7 +448,9 @@ class ScoresRepository(
             append(base).append("/eventstv.php?d=").append(day)
             if (sport.isNotBlank()) append("&s=").append(sport.replace(" ", "_"))
         }
-        fetchArray(url, ROOT_TVEVENT)
+        // The day endpoint answers under `tvevents`; fall back to the singular
+        // key for older API revisions and the per-fixture shape.
+        fetchArray(url, ROOT_TVEVENTS_DAY).ifEmpty { fetchArray(url, ROOT_TVEVENT) }
             .mapNotNull { b ->
                 val id = b.str("idEvent")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val channel = b.str("strChannel")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
