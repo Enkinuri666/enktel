@@ -37,6 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,6 +53,14 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import tv.enktel.app.AppGraph
 import tv.enktel.app.data.TimeFormat
+import tv.enktel.app.data.catchup.CatchupUrls
+import tv.enktel.app.data.xtream.XtreamClient
+import tv.enktel.app.dvr.MatchReminderScheduler
+import tv.enktel.app.dvr.RecordScheduler
+import tv.enktel.app.ui.components.Badge
+import tv.enktel.app.ui.components.FocusButton
+import tv.enktel.app.ui.components.LocalToaster
+import tv.enktel.app.vodPlayerRoute
 import tv.enktel.app.data.db.Channel
 import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
@@ -99,6 +112,8 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
     val profile by produceState<Profile?>(initialValue = null) { value = graph.playlists.activeProfile() }
     val p = profile ?: return
     val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
+    val context = LocalContext.current
     val allChannels by remember(p.id) { graph.content.channels(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     val prefsChannelKey by graph.settings.lastChannel.collectAsStateWithLifecycle(initialValue = "")
     val hidden by graph.settings.hiddenChannels.collectAsStateWithLifecycle(initialValue = emptySet())
@@ -184,6 +199,18 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         }
     }
 
+    // The programme whose action sheet is open. Tapping a row used to tune the
+    // channel straight away, which meant a future or finished programme — the
+    // one you most want to set a reminder or a recording on — could only ever
+    // start the live stream. The sheet surfaces Watch / Play-from-start /
+    // Record / Remind, the same actions the TV guide's dialog offers, in a
+    // phone-shaped bottom sheet.
+    var detail by remember { mutableStateOf<EpgProgram?>(null) }
+    val openedAt = remember { System.currentTimeMillis() }
+    val reminders by remember(openedAt) { graph.db.sportsDao().upcomingReminders(openedAt) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val remindedKeys = remember(reminders) { reminders.mapTo(HashSet()) { it.key } }
+
     val listState = rememberLazyListState()
     LaunchedEffect(programs, dayOffset) {
         if (dayOffset != 0 || programs.isEmpty()) return@LaunchedEffect
@@ -198,6 +225,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
         if (i >= 0) railState.scrollToItem(i)
     }
 
+  Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().padding(top = 12.dp)) {
         Row(
             Modifier.padding(horizontal = 18.dp),
@@ -323,10 +351,7 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isNow) EnktelSurfaceHigh else EnktelSurface)
                             .pointerInput(prog.id) {
-                                detectTapGestures {
-                                    scope.launch { graph.settings.setLastChannel(ch.key) }
-                                    nav.navigate("live?ch=${ch.key}")
-                                }
+                                detectTapGestures { detail = prog }
                             }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -383,6 +408,159 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                     }
                 }
             }
+        }
+    }
+
+    val sheetChannel = selectedChannel
+    detail?.let { prog ->
+        if (sheetChannel != null) {
+            ProgramActionSheet(
+                graph = graph,
+                nav = nav,
+                profile = p,
+                channel = sheetChannel,
+                prog = prog,
+                reminded = MatchReminderScheduler.keyFor(sheetChannel.key, prog.startMs) in remindedKeys,
+                onDismiss = { detail = null },
+            )
+        }
+    }
+  }
+}
+
+/**
+ * Programme detail + actions, as a bottom sheet.
+ *
+ * The phone counterpart of the TV guide's centred ProgramDialog: Watch the
+ * channel live, Play from start when the panel keeps catch-up, Record a current
+ * or future programme, and Remind me before a future one kicks off — the last
+ * being the action the sports hub has always had and the guide never did.
+ */
+@Composable
+private fun ProgramActionSheet(
+    graph: AppGraph,
+    nav: NavHostController,
+    profile: Profile,
+    channel: Channel,
+    prog: EpgProgram,
+    reminded: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
+    val context = LocalContext.current
+    val now = System.currentTimeMillis()
+    val isPast = prog.endMs <= now
+    val isFuture = prog.startMs > now
+    val isNow = !isPast && !isFuture
+    val canCatchup = isPast &&
+        CatchupUrls.isSupported(profile, channel) &&
+        CatchupUrls.isWithinWindow(channel, prog.startMs, now)
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(0.55f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .widthIn(max = 560.dp)
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(EnktelSurface)
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+                .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) { detectTapGestures { /* absorb */ } },
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 4.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(EnktelTextDim),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(prog.title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (isNow) Badge("ON AIR", EnktelLive)
+                if (canCatchup) Badge("CATCH-UP", EnktelOk)
+            }
+            Text(
+                buildString {
+                    append(channel.name)
+                    append(" · ")
+                    append(TimeFormat.format("EEE d MMM HH:mm", prog.startMs))
+                    append("–")
+                    append(TimeFormat.format("HH:mm", prog.endMs))
+                    if (prog.genre.isNotBlank()) { append(" · "); append(prog.genre) }
+                },
+                color = EnktelTextDim, fontSize = 12.sp,
+            )
+            if (prog.desc.isNotBlank()) {
+                Text(prog.desc, color = Color.White.copy(0.85f), fontSize = 13.sp, maxLines = 6, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.height(2.dp))
+            FocusButton("▶ Watch live", accent = isNow, onClick = {
+                onDismiss()
+                scope.launch { graph.settings.setLastChannel(channel.key) }
+                nav.navigate("live?ch=${channel.key}")
+            }, modifier = Modifier.fillMaxWidth())
+            if (canCatchup) {
+                FocusButton("⏪ Play from start (catch-up)", onClick = {
+                    onDismiss()
+                    scope.launch {
+                        val url = CatchupUrls.resolve(graph.http, profile, channel, prog.startMs, prog.endMs)
+                        if (url == null) toaster.error("The provider has no recording of that programme")
+                        else nav.navigate(vodPlayerRoute(url, "${channel.name} · ${prog.title}"))
+                    }
+                }, modifier = Modifier.fillMaxWidth())
+            }
+            if (isNow || isFuture) {
+                FocusButton("● Record${if (isFuture) " (scheduled)" else ""}", onClick = {
+                    onDismiss()
+                    scope.launch {
+                        try {
+                            val url = if (profile.kind == "m3u") channel.url
+                                else XtreamClient.liveUrl(profile, channel.streamId, hls = false)
+                            RecordScheduler.schedule(context, profile.id, prog.title, channel.name, url, prog.startMs, prog.endMs, channelLogo = channel.logo)
+                            toaster.success(RecordScheduler.scheduledMessage(context))
+                        } catch (ce: kotlinx.coroutines.CancellationException) {
+                            throw ce
+                        } catch (e: Exception) {
+                            toaster.error(e.message ?: "Couldn't schedule that recording")
+                        }
+                    }
+                }, modifier = Modifier.fillMaxWidth())
+            }
+            if (isFuture) {
+                FocusButton(
+                    if (reminded) "✓ Reminder set — tap to clear" else "🔔 Remind me before it starts",
+                    onClick = {
+                        onDismiss()
+                        scope.launch {
+                            val key = MatchReminderScheduler.keyFor(channel.key, prog.startMs)
+                            try {
+                                if (reminded) {
+                                    MatchReminderScheduler.cancel(context, key)
+                                    toaster.info("Reminder cleared")
+                                } else {
+                                    MatchReminderScheduler.schedule(context, channel.key, channel.name, prog.title, prog.startMs, prog.endMs)
+                                    toaster.success("Reminder set — ${MatchReminderScheduler.LEAD_MIN} min before it starts")
+                                }
+                            } catch (e: Exception) {
+                                toaster.error(e.message ?: "Reminder failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            FocusButton("Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
 }
