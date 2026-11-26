@@ -308,6 +308,9 @@ class SettingsStore(private val context: Context) {
     // several GB on one film, whereas a set-top box is on Wi-Fi or Ethernet and
     // the restriction would only ever get in the way.
     private val DOWNLOADS_WIFI_ONLY = booleanPreferencesKey("downloads_wifi_only")
+    private val ENRICH_WIFI_ONLY = booleanPreferencesKey("enrich_wifi_only")
+    private val LIVE_ASPECT_MODE = stringPreferencesKey("live_aspect_mode")
+    private val VOD_ASPECT_MODE = stringPreferencesKey("vod_aspect_mode")
 
     private val BROWSE_SPLIT_LAND = intPreferencesKey("browse_split_land_pct")
     private val BROWSE_SPLIT_PORT = intPreferencesKey("browse_split_port_pct")
@@ -602,6 +605,27 @@ class SettingsStore(private val context: Context) {
     }
     suspend fun setDownloadsWifiOnly(v: Boolean) = context.dataStore.edit { it[DOWNLOADS_WIFI_ONLY] = v }
     suspend fun downloadsWifiOnlyNow(): Boolean = downloadsWifiOnly.first()
+
+    // Metadata enrichment walks the whole catalogue against TMDB/OMDb in the
+    // background. On a phone that is the user's cellular allowance, so it is
+    // held to Wi-Fi by default on the mobile flavour — same reasoning and same
+    // per-flavour default as downloads above. A TV stick is on a fixed line and
+    // stays unrestricted.
+    val enrichWifiOnly: Flow<Boolean> = context.dataStore.data.map {
+        it[ENRICH_WIFI_ONLY] ?: (tv.enktel.app.BuildConfig.FLAVOR == "mobile")
+    }
+    suspend fun setEnrichWifiOnly(v: Boolean) = context.dataStore.edit { it[ENRICH_WIFI_ONLY] = v }
+    suspend fun enrichWifiOnlyNow(): Boolean = enrichWifiOnly.first()
+
+    // The video Fit/Stretch/Zoom choice, remembered so it does not reset to Fit
+    // every time a channel or title opens. Kept per-surface: SD live channels
+    // transmitted 4:3-in-16:9 want Stretch, which almost no VOD file does, so a
+    // single shared memory would fight the user on one of them. Stored as the
+    // enum name; AspectMode.fromName falls back to Fit for anything unknown.
+    suspend fun liveAspectModeNow(): String = context.dataStore.data.map { it[LIVE_ASPECT_MODE] ?: "FIT" }.first()
+    suspend fun setLiveAspectMode(v: String) = context.dataStore.edit { it[LIVE_ASPECT_MODE] = v }
+    suspend fun vodAspectModeNow(): String = context.dataStore.data.map { it[VOD_ASPECT_MODE] ?: "FIT" }.first()
+    suspend fun setVodAspectMode(v: String) = context.dataStore.edit { it[VOD_ASPECT_MODE] = v }
 
     val browseSplitLandscape: Flow<Float> =
         context.dataStore.data.map { (it[BROWSE_SPLIT_LAND] ?: 60) / 100f }

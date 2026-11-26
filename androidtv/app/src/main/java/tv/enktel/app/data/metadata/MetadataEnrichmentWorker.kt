@@ -159,7 +159,7 @@ class MetadataEnrichmentWorker(
         val remaining = dao.moviesPendingCount(profileId, staleBefore) +
             dao.seriesPendingCount(profileId, staleBefore)
         if (remaining > 0 && (movies.isNotEmpty() || series.isNotEmpty())) {
-            enqueueNext(applicationContext, profileId)
+            enqueueNext(applicationContext, profileId, graph.settings.enrichWifiOnlyNow())
         }
         android.util.Log.i(TAG, "enrichment run: +$enriched enriched, $remaining still pending")
         return Result.success()
@@ -226,39 +226,60 @@ class MetadataEnrichmentWorker(
         private const val MAX_AGE_MS = 60L * 24 * 3600 * 1000
         private const val RATE_LIMIT_DELAY_MS = 300L
 
-        fun enqueueFor(context: Context, profileId: Long) =
-            enqueue(context, profileId, delaySeconds = 3, policy = ExistingWorkPolicy.REPLACE)
+        /**
+         * The network the enrichment walk is allowed to run on.
+         *
+         * [wifiOnly] true pins it to an **unmetered** connection, so a phone
+         * never spends its cellular allowance quietly enriching the whole
+         * catalogue; false keeps the old "any connection" behaviour, which is
+         * right for a mains-powered TV stick on a fixed line. Pure and public so
+         * the policy is unit-testable without WorkManager.
+         */
+        fun networkTypeFor(wifiOnly: Boolean): androidx.work.NetworkType =
+            if (wifiOnly) androidx.work.NetworkType.UNMETERED else androidx.work.NetworkType.CONNECTED
+
+        /**
+         * [wifiOnly] defaults to the mobile flavour's Wi-Fi-only policy. Callers
+         * in a coroutine should pass `settings.enrichWifiOnlyNow()` so a user
+         * override is honoured; the default keeps non-suspend callers correct
+         * per flavour.
+         */
+        fun enqueueFor(
+            context: Context,
+            profileId: Long,
+            wifiOnly: Boolean = tv.enktel.app.BuildConfig.FLAVOR == "mobile",
+        ) = enqueue(context, profileId, delaySeconds = 3, policy = ExistingWorkPolicy.REPLACE, wifiOnly = wifiOnly)
 
         /** Continuation run. KEEP, not REPLACE — a REPLACE here would cancel
          *  the run that is scheduling it and the chain would stop dead. */
-        private fun enqueueNext(context: Context, profileId: Long) =
-            enqueue(context, profileId, delaySeconds = 20, policy = ExistingWorkPolicy.KEEP)
+        private fun enqueueNext(context: Context, profileId: Long, wifiOnly: Boolean) =
+            enqueue(context, profileId, delaySeconds = 20, policy = ExistingWorkPolicy.KEEP, wifiOnly = wifiOnly)
 
         private fun enqueue(
             context: Context,
             profileId: Long,
             delaySeconds: Long,
             policy: ExistingWorkPolicy,
+            wifiOnly: Boolean,
         ) {
             val req = OneTimeWorkRequestBuilder<MetadataEnrichmentWorker>()
                 .setInputData(Data.Builder().putLong(KEY_PROFILE_ID, profileId).build())
                 .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
                 .setConstraints(
                     androidx.work.Constraints.Builder()
-                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                        // Enrichment is a nice-to-have that walks the whole
-                        // catalogue hitting TMDB. On the hardware this actually
-                        // runs on — a Fire TV Stick Lite with 1 GB of RAM
-                        // shared with the system — "connected" was the only
-                        // thing standing between that walk and a device that is
-                        // already low on memory or storage, or is busy trying
-                        // to keep a 1080p stream decoding.
+                        // CONNECTED, or UNMETERED when the user (or the mobile
+                        // flavour's default) wants enrichment held to Wi-Fi. On
+                        // the TV stick this stays CONNECTED: it is on a fixed
+                        // line and "connected" is the only thing standing
+                        // between the catalogue walk and a 1 GB device that is
+                        // already low on memory or busy decoding a 1080p stream.
                         //
                         // Deliberately *not* requiresDeviceIdle: a TV stick is
                         // idle-by-OS-definition only when nobody is watching,
                         // and enrichment that only ever runs when the user is
                         // away never finishes on a box that gets unplugged.
                         // Storage and battery pressure are the real signals.
+                        .setRequiredNetworkType(networkTypeFor(wifiOnly))
                         .setRequiresStorageNotLow(true)
                         .setRequiresBatteryNotLow(true)
                         .build()

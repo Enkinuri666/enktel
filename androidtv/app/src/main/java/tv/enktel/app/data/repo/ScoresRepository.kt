@@ -31,14 +31,32 @@ data class LiveScore(
     val awayBadge: String = "",
 ) {
     /** Not started yet: no score to show, [minute] holds the kick-off time. */
-    val notStarted: Boolean get() = status.equals("NS", true)
+    val notStarted: Boolean get() =
+        NOT_STARTED_WORDS.any { status.equals(it, ignoreCase = true) }
 
-    /** Match is over. */
+    /**
+     * Match is over.
+     *
+     * Reads `strStatus` *and* `strProgress`-derived words. The current
+     * TheSportsDB `livescore.php` returns `strStatus: null` and carries the real
+     * state in `strProgress` — a finished game comes through as "Final", not
+     * "FT". Matching only the three abbreviations left every finished fixture
+     * reading as [inPlay], so the scoreboard showed a pulsing red LIVE badge on
+     * matches that ended hours ago.
+     */
     val finished: Boolean get() =
-        status.equals("FT", true) || status.equals("AET", true) || status.equals("PEN", true)
+        FINISHED_WORDS.any { status.equals(it, ignoreCase = true) }
 
     /** Actually in play right now — the only state that deserves a live pulse. */
-    val inPlay: Boolean get() = !notStarted && !finished
+    val inPlay: Boolean get() = status.isNotBlank() && !notStarted && !finished
+
+    companion object {
+        private val NOT_STARTED_WORDS = setOf("NS", "Not Started", "TBD", "Postponed", "PPD")
+        private val FINISHED_WORDS = setOf(
+            "FT", "AET", "PEN", "AP", "Final", "Match Finished", "Full Time",
+            "Finished", "After Extra Time", "After Penalties", "FT/PEN",
+        )
+    }
 }
 
 /** Everything the Match Centre knows about one fixture. */
@@ -234,7 +252,10 @@ class ScoresRepository(
                 },
                 league = e.str("strLeague").orEmpty(),
                 sport = e.str("strSport").orEmpty(),
-                status = e.str("strStatus").orEmpty(),
+                // strStatus is authoritative when present, but the current
+                // livescore.php leaves it null and puts the state in strProgress
+                // ("Final", "1st Half", "Half Time"), so fall through to it.
+                status = e.str("strStatus").orEmpty().ifBlank { e.str("strProgress").orEmpty() },
                 homeBadge = e.str("strHomeTeamBadge").orEmpty(),
                 awayBadge = e.str("strAwayTeamBadge").orEmpty(),
             )

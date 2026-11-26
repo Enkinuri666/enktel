@@ -28,4 +28,10 @@ enum class AspectMode(val label: String, val scale: ContentScale) {
     ;
 
     fun next(): AspectMode = entries[(ordinal + 1) % entries.size]
+
+    companion object {
+        /** Parse a persisted [name], falling back to [FIT] for anything unknown. */
+        fun fromName(name: String?): AspectMode =
+            entries.firstOrNull { it.name == name } ?: FIT
+    }
 }

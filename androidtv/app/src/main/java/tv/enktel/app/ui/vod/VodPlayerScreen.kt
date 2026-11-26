@@ -161,6 +161,15 @@ fun VodPlayerScreen(
     var trackMenu by remember { mutableStateOf("") }
     var speed by remember { mutableFloatStateOf(1f) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
+    // Remember the Fit/Stretch/Zoom choice across titles and sessions rather than
+    // resetting to Fit each time. Load once, then persist each change.
+    var aspectLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        aspect = AspectMode.fromName(graph.settings.vodAspectModeNow()); aspectLoaded = true
+    }
+    LaunchedEffect(aspect, aspectLoaded) {
+        if (aspectLoaded) graph.settings.setVodAspectMode(aspect.name)
+    }
     var positionMs by remember { mutableLongStateOf(0L) }
     /** Seconds left on the countdown card, or null when it is not showing. */
     var nextUpSecs by remember { mutableStateOf<Int?>(null) }

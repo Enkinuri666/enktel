@@ -248,6 +248,15 @@ fun LivePlayerScreen(graph: AppGraph, nav: NavHostController, initialChannelKey:
     var showStats by remember { mutableStateOf(false) }
     var trackMenu by remember { mutableStateOf("") } // "" | audio | subs
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
+    // Remember the Fit/Stretch/Zoom choice across channels and sessions, instead
+    // of snapping back to Fit on every tune. Load once, then persist each change.
+    var aspectLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        aspect = AspectMode.fromName(graph.settings.liveAspectModeNow()); aspectLoaded = true
+    }
+    LaunchedEffect(aspect, aspectLoaded) {
+        if (aspectLoaded) graph.settings.setLiveAspectMode(aspect.name)
+    }
     var numberBuffer by remember { mutableStateOf("") }
     var recordingId by remember { mutableLongStateOf(0L) }
     var isFav by remember { mutableStateOf(false) }
