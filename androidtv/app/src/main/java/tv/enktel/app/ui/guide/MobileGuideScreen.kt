@@ -397,6 +397,10 @@ internal fun MobileGuideScreen(graph: AppGraph, nav: NavHostController) {
                                     color = EnktelLive, fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                 )
+                                Spacer(Modifier.height(4.dp))
+                                val span = (prog.endMs - prog.startMs).coerceAtLeast(1L)
+                                val frac = ((now - prog.startMs).toFloat() / span).coerceIn(0f, 1f)
+                                tv.enktel.app.ui.components.ProgressBarThin(frac, Modifier.fillMaxWidth())
                             } else if (prog.desc.isNotBlank()) {
                                 Text(
                                     prog.desc.take(90),
