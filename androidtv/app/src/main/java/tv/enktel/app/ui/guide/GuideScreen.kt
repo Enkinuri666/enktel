@@ -64,6 +64,7 @@ import tv.enktel.app.data.db.EpgProgram
 import tv.enktel.app.data.db.Profile
 import tv.enktel.app.data.repo.ChannelFilters
 import tv.enktel.app.data.xtream.XtreamClient
+import tv.enktel.app.dvr.MatchReminderScheduler
 import tv.enktel.app.dvr.RecordScheduler
 import tv.enktel.app.ui.components.Badge
 import tv.enktel.app.ui.components.CenterMessage
@@ -209,6 +210,13 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
     var dayOffset by remember { mutableIntStateOf(0) }
     var programs by remember { mutableStateOf<Map<String, List<EpgProgram>>>(emptyMap()) }
     var selected by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
+    // Reminders the viewer has set, so the dialog's bell reads as on/off and a
+    // second press clears instead of stacking a duplicate — the same source the
+    // sports hub uses.
+    val openedAt = remember { System.currentTimeMillis() }
+    val reminders by remember(openedAt) { graph.db.sportsDao().upcomingReminders(openedAt) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val remindedKeys = remember(reminders) { reminders.mapTo(HashSet()) { it.key } }
     // What the dock above the grid is describing. Driven by *focus*, not by
     // clicking: on a D-pad the highlight is the cursor, so the detail panel
     // should follow it as you travel. Clicking still opens the full dialog.
@@ -674,6 +682,25 @@ fun GuideScreen(graph: AppGraph, nav: NavHostController) {
                     }
                 }
             },
+            reminded = MatchReminderScheduler.keyFor(ch.key, prog.startMs) in remindedKeys,
+            onRemind = {
+                val wasReminded = MatchReminderScheduler.keyFor(ch.key, prog.startMs) in remindedKeys
+                selected = null
+                scope.launch {
+                    val key = MatchReminderScheduler.keyFor(ch.key, prog.startMs)
+                    try {
+                        if (wasReminded) {
+                            MatchReminderScheduler.cancel(context, key)
+                            toaster.info("Reminder cleared")
+                        } else {
+                            MatchReminderScheduler.schedule(context, ch.key, ch.name, prog.title, prog.startMs, prog.endMs)
+                            toaster.success("Reminder set — ${MatchReminderScheduler.LEAD_MIN} min before it starts")
+                        }
+                    } catch (e: Exception) {
+                        toaster.error(e.message ?: "Reminder failed")
+                    }
+                }
+            },
             onDismiss = { selected = null },
         )
     }
@@ -687,6 +714,8 @@ private fun ProgramDialog(
     onWatchLive: () -> Unit,
     onCatchup: () -> Unit,
     onRecord: () -> Unit,
+    reminded: Boolean,
+    onRemind: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val now = System.currentTimeMillis()
@@ -739,6 +768,10 @@ private fun ProgramDialog(
             if (isNow) FocusButton("▶ Watch live", accent = true, onClick = onWatchLive, modifier = Modifier.fillMaxWidth())
             if (canCatchup) FocusButton("⏪ Play from start (catch-up)", onClick = onCatchup, modifier = Modifier.fillMaxWidth())
             if (isFuture || isNow) FocusButton("● Record${if (isFuture) " (scheduled)" else ""}", onClick = onRecord, modifier = Modifier.fillMaxWidth())
+            if (isFuture) FocusButton(
+                if (reminded) "✓ Reminder set — clear it" else "🔔 Remind me before it starts",
+                onClick = onRemind, modifier = Modifier.fillMaxWidth(),
+            )
             FocusButton("Close", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
