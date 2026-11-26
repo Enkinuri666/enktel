@@ -672,7 +672,11 @@ class ContentRepository(
         // Kick off the TMDB enrichment worker so the themed home rails
         // repopulate as the metadata streams in. Worker no-ops when the
         // user hasn't supplied a TMDB API key, so calling it is always safe.
-        tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(context, p.id)
+        tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(
+            context,
+            p.id,
+            settings?.enrichWifiOnlyNow() ?: (tv.enktel.app.BuildConfig.FLAVOR == "mobile"),
+        )
         return "${live.size} channels · ${movies.size} movies · ${seriesList.size} series"
     }
 

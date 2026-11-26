@@ -38,6 +38,18 @@ class EpgRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWo
         fun schedule(context: Context, everyHours: Long = 12) {
             val request = PeriodicWorkRequestBuilder<EpgRefreshWorker>(everyHours, TimeUnit.HOURS)
                 .setInitialDelay(everyHours, TimeUnit.HOURS)
+                // Needs the network, so declare it: without a constraint the job
+                // fires on schedule even with no connection, the refresh throws,
+                // and the cycle is spent on a guaranteed Result.retry(). Letting
+                // WorkManager hold it until there is a connection is both
+                // correct and cheaper. Not held to unmetered — a stale guide
+                // breaks now/next, reminders and catch-up, so unlike downloads
+                // and enrichment the guide is worth a little cellular data.
+                .setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build(),
+                )
                 .build()
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork("epg_refresh", ExistingPeriodicWorkPolicy.UPDATE, request)

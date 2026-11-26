@@ -1042,7 +1042,9 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
                     scope.launch {
                         val pid = graph.settings.activeProfileIdNow()
                         if (pid > 0) {
-                            tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(ctx, pid)
+                            tv.enktel.app.data.metadata.MetadataEnrichmentWorker.enqueueFor(
+                                ctx, pid, graph.settings.enrichWifiOnlyNow(),
+                            )
                             status = "Metadata enrichment queued"
                         }
                     }
@@ -1051,6 +1053,21 @@ fun SettingsScreen(graph: AppGraph, nav: NavHostController) {
         }
         Text(
             "Free TMDB account → developer.themoviedb.org → API → request access → paste your v3 key or v4 read-only token here. Blank disables enrichment (the themed home rails still work off titles/genres alone).",
+            color = EnktelTextDim, fontSize = 13.sp,
+        )
+        val enrichWifi by graph.settings.enrichWifiOnly.collectAsStateWithLifecycle(
+            initialValue = tv.enktel.app.BuildConfig.FLAVOR == "mobile",
+        )
+        FocusButton(
+            "Enrich on Wi-Fi only: ${if (enrichWifi) "ON" else "off"}",
+            accent = enrichWifi,
+            onClick = { scope.launch { graph.settings.setEnrichWifiOnly(!enrichWifi) } },
+        )
+        Text(
+            "Enrichment quietly fetches artwork and details for your whole catalogue in the " +
+                "background. Held to Wi-Fi it won't touch a metered connection; the walk simply " +
+                "resumes next time you're on an unmetered network." +
+                if (tv.enktel.app.BuildConfig.FLAVOR == "mobile") " On by default on mobile." else "",
             color = EnktelTextDim, fontSize = 13.sp,
         )
         val autoTrailers by graph.settings.autoTrailersEnabled.collectAsStateWithLifecycle(initialValue = false)
