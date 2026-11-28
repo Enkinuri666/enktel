@@ -523,7 +523,7 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                             Modifier
                                 .weight(1f)
                                 .height(56.dp)
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(EnktelSurfaceHigh)
                                 // clickable, so the tile ripples, takes focus and
                                 // reads as a button to a screen reader and a D-pad
