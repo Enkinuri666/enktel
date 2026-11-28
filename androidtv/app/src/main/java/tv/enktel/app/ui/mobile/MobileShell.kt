@@ -1,7 +1,6 @@
 package tv.enktel.app.ui.mobile
 
 import tv.enktel.app.ui.components.frostedGlass
-import androidx.compose.material.icons.rounded.ChevronRight
 import tv.enktel.app.ui.components.localLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -132,6 +131,10 @@ fun MobileScaffold(
 ) {
     var showMore by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // A light tick when a tab is chosen. A phone user expects the bar to answer
+    // the finger with more than a colour change; the TV build never sees this
+    // because it is driven by a remote, not touch.
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding)
     // and while Kids Mode owns the Home route.
     //
@@ -178,6 +181,7 @@ fun MobileScaffold(
     }
 
     val onTab: (MobileTab) -> Unit = { tab ->
+        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
         when {
             tab.special == "mic" ->
                 voiceBus?.let { bus -> scope.launch { bus.micActivate.emit(Unit) } }
@@ -403,11 +407,18 @@ private fun BottomTabBar(current: String, onTab: (MobileTab) -> Unit, modifier: 
                         // A brand pill behind the active icon. Colour alone was
                         // carrying the whole selected state, at 10 sp, which is
                         // most of why the bar read as unfinished next to the
-                        // apps this is compared against.
+                        // apps this is compared against. The pill width glides
+                        // between tabs rather than snapping, so the selection
+                        // reads as one object sliding, not two states flicking.
+                        val pillW by androidx.compose.animation.core.animateDpAsState(
+                            targetValue = if (selected) 52.dp else 30.dp,
+                            animationSpec = androidx.compose.animation.core.tween(220),
+                            label = "tabPill",
+                        )
                         Box(
                             Modifier
                                 .height(30.dp)
-                                .width(if (selected) 52.dp else 30.dp)
+                                .width(pillW)
                                 .clip(RoundedCornerShape(percent = 50))
                                 .background(
                                     if (selected) EnktelBlue.copy(alpha = 0.18f) else Color.Transparent,
@@ -496,57 +507,67 @@ private fun MoreSheet(nav: NavHostController, onDismiss: () -> Unit) {
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
             ) {
-            entries.forEach { item ->
-                val route = item.route
+            // Two tiles to a row. Ten entries down a single column pushed the
+            // last few under the gesture bar and read as a plain list; paired
+            // tiles fill the sheet's width, halve the height and look like a
+            // launcher rather than a menu. An odd tail keeps its left column and
+            // a spacer balances the row.
+            entries.chunked(2).forEach { pairRow ->
                 Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        // clickable, so the row ripples, takes focus and reads
-                        // as a button to a screen reader and a D-pad alike —
-                        // the sheet had the same finger-only problem the bar did.
-                        .clickable(role = Role.Button) {
-                            onDismiss()
-                            nav.navigate(route) {
-                                // Without this, opening the same entry twice
-                                // stacked two copies on the back stack and Back
-                                // appeared to do nothing the first press.
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo("home") { inclusive = false; saveState = true }
-                            }
-                        }
-                        .padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Box(
-                        Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(tv.enktel.app.ui.theme.EnktelBlue.copy(alpha = 0.14f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        androidx.tv.material3.Icon(
-                            item.icon,
-                            contentDescription = null,
-                            tint = tv.enktel.app.ui.theme.EnktelBlue,
-                            modifier = Modifier.size(20.dp),
-                        )
+                    pairRow.forEach { item ->
+                        val route = item.route
+                        Row(
+                            Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(EnktelSurfaceHigh)
+                                // clickable, so the tile ripples, takes focus and
+                                // reads as a button to a screen reader and a D-pad
+                                // alike — the sheet had the same finger-only
+                                // problem the bar did.
+                                .clickable(role = Role.Button) {
+                                    onDismiss()
+                                    nav.navigate(route) {
+                                        launchSingleTop = true
+                                        restoreState = true
+                                        popUpTo("home") { inclusive = false; saveState = true }
+                                    }
+                                }
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(tv.enktel.app.ui.theme.EnktelBlue.copy(alpha = 0.14f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                androidx.tv.material3.Icon(
+                                    item.icon,
+                                    contentDescription = null,
+                                    tint = tv.enktel.app.ui.theme.EnktelBlue,
+                                    modifier = Modifier.size(19.dp),
+                                )
+                            }
+                            Text(
+                                item.localLabel(),
+                                color = tv.enktel.app.ui.theme.EnktelText,
+                                style = tv.enktel.app.ui.theme.EnktelType.subtitle,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
-                    androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
-                    Text(
-                        item.localLabel(),
-                        color = tv.enktel.app.ui.theme.EnktelText,
-                        style = tv.enktel.app.ui.theme.EnktelType.subtitle,
-                        modifier = Modifier.weight(1f),
-                    )
-                    androidx.tv.material3.Icon(
-                        androidx.compose.material.icons.Icons.Rounded.ChevronRight,
-                        contentDescription = null,
-                        tint = EnktelTextDim,
-                        modifier = Modifier.size(20.dp),
-                    )
+                    if (pairRow.size == 1) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                    }
                 }
             }
             }
