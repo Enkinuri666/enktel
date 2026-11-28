@@ -132,6 +132,10 @@ fun MobileScaffold(
 ) {
     var showMore by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // A light tick when a tab is chosen. A phone user expects the bar to answer
+    // the finger with more than a colour change; the TV build never sees this
+    // because it is driven by a remote, not touch.
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     // Hide the bar on immersive destinations (fullscreen players, multi-view, onboarding)
     // and while Kids Mode owns the Home route.
     //
@@ -178,6 +182,7 @@ fun MobileScaffold(
     }
 
     val onTab: (MobileTab) -> Unit = { tab ->
+        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
         when {
             tab.special == "mic" ->
                 voiceBus?.let { bus -> scope.launch { bus.micActivate.emit(Unit) } }

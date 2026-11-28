@@ -74,6 +74,7 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
         value = graph.playlists.activeProfile()
     }
     val p = profile ?: return
+    val homeScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val continueWatching by remember(p.id) { graph.content.continueWatching(p.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
     // Resume points written before the player carried artwork have no poster,
@@ -197,6 +198,30 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     // after a 220 ms dwell. Falls back to the current hero when nothing is
     // focused (fresh screen, empty rail, etc.).
     val focusedPoster = tv.enktel.app.ui.components.rememberFocusedPosterState()
+
+    // Pull-to-refresh (phone only — a D-pad can't over-scroll). Re-runs the same
+    // catalogue + guide sync the first-run effect above does, so the gesture
+    // every phone user reaches for actually fetches the latest.
+    var manualRefreshing by remember(p.id) { mutableStateOf(false) }
+    val onPullRefresh = {
+        if (!manualRefreshing && !syncing) {
+            manualRefreshing = true
+            homeScope.launch {
+                try {
+                    runCatching { graph.feed.invalidate() }
+                    graph.content.refreshAll(p)
+                    val synced = graph.playlists.byId(p.id) ?: p
+                    graph.epg.refresh(synced)
+                    runCatching { graph.playlists.markSynced(p) }
+                } catch (ce: kotlinx.coroutines.CancellationException) {
+                    throw ce
+                } catch (_: Exception) { /* best-effort; rails are Flows and redraw */ }
+                manualRefreshing = false
+            }
+        }
+        Unit
+    }
+
     androidx.compose.runtime.CompositionLocalProvider(
         tv.enktel.app.ui.components.LocalFocusedPoster provides focusedPoster,
     ) {
@@ -204,7 +229,12 @@ fun HomeScreen(graph: AppGraph, nav: NavHostController) {
     // poster (or the hero banner if nothing is focused yet) and bleed it
     // behind the whole Home layout as a soft radial wash.  Sits in a Box
     // below the LazyColumn so it never intercepts touches.
-    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+    tv.enktel.app.ui.components.PullRefreshBox(
+        refreshing = manualRefreshing,
+        onRefresh = onPullRefresh,
+        modifier = Modifier.fillMaxSize(),
+        enabled = tv.enktel.app.BuildConfig.FLAVOR == "mobile",
+    ) {
         val heroPoster = heroItems.firstOrNull()?.poster
         val backdropUrl = focusedPoster.currentUrl ?: heroPoster
         tv.enktel.app.ui.components.AmbilightGlow(
